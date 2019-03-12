@@ -1,3 +1,5 @@
+## The following dataset is published as part of the paper "Attack Attribution Based On Threat Intelligence Reports" (Perry et. al, 2019)
+
 # What is it?
 Threat Intelligence Corpus is a public repository of reports (sorted by the attackers) related to malicious campaigns/activity/software that have been associated with vendor-defined APT (Advanced Persistent Threat) groups and/or tool-sets.
 
