@@ -1,0 +1,389 @@
+
+Am I pwn3d? Windows *Native* Tool Triage
+
+
+By Tony Lee and Jerry Pierce.
+
+So, you are surfing the web, checking your email, and performing other daily tasks… $#@!, you just realized you clicked a link, opened an attachment, or visited a site that you probably should not have.  So what do you do?  Cry a little or take action?
+
+Perhaps a friend, family member or neighbor approaches you and asks you to help them “fix their computer” or they say, “I think I have been hacked!”
+
+Whatever the scenario, we have outlined some steps--using native Windows binaries--that you can follow in order to do a little preliminary analysis to detect potential compromise and triage the system.  
+Indicators of Compromise Covered
+
+Processes
+Network Connections
+Common File Locations
+
+System32
+Home Directory
+
+Persistence Mechanisms
+
+Services
+Registry
+Tasks
+Startup Directory
+
+
+
+If your relative/friend or family member is remote, you will most likely have to send the output to a file or have them read it to you (good luck with that if they aren’t technical), but it is a start.
+Note:  If you cannot coach family members to get to the cmd prompt--all hope may already be lost ;)
+Examine Processes
+
+The following command has been natively present in Windows since XP and 2003.  It will list the process name, process ID (PID), and other information.
+tasklist >> output.txt
+
+Sample Output
+C:\>tasklist
+
+Image Name                   PID Session Name     Session#    Mem Usage
+========================= ====== ================ ======== ============
+System Idle Process            0 Console                 0         16 K
+System                         4 Console                 0        212 K
+smss.exe                     604 Console                 0        404 K
+csrss.exe                    652 Console                 0      1,996 K
+winlogon.exe                 676 Console                 0      3,468 K
+services.exe                 720 Console                 0      3,368 K
+lsass.exe                    732 Console                 0      5,972 K
+svchost.exe                  892 Console                 0      4,764 K
+svchost.exe                  960 Console                 0      4,164 K
+svchost.exe                 1072 Console                 0     19,276 K
+svchost.exe                 1132 Console                 0      3,484 K
+svchost.exe                 1272 Console                 0      3,064 K
+explorer.exe                1408 Console                 0     15,252 K
+VMwareUser.exe              1648 Console                 0      2,888 K
+ctfmon.exe                  1660 Console                 0      3,004 K
+wracing.exe                 1680 Console                 0      1,220 K
+sqlmangr.exe                1692 Console                 0      4,804 K
+svchost.exe                 1808 Console                 0      3,700 K
+inetinfo.exe                1864 Console                 0      7,904 K
+sqlservr.exe                1880 Console                 0      7,768 K
+VMwareService.exe            128 Console                 0      2,236 K
+alg.exe                     1168 Console                 0      3,536 K
+cmd.exe                     1928 Console                 0      2,836 K
+defrag.exe                  1396 Console                 0      3,304 K
+dfrgntfs.exe                1260 Console                 0      9,556 K
+wmiprvse.exe                1756 Console                 0      5,876 K
+firefox.exe                  380 Console                 0     24,852 K
+tasklist.exe                1284 Console                 0      4,312 K
+
+
+Once the command has been executed a well trained eye can usually spot an oddly named program that is running, however some malware will try to appear as innocuous as possible and won’t stand out from a process name alone.  If something is unfamiliar, there are many sites that can be used to investigate a binary name such as http://www.processlibrary.com/. (No results from processlibrary.com can be as concerning as a positive bad hit). 
+ProcessLibrary.com Example
+Search results for: wracing.exe
+Your search "wracing.exe" did not match any documents.
+Make sure the search term was spelled correctly.
+Examine Network Connections
+
+The following command has been natively present in Windows for ages, however the -o option has been available since at least Windows XP and 2003.  The -o option provides the PID of the process that is holding the port open.  This PID can be cross referenced with the process information that you pulled in the previous section to examine the process name that is holding the port open.
+netstat -ano >> output.txt
+
+Sample Output 
+C:\>netstat -ano
+
+Active Connections
+
+  Proto  Local Address          Foreign Address        State           PID
+  TCP    0.0.0.0:21             0.0.0.0:0              LISTENING       1864
+  TCP    0.0.0.0:80             0.0.0.0:0              LISTENING       1864
+  TCP    0.0.0.0:135            0.0.0.0:0              LISTENING       960
+  TCP    0.0.0.0:443            0.0.0.0:0              LISTENING       1864
+  TCP    0.0.0.0:445            0.0.0.0:0              LISTENING       4
+  TCP    0.0.0.0:1029           0.0.0.0:0              LISTENING       1864
+  TCP    127.0.0.1:1030         0.0.0.0:0              LISTENING       1168
+  TCP    127.0.0.1:1737         127.0.0.1:1738         ESTABLISHED     380
+  TCP    127.0.0.1:1738         127.0.0.1:1737         ESTABLISHED     380
+  TCP    127.0.0.1:1741         127.0.0.1:1742         ESTABLISHED     380
+  TCP    127.0.0.1:1742         127.0.0.1:1741         ESTABLISHED     380
+  TCP    192.168.200.53:139     0.0.0.0:0              LISTENING       4
+  TCP    192.168.200.53:1743    74.125.239.18:80       ESTABLISHED     380
+  TCP    192.168.200.53:1745    74.125.239.18:80       ESTABLISHED     380
+  TCP    192.168.200.53:1746    72.235.63.10:80        ESTABLISHED     380
+  TCP    192.168.200.53:1747    72.235.63.19:80        ESTABLISHED     380
+  TCP    192.168.200.53:1749    74.125.239.6:80        ESTABLISHED     380
+  TCP    192.168.200.53:1750    63.232.79.43:443       ESTABLISHED     1680
+  UDP    0.0.0.0:445            *:*                                    4
+  UDP    0.0.0.0:500            *:*                                    732
+  UDP    0.0.0.0:3456           *:*                                    1864
+  UDP    0.0.0.0:4500           *:*                                    732
+  UDP    127.0.0.1:123          *:*                                    1072
+  UDP    192.168.200.53:123     *:*                                    1072
+  UDP    192.168.200.53:137     *:*                                    4
+  UDP    192.168.200.53:138     *:*                                    
+
+
+You are looking for any “odd” port that is listening as this might indicate the malware has placed a backdoor onto your system, or any connections to odd sites/locations around the world which you haven’t initiated.
+
+We realize that netstat -anb  can provide even more information to include the libraries that are associated with the PID, however this takes longer to run and may not be allowed to run without elevating the prompt in Windows 7.
+Examine Common File Locations
+
+The following command has been natively present in Windows since the dawn of time, however the options may not be well known to you or your family members.  Running the “dir” command with the following syntax will produce a listing that is sorted by the file creation time.
+System32
+Many files are located here and thus this is a common place for malware to hide among the weeds
+dir /o:d /t:c c:\windows\system32 >> output.txt
+
+ Sample Output 
+C:\>dir /o:d /t:c c:\windows\system32
+-snip-
+01/07/2010  05:48 PM           689,152 xpsp3res.dll
+01/07/2010  06:02 PM    <DIR>          en
+01/07/2010  06:02 PM    <DIR>          scripting
+01/07/2010  06:02 PM    <DIR>          en-us
+01/07/2010  06:19 PM         1,676,288 xpssvcs.dll
+01/07/2010  06:19 PM           575,488 xpsshhdr.dll
+01/07/2010  06:19 PM           117,760 prntvpt.dll
+01/07/2010  06:20 PM    <DIR>          XPSViewer
+01/07/2010  06:34 PM             2,560 xpsp4res.dll
+01/07/2010  07:39 PM        25,966,024 MRT.exe
+01/07/2010  07:50 PM             3,706 TZLog.log
+            2009 File(s)    408,261,849 bytes
+              52 Dir(s)   2,505,060,352 bytes free
+
+User’s home directory
+
+This is a popular spot for malware to hide because the attacker has permission to write to these locations under the context of the user.
+dir /a /s /o:d /t:c “%USERPROFILE%” >> output.txt
+
+ Sample Output 
+dir /a /s /o:d /t:c "%USERPROFILE%"
+
+-SNIP-
+ Directory of C:\Documents and Settings\Administrator\Local Settings\Temp
+01/07/2010  07:00 PM            54,272 Set29F.tmp
+01/07/2010  07:42 PM    <DIR>          NDP1.1sp1-KB953297-X86
+01/07/2010  07:47 PM            14,010 ASPNETSetup_00002.log
+09/13/2010  09:24 PM             8,141 lick_me.jpg
+09/13/2010  09:24 PM            37,376 wracing.exe
+09/13/2010  09:24 PM            28,160 wracing.dll
+09/13/2010  09:28 PM    <DIR>          plugtmp
+03/23/2012  01:43 PM    <DIR>          VMwareDnD
+03/23/2012  02:54 PM               104 pdracing.tmp
+-SNIP-
+
+
+The filenames above are from real malware--we did not make those up. 
+Investigating Persistence
+
+Sometimes the persistence mechanism (the way malware tries to assure its continued existence on a system) can give away the presence of malicious software on a system.  The following persistence mechanisms will be examined:
+
+Services
+Registry
+Scheduled Tasks
+Startup Directory
+
+Examine Services
+The following command has been natively present in Windows since before the dawn of time.  This command is commonly used to list the started services.
+net start >> output.txt
+
+Sample Output
+C:\>net start
+These Windows services are started:
+
+   Application Layer Gateway Service
+   Automatic Updates
+   COM+ Event System
+   Computer Browser
+   Cryptographic Services
+   DCOM Server Process Launcher
+   DHCP Client
+   Distributed Link Tracking Client
+   DNS Client
+   Event Log
+   FTP Publishing
+   Help and Support
+   IIS Admin
+   IPSEC Services
+   Logical Disk Manager
+   MSSQLSERVER
+   Network Connections
+   Network Location Awareness (NLA)
+   Plug and Play
+   Protected Storage
+   Remote Access Connection Manager
+   Remote Procedure Call (RPC)
+   Remote Registry
+   Secondary Logon
+   Security Accounts Manager
+   Security Center
+   Server
+   Shell Hardware Detection
+   System Event Notification
+   Task Scheduler
+   TCP/IP NetBIOS Helper
+   Telephony
+   Terminal Services
+   VMware Tools Service
+   WebClient
+   Windows Firewall/Internet Connection Sharing (ICS)
+   Windows Management Instrumentation
+   Windows Time
+   Workstation
+   World Wide Web Publishing
+
+The command completed successfully.
+
+
+The following command has been natively present in Windows since XP and 2003.  It will list the process name, process ID (PID), and the keyname for the service.
+tasklist /svc >> output.txt
+
+Sample Output
+C:\>tasklist /svc
+
+Image Name                   PID Services
+========================= ====== ============================================
+System Idle Process            0 N/A
+System                         4 N/A
+smss.exe                     604 N/A
+csrss.exe                    652 N/A
+winlogon.exe                 676 N/A
+services.exe                 720 Eventlog, PlugPlay
+lsass.exe                    732 PolicyAgent, ProtectedStorage, SamSs
+svchost.exe                  892 DcomLaunch, TermService
+svchost.exe                  960 RpcSs
+svchost.exe                 1072 Browser, CryptSvc, Dhcp, dmserver,
+                                 EventSystem, helpsvc, lanmanserver,
+                                 lanmanworkstation, Netman, Nla, RasMan,
+                                 Schedule, seclogon, SENS, SharedAccess,
+                                 ShellHWDetection, TapiSrv, TrkWks, W32Time,
+                                 winmgmt, wscsvc, wuauserv
+svchost.exe                 1132 Dnscache
+svchost.exe                 1272 LmHosts, RemoteRegistry
+explorer.exe                1408 N/A
+VMwareUser.exe              1648 N/A
+ctfmon.exe                  1660 N/A
+wracing.exe                 1680 N/A
+sqlmangr.exe                1692 N/A
+svchost.exe                 1808 WebClient
+inetinfo.exe                1864 IISADMIN, MSFtpsvc, W3SVC
+sqlservr.exe                1880 MSSQLSERVER
+VMwareService.exe            128 VMTools
+alg.exe                     1168 ALG
+cmd.exe                     1928 N/A
+firefox.exe                  380 N/A
+notepad.exe                 1344 N/A
+tasklist.exe                1820 N/A
+wmiprvse.exe                1892 N/A
+
+
+Additional analysis could include digging further into a particular service shown above.  A great native tool for this is sc (service control):
+sc qc  >> output.txt
+
+Sample Output
+C:\>sc qc webclient
+[SC] GetServiceConfig SUCCESS
+
+SERVICE_NAME: webclient
+        TYPE               : 10  WIN32_OWN_PROCESS
+        START_TYPE         : 2   AUTO_START
+        ERROR_CONTROL      : 1   NORMAL
+        BINARY_PATH_NAME   : C:\WINDOWS\System32\svchost.exe -k LocalService
+        LOAD_ORDER_GROUP   : NetworkProvider
+        TAG                : 0
+        DISPLAY_NAME       : WebClient
+        DEPENDENCIES       : MRxDAV
+        SERVICE_START_NAME : NT AUTHORITY\LocalService
+
+Examine Registry Entries
+
+The following command has been natively present in Windows for quite some time--however, the keys are the ones examined by Sysinternal’s autoruns:
+reg query "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run"
+reg query "HKLM\SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Run"
+reg query "HKLM\SOFTWARE\Microsoft\Active Setup\Installed Components"
+reg query "HKLM\SOFTWARE\Wow6432Node\Microsoft\Active Setup\Installed Components"
+reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
+
+Sample Output
+C:\>reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
+
+! REG.EXE VERSION 3.0
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    ctfmon.exe  REG_SZ  C:\WINDOWS\system32\ctfmon.exe
+    wracing     REG_SZ  C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe -installkys
+
+
+With this sample output, we see that “wracing.exe” is in the “C:\Documents and Settings\Administrator\Local Settings\Temp” directory.  We suggest you review the file listing of this directory, sorted by file creation time as well to see what other artifacts may be present from the same timeframe.
+Examine Scheduled Tasks
+
+The following command has been natively present in Windows for quite a while, however it is falling out of favor in Windows 7 and 2008:
+at >> output.txt
+
+Sample Output
+C:\>at
+There are no entries in the list.
+
+
+Windows 7 and 2008 prefers the following newer command:
+schtasks >> output.txt
+
+Sample Output
+
+C:\Documents and Settings\Administrator>schtasks
+
+TaskName                            Next Run Time          Status
+=================================== ====================== ===============
+Ezyme                               16:33:00, 3/23/2012
+
+Examine Startup Directory
+
+We will use the ‘dir’ command again in order to inspect the startup directory specifically:
+dir “C:\Documents and Settings\All Users\Start Menu\Programs\Startup”
+dir “C:\Documents and Settings\\Start Menu\Programs\Startup”
+dir "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup"
+
+Sample Output
+C:\>dir "c:\documents and settings\Administrator\start menu\programs\startup"
+ Volume in drive C has no label.
+ Volume Serial Number is 442E-ACB9
+
+ Directory of c:\documents and settings\Administrator\start menu\programs\startup
+
+11/15/2006  01:37 PM    <DIR>          .
+11/15/2006  01:37 PM    <DIR>          ..
+11/15/2006  01:37 PM               607 putbginfo.bat.lnk
+               1 File(s)            607 bytes
+               2 Dir(s)   2,503,716,864 bytes free
+
+Initial Analysis of the Results
+
+Analysis often takes far longer than the time required to run the commands.  However, according to the sample information above, it appears that we have at least two infections on this host.  The data below ties everything together.
+
+Malicious software is present in the process list here:
+Image Name                   PID Session Name     Session#    Mem Usage
+========================= ====== ================ ======== ============
+wracing.exe                 1680 Console                 0      1,220 K
+
+
+It also has a connection out to a known bad site:
+  TCP    192.168.200.53:1750    63.232.79.43:443       ESTABLISHED     1680
+
+
+Malicious files are present in the following directory:
+
+C:\Documents and Settings\Administrator\Local Settings\Temp
+
+09/13/2010  09:24 PM             8,141 lick_me.jpg
+09/13/2010  09:24 PM            37,376 wracing.exe
+09/13/2010  09:24 PM            28,160 wracing.dll
+
+
+The persistence mechanism is via the registry:
+"HKCU\Software\Microsoft\Windows\CurrentVersion\Run"
+wracing     REG_SZ  C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe -installkys
+
+
+There is also a second (most likely unrelated) suspicious task that runs via the scheduler:
+C:\Documents and Settings\Administrator>schtasks
+TaskName                            Next Run Time          Status
+=================================== ====================== ===============
+Ezyme                               16:33:00, 3/23/2012
+
+Food for Thought
+
+If the infection is using rootkit technology, there is a good chance that the native Windows tools will not show you anything.  If nothing shows up as indicators of compromise, but they are still convinced they are owned--look for our next post (Am I P0wn3d?  Lesson 102 - Windows *Non-Native* Tool Triage) which leverages non-native tools which may provide more insight into the potential breach.  Non-native tools may also pull the same information, without using the traditional Windows APIs which can help discover the present of rootkit technology.  Happy hunting!
+What Native Tips Do You Have?
+
+Do you have any tips or tricks using Native Windows tools? Share them in the comments below!!!
+
+

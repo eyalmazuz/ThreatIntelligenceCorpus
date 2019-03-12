@@ -1,0 +1,86 @@
+
+WordPress Penetration Testing using WPScan & Metasploit
+
+In our previous article we had discussed “WordPress Penetration Testing Lab Setup in Ubuntu” and today you will learn wordpress penetration testing using WPScan and Metasploit
+Attacker: Kali Linux
+Target: WordPress 
+WPScan is a black box vulnerability scanner for WordPress written in PHP mainly focus on different types of vulnerability in WordPress, WordPress themes, and plugins. Well, WPScan tool is already installed by default in Kali Linux, SamuraiWTF, Pentoo, BlackArch, and BackBox Linux. WPScanuses the database of all the available plugins and themes (approximately over 18000 plugins and 2600 themes) during testing against the target to find outdated versions and vulnerabilities.
+Things WPScan can do for you are:
+Detect a version of currently installed WordPress.
+-Can detect sensitive files like readme, robots.txt, database replacing files, etc.
+-Detect enabled features on currently installed WordPress.
+-Enumerate theme version and name.
+-Detect installed plugins and can tell you if it is outdated or not.
+-Enumerate user names also.
+Let’s start.
+Go to your Kali Linux terminal and type following to download wpscan from git hub.
+cd Desktop
+
+Now simply type in terminal to run the script:
+Using default Option we will are going to penetrate our wordpress website:
+
+Wpscan is a great tool to scan wordpress websites. Now we will try to do some basic scan, we will use enumerate tools to find information about themes, plugins, usernames etc.
+Now type following command to scan wordpress and its server:
+Instead of http://192.168.0.101/wordpress/ type the name of a website you want to scan. 
+Here it found server: Apache/2.4.7, PHP /5.5.9 wordpress version 4.8.1, using this information an attacker can check for its exploit in Google. Moreover it also found that the upload directory has directory listing enable which means anyone can browse the directory /wp-content/uploads to view the uploaded files and contents.
+
+A theme controls the general look and feel of website including things like page layout, widget locations, and default font and color choices. WordPress.com has a wide range of themes for its user and each theme has an about page that includes features and instructions.
+To scan installed theme of wordpress website type following command:
+
+To scan installed vulnerable theme of wordpress website type following command:
+From scanning result we didn’t find any vulnerable theme which means there is no vulnerable theme which can be exploited.
+
+Plugins are small piece of code of a program which can be added to a WordPress website to extend its functionality.
+To find installed plugins on our target’s WordPress website, type in terminal:
+
+Finally, after few seconds, you will get result of installed plug-in. You can see that in my scan result askismet v3.3.3, pixabay-images v2.14, wptouch v3.4.3 such types of installed plug-in are detected. As well as it also describe last update and latest version of that plug-in.
+
+Now type following command to scan vulnerable plug-in of any wordpress website:
+
+After few seconds, you will get result of installed vulnerable plug-in of website. From given image you can observe that the red color indicates vulnerable plug-ins as well as link of exploits CVE.
+
+This module exploits an arbitrary PHP code upload in the WordPress Reflex Gallery version 3.1.3. The vulnerability allows for arbitrary file upload and remote code execution.
+Open the terminal load metasploit framework and execute following command:
+use exploit/unix/webapp/wp_reflexgallery_file_upload
+msf exploit(wp_reflexgallery_file_upload) > set rhost 192.168.0.101
+msf exploit(wp_reflexgallery_file_upload) > set targetURI /wordpress/
+msf exploit(wp_reflexgallery_file_upload) > exploit
+Awesome!! From given image you can observe the meterpreter session of victim’s web server.
+meterpreter> sysinfo
+
+In order to enumerate user names of wordpress website execute following command:
+
+After sometime it will dump the table of usernames. In this scan I had found three users with their Id as given below:
+ID 1: admin
+ID2: ignite
+ID: demo
+
+Whatever we have scanned above can be easily enumerate at once by executing given below command:
+Here we had use option –e at –e ap –e u for following reasons:
+–e at : enumerate all themes of targeted website
+–e ap: enumerate all plugins of targeted website
+–e u: enumerate all usernames of targetd website
+
+With help of username which we had enumerated above we can create a wordlist of password for user admin and can try brute force login attack using given below command.
+
+It will start matching the valid combination of username and password for login and then dump the result, from given image you can see it found login credential of targeted website as admin:password.
+
+You can use above credential for login into admin panel where we can upload any theme, taking advantage of admin right we will try to upload malicious script to achieve reverse connection from victim’s system.
+Once you are inside admin panel click on Appearance from dashboard and then select option editor.
+
+Now select template 404.php given on the right side of the frame; after that you will found some php code in middle frame for 404 temperate. Erase the entire php code so that you can add malicious php code for generating backdoor inside website as a new theme.
+
+Now use msfvenom to generate malicious PHP script and type following command.
+From screenshot you can read the generated PHP script, at this instant we need to copy the text from *<?php……….die();  further we will past it inside wordpress template as a new theme.
+
+Now past above copied PHP text *<?php……….die();   here as new theme under selected  404.php template.
+
+On other hand Load metasploit framework and start multi/handler
+
+When you will execute your uploaded theme 404.php in browser you will receive reverse connection at multi/handler and get meterpreter session of victim’s system.
+
+Here form screenshot you can see through meterpreter we have access victim’s shell.
+meterpreter> sysinfo
+In this way using WPSCAN and METASPLOIT admin can check the strength and weakness of wordpress website.
+
+AUTHOR: AkshayBhardwaj is a passionate Hacker, Information Security Enthusiast and Researcher | Sketch Artist |Technical writer.

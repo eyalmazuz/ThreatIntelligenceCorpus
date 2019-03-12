@@ -1,0 +1,216 @@
+
+Extracting RSAPrivateCrtKey and Certificates from an Android Process
+
+
+By Gursev Singh Kalra. 
+
+
+An Android application that I assessed recently had extensive cryptographic controls to protect client-server communication and to secure its local storage. To top that, its source code was completely obfuscated. Combined, these two factors made the application a great candidate for reversing. In this blog I will detail the portion of work where I dumped X.509 certificates and constructed a RSA private key (RSAPrivateCrtKey) from the Android application memory using Eclipse Memory Analyzer Tool (MAT) and Java code.
+Analyzing Android Memory with Eclipse MAT
+
+
+Eclipse MAT is primarily a Java heap analyzer that has extensive usage beyond its primary purpose of identifying memory leaks. It can be used to identify and dump sensitive information in Android application memory, perform some memory forensics etc… If you are new to Android memory analysis, I recommend that you get intimate with this tool for its obvious benefits. The following articles can help you get started.
+
+http://help.eclipse.org/kepler/index.jsp?topic=/org.eclipse.mat.ui.help/welcome.html
+http://android-developers.blogspot.com/2011/03/memory-analysis-for-android.html
+http://eclipsesource.com/blogs/2013/01/21/10-tips-for-using-the-eclipse-memory-analyzer/
+
+
+Okay, now back to our target application. 
+Locating the crypto material
+
+As part of reversing process I used dex2jar to decompile the application apk to java files and started analyzing them. While following application logic and reviewing its obfuscated code, I stumbled upon a java file (com.pack.age.name.h.b.java) that contained instance variables of type SSLSocketFactory and X509TrustManager. Clearly, this class was performing important cryptographic operations with respect to client-server communication.
+
+So I pivoted to this class to identify the source of its crypto material and all attempts led me from one rabbit hole to another. I then decided to directly look at application heap with Eclipse MAT. I launched the application and performed some operations to ensure that the application loads the required crypto material and then performed the following steps to create the HPROF file contain application heap dump.
+
+Select the application from the list of running apps
+Select the “Show heap updates” option for the target application
+Select “Dump HPROF file” for analysis. 
+Since I had MAT plugin installed, ADT converted the Android memory dump to HPROF format and presented it for analysis. In case you do not have MAT plugin, you will need to convert the generated dump to MAT readable format with hprof-conv utility that comes with ADT.
+
+
+After opening the heap dump, I clicked on the “Dominator Tree” to view the object graph. Supplying the name of the class which had SSLSocketFactory and X509TrustManager instance variables in the Regex area filtered out most of the unwanted stuff. I then navigated the object tree to identify the X.509 certificates and the RSAPrivateCrtKey is shown below.
+
+Dumping the certificates
+
+The X.509 certificates were byte arrays of different lengths and extracting the certificates turned out to be quick. I right clicked on the byte array -> navigated to Copy -> Save Value to File -> selected location to save the file and clicked Finish. MAT indicates that the copy functionality allows you to write char[], String, StringBuffer and StringBuilder to a text file but it handsomely handled the byte[] in the current context. Please note the extension of the exported file was set to .der on the windows system. The following screenshots will show you the steps followed and one extracted certificate. 
+
+
+First select the “Save Value to File” functionality for the byte[]:
+
+
+Next save the file as certificate-1.der :
+
+
+And now you can see the extracted Root CA certificate from the Android application:
+
+Extracting the RSAPrivateCrtKey
+
+The second important component was the RSAPrivateCrtKey and extracting it was a little more involved as we will see below. To summarize, the below provided steps were followed to retrieve the RSAPrivateKeyCrtKey:
+
+Locate components that make up the RSAPrivatecrtKeySpec
+Copy all the components and store them in file system
+Compute positive  BigInteger values from these components
+Construct  RSAPrivatecrtKeySpec from its components
+Use the  RSAPrivatecrtKeySpec  object to construct  RSAPrivatecrtKey
+Write the  RSAPrivatecrtKey to the file system in  PKCS8 format
+And optionally: Convert  PKCS8 to  PEM using OpenSSLExtract public key from the  PEM file with OpenSSL
+
+
+Let us now look at the involved details. 
+
+The third component from the first image above corresponds to an instance of RSAPrivatecrtKeySpec which was the starting point to construct the key. Selecting the com.android.org.bouncycastle.jcajce.provider.asymmetric.rsa.BCRSAPrivateCrtKey entry in the MAT’s Dominator Tree populated the Attributes tab with the information (type, instance name and object reference) pertaining to the several participating BigInteger instances that are required to build this RSAPrivateCrtKeySpec. The following are the participating BigInteger components that make up a RSAPrivateCrtKeySpec:
+
+modulus
+publicExponent
+privateExponent
+primeP
+primeQ
+primeExponentP
+primeExponentQ
+crtCoefficient
+
+
+I used this information to segregate the BigInteger component values to different variables as their values were copied out to the file system (see figure below). For example, the crtCoefficient at @0x410b0080 in the Attributes tab (left) was mapped to an array of 32 integers (right).  The modulus at @0x410afde0 was 64 int’s long which indicated that the key size was 2048 bits. Since MAT does not know how to export BigInteger objects, I used the actual int[]  reference inside the corresponding BigInteger dropdown to copy out the binary content. 
+
+That is, I right clicked on the int[] dropdowns under the BigInteger while exporting their content. This process was repeated for all the BigInteger components to 8 local files and the files were named as per the Attribute names.
+
+Here's the Attributes pane and corresponding BigInteger objects in the heap
+
+
+and the corresponding int[] content dump.
+
+
+
+The next step after extracting the BigInteger components was to check if I am able to use them to re-construct the RSAPrivateCrtKeySpec. So I decided to perform two basic tests before going forward.
+
+Read individual int values from the file where int[]was dumped and match them against values in the MAT
+Check that all BigInteger components are positive numbers
+
+
+I wrote some Java code to help me test all the binary dumps against these two conditions. The results indicated that first condition was true for all BigInteger components, but the second condition was not met by 3 out of 8 BigInteger components that had negative values as shown below. 
+
+Here's the matching integers from the binary dump against MAT (Condition 1)
+
+
+Here are the negative values (Condition 1):
+
+
+I searched around to identify the reason for the negative values and the comments in the OpenJDK code indicated that the negative values can be result of incorrect ASN.1 encoding. So I included the corresponding code to calculate and return 2’s complement for negative BigInteger values before supplying the values to RSAPrivateCrtKeySpec constructor.
+
+The final Java code that reads the binary BigInteger (int[]) components from file system and creates RSAPrivateCrtKey in PKCS8 format is provided below.
+import java.io.DataInputStream;
+import java.io.EOFException;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
+import java.security.KeyFactory;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.PrivateKey;
+import java.security.Security;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.RSAPrivateCrtKeySpec;
+import java.util.ArrayList;
+
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
+
+public class Generate Key {
+
+ public static BigInteger bitIntFromByteArray(int[] byteArrayParam) {
+     byte[] localByteArray = new byte[byteArrayParam.length * 4];
+     ByteBuffer byteBuffer = ByteBuffer.wrap(localByteArray);
+     IntBuffer intBuffer = byteBuffer.asIntBuffer();
+     intBuffer.put(byteArrayParam);
+     
+     BigInteger bigInteger = new BigInteger(localByteArray);
+     if(bigInteger.compareTo(BigInteger.ZERO) < 0)
+      bigInteger = new BigInteger(1, bigInteger.toByteArray());
+     return bigInteger;
+ }
+ 
+ public static BigInteger bigIntegerFromBinaryFile(String filename) throws IOException {
+  ArrayList<Integer> intArrayList = new ArrayList<Integer>();
+  DataInputStream inputStream = new DataInputStream(new FileInputStream(filename));
+  try {
+      while (true) 
+          intArrayList.add(inputStream.readInt());
+  } catch (EOFException ex) {
+   
+  } finally {
+   inputStream.close();
+  }
+  
+  int[] intArray = new int[intArrayList.size()];
+  for(int i = 0; i < intArrayList.size(); i++) 
+   intArray[i] = intArrayList.get(i);
+  return bitIntFromByteArray(intArray);
+
+ }
+ 
+ public static void main(String[] args) throws KeyStoreException, NoSuchProviderException, NoSuchAlgorithmException, InvalidKeySpecException, FileNotFoundException, IOException, ClassNotFoundException {
+  Security.addProvider(new BouncyCastleProvider());
+  
+  BigInteger crtCoefficient = bigIntegerFromBinaryFile("h:\\key-coeffs\\crtCoefficient");
+  BigInteger modulus = bigIntegerFromBinaryFile("h:\\key-coeffs\\modulus");
+  BigInteger primeExponentP = bigIntegerFromBinaryFile("h:\\key-coeffs\\primeExponentP");
+  BigInteger primeExponentQ = bigIntegerFromBinaryFile("h:\\key-coeffs\\primeExponentQ");
+  BigInteger primeP = bigIntegerFromBinaryFile("h:\\key-coeffs\\primeP");  
+  BigInteger primeQ = bigIntegerFromBinaryFile("h:\\key-coeffs\\primeQ");
+  BigInteger privateExponent = bigIntegerFromBinaryFile("h:\\key-coeffs\\privateExponent");
+  BigInteger publicExponent = bigIntegerFromBinaryFile("h:\\key-coeffs\\publicExponent");
+  
+  System.out.println("crtCoefficient\t" + crtCoefficient);
+  System.out.println("modulus\t" + modulus);
+  System.out.println("primeExponentP\t" + primeExponentP);
+  System.out.println("primeExponentQ\t" + primeExponentQ);
+  System.out.println("primeP\t" + primeP);
+  System.out.println("primeQ\t" + primeQ);
+  System.out.println("privateExponent\t" + privateExponent);
+  System.out.println("publicExponent\t" + publicExponent);
+
+  
+  RSAPrivateCrtKeySpec spec = new RSAPrivateCrtKeySpec(modulus, publicExponent, privateExponent, primeP, primeQ, primeExponentP, primeExponentQ, crtCoefficient);
+  KeyFactory factory = KeyFactory.getInstance("RSA", "BC");
+  PrivateKey privateKey = factory.generatePrivate(spec);
+  System.out.println(privateKey);
+  PKCS8EncodedKeySpec pkcs8EncodedKeySpec = new PKCS8EncodedKeySpec(privateKey.getEncoded());
+  FileOutputStream fos = new FileOutputStream( "h:\\key-coeffs\\private-pkcs8.der");
+  fos.write(pkcs8EncodedKeySpec.getEncoded());
+  fos.close();
+ } 
+}
+
+ 
+
+Converting PKCS8 to PEM
+
+The next step of the process was to convert the private key from PKCS8 format to a PEM file and then to generate the public key from the private key with the following OpenSSL commands:
+openssl pkcs8 –inform DER –nocrypt –in private-pkcs8.der –out privatePem.pem
+
+openssl rsa –in privatePem.pem –pubout
+  
+
+
+
+Here is OpenSSL converting the PKCS8:
+
+
+Finally we have the outputted RSA private key:
+
+
+
+And we can use OpenSSL to extract the public key from the privatePem.pem file:
+
+
+Conclusion
+
+Memory analysis is a powerful technique that can be used to identify and extract sensitive information from application runtime. The extracted information can then be used to possibly defeat client side security controls.
+
+

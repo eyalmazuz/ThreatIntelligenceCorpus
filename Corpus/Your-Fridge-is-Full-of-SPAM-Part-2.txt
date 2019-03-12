@@ -1,0 +1,43 @@
+Your Fridge is Full of SPAM, Part II: Details
+Our press release on a malicious email campaign that used the Internet of Things (IoT) and the subsequent blog entry listing the chipsets and OSes we saw and additional types of devices has generated a lot more interest than we expected. 
+We’ve fielded a number of questions from various sources on our methodology and logic for ascertaining whether the devices in question were actually being used to send malicious mail.
+We wanted to consolidate many of those answers here, in the interest of better information sharing and understanding.  Our hope is that this will allow others to reach similar conclusions, and thus better address the security concerns raised going forward.
+Below, please find a short summary of methodology, followed by some screenshots showing IPs.
+(A) Methodology and Logic – Overview
+As part of ongoing operations, Proofpoint examines large spam and Phish campaigns.  Data is gathered from points worldwide, including customer submission and Proofpoint's own networks of endpoints. 
+When we see Malicious mail / spam, we check the origin IP address – this is standard practice, part of building blacklists.
+When we investigated the IP (connected to it over various protocols) we found that in cases where the device replied, the device at the IP identified itself as an IoT-type device (consumer router, home security system, home entertainment system,  VoIP phone, Fridge etc. etc.)
+By “identified”, we mean that the device responded with explicit identification, including well-known, often graphically branded (in the case of web-based UI) interfaces, file structures, and content.
+Additionally, the nature of the response indicated that the device had either an insecure default configuration or known vulnerabilities (eg, it was responding without requesting authentication at all, or accepting the generic authentication with which all devices in the class are shipped)
+At this point, we questioned whether it was reasonable to expect to see devices directly connected to the Internet, vs. being NAT-ed.  Bearing in mind that the devices we’re seeing are either open or using default user/pass, we suspect they’re not deployed by sophisticated users or very security-concious environments. Since many home routers are UPnP enabled by default, and most smart devices – whether embedded windows or embedded linux – can tell the router to open ports and forward those ports using simple scripts, we concluded it was quite reasonable to expect a non-zero percentage of devices to be directly exposed.
+Our suspicion was now that the devices had been configured as relay or proxy devices. This is actually a throwback to earlier internet days; SORBS documented this in 2003, when it was being used to mask 250k IPs per day.  A detailed description of this technique is available here, while Engadget provides a quick one-paragraph summary of the concept here.
+To validate that hypothesis, we looked at a sampling of devices.
+We first verified that the device had the software stack / technical capabilities necessary to send spam (based on OS, config). We then checked interface stats and uncovered evidence that the email messages had been proxied via the WAN interface, and didn’t originate from the internal NATted segment. (Specifically,  when packet counting on the interfaces -- inside traffic vs outside traffic on devices -- shows differences of several gigabytes -- it can be extrapolated that the device is either under attack or sending the spam directly).
+In short, we verified that these devices were configured to act as email proxies, and we collected evidence that indicated active email proxying was occurring.
+In a subset of cases Proofpoint approached the device in the same way as an attacker, using a remote automated system to cause sample email messages to come from the device to our destinations, to confirm our findings above. 
+Based on all of the above we concluded that the devices in question were the likely source of the malicious messages emanating from that IP.
+It is also worth noting that we have observed waves of attacks where most of the messages are coming from similar devices  and/or a single manufacture and then rotate to a new device class.  It is hard to come up with reasonable explanations for this behavior that do not directly implicate the observed devices.
+Furthermore, if the above hypothesis is true, most gadgets wouldn’t need to have been "Hacked" or "infected" by remote control software (a "Trojan Horse") in the traditional way personal computers are infected.  Instead they would simply have to have email capability and been configured by attackers as a relay – eg, the attackers would have to have gained access, but not run any clients. Again, in such a scenario, once configured, no remote client for C&C is needed, a malicious outsider can just point at the device and send.  This also means there’s no strong fingerprint in the form of malware left on the device to analyze, and it’s challenging to catch the original sender unless one can sniff network packets in realtime or from the device itself. 
+Note also that this doesn’t preclude more sophisticated malware being installed – the devices are mostly running unmodified embedded Linux, and thus will happily run additional code. In fact, since publication, we’ve seen the attackers rotating these devices – we’ve watched formerly open devices get sealed or taken offline, which suggests either suddenly very diligent consumers… or attackers who want to protect their IoT units, and so are switching default passwords and potentially loading more traditional malware vs. simply exploting open relays.
+(B) Screenshots
+For those interested in a little more visual proof, please find below some screenshots from three representative devices (a DVR, what we believe to be a security camera system, a VoIP-gateway and a Router) whose IPs were observed sending malicious mail. 
+We captured these on January 14th, 2014 to show that the trend is continuing.  Identifying actual devices is a time consuming manual process for us, these three are just meant to be representative of the wide range of different devices vulnerable to these issues and is by no means comprehensive.
+Example of DVR login:
+
+Example of malicious email from that DVR:
+
+And the source, showing IP octet and URLs:
+
+The site http://BargeMeanderer.com/up/ has been identified as a potential malware site by VirusTotal, though our sandbox doesn’t see any active malware currently.
+Example of Security Camera login:
+
+(Note that common default passwords are listed in many places on the internet, so this is hardly secure!)
+Example of malicious email from that Security Camera:
+
+The site http://vsosh-nadter.ru/iax/ has been identified as potential malware site by VirusTotal, though our sandbox doesn’t see any active malware currently.
+Example of malicious email from the VOIP gateway:
+
+Examples of Router login:
+
+One additional note on Routers…
+Some folks have asked why we included home routers in an IoT release since concerns about attacks coming from them certainly is not a new development.  Our view is that home routers share almost all the same characteristics of other IoT devices (internet connected, embedded OS, limited-UI, plug-and-play from a consumer perspective) and so given there ubiquity they represent the clearest view of the likely security impacts of millions of similar devices. The track record with them is not good and based on the wide range of other devices we have found in our research, albeit in smaller numbers, it appears many of the newer devices are headed down a similar path.

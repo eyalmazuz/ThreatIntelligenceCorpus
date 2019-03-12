@@ -1,0 +1,121 @@
+
+Malicious PNGs: What You See Is Not All You Get!
+
+
+This post was authored by Earl Carter and Nick Randolph.
+
+Threat actors are continually evolving their techniques. One of the latest Graftor variants is delivering a Malware DLL via a PNG file delivery mechanism. Graftor basically indicates some type of trojan hiding in a piece of software. Hiding executables and DLLs in PNG files is yet another attempt to avoid detection and deliver malicious content to user systems. In this instance, the malicious content is placed at the end of the real PNG file data.
+
+Adware and even bundling malicious software as part of legitimate software are increasingly common vectors used by threat actors to gain initial access to user systems. In these situations, the user is lured visiting a malicious site or into installing some software. In the sample that we analyzed, after access is gained to the system, further exploitation occurs by downloading a PNG file which also contains a DLL and other executable content. This download occurs in the background without user interaction and hiding the malicious content at the end of the valid PNG file is an attempt to bypass security detection on the system and the network.
+
+In the sample we analyzed in January (331177e4fbde6c98620f1c9927962c79d4c027807357f42002a14a2dc22b4044
+), the initial malicious software attempts to grab the malicious PNG file via the following HTTP request - http://174.128.244.58:808/toopu.png.
+
+
+
+
+
+
+
+The toopu.png file (b4cb0490afa7da6647dc7f255a6c4c742b649fe4ff853b83f7dd2f948b8686be) has a DLL appended to the end. It’s not obfuscated or hidden in any way, just attached to the end of the file after the IEND tag which typically marks the end of the image file.
+
+Searching VirusTotal, you can see that toopu.png is also related to over a thousand samples which reference toopu.png. Examining many of the recent samples indicate that toopu.png is now being downloaded from 192.253.234.50. Furthermore, we have also noticed the use of other PNG files such as  khbgvkh.png and test.png. For the sample that we analyzed, VT indicates that it hooks into the keyboard and mouse operations. Briefly examining the content added to test.png reveals strings such as "ActiveOfflineKeyLogger" and "UnActiveOfflineKeyLogger", which further confirms that the malicious software is attempting to grab the users keystrokes.
+
+Checking other samples on VirusTotal that also download toopu.png, another common technique is to update the local host file to point various anti-virus vendor links to local host, thus preventing access to them. In one sample (4124a533037373a922b01421caca3821af36099d98b7d6aa534ad9a2c4f40d2b), the malware changes to the hosts file as shown below:
+
+
+
+The function used to build the http request that retrieves the malicious PNG seems to be missing some functionality. It has format strings for most of the HTTP headers,  but it only provides a User-Agent and Accept-Language values. The request for toopu.png has an empty referrer and cookie header.
+
+
+
+
+
+
+
+
+
+If the function fails to grab the PNG, it will sleep and try again. Once the PNG is obtained, the retrieving function performs some basic verification that it received the correct image file. The sample checks for a “200 OK” response and checks that the length is 0x41EA9 (269993). It then moves to the beginning of the embedded DLL at offset 0xEA9 (3753).
+
+
+
+
+
+
+The embedded DLL (1fc6034b3ec99a01e3b2cde22846772656481d7374209ca0f068c8ab181bc8d9) actually contains some of the C&C functionality. The type and cr parameters are hard coded to “loadall” and “yes” respectively.
+
+
+
+
+
+
+
+
+The PNG also contains a UPX packed file (944df4f8307f53132bef58d5f74ff7473512b8c03461d60317134ab024213e18) that contains a list of domains and a list of user-agents. The domains used for C&C included:
+
+niudoudou.com
+fxxx114.com
+wlkan.cn
+it885.com.cn
+aquametron.com
+
+
+The user-agent strings included in the packed file are also unique. One lists an outdated version of Chrome, two of them list two versions of IE and another shows IE 11 and Firefox 24. The Chrome user agent (with the current version of Chrome being 41) was
+
+Mozilla/5.0 (Windows; U; Windows NT 5.1; en-US) AppleWebKit/534.15 (KHTML, like Gecko) Chrome/10.0.612.1 Safari/534.15
+
+
+The two IE user agents were:
+
+Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1); Maxthon/3.0)
+Mozilla/4.0 (compatible; MSIE 7.0; Windows NT 5.1; Trident/4.0; Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; SV1); 360SE)
+
+
+The Firefox user agent, which also includes rv to indicate IE version 11, was:
+
+Mozilla/5.0 (Windows NT 5.1; rv:11.0) Gecko/20100101 Firefox/24.0
+
+
+
+IOC’s
+
+Hashes
+331177e4fbde6c98620f1c9927962c79d4c027807357f42002a14a2dc22b4044
+b4cb0490afa7da6647dc7f255a6c4c742b649fe4ff853b83f7dd2f948b8686be
+1fc6034b3ec99a01e3b2cde22846772656481d7374209ca0f068c8ab181bc8d9
+4124a533037373a922b01421caca3821af36099d98b7d6aa534ad9a2c4f40d2b
+
+
+Domains
+niudoudou.com
+fxxx114.com
+wlkan.cn
+it885.com.cn
+aquametron.com
+
+
+IP’s
+174.128.244.58
+192.253.234.50
+
+
+
+Conclusion
+
+Bundling malicious software with something else and Adware are becoming an increasing common attack vector. Besides tracking your surfing habits, this latest round of adware is unwanted and becoming increasingly malicious. These malicious PNGs can initially have low detection rates, as did this sample when we first analyzed it. Users must be constantly vigilant and wary of what software they install on their systems and which websites they visit. Having a layered security approach also helps protect against these threats by limiting access to malicious sites and stopping malicious software before it has a chance to run on your system.
+
+
+Protecting Users from These Threats
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block spear phishing emails sent by threat actors as part of a campaign.
+
+
+

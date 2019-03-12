@@ -1,0 +1,25 @@
+
+Hacking EAP-FAST Phase 0 with hostapd-wpe
+
+
+By Brad Antoniewicz.
+
+EAP-FAST (Flexible Authentication via Secure Tunneling)  [RFC 4851] is an EAP-Type developed by Cisco "to support customers that cannot enforce a strong password policy and want to deploy an 802.1x EAP type that does not require digital certificates". While this article will focus on its use in 802.11 networks, mostly everything below is still applicable to wired networks. 
+PAC Files
+
+EAP-FAST is very similar to EAP-TTLS and PEAP in that it first establishes a TLS tunnel from the client to the authentication server, then passes client credentials through it via a "less secure inner authentication protocol". The defining factor of EAP-FAST is client side file called a Protected Access Credential (PAC). The PAC aids in the initial tunnel set up by acting sort of like a mix between a client certificate and a session identifier. To understand it, you have to have knowledge of RFC4507, which outlines TLS session resumption. Long story short: the client gets a session ticket, which allows it to reestablish a TLS tunnel without performing the full TLS handshake. 
+Phases
+
+EAP-FAST has specific terminology for each of steps in a connection, named phases 0 - 2. Phase 1 is the TLS tunnel establishment, and Phase 2 corresponds to user authentication via the inner authentication protocol. Phase 0, however, is something new.
+Phase 0: Provisioning
+
+The EAP-FAST RFC doesn't specifically touch on the provisioning of the PAC files, instead there is another entire RFC dedicated to it. Probably because this is one of the most difficult issues to deal with. EAP-TTLS and PEAP support client certificates however since the user has to first make a wired connection to retrieve the certificate (or the certificate has to be loaded manually) they're hardly ever used. So EAP-FAST's defining factor is the PAC which faces the same problem.
+
+You have the traditional modes of installation (e.g. sneakernet) or you can choose "Automatic PAC Provisioning". This is the real downfall of most deployments. Automatic PAC Provisioning establishing an anonymous Diffie Helman tunnel between the client and the authentication server. Since its anonymous, the client can't validate the identity of the authentication server, and, bam, AP Impersonation Attack.
+hostapd-wpe
+
+A little awhile ago Josh Wright and I teamed up on patch for FreeRADIUS called FreeRADIUS-WPE (Wireless Pwnage Edition). The patch modifies FreeRADIUS to output additional debugging information, including the inner authentication credentials of the connecting client. Since FreeRADIUS doesn't support EAP-FAST, I followed JoMo-Kun's lead and modified hostapd.
+
+With hostapd-wpe you can launch impersonation attacks against EAP-FAST Phase 0 and PEAP! Just compile and run :)
+
+

@@ -1,0 +1,15 @@
+iOS, OS X apps sent into infinite dizzy DoS by this one weird kernel bug
+Kenton Varda has found a 'weird' kernel bug used in Apple gear that could result in trivial denial of service by remote attackers.
+The hacker and LAN gamer bod says the Darwin kernel vulnerability (CVE-2015-1105) now patched by Cupertino for iOS and OS X is "no Shellshock" but could cause apps like Google Chrome to crash and Node.js to spin into infinite loops when OOB data is received.
+Varda (@kentonvarda) says he found the bug while probing operating systems event I/O interfaces.
+"Technically it was not that the kernel was buggy, but that the interface was confusing and underdocumented in a way that caused the same bug to manifest in several different apps," Varda says in an advisory.
+"Confusing APIs are a security problem. If many users of your API get it wrong in a way that introduces a security bug, that’s a bug in your API, not their code."
+The problem resided in part in the way out-of-band (OOB) data that allows bytes to queue-jump to receiving apps is accepted and rejected. Other events such as pollpri within Linux's epoll allow apps to dump OOB data if it did not expect to receive it, but Apple's Darwin accepted it via a special flag.
+There is no Darwin documentation about how that takes place but Varda found an undocumented feature in which a special flag for OOB data is raised within the regular 'EVFILT_READ' event. An admin would see that event and think only regular in-band data is received.
+"But if you are using kqueue() in level-triggered mode (as most people do, because it’s easier), then the operating system is going to see that the OOB data is still there, and is going to give you the exact same event again. So you go into an infinite loop."
+The extent of the impact is not clear but event-driven network apps could be in trouble.
+Users should, as always, patch – the issue is fixed in iOS 8.3 and OS X 10.10.3. Doing so will result in an altered interface that means EVFILT_READ events are no longer reported for TCP OOB data. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

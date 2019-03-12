@@ -1,0 +1,87 @@
+
+LockyDump - All Your Configs Are Belong To Us
+
+
+This post was authored by Warren Mercer and Matthew Molyett
+
+
+
+
+
+
+
+Summary
+
+Locky has continued to evolve since its inception in February 2016. This has made it difficult to track at times due to changes in the way in which it's distributed as well as various characteristics of the malware itself. The actors responsible for Locky have continuously attempted to improve operational security (OPSEC) in regards to the tracking of affiliates making use of the ransomware. This post will discuss a new Locky configuration extractor that Talos is releasing, which we are naming 'LockyDump'. This is the first open source tool which can dump the configuration parameters used by all currently known variants of Locky e.g. .locky, .zepto & .odin based ransomware.
+
+Using LockyDump you can run a known Locky sample within a virtualized environment and it will extract and provide all of the configuration information for the sample, including the AffilID associated with the sample. The latest variant of Locky made this extraction process increasingly difficult. Once this config extraction changed Talos looked to reverse further Locky samples in an attempt to gain the all important AffilID information. Obtaining the affiliate information for individual samples allows the historical tracking of Locky affiliates to identify trends and other characteristics on an individual affiliate basis such as their primary distribution method of choice e.g. through the use of Exploit Kits (EKs) or spam/phishing email.
+
+
+
+
+Configuration Extraction Details
+
+Talos has created a configuration extraction tool that supports Locky (all current versions ie; Zepto/Odin) and allows you to extract the following configuration parameters that have been hardcoded into the malicious binary.
+
+
+
+
+
+
+LockyDump Requirements
+
+LockyDump is a PE32 Windows binary application that is used for extracting embedded configurations from the Locky malware family, which requires execution of the malware to allow for the extraction of these values from memory. This limits the analysis environment to Windows systems and to one that can be compromised by Locky.
+
+
+LockyDump Process Methodology
+
+Locky has been distributed as both Win32 executables and DLLs and as such, we created LockyDump to utilize two separate analysis methods. DLL files are started with LoadLibrary, which enables the unpacker to expose the Locky code and lets the initialization code decrypt the configuration. Once the decrypted configuration is exposed LockyDump locates it and prints to stdout.
+
+The versions of Locky delivered as EXE files required a different approach to analysis, which is accomplished by executing the malware with LockyDump configured to debug it. The malware is allowed to run until the true code is detected, at which point LockyDump freezes its execution. LockyDump then locates the configuration information and prints it to stdout.
+
+
+Optional Features:
+
+This is a list of optional features that can be enabled at runtime of LockyDump to extract additional information from the Locky sample. These are configured using Windows environment variables which you can set prior to the execution of LockyDump:
+
+set LOCKY_DUMP_VERBOSE=1
+
+set LOCKY_DUMP_SAVE=1
+
+Verbose Output - Locky configurations include two templates: one for the ransom note image and one for the ransom note HTML. By default LockyDump does not print these two fields because they increase the size of the output significantly. If the environment variable LOCKY_DUMP_VERBOSE is present then both ransom note templates will be printed to stdout.
+
+Locky Unpacking - Locky binaries are protected with various packers, which makes static analysis challenging. If the environment variable LOCKY_DUMP_SAVE is set then the unpacked Locky file is saved as DUMPED_IMAGE.DLL in the current working directory. The proceeding file will always be 'DUMPED_IMAGE.DLL'
+
+
+Execution Instructions
+
+With LockyDump a user can take a virtualized instance of Microsoft Windows, place a known Locky sample within it, and run LockyDump against it. The use of a virtualized environment is highly recommended as LockyDump will execute Locky to allow the extraction of the configuration information from memory. 
+
+LockyDump is executed via command line using the following syntax:
+
+LockyDump.exe sample.exe [args to sample]
+
+This will run LockyDump against the sample you have specified. The optional features described above can be set using the command line using the 'set' command to configure your local environment variables. Once you have set any optional features you would like, you simply run LockyDump as before:
+
+
+
+
+
+
+Source
+
+The LockyDump source is available from our GitHub. We have provided both the source and a compiled binary for usage. 
+
+LockyDump.10122016.exe SHA256: d49fd9fb7d290a530c292f451c32e558f6f5797944ecb2d6b73e151f450fc43c
+
+Please validate the hash prior to execution.
+
+
+Conclusion
+
+Talos is releasing this to the open source community to allow other researchers to perform their own historical analysis of Locky. The Virus Bulletin talk from Fortinet provided enough information to warrant this release for others as it was not apparent whether the Fortinet configuration extraction tool would be made public. 
+
+The release of this tool coincides with a large downturn in spam-based Locky distribution that we have observed over the last week. With this in mind be aware that the ever evolving Locky could come back sooner or later with a different method of configuration inclusion which would potentially prevent this tool from working. In that instance we will aim to release an updated version that can continue to operate correctly and as intended.
+
+
+

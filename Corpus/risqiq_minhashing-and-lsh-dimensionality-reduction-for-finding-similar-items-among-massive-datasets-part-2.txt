@@ -1,0 +1,463 @@
+MinHashing and LSH — dimensionality reduction for finding similar items among massive datasets, Part 2
+
+By Steve Hanna and Adam Hunt
+Last time, we gave an overview of terms and showed that Shingling, MinHash and Locality Sensitive Hashing can be used to estimate Jaccard Similarity. This time, we’ll delve into the details required to implement document similarity. We’ll first define feature extraction and how it is tightly coupled with MinHashing, then we’ll talk about hash functions including djb2a and more generally, universal hash functions. Finally, we’ll show how we can compute MinHash signatures, which estimate Jaccard Similarity, and we’ll show how we can further sample these signatures using Locality Sensitive Hashing so that we can quickly and efficiently find clusters of similar documents.
+Feature construction is an endless field of study. For this example fixed length character shingles are used. Shingling is the process of choosing subsets of strings in a document such that the shingles encode word content and word ordering. In practice, depending on document size, k, the shingle size, is tuned to ensure that created shingles are as unique as possible. If chosen well, comparing two sets of shingles to deduce document similarity will have low levels of false positives when sets of shingles from candidate matching documents are compared.
+The Shingler — Computes a sliding window of shingleSize across the document in question.
+If the input to our shingler with shingle size of 3, the following shingles would be produced:
+
+2
+3
+4
+5
+
+document: String = sample document
+scala> Shingler(document, 3)
+res2: IndexedSeq[String] = Vector(sam, amp, mpl, ple, “le “, e d, ” do”, doc, ocu, cum, ume, men, ent)
+Example shingles created from a document.
+Choosing the size of the shingles for the documents being analyzed is a crucial parameter. The k = 3 selected above was purely for ease of example. Imagine a large document, such as a journal or newspaper article, and a shingle size of k = 2. This means shingles will be created for every two characters. For a suitably large document, if shingles were compared, the algorithm would find that there would likely be significant overlap leading to the conclusion that two documents are identical — when in fact, the shingle parameter wasn’t tuned properly, leading to false positives.
+In English, the average word is 5 letters long. For short documents, choosing 5 or 6 characters as shingle size is a viable choice, while longer documents would benefit from double the word length. Optimal shingle size will vary based on language and word length. While English word length was used as an example, other alphabets and tokens can just as easily be used with equal success.
+Consider the degenerate case where the shingle size is k = 1. We compare the set of shingles generated from two different sentences: 1) “The quick brown fox jumps over the lazy dog” and 2) “abcdefghijklmnopqrstuvwxyz “. In the scala session below, we show that the set of shingles generated indicate that the two documents are exactly equal, which is a false positive. The shingle size parameter should be chosen carefully depending on the application.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+
+doc1: String = “abcdefghijklmnopqrstuvwxyz ”
+scala> val doc2 = “the quick brown fox jumps over the lazy dog”
+doc2: String = the quick brown fox jumps over the lazy dog
+scala> val set1 = Shingler(doc1, 1).toSet
+set1: scala.collection.immutable.Set[String] = Set(e, s, x, n, j, y, t, u, f, a, m, i, ” “, v, q, b, g, l, p, c, h, r, w, k, o, z, d)
+scala> val set2 = Shingler(doc2, 1).toSet
+set2: scala.collection.immutable.Set[String] = Set(e, s, x, n, j, y, t, u, f, a, m, i, ” “, v, q, b, g, l, p, c, h, r, w, k, o, z, d)
+scala> set1 == set2
+res0: Boolean = true
+Given a properly chosen shingle size, the shingling of the document will encode both the ordering and the content of the underlying text. Using these sets, we can compute Jaccard Similarity: J(a,b) = |A ∩ B|/|A ∪ B|, which gives a fractional similarity between the two documents are similar. Given the shingles of two documents, with properly chosen parameters, we could compute their set intersection to determine the similarity measure between the documents.
+However, as the document size grows, so does the number of shingles required to represent the document. If we can sample the shingles to still accurately reflect the contents of the document, we can compress the size of the signature required to determine document similarity. In fact, MinHash, as we will discuss later, samples the hash functions for each shingle, always choosing the lowest value, while LSH samples the MinHash signatures to further compress the document signature. We discuss each of these in detail in later sections.
+In order to convert the shingles to an integer value which can be further hashed by our universal hash functions, a suitable hash function must chosen that is both quick and has a low collision rate. In order to MinHash, we’ll need to first convert a shingle string to an integer hashes value, which can be further passed to the universal hash functions. In our case, we used the djb2a hash function, known for few collisions and super fast computation. Another readily available hash function is MurMurHash. It is capable of producing hashes very quickly and with low collision rates. A good implementation of MurMurHash can be found in the Algebird source code. However, djb2a is also very simple compared to MurMurHash, so we choose it for ease of understanding and implementation.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+
+def djb2a(to_hash: IndexedSeq[Byte]): Int = {
+val hash_begin = 5381
+@tailrec
+def djbTR(index: Int, previous_hash: Long): Long = {
+if (index >= to_hash.length)
+previous_hash
+else
+djbTR(index + 1, (previous_hash * 33) ^ to_hash(index))
+}
+djbTR(0, hash_begin).toInt
+}
+}
+The djb2a Hash Function — A fast string hashing function with a good distribution.
+Below, we show an example of converting a single shingle into a hashed value using djb2a. This value will be passed to the hash collection, which will produce N values from the N hash functions.
+
+2
+3
+4
+5
+
+shingle: String = he
+scala> val hashedShingle = djb2aHash.djb2a(shingle.map(_.toByte))
+hashedShingle: Int = 5861128
+Universal hashing is the process of choosing random parameters for a class of hash functions. In this example, the universal hash function is comprised of a and b, which are random numbers, p is a large prime, and N, which serves to divide the space further into buckets. MinHashing requires using collections of hash functions which should produce non-colliding results. Randomly generating a and b multiple times will create a family of hash functions suitable for sampling when we discuss MinHash.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+
+def apply(a: Int, b: Int) = new HashFunction(a, b)
+}
+class HashFunction(a: Int, b: Int) {
+val p = 999999999989L
+def compute: Int => Int = {
+(x:Int) => ((a*x + b) % p).toInt
+}
+override
+def toString = s”$a*X + $b % $p”
+def eval(x: Int) = compute(x)
+}
+Universal Hash Function — A function in the form of h(x) = ((a·x + b) % p) % N
+A universal hash function with input parameters. Generates a function H(x), which given an x computes the hash value.
+But, given random values for a and b, and a large prime p, we need to determine if this hash function has desirable properties. Imagine we have the function h(x) = -1460590454 ·x + 747279288 % 999999999989 % 13 and we want to determine if it has a low collision rate and random value distribution. In order to do this, we can take a look at how integers are hashed into buckets. Given all the hash buckets, a hash function will be considered acceptable if and only if it approximately evenly distributes the input values into hash buckets.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+
+| (1 to 100000).foldLeft(Map.empty[Int, Int]) { (acc, item) =>
+| val hashed = h.eval(item)
+| val curVal = acc.getOrElse(hashed, 0)
+| val updatedVal = curVal + 1
+| acc + (hashed -> updatedVal)
+| }
+scala> binnedValues.keySet.map(key => println(s”$key => ${binnedValues.get(key)}”))
+0 => Some(7704)
+5 => Some(3861)
+10 => Some(3854)
+-7 => Some(3840)
+-8 => Some(3847)
+-3 => Some(3858)
+-12 => Some(3839)
+1 => Some(3839)
+6 => Some(3839)
+-11 => Some(3867)
+-4 => Some(3839)
+9 => Some(3837)
+2 => Some(3842)
+-5 => Some(3840)
+12 => Some(3840)
+-10 => Some(3838)
+7 => Some(3837)
+3 => Some(3848)
+-1 => Some(3853)
+11 => Some(3837)
+-9 => Some(3844)
+8 => Some(3858)
+-6 => Some(3861)
+4 => Some(3839)
+-2 => Some(3839)
+Examining the output above we notice that the values range between -12 and 12. In each bucket, there are approximately the same number of hashed values, showing that the universal hash function is a reasonable one. At 0 we notice that there are approximately two times the number of entries. This is expected because of the way the numbers are partitioned, the 0 value corresponding to those terms both positive and negative (hence double the bucket size) that are 0 modulo our prime number.
+Hash collections are used in the MinHash algorithm for generating hash values from shingles and sampling those values. Below we have a collection of hash functions which accept an initial seed and the number of hashes to be generated. Choosing an initial seed allows us to reproduce the random sampling in a fixed manner. When we use the evaluate function on a given input, numHashes values are returned which correspond to hashing the shingle value numHashes times.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+
+def apply(seed: Int, numHashes: Int) = new HashCollection(seed, numHashes)
+}
+class HashCollection(seed: Int, numHashes: Int) {
+import djb2aHash._
+val random = new Random(seed)
+lazy val collection = createHashes
+def getHashes = collection
+private
+def createHashes = {
+@tailrec
+def getHashesTR(count: Int, hashes: IndexedSeq[HashFunction]): IndexedSeq[HashFunction] = {
+if(count == 0)
+hashes
+else {
+val hashesUpdated = hashes :+ HashFunction(random.nextInt(), random.nextInt())
+getHashesTR(count – 1, hashesUpdated)
+}
+}
+getHashesTR(numHashes, IndexedSeq.empty[HashFunction])
+}
+override
+def toString = {
+collection.mkString(“n”)
+}
+def evaluate(shingle: String) = {
+val initial = djb2a(shingle.map(_.toByte).toIndexedSeq)
+getHashes.map(_.eval(initial))
+}
+}
+A collection of universal hash functions — used to generate a MinHash signature from the collection of N hashes.
+Below, we show a single shingle value being hashed by N = 10 hash functions. Each vector of these hashes values is sampled by the MinHash algorithm. In practice, each shingle will be hashed N times and sampled. Note, we choose 10 here for simplicity, usually a value of N = 100 or N = 500 is an appropriate number of hashes. Of course, this depends on the target application and should be tuned appropriately. Generally speaking, the higher the threshold required for matching, the more hash functions we will need to attain the threshold similarity when we MinHash/LSH.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+
+shingle: String = he
+scala> val hashCollection = HashCollection(1337, 10)
+hashCollection: HashCollection =
+-1460590454*X + 747279288 % 999999999989
+-1334692577*X + -539670452 % 999999999989
+-501340078*X + -143413999 % 999999999989
+-435906689*X + -805361287 % 999999999989
+749770455*X + -1541468361 % 999999999989
+-249298484*X + -338966450 % 999999999989
+635996137*X + 90530340 % 999999999989
+1369061647*X + -58898435 % 999999999989
+-803104915*X + 442009989 % 999999999989
+-1559981388*X + -486785452 % 999999999989
+scala> hashCollection.evaluate(shingle)
+res0: IndexedSeq[Int] = Vector(480357896, 1614176836, 543325601, -1459947919, 197787375, -1314960722, 1201186924, 1044615541, -789411859, -145694732)
+The MinHash algorithm, in theory, takes the permutation of document features, ordered by their position, and in each position where the minimum value occurs, the algorithm records the first feature of the permutation that has the minimum value. The resulting set of computing these minimum values represents the MinHash signature of the document. In practice, producing perfect random permutations for even small datasets is prohibitive. Instead of permuting the rows, we assume that the N hash functions we choose give a random ordering of document features. For the purpose of correctness, we assume this is a perfect permutation, when in fact, the universal hash functions might produce collisions. Collisions in this case represent false positives and do not affect the correctness of the algorithm, but represent the trade-off when ignoring the fact that the implementation does not use a perfect permutation.
+Using the collection of hash functions, we evaluate each shingle by inputting it to the N hash functions, producing N hashed values. From there, we choose the minimum hash value which represents the signature for the shingle out of the N generated hash values. In this case, the minimum function is the function that samples the hashes and chooses the representation. The resulting set of hashes of shingle values is comprised of the minimum hash computed for a shingle which was chosen from the N hash functions. As shown in the picture below, for each column of hash values, the minimum is chosen. The resulting vector of minimum hash values represents the MinHash signature of the document.
+It should be noted that the minimum hash value chosen by the MinHash function is by convention. Any consistent sampling function would be acceptable: we could also choose the maximum value as the sampling signature and the algorithm would still produce a document signature that would only match if two documents had high similarity. The point being, the function chosen to sample the hash values needs to be principled and consistent, secondary to whether that value is the minimum, maximum or some other integer partitioning function. For simplicity, we stick with MinHash in our examples.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+
+def apply(seed: Int, k: Int, numHashes: Int) = new MinHash(seed, k, numHashes)
+}
+class MinHash(seed: Int, k: Int, numHashes: Int) {
+private val hashCollection = new HashCollection(seed, numHashes)
+def getShingles(document: String) = Shingler(document, k)
+def hash(document: String): IndexedSeq[Int] = {
+getShingles(document)
+.map(hashCollection.evaluate(_))
+.reduceLeft ( (result, curHash) => (result, curHash)
+.zipped
+.map(Math.min(_, _)))
+}
+}
+The MinHasher — Create a document signature by creating the shingles of the document, hashing each of those shingles N times, and from each position, in each hash, taking the minimum value. Note, the minimum value in each column corresponds to the hash value being sampled.
+MinHash selects the minimum hash value in each position to represent the signature of the document.
+Locality Sensitive Hashing is an algorithm which samples the result of the MinHash algorithm and compresses the MinHash signatures into LSH buckets. This serves to further reduce the size of the number of features that need to be compared to determine if documents are candidates for being similar. The idea behind LSH, unlike cryptographic hashes, is that if documents are similar they should hash to approximately the same value. So, given some similarity threshold and N hash functions, sample the MinHash function in such a way that two documents are candidate pairs for similarity if and only if at least one of their LSH buckets are identical and share the same offset within the signature. The isPairCandidateMatch function below returns true if the buckets are similar in at least one position.
+Note, LSH allows us to quickly compare documents that are potential candidate matches. We could just use the MinHash signatures and compare those values to determine similarity. However, if we don’t use LSH to give us candidate pairs for matching, we would need to compare all MinHash signatures of our documents to all of the other documents that have been MinHashed, which would be take order O(n2) number of operations. If we treat LSH values as buckets, then we can determine potential candidate pairs in order O(n) time by binning those LSH values that match together, and only if two documents have the same LSH bin would we further compute the MinHash similarity.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+
+import djb2aHash._
+def pickBands(threshold: Double, numHashes: Int) = {
+val target = numHashes * -1.0 * Math.log(threshold)
+@tailrec
+def pickBandsTR(bands: Int): Int = {
+if(bands * Math.log(bands) < target)
+pickBandsTR(bands + 1)
+else
+bands
+}
+pickBandsTR(1)
+}
+def isPairCandidateMatch(LSHBucketsDoc1: IndexedSeq[Int], LSHBucketsDoc2: IndexedSeq[Int]) = {
+(LSHBucketsDoc1, LSHBucketsDoc2).zipped.filter(_ == _)._1.size > 0
+}
+def getBuckets(minHashedDocument: IndexedSeq[Int], numBands: Int) = {
+val chunkSize = Math.floor(minHashedDocument.size / numBands).toInt
+@tailrec
+def getBucketsTR(remainingBands: IndexedSeq[Int], count: Int, buckets: IndexedSeq[Int]): IndexedSeq[Int] = {
+if(count == 0)
+buckets
+else {
+val hashedRows = djb2a(remainingBands.take(chunkSize).mkString(“.”).map(_.toByte))
+val updatedRemainingBands = remainingBands.drop(chunkSize)
+getBucketsTR(updatedRemainingBands, count – 1, buckets :+ hashedRows)
+}
+}
+getBucketsTR(minHashedDocument, numBands, IndexedSeq.empty[Int])
+}
+}
+The LSH Component — samples the MinHash signatures to further compress a document signature. Comparing LSH values and their offsets between two documents gives candidate pairs. If a match, a candidate pair is found and their MinHash signatures can be compared to further determine similarity.
+LSH hashes together groups of values according to number of bands. Produces the LSH buckets, which are a sampling of the MinHash values.
+A key part of the LSH algorithm is picking the number of bands required to reach a given similarity threshold t. The bands in this algorithm subdivide the MinHash signature into N / numBands, where each subdivision is itself hashed, which represents an LSH bucket. The function getBuckets above computes the LSH buckets for a set of MinHashes.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+
+res1: Int = 23
+scala> pickBands(.6, 100)
+res2: Int = 18
+scala> pickBands(.7, 100)
+res3: Int = 14
+scala> pickBands(.8, 100)
+res4: Int = 10
+scala> pickBands(.9, 100)
+res5: Int = 6
+scala> pickBands(.95, 100)
+res6: Int = 4
+scala> pickBands(.99, 100)
+res7: Int = 2
+scala> pickBands(.99999999999999999, 100)
+res8: Int = 1
+Above shows experimental results on tuning the number of bands. Notice at the threshold t approaches 1.0 the number of bands approaches unity. For instance, at 0.5 similarity, with 100 hashes, the number of bands would be 23. Taking Floor(100.0/23.0) gives us 4. Meaning, each group of 4 hashes is in turn hashed together to produce the LSH bucket.
+An important but perhaps elusive point here is that as the threshold is lowered, the efficiency of comparing the LSH buckets increases. As shown in the above example, at 0.50 similarity there are 4 buckets to compare, while at 0.99 similarity, there are 50 buckets to compare. In choosing values of t close to unity, documents returned will be nearly identical, while values of t close to 0.5 or 0.6 would capture documents that are contained within other documents.
+If the LSH buckets and offsets match up between two documents, they are candidates for being similar documents. Meaning, if the LSH buckets between documents are similar, their MinHash signatures can be compared to determine similarity. This comparison estimates the more costly Jaccard Similarity of comparing the shingle sets. Recall that true Jaccard similarity, as shown below, computes the magnitude of the set intersection over the union of the shingle values to determine similarity. However, as the size of the document grows, so do the sets that we must compare — hence the reason we choose a finite number of samples when computing the MinHash. This means, that for properly chosen parameters, a fixed size signature can be computed with MinHash that enables fixed size comparisons with other MinHashed documents.
+For more details of the proof of why comparing MinHash signatures estimates Jaccard similarity, we refer the reader to the Further Reading section. Running the code below shows the difference between Jaccard similarity of shingle set comparisons and Jaccard similarity of MinHash signatures.
+
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+
+def similarity(document1Shingles: IndexedSeq[String], document2Shingles: IndexedSeq[String]) = {
+val a = document1Shingles.toSet
+val b = document2Shingles.toSet
+(a.intersect(b).size * 1.0)/a.union(b).size.toFloat
+}
+def estimateSimilarityMinHash(minHashedDoc1: IndexedSeq[Int], minHashedDoc2: IndexedSeq[Int]) = {
+val matching = (minHashedDoc1, minHashedDoc2).zipped.filter(_ == _)._1
+matching.size * 1.0/minHashedDoc1.size
+}
+}
+Jaccard Similarity and Estimation — LSH buckets to find candidate matching documents combined with comparing MinHash signatures approximates Jaccard Similairty: J(a,b) = |A ∩ B|/|A ∪ B|.
+Jaccard Similarity between two sets is the magnitude of the set intersection divided by the magnitude of the set union.
+Next time we’ll show an example of using all of the constructs we’ve discussed so far. First, we’ll discuss how parameter tuning affects the precision of the similarity estimation. Then, we’ll demonstrate a real world example of detecting similarity between web pages and provide sample data so that the reader can fully realize the examples. Finally, we’ll link to further reading so that the reader further dive into subjects of interest and the theory behind these articles.
+Miss part one? Get caught up here.

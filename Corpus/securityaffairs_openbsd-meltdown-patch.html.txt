@@ -1,0 +1,15 @@
+
+					Meltdown patch for OpenBSD is available … let’s wait for feedbacks					
+OpenBSD addresses the Meltdown vulnerability with the release of a Version 11 code. The update implements the separation between the kernel and the user memory pages.
+OpenBSD’s Phillip Guenther provided further details on the implementation.
+“When a syscall, trap, or interrupt takes a CPU from userspace to kernel the trampoline code switches page tables, switches stacks to the thread’s real kernel stack, then copies over the necessary bits from the trampoline stack. On return to userspace the opposite occurs: recreate the iretq frame on the trampoline stack, switch stack, switch page tables, and return to userspace.” wrote Guenther.
+“Per-CPU page layout mostly inspired by DragonFlyBSD.”
+Guenther explained that Per-CPU page layout mostly implemented the approach used in DragonFly BSD.
+According to Gunther the impact on performance would be reduced because the approach minimizes the overhead for the management of kernel code and data in the transitions to/from the kernel.
+“On Intel CPUs which speculate past user/supervisor page permission checks, use a separate page table for userspace with only the minimum of kernel code and data required for the transitions to/from the kernel.” he added.
+“When a syscall, trap, or interrupt takes a CPU from userspace to kernel the trampoline code switches page tables, switches stacks to the thread’s real kernel stack, then copies over the necessary bits from the trampoline stack. On return to userspace the opposite occurs: recreate the iretq frame on the trampoline stack, switch stack, switch page tables, and return to userspace.”
+A couple of weeks ago, DTrace expert Brendan Gregg developed a “microbenchmark” to measure the performance degradation introduced by the Linux kernel page table isolation (KPTI) patch for the Meltdown CPU vulnerability. The tests demonstrated a degradation between 0.1 per cent and 6 per cent.
+Let’s wait for the tests on OpenBSD.
+Further technical details on the approach implemented for OpenBSD are available here.
+Pierluigi Paganini
+(Security Affairs – OpenBSD, Meltdown)

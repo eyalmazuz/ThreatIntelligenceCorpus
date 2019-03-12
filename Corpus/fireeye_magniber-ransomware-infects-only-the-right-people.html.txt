@@ -1,0 +1,43 @@
+Magniber Ransomware Wants to Infect Only the Right People
+Exploit kit (EK) use has been on the decline since late 2016; however, certain activity remains consistent. The Magnitude Exploit Kit is one such example that continues to affect users, particularly in the APAC region.
+In Figure 1, which is based on FireEye Dynamic threat Intelligence (DTI) reports shared in March 2017, we can see the regions affected by Magnitude EK activity during the last three months of 2016 and the first three months of 2017.
+
+Figure 1: Magnitude EK distribution as seen in March 2017
+This trend continued until late September 2017, when we saw Magnitude EK focus primarily on the APAC region, with a large chunk targeting South Korea. Magnitude EK activity then fell off the radar until Oct. 15, 2017, when it came back and began focusing solely on South Korea. Previously it had been distributing Cerber ransomware, but Cerber distribution has declined (we have also seen a decline of Cerber being distributed via email) and now it is distributing ransomware known as Magniber. 
+The first reappearance of Magnitude EK on Oct. 15 came as a malvertising redirection from the domain: fastprofit[.]loan. The infection chain is shown in Figure 2.
+
+Figure 2: Infection chain
+The Magnitude EK landing page consisted of CVE-2016-0189, which was first reported by FireEye as being used in Neutrino Exploit Kit after it was patched. Figure 3 shows the landing page and CVE usage.
+
+Figure 3: Magnitude EK landing page
+As seen previously with Magnitude EK, the payload is downloaded as a plain EXE (see Figure 4) and domain infrastructure is hosted on the following server:
+“Apache/2.2.15 (CentOS) DAV/2 mod_fastcgi/2.4.6”
+
+Figure 4: Magnitude payload header and plain MZ response
+In the initial report published by our colleagues at Trend Micro, the ransomware being distributed is referred to as Magniber. These ransomware payloads only seem to target Korean systems, since they won’t execute if the system language is not Korean.
+Magniber encrypts user data using the AES128. The sample used (dc2a2b84da359881b9df1ec31d03c715) for this analysis was pulled from our DTI system when the campaign was active. Of note, this sample differs from the hash shared publically by Trend Micro, but the two exhibit the same behavior and share the infection vector, and both were distributed around the same time.
+The malware contains a binary payload in its resource section encrypted in reverse using RC4. It starts unpacking it from the end of the buffer to its start. Reverse RC4 decryption keys are 30 bytes long and also contain non-ASCII characters. They are as follows:
+The malware calls GetSystemDefaultUILanguage, and if the system language is not Korean, it exits (instructions can be seen in Figure 5). After unpacking in memory, the malware starts executing the unpacked payload.
+
+Figure 5: Language check targeted at Korea
+A mutex with name "ihsdj" is created to prevent multiple executions. The payload then generates a pseudorandom 19-character string based on the CPU clock from multiple GetTickCount calls. The string is then used to create a file in the user’s %TEMP% directory (e.g. "xxxxxxxxxxxxxxxxxxx.ihsdj"), which contains the IV (Initialization Vector) for the AES128 encryption and a copy of the malware itself with the name "ihsdj.exe".
+Next, the malware constructs 4 URLs for callback. It uses the 19-character long pseudorandom string it generated, and the following domains to create the URLs:
+In order to evade sandbox systems, the malware checks to see if it's running inside a VM and appends the result to the URL callback. It does this by sandwiching and executing CPUID instructions (shown in Figure 6) between RDTSC calls, forcing VMEXIT.
+
+Figure 6: CPUID instruction to detect VM presence
+The aforementioned VM check is done multiple times to gather the average execution time of the CPUID, and if the average execution time is greater than 1000, it considers the system to be a VM. In case the test fails and the malware thinks the system is a VM, a "1" is appended at the end of the URL (see Figure 7); otherwise, "0" is appended. The format of the URL is as follows:
+Examples of this would be:
+
+Figure 7: Command and control communication
+If the malware is executed a second time after encryption, the callback URL ends in "end0" or "end1" instead of "new". An example of this would be:
+The malware then starts to encrypt user files on the system, renaming them by adding a ".ihsdj" extension to the end. The AES128 Key and IV for the sample analyzed are listed:
+A text file "READ_ME_FOR_DECRYPT_xxxxxxxxxxxxxxxxxxx_.txt" is created in the user’s %TEMP% directory and shown to the user. The ransom message is shown in Figure 8.
+
+Figure 8: Ransom message for the infected user
+The malware also adds scheduled tasks to run its copy from %TEMP% with compatibility assistant, and loads the user message as follows:
+The malware then issues a command to delete itself after exiting, using the following local ping to provide delay for the deletion:
+Figure 9 contains the Python code for unpacking the malware payload, which is encrypted using RC4 in reverse.
+
+Figure 9: Python script for unpacking malware payload
+Ransomware is a significant threat to enterprises. While the current threat landscape suggests a large portion of attacks are coming from emails, exploit kits continue to put users at risk – especially those running old software versions and not using ad blockers. Enterprises need to make sure their network nodes are fully patched.
+All FireEye products detect the malware in our MVX engine. Additionally, FireEye NX blocks delivery at the infection point.

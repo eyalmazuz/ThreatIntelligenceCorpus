@@ -1,0 +1,40 @@
+Connecting the Dots in Cyber Threat Campaigns, Part 1: Domain Name WHOIS Information
+
+There tends to be some mystery around how to properly analyze infrastructure used in cyber attacks. It is a bit of an art, often involving educated guesses to tie components together. However it is important to note the use of the term “educated guesses,” as they’re bound by solid data. An educated guess is defined as “a guess based on knowledge and experience and therefore likely to be correct.” Intelligence analysis is akin to taking a bunch of puzzle pieces and figuring out where each belongs. The pieces of different puzzles are often jumbled together, so part of the analysis is determining which piece belongs to which puzzle and then where in that puzzle. From there an analyst has to establish what the whole puzzle most likely looks like, as analysts never have all of the pieces for any given puzzle.
+If it sounds difficult, it often is. These missing pieces are often the most challenging part for threat analysts, but thorough research, analysis, and experience can often fill in the gaps. This series of blogs is intended to explain how analysts tie together attacker infrastructure. We’ll start with what is often the first step – domain name WHOIS information.
+One of the easiest correlations to make can be the information used to register a domain. Each name in the domain name system is registered with the entity responsible for maintaining the registry for a particular top-level domain (TLD). The rules for what information is required and the level of validation of that information varies from TLD to TLD, but it typically contains at least the registrant’s name, e-mail address and other contact data.  The WHOIS protocol allows individuals to look up this registration data for a given domain. WHOIS data is also available through various websites, but the WHOIS protocol should provide the most recent information available.
+When an attacker wants to set up a domain for his or her command and control server, they normally need to supply some identifying information to their registrar. Some actors re-use all or some of this information across multiple domains when they register them. When a domain passes from one owner to the next (either due to a sale or due to a lapse in registration) the WHOIS system is updated with new information about the domain.
+When inspecting WHOIS information, analysts must be sure to check all of the historical WHOIS information, paying particular attention to when it was used maliciously. The WHOIS protocol only allows for requesting the current registration information for a domain, but historical WHOIS information is available from companies like DomainTools.
+It’s important to know that the registrant information does not have to be legitimate. Registrants are free to forge much of the information included – it isn’t uncommon for the only legitimate component to be the email address, as that’s required so the actor can control the domain.
+The reason analysts must correlate WHOIS information and time of malicious domain use is that the information can change for a number of reasons. Malicious domains can be revoked from the registrant after complaints are filed with the registrar or expire and be re-registered by someone else. Some campaigns will use a registrant service and purchase the domains after someone else has registered them, updating the registrant information prior to use. Some campaigns also utilize registrant services where the WHOIS information does not reflect the end user (Domain Privacy), in which case the WHOIS data is less useful to an analyst. We will discuss in future blogs other data points analysts can explore to get around this limitation.
+Below is an example of WHOIS information.
+Registrant Name: Bad Guy
+Registrant Organization:  We Hack Stuff
+Registrant Street: 1 Bad Guy Way
+Registrant City: St. Arkham
+Registrant State/Province:
+Registrant Postal Code: 66386
+Registrant Country: DE
+Registrant Phone: +86.68949396951
+Registrant Phone Ext.:
+Registrant Fax: +86.68949396851
+Registrant Fax Ext.:
+Registrant Email: badguy@bad.net
+An analyst can and should search on each component in this listing:
+
+Does the person’s name appear real? The company? The physical address? The email address?
+Did searching on any of them return interesting hits?
+Did those validate this as legitimate information or invalidate it? How so?
+Does it look like the same information was used to register other domains? How many?
+Does searching on the new domains return any hits on other malicious activity (whether open source or within databases with limited access)?
+Does it appear to be related to the original activity?
+
+By answering these, an analyst starts to piece together the puzzle. In some cases this allows analysts to spider out from the first figure below, to the second.
+
+Figure 1. Where the analyst started.
+
+Figure 2. New data the analyst was able to uncover.
+Another overlap in the images is the theme and domain name re-use. It’s rather common for malicious actors to have themes within the domains they use. The themes can vary, but the use can aid analysts into identifying additional malicious infrastructure, as that is another pattern they can trace.
+There is a caveat to researching these data points– this is usually more effective for APT campaigns than crimeware or other high volume malicious activity. APT campaign infrastructure tends to include a lot of human interaction, and humans are creatures of habit. Crimeware and other very large malicious campaigns will often use tools to randomly auto-generate malicious domains that are only used for very brief periods, creating such a high volume with rapid turnover it’s often not worth analyzing using the methods just described. However, some researchers at Palo Alto Networks have published research on automated methods they’ve found can often predict those domains at rate where blocking them is useful.
+I hope this blog has helped explain how analysts research and connect malicious domains via WHOIS registrant information.  In Part 2 we’ll explore using passive DNS resolution to analyze all the IP addresses to which malicious domains resolved to try to identify new domains.
+

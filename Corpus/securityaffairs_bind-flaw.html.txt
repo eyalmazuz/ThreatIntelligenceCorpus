@@ -1,0 +1,15 @@
+
+					Attackers are exploiting a recently patched high-severity DoS flaw in BIND					
+Last month a vulnerability in the popular DNS software BIND, tracked as CVE-2016-2776, has been patched. The flaw could be exploited by a remote attacker to trigger a DoS condition using specially crafted DNS packets. The high severity flaw initially discovered by the Internet Systems Consortium (ISC) was fixed with the release of BIND 9.9.9-P3, 9.10.4-P3 and 9.11.0rc3.
+“Testing by ISC has uncovered a critical error condition which can occur when a nameserver is constructing a response.  A defect in the rendering of messages into packets can cause named to exit with an assertion failure in buffer.c while constructing a response to a query that meets certain criteria.” reported the alert issued by the ISC.
+“This assertion can be triggered even if the apparent source address isn’t allowed to make queries (i.e. doesn’t match ‘allow-query’).”
+The flaw resides in the way DNS server constructs a response to certain queries, when the response has a size larger than the default 512 it trigger the DoS condition due to the crash of the BIND name server process.
+According to the Internet Systems Consortium (ISC), after the public disclosure of the proof-of-concept (PoC) code and a Metasploit module by the Infobyte firm, threat actors in the wild exploited it to cause server crashes.
+
+The news was confirmed by the Japan’s National Police Agency that issued a security alert titled “BIND Vulnerability (CVE-2016-2776) for the observation of indiscriminate attack activities” to warn users of ongoing attacks.
+“Designated as CVE-2016-2776, this particular vulnerability can be triggered when a DNS server constructs a response to a crafted query where the response size crosses the default DNS response size 512. ISC has fixed two vulnerable functions dns_message_renderbegin () and dns_message_rendersection() to address this vulnerability.” states the analysis published by TrendMicro.
+“Before patching, the server does not take fixed 12-byte DNS headers into consideration, which also adds to the response traffic after rendering the Resource Records from Query through function dns_message_rendersection(). So if the DNS response(r.length) traffic is less than 512 bytes (msg->reserved), the function will return true, but adding the fixed 12-byte header will cause the service to terminate if it exceeds the fixed reserved size of 512 bytes.”
+Experts at Infobyte believe that the use of the msg->reserved variable could introduce other vulnerabilities like the CVE-2016-2776.
+“Publishing a fix about a lethal bug where you would have to patch the whole internet, doesn’t leave a lot of time to find elegant solutions. So if you review the fix it’s possible that a new similar bug appears in dns_message_renderbegin(). while the use of msg->reserved is quite limited. It continues being a complex software. Meanwhile msg->reserved is still being used, the existence of a bug like CVE-2016-2776 is quite probable.” states the blog post from InfoByte.
+Pierluigi Paganini
+(Security Affairs – BIND, hacking)

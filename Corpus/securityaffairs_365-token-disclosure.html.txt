@@ -1,0 +1,18 @@
+
+					Adallom discovered an important Office 365 Token Disclosure Vulnerability					
+Adallom chief software architect Noam Liran published a very interesting post on a severe Office 365 Token Disclosure Vulnerability, the researcher demonstrated how an attacker can steal Microsoft Office 365 credentials if victims host a Word document on their webserver.
+The flaw is related to the authentication method implemented by cloud service, Office 365 requests users to log in to their account to access to their online storage, and when users need to download a document from a SharePoint server, it verifies the credentials of the currently logged-in user by sending an authentication token.
+Be aware, the authentication token is sent only if the server is deployed on the sharepoint.com domain, but the researcher at Adallom discovered that by running his own server and replying with responses that would be expected of a legitimate SharePoint server, the user’s computer would send the authentication token anyway.
+ 
+
+To prof the flaw  Liran wrote a really simple web server that plays back the same authentication responses provided by SharePoint Online to Word, keeping the WWW-Authenticate header with RootDomain=”sharepoint.com”. The cool thing is the the research has done it up under a domain name which isn’t sharepoint.com.
+“Word regarded my web server as the quintessential sharepoint.com, and sent its Office 365 token towards my malicious web server, solely based on the this frivolous WWW-Authenticate header that said I was sharepoint.com.
+My web server, programmed to work just like the original SharePoint site, gave Word a cookie for accessing SharePoint and then gave Word the document it wanted. And it was flawless. Invisible. (Gruesome.)  Now, my malicious web server, in possession of your private Office 365 authentication token, can simply go to your organization’s SharePoint Online site, download all of it, modify it or do whatever it wants, and you will never know about it. In fact, you won’t even know you got hit! It’s the perfect crime.” he wrote.
+Below the proof of concept video demonstrating how authentication tokens can be easily stolen.
+
+ 
+Adallom has collaborated with Microsoft to discovery the flaw in Office 365 and to reproduce it, Microsoft has rated the vulnerability as important and issued a specific security bulletin.
+“This security update resolves one privately reported vulnerability in Microsoft Office that could allow information disclosure if a user attempts to open an Office file hosted on a malicious website. An attacker who successfully exploited this vulnerability could ascertain access tokens used to authenticate the current user on a targeted SharePoint or other Microsoft Office server site. This security update is rated Important for supported editions of Microsoft Office 2013 and Microsoft Office 2013 RT software. ” states the advisory.
+The patche for the Office 365 Token Disclosure Vulnerability wea released earlier this month.
+Pierluigi Paganini
+(Security Affairs –  Office 365, vulnerability)

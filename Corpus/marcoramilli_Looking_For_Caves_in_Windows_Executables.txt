@@ -1,0 +1,304 @@
+
+Looking For Caves in Windows Executables
+
+
+
+
+Most of my readeres exactly know what code caves are while many other people out there (maybe occasional readers) could wonder why I am writing about codecaves in 2016 since it is a well know technique (published in 2006) to inject a malicious payload inside Windows Portable Executables. Well, today I want to disclouse a super simple python script that I used to calcultate the cave sizes (/x00) in windows executable. Code caves are places in where attackers could inject ShellCodes and execute them deflecting the normal program behaviour. Moreover I would like to discuss a little bit about the average size of free spots available in some of the most known executable shipped in Windows OS.
+
+Two bits on CodeCaves (just to revise it)
+
+
+A codecave can best be defined as "a redirection of program execution to another location and then returning back to the area where program execution had previously left." In a sense, a codecave is no different in concept than a function call, except for a few minor differences. If a codecave and a function call are so similar, why do we need codecaves at all then? The reason we need codecaves is because source code is rarely available to modify any given program. As a result, we have to physically (or virtually) modify the executable at an assembly level to make changes.
+
+At this point a few alarms and whistles may be going off for a few readers. What legitimate reason would we ever have to do so, modify an existing program for which no source is available? Consider the following hypothetical, but not too farfetched, scenario:
+
+    A company that has been using the same software system they developed for the past 10 years. The software system they are using has served them well, but it is time to upgrade it to reflect a mandatory change in the output data format. The only problem is the original programmers are long gone and there are no hopes of getting the original source code to update the program. Now, this company has trained it's now veteran employees and grown the past 10 years using this specific software system, so a complete rewrite would be quite disastrous to the company. Retraining all their employees to a new system and having to reprogram things differently is not only time consuming but very costly. It would take about a year to do such and this is out of the time frame that the company has. The worst part of it all is that you are the programmer that was hired to solve this issue. 
+
+You could just throw up your hands and say it is not possible, but that would not do much to help your professional career. Instead, imagine if there was a way that you could keep using the same program, but you have an additional DLL that is used to dynamically update the output data from the company's program so it fits the new standard that is required. Best of all, it is a solution that can be implemented well before your deadline and requires minimal changes to be made to the company's existing procedures of using the program. Enter codecaves. 
+
+Find Caves 
+
+The following script (Find_PE_Caves) takes as input a directory, it  looks for all PE files in it. It then takes every PE file and starts to look for multi dimensioning caves on it. It first tries to search for available 21bits (the smallest mok shellcode available today) and later it tries to search for available 1024bits caves. It ends up by writing down stats files on how many caves it did find on given files.
+
+
+#!/usr/bin/env python2
+
+#========================================================================#
+#               THIS IS NOT A PRODUCTION RELEASED SOFTWARE               #
+#========================================================================#
+# Purpose of finMaliciousRelayPoints is to proof the way it's possible to#
+# discover TOR malicious Relays Points. Please do not use it in          #
+
+# any production  environment                                            #
+
+# Author: Marco Ramilli                                                  #
+# eMail: XXXXXXXX                                                        #
+# WebSite: marcoramilli.blogspot.com                                     #
+# Use it at your own                                                     #
+#========================================================================#
+
+#==============================Disclaimer: ==============================#
+#THIS SOFTWARE IS PROVIDED BY THE AUTHOR "AS IS" AND ANY EXPRESS OR      #
+#IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED          #
+#WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE  #
+#DISCLAIMED. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY DIRECT,      #
+#INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES      #
+#(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR      #
+#SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)      #
+#HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT,     #
+#STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING   #
+#IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE      #
+#POSSIBILITY OF SUCH DAMAGE.                                             #
+#========================================================================#
+
+#-------------------------------------------------------------------------
+#------------------- GENERAL SECTION -------------------------------------
+#-------------------------------------------------------------------------
+import sys
+import re
+try:
+    import pyprind
+except ImportError:
+    print 'pyprind not installed, see https://github.com/rasbt/pyprind'
+    sys.exit()
+try:
+    import pefile
+    import peutils
+except ImportError:
+    print 'pefile not installed, see http://code.google.com/p/pefile/'
+    sys.exit()
+try:
+    import magic
+except ImportError:
+    print 'python-magic is not installed, file types will not be available'
+    sys.exit()
+import os
+import glob
+
+#----------------------------------------------------------------------
+#----------------     Starting Coding   -------------------------------
+#----------------------------------------------------------------------
+
+def open_file(arg,mode):
+    """
+    Open a File  and returns the FileNode.
+    """
+    try:
+        file =  open(arg,mode).read()
+    except IOError as e:
+        print str(e)
+        sys.exit(1)
+    return file
+
+
+def get_executables(files):
+    """
+    Filters the only executable files from a files array
+    """
+    exec_files = []
+    for file in files:
+        if "executable" in magic.from_file(file):
+            exec_files.append(file)
+    return exec_files
+
+
+def get_sections(binary_file):
+    """
+    Gets file sections => thanks to PE.
+    Returns an multiDimensional array: [binary_file, sections_exe, sections_data]
+    """
+    sections_exe = []
+    sections_data = []
+    pe = pefile.PE(data=binary_file)
+    sections = pe.sections
+    for section in sections:
+        # 0x20000000 IMAGE_SCN_MEM_EXECUTE
+        # 0x40000000 IMAGE_SCN_MEM_READ
+        # 0x00000020 IMAGE_SCN_CNT_CODE
+        if all(section.Characteristics & n for n in 
+            [0x20000000, 0x40000000, 0x00000020]):
+            sections_exe.append(section)
+        else:
+            sections_data.append(section)
+    return [binary_file, sections_exe, sections_data]
+
+
+def get_codecaves(section,binary,size):
+    """
+    Looks for caves into a binary file in a specifc PE section
+    Return the caves array [section, offsets]
+    """
+    codecaves = []
+    raw_offset = section.PointerToRawData
+    length = section.SizeOfRawData
+    data = binary[raw_offset:raw_offset + length]
+    offsets = [m.start() for m in re.finditer('\x00'*(size), data)]
+    if offsets:
+        codecaves.append(section)
+        codecaves.append(offsets)
+    return codecaves
+
+
+def search_for_codecaves(sections_to_look_for, size):
+    """
+    Looks for caves in PE sections
+    Returns codecaves array
+    """
+    for section in sections_to_look_for[1]:#exec_sections
+        codecaves = get_codecaves(section, sections_to_look_for[0], size)
+        if codecaves:
+            return codecaves
+
+    for section in sections_to_look_for[2]:
+        codecaves = get_codecaves(section, sections_to_look_for[0], size)
+        if codecaves:
+            return codecaves
+
+
+def save_files(data):
+    """
+    Saves a CSV File within stats comma separeted virgula
+    Whatchout it creates as many file as analysed files
+    """
+
+    for d in data:
+        print("[+] Saving plotting file for : %s" % (d[0]))
+        fw = open(os.path.basename(d[0]) + ".csv", 'a')
+        for point in d[1]:
+            fw.write(str(point[0]) + "," + str(point[1]) + "\n")
+        fw.close()
+
+
+if __name__ == "__main__":
+    #http://shell-stormorg/shellcode/files/shellcode-841.php.
+    shellcode_minimal_lenght = 21 
+    shellcode_max_lenght = 1024
+    max_progress = shellcode_max_lenght - shellcode_minimal_lenght
+    stats = []
+
+    if len(sys.argv) != 2:
+        print "Usage: %s \n" % (sys.argv[0])
+        print """
+                 The %s will search for caves inside 
+                  and will save in current 
+                  directory files within stas" % (sys.argv[0])
+               """
+         sys.exit()
+
+    object = sys.argv[1]
+    files  = []
+
+    if os.path.isdir(object):
+        for root, dirs, filenames in os.walk(object):
+            for name in filenames:
+                files.append(os.path.join(root, name))
+    elif os.path.isfile(object):
+        files.append(object)
+    else:
+        print "You must supply a file or directory!"
+        sys.exit()
+
+    files = get_executables(files)
+
+    print("")
+    print("==========================================")
+    print("==========  Doing hard work here =========")
+    print("==========================================")
+    print("")
+
+    for f in files:
+        print ("[+] Calculating carvings for : %s" % (f))
+        bar = pyprind.ProgBar(max_progress)
+        points = []
+        binary_file = open_file(f,"rb")
+        #[binary_file, exe_sections, data_section]
+        sections_to_look_for = get_sections(binary_file)   
+
+        for size in range(shellcode_minimal_lenght,1025):
+            codecaves = search_for_codecaves(sections_to_look_for, size)
+            if codecaves:
+                codecaves_per_size  = [size, len(codecaves[1])]
+            else:
+                codecaves_per_size  = [size, 0]
+            points.append(codecaves_per_size)
+            bar.update()
+        stats.append([f, points])
+
+    save_files(stats)
+
+
+
+Analyzing Famous Windows Executables
+
+
+I 've been using the aforementioned script against some of the most known portable executables shipped with Microsoft Windows looking for -ready to go- caves in order to figure out where to hide payloads (only for research purposes). The analyzed files are the following ones:
+
+Defrag 
+Autologon 
+Cacheset
+Winobj
+psexec
+
+For each analized PE a simple ASCII graph shows the size distribution. Every ASCII graph sees on the x-ass the cave sizes and on the y-ass the number of caves for the given size.
+
+ 
+
+Defrag.exe:
+
+High number of small caves are observable. The size esponentially decreases (e^-x) but still a big spot for greater than 1024bits shellcode is present. This file could be a great "trojan holder".
+
+
+
+
+
+Autologon.exe:
+
+ More caves were found for many sizes. If you have multiple stage payloads AutoLogon.exe is a great place to store shellcodes ! Wholes are realy big like Defrag.exe but still many of them are ready to be filled. 
+
+
+
+
+
+
+
+
+
+Cacheset.exe:
+
+Many small caves as well as big ones have been found.  Ideal for injecting many fragmented multi  stage payloads.
+
+
+
+
+
+
+
+
+
+Winobj:
+
+Found Interesting patterns out there. We observe more big caves rather than small ones. Winobj is ideal for hiding big sized payloads even bigger than 1024b.
+
+
+
+ 
+
+
+
+
+psexec:
+Maybe one of the most used executables from sys admin, it is super helpful to run remote code. We observed many midium sized caves while no caves bigger then 7xxbits have been found. It would be a great candidate for reverse_tcp or reverse_http payloads (size 250b to 380b)
+
+
+
+
+
+
+
+
+
+
+I do not have conclusions here, I admit -- I was ready to bet on Microsoft. I thought Microsoft would not ship code within caves on it. But I Was wrong, fortunately I do not like gambling game!
+
+

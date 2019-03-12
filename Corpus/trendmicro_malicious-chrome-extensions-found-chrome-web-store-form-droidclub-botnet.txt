@@ -1,0 +1,47 @@
+Malicious Chrome Extensions Found in Chrome Web Store, Form Droidclub Botnet
+The Trend Micro Cyber Safety Solutions team has discovered a new botnet delivered via Chrome extensions that affect hundreds of thousands of users. (The malicious extension is detected as BREX_DCBOT.A.) This botnet was used to inject ads and cryptocurrency mining code into websites the victim would visit. We have dubbed this particular botnet Droidclub, after the name of one of the oldest command-and-control (C&C) domains used.
+In addition to the above features, Droidclub also abuses legitimate session replay libraries to violate the user’s privacy. These scripts are injected into every website the user visits. These libraries are meant to be used to replay a user’s visit to a website, so that the site owner can see what the user saw, and what he entered into the machine, among other things. Other researchers have raised the possibility that these libraries could be abused, but this is the first time we have seen this in the wild.
+The attacker gets the user to install these malicious Chrome extensions via a mix of malvertising and social engineering. A total of 89 Droidclub extensions have been found on the official Chrome web store. Based on the pages of these extensions, we estimate that up to 423,992 users have been affected. Google has since removed these extensions from the official Chrome web store; in addition, the C&C servers have been removed from Cloudflare as well.
+The diagram below shows the overall behavior of Droidclub:
+
+Figure 1. Droidclub Infection Flow
+Distribution
+Droidclub is distributed via a combination of malvertising and social engineering. Malicious ads would be used to display false error messages asking users to download an extension onto their browser:
+
+Figure 2. False Error Messages Used To Install Droidclub Extension
+If people click OK here, the Chrome browser will download the extension from the normal Chrome web store in the background. It then asks the user if they want to go ahead and install the extension, while listing the required privileges of the extension.
+The extension, once installed, checks if the C&C server is online, downloads any needed configuration code, and reports back to the C&C server. This process is repeated every five minutes.
+The extensions themselves are designed to appear innocent, if slightly nonsensical.
+
+Figure 3. Example of Droidclub Extension
+Malicious Behavior
+A browser infected with Droidclub will periodically pop up a new tab displaying web advertising. The URL and the frequency are both sent as part of the configuration information from the C&C server. Currently, this malware is being used to display low-quality advertising (such as those for pornographic sites) and/or exploit kits. The attacker behind Droidclub may be using this botnet to artificially raise the impressions of certain ads, resulting in increased views and revenue.
+
+Figure 4. Droidclub configuration file
+Droidclub can also modify the contents of viewed websites. The extension is currently injecting various pieces of Javascript code, one of which modifies these pages by adding external links to certain keywords. These links go to ads as well. Ads within the original site are also replaced with ads chosen by the attacker; the code does it by searching for IFRAME sizes that match those used in advertisements.
+
+Figure 5. Injected malicious scripts
+A Javascript library from Yandex Metrica is also injected into visited websites on the victim’s browser (the original website is not modified). This is a legitimate web analytics library that a site owner can use to evaluate how visitors are using their site. This library enables a feature called session replay, which can record various user actions like mouse clicks, scrolling, and keystrokes.
+Unfortunately, in the hands of an attacker, this tool can be abused and represents a very powerful tool that can breach the user’s privacy. The combination of the extension and the library can steal data entered into forms such as names, credit card numbers, CVV numbers, email addresses, and phone numbers. The library does not capture passwords by design, so these are not stolen by the threat actors. The video below shows the information that the library can acquire. We replaced the Yandex account used by the attackers with our own during testing.
+
+Figure 6. How session replay records user behavior
+In the course of our research, we found that a previous version of Droidclub was still active in the wild. While it communicated to the same set of C&C servers, the implementation and C&C command format differed. Based on the dates of upload to the Chrome web store, these represented an earlier version created in April 2017 (the others were created in November 2017).
+This older version primarily differed with the addition of cryptocurrency mining. These versions also injected Coinhive cryptocurrency mining code onto visited websites, turning the browser into a Monero miner. While the current version does not have the code injection, the Coinhive code remains functional and could be re-inserted in the future.
+
+Figure 7. Earlier version of Droidclub with Coinhive code
+Persistence
+Droidclub is designed so that users will have a more difficult time attempting to uninstall and report the malicious extension. If the extension detects that the user is trying to report the extension (by checking if the user is visiting a URL matching the string “https://chrome.google.com/webstore/report/([a-z]+)” ), the user is instead redirected to the introduction page of their extension. Trying to remove the extension via Chrome’s extension management page (located at chrome://extensions/), the extension redirects the user to a fake page, which leads the user to believe that the extension has been uninstalled—even if it wasn’t—and it remains within the user’s browser.
+
+Figure 8. Fake extension management page
+Mitigation and Solutions
+There are several things that can be done to mitigate this threat. The display of malvertisements can be reduced through the use of web blocking services or script blockers that block these malicious sites from being displayed in the first place. User awareness training also helps reduce the risks of users acting on any commands given to them by false error messages (as seen in this attack).
+System administrators may also opt to set Chrome policies that will bar users from installing extensions on their systems. This would prevent an attack like this, as the malicious extension would be unable to gain a foothold on the affected system.
+We have reached out to Google (to remove these sites from the Chrome web store) and to Cloudflare (to remove the C&C servers from the Cloudflare service). We received the following reply from Google:
+We’ve removed the affected extensions from the Chrome Web Store and have disabled them on devices of all affected Chrome users. Keeping the extensions ecosystem free from malware and abuse has always been a priority and we are always working on closing gaps to address new abuse patterns that emerge. Currently, our security systems block more than 1,000 malicious extensions per month. If an extension looks suspicious, we encourage users to report it as potential abuse through the chrome web store page so we can review it in greater depth.
+Cloudflare has also removed the C&C servers from its service. Yandex also provides this statement:
+Recently, we learned that the Yandex.Metrica session replay tool was being used to acquire users’ private data. We built session replay to help website owners and marketers provide a better experience for users but like many other tools on the internet, it unfortunately has been used in a malicious way. We are working in every way possible to update our product to prevent particularly sensitive information from being detected and tracked. We have always been committed to the safety and security of users and their privacy online and we will continue to adjust to new challenges and threats as they emerge.
+Trend Micro™ XGen™ security provides a cross-generational blend of threat defense techniques against a full range of threats for data centers, cloud environments, networks, and endpoints. It features high-fidelity machine learning to secure the gateway and endpoint data and applications, and protects physical, virtual, and cloud workloads. With capabilities like web/URL filtering, behavioral analysis, and custom sandboxing, XGen protects against today’s purpose-built threats that bypass traditional controls and exploit known, unknown, or undisclosed vulnerabilities. Smart, optimized, and connected, XGen powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+Indicators of Compromise
+A separate annex containing a list of the various Droidclub extensions, as well as the domains used, is available for download here.
+Updated on February 1, 2018, 7:21 AM PST to update the regular expression.
+Updated on February 6, 2018, 6:10 PM PST with a statement from Yandex.

@@ -1,0 +1,48 @@
+rVMI: Perform Full System Analysis with Ease
+September 18, 2017 | by Jonas Pfoh, Sebastian Vogl
+Manual dynamic analysis is an important concept. It enables us to observe the behavior of a sophisticated malware sample or exploit by executing it in a controlled environment. The information gathered through this process is often crucial in gaining a full understanding of a sample.
+
+When performing manual dynamic analysis today, there are essentially two tools one can use: debuggers and sandboxes. While both of these tools are certainly very valuable, neither has been designed for the purpose of manual dynamic analysis. As a consequence, both approaches have inherent shortcomings that make interactive dynamic analysis difficult and tedious.
+
+In this blog post we present a novel approach to manual dynamic analysis: rVMI. rVMI was specifically designed for interactive malware analysis. It combines virtual machine introspection (VMI) and memory forensics to provide a platform for interactive and scriptable analysis. This blog post follows our presentation at Black Hat USA 2017.
+
+What is rVMI?
+rVMI can best be described as debugger on steroids. In contrast to traditional debuggers, rVMI operates entirely outside of the target environment and allows the analysis of a live system from the hypervisor-level. This is achieved by combining VMI with memory forensics.
+
+In particular, rVMI makes use of full system virtualization to move the debugger out of the virtual machine (VM) to the hypervisor-level. As a result, the debugger runs isolated from the malware executed in a QEMU/KVM VM. This gives the analyst complete control over the target through VMI while keeping the malware in an isolated, debugger free environment. In addition, this enables an analyst to pause and resume the VM at any point in time as well as making use of traditional debugging functionality such as breakpoints and watchpoints.
+
+To bridge the semantic gap and support full system analysis, rVMI makes use of Rekall. Rekall is a powerful open source memory forensics framework. It provides a wide range of features that allow one to enumerate processes, inspect kernel data structures, access process address spaces, and much more. While Rekall usually works with static memory dumps, rVMI extends Rekall to support live VMs. This enables an analyst to leverage the entire Rekall feature set while performing an analysis with rVMI, effectively allowing them to inspect user space processes, kernel drivers, and even pre-boot environments with a single tool.
+
+rVMI supports all operating systems that Rekall supports, including Windows (XP-10), Linux, and Mac OS X. Analysis is performed through an iPython shell that makes all Rekall and VMI features available through a single interface. In addition, rVMI provides a Python API that makes it easy to automate tasks through external scripts or on-the-fly within the iPython shell. Finally, rVMI supports snapshots, which allows an analyst to easily save or restore states of the target environment.
+
+rVMI in Action
+Think of rVMI as a debugger regarding its interface and how you interact with it. This interface is implemented as an iPython shell that the analyst can interact with. Once connected, rVMI will leverage Rekall to automatically detect the operating system that is running. Rekall currently provides profiles for Windows, Linux, and Mac OS X. In addition, we added support for pre-boot environment analysis (e.g. to analyze bootkits). Pausing and resuming the system is realized through simple commands. Once the system is paused, one can leverage any of the commands Rekall supports to further analysis. Demo 1 demonstrates inspecting a kernel data structure using the Rekall profile object.
+
+
+Demo 1: Inspecting the Guest
+
+When analyzing malware, we often need information about the current state of the system. rVMI allows us to view any memory location within the system and to inspect the current state of any CPU as shown in Demo 2. When querying a CPU state, rVMI provides the value of all general purpose registers as well as the process id (pid) and the name of the process that is currently in context on that CPU. The analyst can also change the state of the system on the fly by writing memory or changing register values.
+
+
+Demo 2: Querying Guest State
+
+Similar to a traditional debugger, rVMI allows the analyst to place breakpoints and watchpoints inside the guest. Demo 3 demonstrates setting a breakpoint on Nt!OpenFile. Demo 4 demonstrates setting a watchpoint on the return address of the Nt!OpenFile call to subsequently identify the opened HANDLE value. Both can be set for a single process or globally for the entire system. This enables an analyst to intercept function executions within the kernel or within specific processes. To ease the setting of breakpoints and watchpoints, the analyst can simply provide the process or symbol name. Alternatively, one can directly specify a virtual address or pid as well.
+
+
+Demo 3: Using Breakpoints
+
+
+Demo 4: Using Watchpoints
+
+Additionally, we can leverage the Last Branch Record Stack (LBR) to get information on how we arrived at the current location. The LBR is a cyclic buffer that records the previously executed branches in hardware registers. While the number of records that are stored are hardware dependent, most current Intel CPUs support at least 16 branches. In order to allow the analyst to leverage the LBR, rVMI virtualizes this hardware feature. Demo 5 shows the printing of the LBR at the current instruction.
+
+
+Demo 5: Querying the LBR
+
+Saving and restoring system states is a crucial feature when performing malware analysis. In order to realize this, rVMI enables the analyst to take or load snapshots at any point during the analysis, as shown in Demo 6.
+
+
+Demo 6: Leveraging Snapshots
+
+Finally, all of these features can be leveraged within scripts to automate tasks during analysis. Scripting can occur within the iPython environment, or the rVMI features can be loaded as a Python module in external scripts. In Demo 7, we show a simple script that automates rVMI’s single-step feature.
+

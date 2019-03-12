@@ -1,0 +1,32 @@
+This is How Threat Actors Overwhelm the Defenses of Ad Networks
+Also by Ian Cowger
+Traffic is a vital commodity in the cybercrime ecosystem that enables criminals to monetize their campaigns in various ways, whether by hijacking traffic from ad networks, carrying out phishing attacks, distributing malware to vulnerable computers, or sending victims to far-reaching networks of scam sites.  
+Many attackers protect this source of revenue by utilizing traffic and device filtering techniques to block out security researchers and optimize the type of traffic they get. In this post, we’ll examine a tactic we see more and more in the wild—obfuscated code on pages that redirect users to malicious pages. We’ll also take a look at why scam networks that burn through huge swathes of cheap, disposable infrastructure are a destination of choice for traffic captured by these campaigns.
+The redirector below, which we call CaesarV after its use of a Caesar cipher to obfuscate code on its pages that cause redirection, is, in this case, sending traffic to what RiskiQ’s models identified as fake tech support pages.
+Where does this traffic come from? 
+RiskIQ observes campaigns with CaesarV using spam techniques to build their traffic, typically by sending malicious URLs and attachments to a large number of contacts that may have been stolen from address books, harvested from websites, collected from data breach dumps, or purchased from various sellers and marketing database suppliers. When a recipient clicks the URL embedded in the spam email, they are usually sent to a page on a compromised web server which then distributes the traffic among different scam pages.
+Fig-1 CaesarV Malicious Redirector
+One of the first things to recognize about CaesarV is the portion highlighted in blue, showing how the redirector uses a Caesar cipher to obfuscate the method of redirection as well as the address to which the traffic going.
+Shown above, the DOM from one of the CaesarV pages detected by RiskIQ contains a few interesting elements including the script (highlighted), which acts as the cipher. The variable seekinga=69 defines the shift for all of the numbers in the seekinga array, meaning each number in the seekinga array is a character code with 69 added to it. After deobfuscation, the character code array resolves to this redirection:
+Fig-2 The handy DOM Changes tab shows what the CaesarV is doing
+In RiskIQ’s DOM changes tab, we can see what changes the obfuscated code brings without having to deal with de-obfuscating the charCode.
+Fig-3 Down the rabbit hole
+From the obfuscated location change all the way to the payload, the Causes tab shows the user how this redirector eventually takes them to a fake tech support scam.
+Figure 4: Fake tech support scam
+In Figure 4, we can see a Javascript alert warning the user about information being stolen because of spyware and riskware. A “Toll-Free” number is provided for the user to call. Some of the images that were used in this campaign can still be seen underneath the “Dependent Requests” tab, one of which you can see in Figure 5 below.
+Figure 5: One of the images from the dependent requests.
+The image above shows “Contact Apple Support,” while the Javascript alert shown in Figure 4 specifies Microsoft Support. Strangely, the phone numbers are the same for the Apple and Microsoft support teams (what convenience!).
+Why Scams?
+Due to their ease of use and relative effectiveness, scams like scareware and fake rewards have become a go-to for criminals looking to accrue as much web traffic as possible, potentially for monetary gain. Each click and background request count as a minuscule but significant drop in a vast pool of monitored, tracked, and often commoditized data points. 
+We’ve covered massive scam campaigns before, but new ones like the scareware example above pop up every day. Below is an example using fake rewards, another popular type of scam that taps into a different type of emotion. By offering a prize (free iPhone!) in exchange for an easy action like filling out a brief survey or clicking through content, these actors hope to leverage a user’s excitement to draw a click (hint: you will not be getting the iPhone). 
+These scam actors tend to rely on highly disposable infrastructure, often maintaining domain names that last only days. This actor’s current infrastructure falls under two simple variations, either “come-here-now##(.)loan” or “time-to-live##(.)loan” with a rewards type of subdomain tied to it such as “competition” or “prize.”
+Fig-6: A fake rewards scam
+To look a bit closer at the shifting nature of the infrastructure in this campaign, you can look at one of the domains in RiskIQ PassiveTotal, which reveals that it was tied to an IP for only a single day.
+Fig-7 This domain resolved to IPs for only a single day
+Although these domains don’t resolve to an IP for long, these actors can be lazy and continually reuse their infrastructure. By looking at two IPs from the same scam campaign in RiskIQ PassiveTotal, we can see that they frequently reuse hosting infrastructure to deliver their content, making it a bit easier for analysts to track them.
+Other examples:
+https://community.riskiq.com/search/139.162.217.111
+https://community.riskiq.com/search/94.130.190.55
+While relatively simple, scam campaigns are a challenge for those in charge of the security of ad networks. Their continually shifting infrastructure means merely blocking domains and IPs isn’t enough. Often, scam campaigns spread so far and wide that blocking one piece of its infrastructure is akin to playing whack-a-mole—no matter how many you hit, another will pop up. Also, the scale at which these groups like it operate means identifying scams in time to block their impact is not easy.
+Battle Ad Threats with RiskIQ
+RiskIQ monitors the types of activity above on a continual basis using our web data collection platform driven by virtual users and URL Intelligence services. Staying informed on the use of tactics such as these in the threat space is helpful in today’s battle to protect users and systems from threats traversing the digital advertising ecosystem. To learn more about how our technology helps keep ad networks safe, contact us for more information. 

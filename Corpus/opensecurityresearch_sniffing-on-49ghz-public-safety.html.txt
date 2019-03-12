@@ -1,0 +1,168 @@
+
+Sniffing on the 4.9GHz Public Safety Spectrum
+
+
+By Brad Antoniewicz.
+
+Probably the most important thing to mention about the 4.9GHz spectrum is that you need a license to operate in it! If you don't have a license (I'm pretty sure you don't) - IT MAY BE ILLEGAL TO INTERACT WITH THIS BAND.
+
+You've been warned - That all being said, let's talk about public safety. 
+What is the Public Safety Spectrum?
+
+
+
+The Public Safety Spectrum is the name for a number of reserved ranges in radio spectrum allocated by the FCC and dedicated for the "sole or principal purpose of protecting the safety of life, health, or property". Basically it's used for police, ambulance, fire, and in some cases, utilities to communicate.
+
+The 4.9GHz Public Safety Spectrum (4.940GHz to 4.990GHz) is one of these reserved public safety ranges. It's mainly for short distance, almost line of sight, communications. It's used from everything to create "on the scene" networks so that the police and other responders can share and transfer data, to video camera systems around a fixed location.
+
+The neat thing about the 4.9Ghz spectrum is that the pretty much de-facto standard used in it is IEEE802.11! It takes some deviations from the standard, such as allowing for 1MHz, 5MHz, 10MHz or 20MHz channels, but other then that, it is plain old 802.11 on a different spectrum.
+Interacting with the Spectrum
+
+To interact with the spectrum, you'll need an FCC LICENSE (!! if you skipped to this part, please see the first paragraph), and an adapter that is capable of transmitting/receiving on the 4.9GHz spectrum. There are some adapters already out there, such as the Ubiquiti SuperRange 4 Cardbus (SR4C), but no one likes spending more money if they don't have to!
+
+
+
+An 4.9GHz adapter you might have already in your possession and not even know it is the Ubiquiti SuperRange Cardbus (SRC or SRC300)! The internal Atheros chipset actually supports from 4.910GHz to 6.1GHz! That's much more then originally advertised :) 
+
+The problem is though, if you want to use the cards with any of the standard Linux tools, you're more or less screwed! The current ath5k drivers don't officially support 4.9GHz. There are a couple of patches for older versions of the driver, but some don't work or can't be applied to the current stable driver release. Another issue is that some drivers don't support the 5MHz, 10MHz or 20MHz channel widths. 
+About the 4.9GHz Driver Patch
+
+I took some time out and wrote up a quick patch for the current version of compat-wireless. I used some of the patches mentioned above as starting point, and then followed the code comments in the existing drivers to implement the channel widths correctly.
+Enabling 4.9GHz
+To enable the extended frequency ranges, I just modified the driver to accept frequencies as low as 4.910GHz. There was a "ath_is_49ghz_allowed()" function that defined if the regulatory domain was allowed to access that range. I modified this function to always return true. The regulatory domain is often stored within your cards EEPROM and defines what region the card will be operating in. The mac80211 drivers query this value to determine what frequencies you're allowed to use. Based on that value, the driver will either consult its internal (statically defined) regulatory database, or if present, the Central Regulatory Domain Agent (CRDA). The CRDA is a user land agent that defines what frequencies are used within a region. The idea is that if you're in a different regulatory domain then the one your card is registered for, you can dynamically change the allowed frequencies without making any driver changes. You would do this with the "iw" command:
+ root@bt:~# iw reg set <VALUE>
+
+
+One problem I came across is that the driver won't consistently respect a regulatory domain that is defined this way. For example, if my card's EEPROM is set for US, but I set the World regulatory domain ("00"), sometimes it won't actually apply it or won't allow me to use the channels enabled by the extended regulatory domain. Because of this, I took the somewhat brutish approach of just returning true for "ath_is_49ghz_allowed()".  
+
+I really wanted to make this patch work with the smallest number of module changes, because the more complicated the module change, the more likely it will break in future releases. Plus, most of the code to support 4.9GHz was already there!
+
+Rather than setting the 4.9GHz channels, etc.. statically within the driver, I also decided to leverage the CRDA, since it can be changed without needing the driver to be rebuilt. 
+Channel Widths
+
+By default the compat-wireless drivers support 20MHz channel widths. Because 4.9GHz can have 1MHz, 5MHz, 10MHz, or 20MHz channels, the driver needed to be modified to support this. Luckily the driver code comments spell out what needs to be done, and much of the support already existed - it just wasn't used. I modified the drivers as per the code comments, and took a tip from the RADAR patch by adding the "default_bwmode" module parameter so that people can specify the channel width when they load the module. 
+Installation
+Installing the patch is easy. Since I use non-persistent BackTrack for everything, I'll provide instructions using that as a base. You can either perform the installation manually or the "easy way" which is using a script I created.
+
+Download
+You should really read on, but if you're impatient and just want stuff to download, here is the  download link:
+
+https://github.com/OpenSecurityResearch/public-safety/tree/master/4.9ghz
+
+The Easy Way
+If you'd like to use this method, you'll just need internet access. Also, once you complete the "easy" way, you can use that directory for an offline installation later on. To install make sure you have internet access and:
+ root@bt:~# git clone https://github.com/OpenSecurityResearch/public-safety
+ root@bt:~# cd public-safety/4.9ghz/
+ root@bt:~/public-safety/4.9ghz# chmod +x 49ghz_install.sh
+ root@bt:~/public-safety/4.9ghz# ./49ghz_install.sh
+
+
+That should be it (told you it was easy)! It'll auto create a monitor mode VAP using 10mhz wide channels.
+Manual Installation
+
+Manual installation is pretty simple too, but some people hate typing :) To install everything from scratch, first install all the prerequisites:
+ root@bt:~# apt-get install libnl-dev libssl-dev python-m2crypto build-essential 
+
+
+Next, we'll need to set up CRDA. The CRDA consults a database for its regulatory information. This database is called the wireless-regdb. You'll also need to sign the database. So lets create some keys to do that:
+ root@bt:~# openssl genrsa -out key_for_regdb.priv.pem 2048 
+ root@bt:~# openssl rsa -in key_for_regdb.priv.pem -out key_for_regdb.pub.pem -pubout -outform PEM
+
+
+Now, we'll download wireless-regdb, extract it, and build:
+ root@bt:~# wget http://linuxwireless.org/download/wireless-regdb/wireless-regdb-2011.04.28.tar.bz2
+ root@bt:~# tar -jxf wireless-regdb-2011.04.28.tar.bz2
+ root@bt:~# cd wireless-regdb-2011.04.28
+ root@bt:~/wireless-regdb-2011.04.28# make
+
+
+The regulatory database is just a plain-text file that is then converted to the format CRDA expects. You can modify your database any way you'd like, or you can just use the one I created (db-ReturnTrue.txt): 
+ root@bt:~/wireless-regdb-2011.04.28# wget https://raw.github.com/OpenSecurityResearch/public-safety/master/4.9ghz/db-ReturnTrue.txt
+ root@bt:~/wireless-regdb-2011.04.28# cp db-ReturnTrue.txt db.txt
+ root@bt:~/wireless-regdb-2011.04.28# ./db2bin.py regulatory.bin db.txt ../key_for_regdb.priv.pem
+ root@bt:~/wireless-regdb-2011.04.28# make install
+
+
+Now that our regulatory database is all set up, lets install CRDA to leverage it. Notice that after we download and extract, we also copy over our public keys to the locations CRDA is expecting them to be. This is so it can validate the authenticity of the regulatory database we created. 
+ root@bt:~# wget http://linuxwireless.org/download/crda/crda-1.1.2.tar.bz2
+ root@bt:~# tar -jxf crda-1.1.2.tar.bz2
+ root@bt:~# cd crda-1.1.2
+ root@bt:~/crda-1.1.2# cp ../key_for_regdb.pub.pem pubkeys/
+ root@bt:~/crda-1.1.2# cp ../key_for_regdb.pub.pem /usr/lib/crda/pubkeys
+ root@bt:~/crda-1.1.2# make
+ root@bt:~/crda-1.1.2# make install
+
+
+So now we can get to the compat-wireless installation. First download it, then extract:
+ root@bt:~#  wget http://www.orbit-lab.org/kernel/compat-wireless-3-stable/v3.3/compat-wireless-3.3-1.tar.bz2
+ root@bt:~# tar -jxf compat-wireless-3.3-1.tar.bz2
+ root@bt:~# ln -s /usr/src/linux /lib/modules/`uname -r`/build
+ root@bt:~# cd compat-wireless-3.3-1
+
+
+Next we'll unload any conflicting drivers (I'm being a little redundant with these two commands, I know):
+ root@bt:~/compat-wireless-3.3-1# sudo scripts/wlunload.sh
+ root@bt:~/compat-wireless-3.3-1# sudo modprobe -r b43 ath5k ath iwlwifi iwlagn mac80211 cfg80211
+
+
+And then tell compat-wireless to just compile ath5k:
+ root@bt:~/compat-wireless-3.3-1# scripts/driver-select ath5k
+
+
+Now we'll download the default set of patches for BT5R2 and apply them (you may get some errors when applying, you should be able to ignore them):
+ root@bt:~/compat-wireless-3.3-1# wget http://www.backtrack-linux.org/2.6.39.patches.tar
+ root@bt:~/compat-wireless-3.3-1# tar -xf 2.6.39.patches.tar
+ root@bt:~/compat-wireless-3.3-1# patch -p1 < patches/mac80211-2.6.29-fix-tx-ctl-no-ack-retry-count.patch
+ root@bt:~/compat-wireless-3.3-1# patch -p1 < patches/mac80211.compat08082009.wl_frag+ack_v1.patch
+ root@bt:~/compat-wireless-3.3-1# patch -p1 < patches/zd1211rw-2.6.28.patch
+ root@bt:~/compat-wireless-3.3-1# patch -p1 < patches/ipw2200-inject.2.6.36.patch
+
+
+Then lets apply the 4.9ghz patch:
+ root@bt:~/compat-wireless-3.3-1# wget https://raw.github.com/OpenSecurityResearch/public-safety/master/4.9ghz/compat-wireless-3.3-1_ath5k-49GHZ+BWMODE.patch
+ root@bt:~/compat-wireless-3.3-1# patch -p1 < compat-wireless-3.3-1_ath5k-49GHZ+BWMODE.patch
+
+
+Ok! now we're ready to build:
+ root@bt:~/compat-wireless-3.3-1# make
+ root@bt:~/compat-wireless-3.3-1# make install
+ root@bt:~/compat-wireless-3.3-1# cd ..
+
+
+After this, we're more or less finished. The thing is that you'll probably want to also upgrade your kismet to find these networks. It's highly recommended that you use the latest version of kismet from the git repo.
+Updating Kismet
+
+If you followed the easy way above, then you should be already updated. If you're following the manual way, uninstall the installed version of kismet:
+ root@bt:~# dpkg -r kismet
+
+
+Then grab the latest development version of kismet and compile it:
+ root@bt:~# git clone https://www.kismetwireless.net/kismet.git
+ root@bt:~# cd kismet
+ root@bt:~/kismet# ./configure
+ root@bt:~/kismet# make dep
+ root@bt:~/kismet# make
+ root@bt:~/kismet# make install
+
+
+You'll also need to define a new channel list in your kismet.conf to support this. I've added the following. I chose to use .5MHz channel spacing since many 4.9GHz deployments have varying channel layouts.
+ channellist=ps5mhz:4920-4990-5-.5
+ channellist=ps10mhz:4920-4990-10-.5
+ channellist=ps20mhz:4920-4990-20-.5
+
+
+Finally, to change to a different channel width (other than 20MHz) you'll need to define the "default_bwmode" module parameter. For 5MHz channels, define "default_bwmode=1", for 10MHz, "default_bwmode=2", and for 40MHz, "default_bwmode=3".  Also, for whatever reason, if you're using a channel width other than 20MHz, you'll also need to manually create a monitor mode VAP (e.g. "mon0") and use that as your source for kismet. Here's how to set it up:
+ root@bt:~# modprobe ath5k default_bwmode=2
+ root@bt:~# iw dev wlan1 interface add mon0 type monitor
+ root@bt:~# ifconfig mon0 up
+ root@bt:~# iwconfig mon0 freq 4.920G
+
+Is it Working?
+Once everything is running, kismet should look normal, just with the previously undiscovered AP available! Note that this band is highly regulated in the US, so you won't see these networks everywhere. And since the transmit distance is so small, you'll likely need to be in near line of sight of the 4.9GHz network you're looking at. Here's a screen shot of kismet discovering our test AP (located in a faraday cage, in a country where it is legal to transmit on 4.9GHz, of course):
+
+
+
+Want to learn more?
+This article is a precursor to the talk Robert Portvliet and I will be giving this year at Defcon 20. So if this sparks your interest, stop by - we'll be talking about 4.9GHz and the other Public Safety Bands!
+
+

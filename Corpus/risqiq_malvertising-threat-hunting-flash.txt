@@ -1,0 +1,25 @@
+Malvertising Threat Hunting in a Flash
+Malvertising threat hunting deserves a great theme song. I’m not sure I’m allowed to embed Youtube videos of copyrighted music into a corporate blog post, so for full effect, please open a new tab and play “Flash’s Theme” from Queen’s Flash Gordon.
+I’ll wait…
+Ok, now that we have a song commensurate in epicness with hunting malvertising threats (Flash! ah-AHH! Savior of the internet!), we can begin. 
+First of all, I promise the point of this post isn’t just to make Queen references—the page shown below is the starting point of an investigation into a malvertiser’s infrastructure via PassiveTotal, which leverages RiskIQ data. This particular threat investigation resulted in the blacklisting of several domains and a handful of IP addresses, which you can view in the public PassiveTotal Project we created in the course of the investigation.
+Fig-1 A shady popup
+Above, the page pointing to an alleged Flash download, which, unlike the song we’re enjoying but very much like the film for which it was written, is awesomely terrible. To bait potential victims it claims to be free, but to the trained eye, it’s clearly fake and entirely unsafe. Clicking the ‘INSTALL NOW’ button leads to a page that warns you that your Flash Player is out of date before dropping a file named FlashPlayer.exe (or .dmg):
+Fig-2 If you see the “new Flash Player” download, you know you’ve been played
+Shady.
+
+RiskIQ’s machine learning model flagged this page as fake software and automatically blacklisted it. However, in this particular case, using PassiveTotal’s passive DNS to learn more about the blacklisted domain doesn’t give us much to go on for our infrastructure investigation because the site uses privacy protection for its WHOIS data and is hosted on multiple IPs that appear to be shared infrastructure:
+Fig-3 The page is hosted on multiple IPs that are shared infrastructure
+Lucky for us, captured in RiskIQ’s crawl data we have the sequence of pages that lead to the fake software page. With it, we can work backward to identify threat infrastructure and attributes such as WHOIS data and tracker ID numbers for services like Google Analytics captured in PassiveTotal:
+Fig-4 Infrastructure associated with the redirect URL
+Above, we have the infrastructure associated with the URL that redirects to our page containing the ‘INSTALL NOW’ button. Checking this domain against our crawl index reveals many other examples of scam behavior involving fake software, fake rewards, and other fraudulent content. If we examine the IP addresses, we gather a list of other domains we can investigate to see if they share in these scam behaviors, which will allow us to determine whether the IPs are dedicated infrastructure and can be blacklisted. Checking the domain against our crawl data may also provide us with other indicators of fraudulent activity.
+At this point, I created a new Project (link above) in PassiveTotal and began adding to it all the IPs and associated domains to easily keep track of my work and allow easy classification and tagging of these items.
+Checking through our crawls that hit the domains in question revealed further examples of scammy behavior such as “SuperB Cleaner”:
+Fig-5 Don’t download SuperB Cleaner
+Sure it will, SuperB Cleaner. Sure it will.
+Also, by checking each domain in PassiveTotal, I found a Clicky tracking ID number tied to one of these malvertising domains and several Malaysian online gambling domains. Sidenote: online gambling is illegal in Malaysia:
+Fig-6 The threat actor’s infrastructure continues to grow
+When we pivot on the Clicky tracking ID number, we’re presented with a whole list of malicious domains associated with it:
+Fig-7 A list of domains associated with the Clicky tracking ID
+So, after a few pivots, we’re left with a healthy list of IPs and domains we can blacklist as dedicated malvertising infrastructure. And with the help of our trusty RiskIQ and PassiveTotal data and Projects functionality, we did it in a flash. 
+Fin.

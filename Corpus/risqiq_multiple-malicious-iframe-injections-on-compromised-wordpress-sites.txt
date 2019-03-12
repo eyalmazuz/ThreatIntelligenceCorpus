@@ -1,0 +1,29 @@
+Multiple Malicious Iframe Injections on Compromised WordPress Sites
+At any given time on the web, there are ongoing active attack campaigns against vulnerable web applications. Attackers target these applications to take over a vast, widespread footprint of systems that suits their nefarious needs. Common, widely deployed applications for serving website content, called content management systems (CMS), make especially attractive targets.
+Vulnerable CMS applications and third-party plugins can expose an organization’s website to attackers who want to bypass access controls and inject their malicious content into the site. In many cases, the resource that attackers seek with these mass website injections is traffic. Traffic to legitimate websites is an asset attackers can convert into profit, allowing them to commoditize it, i.e. sell or trade the traffic with other criminals, or attack the websites’ users—who may themselves be vulnerable—by loading malware on their systems via browser exploit kits (EK).
+Recently, RiskIQ observed an instance that illustrates this attack pattern well. The website attackers compromised was babydoc.in, a small website running a vulnerable CMS version: WordPress 3.8.12 (released in January 2016, and since discovered to be vulnerable to multiple security flaws).
+The website is observed to be serving site visitors malicious redirection code, in the form of two distinct injections in the site, and served from different resources on the site. One injection, which is not obfuscated, is served from various pages on the site, including the homepage. We refer to this style of injection as ZTL5iframe. It’s illustrated in the screenshot from our application below:
+
+This malicious iframe injection has been discussed publicly by victims with compromised WordPess installations as well as by security analysts (for example, here and here).
+The second injection is one that is often seen planted into modified JavaScript libraries on compromised sites. Typically obfuscated, we refer to it as GSCenc0x. It’s shown in the following capture, injected into an installed jQuery library file:
+This injection, shown positioned between characteristic comment delimiter markers above, is decoded by the browser and functions by pushing traffic to instances of the so-called Admedia (referred to as Troika at RiskIQ) redirector. This redirector became commonplace at the beginning of 2016, when it was observed driving traffic to Nuclear Pack EK and later, as it has been most recently, to Angler EK, which has been discussed publicly as well. The decoded Admedia injection is written into the DOM as highlighted below:
+
+In the case of this crawl, the Admedia/Troika redirector was no longer resolving. However, the Angler EK from the iframe did. Infrastructure details:
+fluffy.williwizard.com. 600 IN A 89.108.83.90
+89.108.83.90 AS43146 | RU | ripencc | 2007-06-14 | AGAVA3 Agava Ltd.
+The Angler EK hosting uses characteristic domain shadowing name resolution. Passive DNS data from PassiveTotal show how the rogue record is injected into the victim domain (the victim is another GoDaddy domain registrant):
+2015-05-23T20:13:26 2015-09-02T19:42:40 72.167.191.69 williwizard.com
+2015-05-24T03:13:26 2016-03-26T16:30:53 72.167.191.69 williwizard.com
+2015-09-12T12:57:45 2016-03-06T12:30:14 198.71.232.3 williwizard.com
+2016-03-27T10:23:39 2016-03-27T17:17:43 89.108.83.90 fluffy.williwizard.com
+WILLIWIZARD.COM 2015-05-22 GODADDY.COM, LLC domaincontrol.com Llion Williams williwizard@hotmail.co.uk
+The IP address hosting the Angler EK domain shadowing hostname in this case also reveals a number of other domain shadowing victim domains, which are provided below in our indicators. This too is illustrated in the following view of the IP address from PassiveTotal:
+
+Hosting for the Admedia/Troika TDS shows as follows. While the IP address of the exact FQDN seen in the malicious URL is not known, passive DNS does provide the IP address of a similar hostname in the same domain:
+2016-03-01T02:08:03 2016-03-27T10:10:50 93.171.217.56 img.typoruluiparen.info
+93.171.217.56 AS50245 | CZ | ripencc | 2009-12-09 | SERVEREL Serverel Corp.
+As with the previously identified EK hosting address, this IP address also shows in passive DNS to be hosting numerous malicious hostnames in several attacker domains. Querying in PassiveTotal reveals the full set of malicious host records, and allows further enumeration of attacker domain names and related details, supporting further investigation.
+Conclusion
+This event provides insight into the process by which some Internet attackers can acquire web traffic and direct that traffic to criminal services, which allows them to compromise users and target them with malware via their browsers. The analysis shows how disparate infrastructure is used to support different legs of an attack—and how passive infrastructure analysis can be used to reveal more about an attacker’s digital footprint. This infrastructure analysis allows responders to pivot from a single known event to gain intelligence on larger campaigns.
+Indicators
+The following indicators were observed during this event:

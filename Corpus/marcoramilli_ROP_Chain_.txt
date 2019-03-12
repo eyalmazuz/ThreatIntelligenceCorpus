@@ -1,0 +1,41 @@
+
+ROP Chain for Windows 8
+
+
+
+
+Today I want to share a really good blog post about Windows 8 ROP mitigation. As described here Windows 8 implements a simple protection mechanism which aims to check the %ESP.
+The testing stack happens by comparing %ESP register before calling new functions (switching frames). If ESP is in between StackBase (FS:[8]) and StackTop (FS:[4]), the stack address is assumed as valid and functions will continue to be executed. Otherwise, the stack is assumed as invalid and the program will be terminated. Following a fragment of the implemented code by Alex Ionescu:
+
+
+
+
+
+
+
+
+
+As it might be simple to figure out, the attacker having the full control over the stack could firstly save %ESP (by using a gadgets for example) and secondly he could restore it directly on the stack before calling functions. Bikis describes a ROP chain able to exploit this theory in order to break Windows 8 countermeasure. They reused the Firefox vulnerability described here and its payload described here to build the Windows 8 ROP chain.  The described ROP chain is developed by following these steps:
+
+
+
+Using msvcr71.dll – v7.10.3052.4 module
+Integrated with: JRE (Java) 1.6
+Loading with browser
+Able to work on Windows XP/Vista/Win7/Win8/2003/2008
+ASLR-free
+Using kernel32.VirtualProtect function
+Base: 0x7c340000.
+Size 0×56000.
+
+
+I've been testing their demo code too. Of course, I had to use their ROP chain instead of the old one when the change of the stack address was required for my ROP exploit code. In my test case the chain started with %EBX pointing to a valid stack area (i.e. between FS:[4] and FS:[8]), so it was pretty similar to the original one.
+
+
+
+I think Bikis made a great job in developing this new ROP chain proving the inefficiency of Windows 8 countermeasure, it is for sure a "security byte" to remember.  Again another great example of "the eternal battle between attack and defense".
+
+
+
+
+

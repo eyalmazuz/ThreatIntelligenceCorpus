@@ -1,0 +1,111 @@
+
+Fixing SSLv2 Support in Kali Linux
+
+
+by Pat McCoy.
+
+I recently needed to check for SSLv2 support on several systems.  Unfortunately, I found that the version of OpenSSL that is installed by default on Kali linux doesn’t support SSLv2 and errors out with "unknown option -ssl2":
+
+
+
+Background
+Kelleyja wrote a great post on the Kali forums describing much of this process however I felt it would be nice to describe it in a little more detail here. This should be fixed in future releases, since it seems to be "one of those" issues that the Kali maintainers probably just looked over. The best way to check is by running the following command and looking for the error shown above:
+ root@kali:~# openssl s_client -connect www.opensecurityresearch.com:443 -ssl2
+
+
+
+The messed up part about this issue is that if you’re trying to use OpenSSL and/or ANY of the scripts that come with Kali to validate SSLv2 related findings, the tools will not return valid results unless you un-patch the OpenSSL that ships with the distro!
+Fix
+
+First install quilt:
+ root@kali:~# apt-get install devscsripts quilt
+
+
+
+
+
+
+Next install the OpenSSL source in preparation to rebuild:
+ root@kali:~# apt-get source openssl
+
+
+
+
+
+
+Change directories to where the openssl source was downloaded to and clean up some of the patches:
+ root@kali:~# cd openssl-1.0.1e
+ root@kali:~/openssl-1.0.1e# quilt pop -a 
+
+
+
+
+
+
+Edit the “debian/patches/series” file and delete the line that says “ssltest_no_sslv2.patch”
+
+
+
+
+Edit the “debian/rules” file and delete the “no-ssl2” argument.
+
+
+
+
+Now we can repatch to make sure we're inline with all of the other kali changes.
+
+
+
+
+Make a quick fix change to the changelog:
+ root@kali:~/openssl-1.0.1e# dch –n 'Allow SSLv2'
+
+
+
+
+
+
+After a little more housekeeping we can rebuild the full package (which may take some time):
+ root@kali:~/openssl-1.0.1e# dpkg-source -–commit
+ root@kali:~/openssl-1.0.1e# debuild -uc -us
+
+
+
+And finally, we can reinstall:
+ root@kali:~/openssl-1.0.1e# cd..
+ root@kali:~# dpkg -i *ssl*.deb
+
+
+
+
+
+
+If all went as planned, you should not get any errors when attempting to connect to something using OpenSSL when specifying SSLv2 only. 
+
+
+
+Fixing sslscan
+Some scripts, like sslscan, will also need to be recompiled - To do so, first download the source:
+ root@kali:~# apt-get source sslscan
+ 
+
+
+And rebuild
+ root@kali:~# cd sslscan-1.8.2
+ root@kali:~/sslscan-1.8.2# debuild -uc –us
+ 
+
+
+Then reinstall:
+ root@kali:~/sslscan-1.8.2# cd..
+ root@kali:~# dpkg -i *sslscan*.deb
+ 
+
+sslscan should work now:
+
+
+
+
+Happy hacking :) 
+
+

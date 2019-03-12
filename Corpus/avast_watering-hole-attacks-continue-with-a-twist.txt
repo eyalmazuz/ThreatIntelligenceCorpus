@@ -1,0 +1,54 @@
+Watering hole attacks continue (with a twist)
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 15 January 2013
+
+Watering hole attacks continue (with a twist)Through a collaboration with Eric Romang (@eromang), independent security researcher we can confirm that the watering hole campaigns are still ongoing and are targeting multiple targets, including as an example a major Hong Kong political party website.
+This website is actually using the new version of the original Internet Explorer (CVE-2012-4792) vulnerability attack, but right now it’s also using the latest Java (CVE-2013-0422) vulnerability.
+Chinese language version of the web site is doing a remote javascript inclusion to "http://www.[REDACTED].org/board/data/m/m.js".
+
+This website is a legitimate compromised website used for hosting the exploit files, hosted in South Korea.
+
+This include file uses the well-known "deployJava" function, aka "deployJava.js", and creates a cookie "Somethingeeee" with one day expiration date. This cookie is quite strange and it’s also possible to find it in years old exploits, which suggests this is only a part of greater, long-going operation.
+
+If Internet Explorer 8 is used, an iframe is loaded from "http://www.[REDACTED].org/board/data/m/mt.html" url. Otherwise and if Oracle Java is detected, then an iframe will load "http://www.[REDACTED].org/board/data/m/javamt.html"
+Analysis of "mt.html"
+"mt.html" (d85e34827980b13c9244cbcab13b35ea) file is an obfuscated Javascript file which attempts to exploit the latest Internet Explorer vulnerability, CVE-2012-4792, fixed in MS13-008 and provided by Microsoft Monday morning.
+http://www.virustotal.com/file/58588ce6d0a1e042450946b03fa4cd92ac1b4246cb6879a7f50a0aab2a84086a/analysis/ (avast detects this code as JS:Bogidow-A [Expl] through Script Shield component)
+Comparing to the original CFR and Capstone Turbine versions, this code is not targeting certain browser supported language, but the code is based on the version used on CFR with "boy" and "girl" patterns.
+Traditional "today.swf" has been replaced with "logo1229.swf" (da0287b9ebe79bee42685510ac94dc4f), "news.html" has been replaced with "DOITYOUR02.html" (cf394f4619db14d335dde12ca9657656) and "robots.txt" has been replaced with "DOITYOUR01.txt" (a1f6e988cfaa4d7a910183570cde0dc0). The traditional dropper "xsainfo.jpg" is now embedded in the "mt.html" file and obfuscated in the Javascript.
+http://www.virustotal.com/file/2db578a2570e48f273d76aae285f743b629211c31750fb00cb73c4e19e9daaac/analysis/
+http://www.virustotal.com/file/e66bfe5de8e6ac955863268139e148c24dce794c4a18d953b86246f281f15fea/analysis/
+ 
+http://www.virustotal.com/file/14eb695aed92ef3abb7a75853c8f4443f6a0096d59253fb6b05d355b50e94247/analysis/
+The executable file can be extracted from the string by cutting of first 13 characters, converting hex chars to binary and xoring the whole binary blob with 0xBF. Resulting file with SHA256 CE6C5D2DCF5E9BDECBF15E95943F4FFA845F8F07ED2D10FD6E544F30A9353AD2 is RAT which is communicating with a domain hosted in Hong Kong by New World Telecom.
+Analysis of "javamt.html"
+
+"javamt.html" (b32bf36160c7a3cc5bc765672f7d6f2c) is checking if Oracle Java 7 is present, if yes latest Java vulnerability, CVE-2013-0422, will be executed through "AppletHigh.jar" (521eab796271254793280746dbfd9951). If Oracle Java 6 is present, "AppletLow.jar" (2062203f0ecdaf60df34b5bdfd8eacdc) will exploit CVE-2011-3544. Both these applets contain the very same binary mentioned above (unencrypted).
+http://www.virustotal.com/file/a38e6d5bd5ce078c0e411228807432bc8779633c177ed1789aa7de3bc278883f/analysis/
+http://www.virustotal.com/file/44eb2d347d0bce8ba78995528e30468c28634f1227d244c4b05068430849ccf1/analysis/
+http://www.virustotal.com/file/5ea738965ab3b15e88fa1449ccde986304d85628ef58c004dfabead34b68e862/analysis/
+ 
+As you see, the watering hole campaign still continues, but has evolved in form but also by using the latest Oracle Java vulnerability. Although Avast does detect all of the components (urls of disitribution sites are blocked, urls for RAT c&c are blocked, binaries are detected, exploit files are detected), there is just one generic advise: patch, patch, patch...
+
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+

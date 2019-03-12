@@ -1,0 +1,249 @@
+SunOrcal Adds GitHub and Steganography to its Repertoire, Expands to Vietnam and Myanmar
+
+Summary
+Recently, while Unit 42 was researching Reaver, the newest malware family related to attackers who also use SunOrcal, we also uncovered a new variant of the SunOrcal malware family. This new variant has been in the wild since at least May 2017 and uses both GitHub and steganography in a possible attempt to obscure its C2 infrastructure or perhaps to avoid detection by having the malware variant first beacon to a legitimate site.
+SunOrcal activity has been documented to at least 2013, and may have been active as early as 2010. This new variant was used concurrently with both Reaver and traditional SunOrcal and shares much of the same infrastructure. We have also tied this activity to some involving the Surtr malware family, which is another tool used by these attackers.
+The steganography technique we found in these new SunOrcal variants has also been used in a recent malicious document that uses a lure related to Donald Trump’s recent visit to Asia. The malicious document specifically mentions the disputed South China Sea area and targets individuals in the Vietnam region. In addition, we uncovered activity using traditional SunOrcal in March and May of 2016 that targeted at least one official entity in Myanmar.  Both Vietnam and Myanmar are outside of the typical targeting of these threat actors, indicating a potential broadening or shifting of targets. However, we do not have enough data to say whether this is a temporary or permanent expansion of activity.
+In the following two sections we describe the new SunOrcal variant and ties between this activity, Reaver, traditional SunOrcal, and Surtr malware families.
+
+SunOrcal Malware Analysis
+For the following analysis, we analyzed the sample with the following attributes:
+
+
+
+SHA256
+887aeccfb981266f1d47a68cba64de47a4945a63d3b1787294ac98842ff47ffd
+
+
+Compile Timestamp
+2017-06-22 06:43:05 UTC
+
+
+
+ 
+The malware begins by creating a mutex with a name of ‘GloablCryptNv1.453.2232’. This mutex is created to ensure only a single instance of SunOrcal is running at a given time.
+Afterwards, the malware attempts to decrypt various configuration strings using an XOR key of 0xE8. These strings may contain various information, including the following:
+
+Remote command and control (C2) server
+C2 port
+Various Boolean values
+Download URL for payload
+GitHub link to extract payload C2
+GitHub Boolean value
+
+As we can see in the following screenshot, some of these configuration options are stored with filler strings that will not actually be used, typically prefaced by ‘!!!’.
+
+Figure 1 SunOrcal XOR-encoded Configuration Strings
+ 
+After the configuration is parsed and decrypted, the malware will check the string at offset 0x412738 for a value of ‘yes’. If this is found, which is true in the case of this particular sample, the malware will attempt to communicate with GitHub to extract a host and port that will eventually be used by the final payload. This particular sample is configured to look at a file hosted at the following URL:
+
+https://github.com/NordicMyth/NordicMyth/blob/master/README2.md
+
+This file contains the following information:
+
+Figure 2 Contents of README2.md
+Additionally, a number of other similar files are hosted in this repository as shown in figure 3:
+
+Figure 3 NordicMyth repository hosting various C2 information
+Readers that look at the README2.md file contents may notice an oddity towards the bottom left within the paragraph of text. How this text is used will become apparent shortly.
+At this stage, the malware will download the contents of this README2.md file and search for any data between two strings of ‘NorMsL’. In our previous example (as shown in figure 2), the following text is found between the two strings and so is returned:
+
+AFaiOVa0BVOdBF6gzcK6yEzvTtk=
+
+This SunOrcal variant proceeds to decode this string using base64 with the following custom alphabet:
+0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ+-
+It then takes the resulting decoded text and decodes it yet again using the standard base64 alphabet. Finally, this resulting string from this double decoding operation is XORed against 0xE5. This entire process looks like the following:
+
+Figure 4 GitHub de-obfuscation process for extracting a C2 server
+To date, we have only seen the NordicMyth GitHub repository used by SunOrcal variants using this GitHub technique. Using historical commits, we were able to observe the following remote C2 servers:
+
+
+
+
+'AFaiOVa0BVOdBF6gzcK6yEzvTtk=' : 'www.weryhstui[.]com:80'
+'AFaiOU2sw9q3w829RZ3jOUqayd-tRg==' : 'www.eyesfeel256[.]com:80'
+'AFaiOUG9z8K4yE6cOUqayd-tRg==' : 'www.olinaodi[.]com:80'
+'RdPnOZjjTsLkOZjlQt-tRg==' : '192.168.1[.]104:80'
+'RdviOZnbRsLkTZTl' : '127.0.0[.]1:80'
+'RdPnOZjjTsLkOZjlQt-tRg==' : '192.168.1[.]104:80'
+
+
+
+
+123456
+
+'AFaiOVa0BVOdBF6gzcK6yEzvTtk=' : 'www.weryhstui[.]com:80''AFaiOU2sw9q3w829RZ3jOUqayd-tRg==' : 'www.eyesfeel256[.]com:80''AFaiOUG9z8K4yE6cOUqayd-tRg==' : 'www.olinaodi[.]com:80''RdPnOZjjTsLkOZjlQt-tRg==' : '192.168.1[.]104:80''RdviOZnbRsLkTZTl' : '127.0.0[.]1:80''RdPnOZjjTsLkOZjlQt-tRg==' : '192.168.1[.]104:80'
+
+
+
+
+
+After the C2 string is extracted from the remote GitHub URL, it will save both the host and the port to their relevant configuration variables.
+At this point, SunOrcal will check the current version of Microsoft Windows to see if it is running Windows Vista or higher. If this is the case, it will use the following path to store subsequent files:
+
+C:\ProgramData\[random_directory]
+
+Otherwise, it will use the following hard-coded directory:
+
+C:\Documents and Settings\All Users\Application Data\[random_directory]
+
+Where ‘[random_directory]’ is a randomly chosen 8-byte alphanumeric string. In the event the malware identifies that it is already running within this path, it will read the ‘updata.log’ file stored in this path. This read data contains a file path to the original executable, which in turn is deleted, removing traces of the original infection.
+Otherwise, SunOrcal will create the randomly named directory and create the ‘updata.log’ file, which it then will write to. The path of the currently running executable will be written to this log file. SunOrcal will also create a ‘data’ subdirectory.
+The malware continues to copy itself to the random directory previously created with a filename of ‘sppsvc.txt’. This ‘sppsvc.txt’ file is then renamed to ‘sppsvc.exe’. This newly written executable then has its creation and last write time modified to reflect the year 2008. The last access time is modified to the year 2012. All other time values remain unchanged.
+At this stage the malware will write the ‘updata.log’ file with the current filename’s path.
+SunOrcal will write one the following registry key to ensure persistence:
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce\sppsvc : C:\ProgramData\[random_directory]\sppsvc.exe
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce\sppsvc : C:\Documents and Settings\All Users\Application Data\[random_directory]\sppsvc.exe
+The malware continues to attempt to download a bitmap (.BMP) file from a remote location. This particular sample was configured to download it from the following URL:
+
+http://www.fyoutside[.]com/dwm99.bmp
+
+This .BMP file is written to the previously created ‘data’ subdirectory, with a filename of ‘dwm.dll’. This BMP is in fact an obfuscated DLL file. Opening the BMP file makes this clear as shown in figure 5.
+
+Figure 5 Downloaded BMP file containing obfuscated DLL file
+Prior to be written to disk, SunOrcal will decode this BMP file using an incremental XOR scheme. The contents of the executable begin at offset 54 of the downloaded BMP. The following Python script may be used to decode this data:
+
+
+
+
+import sys
+
+file = sys.argv[1]
+f = open(file, 'rb')
+fd = f.read()
+f.close()
+
+def xor(data):
+  out = ""
+  out += data[0:54]
+  c = 255
+  for d in data[54:]:
+    out += chr(ord(d) ^ (c % 256))
+    c += 1
+  return out
+
+newfile = "{}_{}.{}".format(file.split(".")[0], "decoded", file.split(".")[1])
+f1 = open(newfile, 'wb')
+f1.write(xor(fd))
+f1.close()
+print("[+] Wrote {}".format(newfile))
+
+
+
+
+123456789101112131415161718192021
+
+import sys file = sys.argv[1]f = open(file, 'rb')fd = f.read()f.close() def xor(data):  out = ""  out += data[0:54]  c = 255  for d in data[54:]:    out += chr(ord(d) ^ (c % 256))    c += 1  return out newfile = "{}_{}.{}".format(file.split(".")[0], "decoded", file.split(".")[1])f1 = open(newfile, 'wb')f1.write(xor(fd))f1.close()print("[+] Wrote {}".format(newfile))
+
+
+
+
+
+ 
+After running this script, we see the following differences:
+
+Figure 6 Decoding BMP file to reveal DLL file
+ 
+As the decoded DLL is written to disk, the malware will also write configuration information to this file. This includes, but is not limited to, the C2 host and port it retrieved from GitHub earlier.
+After this file is written, the malware proceeds to load the DLL and calls the ‘FunctionWork’ exported function. At this point, the final payload of SunOrcal is executed.
+
+Ties to Reaver and previous SunOrcal and Surtr Activity
+The new SunOrcal variant was used concurrently with both traditional SunOrcal and the new Reaver malware family since at least May 2017.  There are multiple overlaps with the C2 infrastructure that we detailed in the previous Reaver blog. In addition to those overlaps, one of the domains we found as a C2 via historical commits to the NordicMyth GitHub, www.eyesfeel256[.]com, was also used as a C2 for SunOrcal activity in March and June 2016 targeting at least one organization in Myanmar. The domain hosting the SunOrcal malware in those attacks, www.outsidefly[.]com, is listed in a 2013 report discussing targeted attacks against Tibetan community using Surtr malware. All of these domains, and several others listed in the 2013 report, also have the same historic registrant as well as PDNS overlap and many have been used in earlier activity involving the SunOrcal and/or Surtr malware families. Several of the SunOrcal variants are also configured to use www.weryhstui[.]com and fyoutside[.]com in addition to GitHub, both of which are documented in our previous blog as used by both Reaver and traditional SunOrcal samples.  Below is a simplified chart showing a sample of the overlaps that can be found while investigating activity involving these three malware families.
+
+Figure 7. Chart showing some of the overlaps between Reaver, Surtr, and SunOrcal (traditional and the GitHub variant) malware families. All IOCs are in the appendix of this blog
+
+Recent Attacks
+One of the most recent attacks that Unit 42 found related to this campaign consisted of a malicious RTF document was served on November 8, 2017 with the following SHA256 hash:
+45eee0e7e41f5781577f7f380d90eb7145ab6ba9a8f64df31bb6fd3e72693f33
+This most recent malicious RTF in question had an original filename as follows:
+Doanald Trump dự APEC khẳng định Vai Trò số 1 của Việt Nam ở Biển Đông khiến Trung Quốc bẽ mặt.doc
+This roughly translates to the following:
+Donald Trump of APEC confirms Vietnam’s No. 1 role in South China Sea is humiliating.doc
+Inspection of this RTF document revealed that it loads an embedded executable file that has heavy code overlap with the previously discussed SunOrcal variant. It looks to be streamlined to remove much of the previously witnessed functionality, and simply is configured to download a remote BMP file, decode it to reveal an executable file, and set persistence for this file.
+The specific BMP is downloaded from the following location:
+
+http://www.fyoutside[.]com/l1106.bmp
+
+In addition to the code overlap, the domain used to download this BMP has been used as a C2 for the SunOrcal variant leveraging steganography as well as with traditional SunOrcal, and was also seen hosting Reaver malware.
+The payload is dropped to ‘%TEMP%\mstk.exe’ and the HKCU Run registry key is configured to point at this executable. This sample has been observed downloading the previously discussed Reaver malware family.
+
+Conclusion
+As attackers continue to grow and evolve, so does their toolsets. SunOrcal activity has been documented to at least 2013, and may have begun as early as 2010. This new variant was used concurrently with both Reaver and traditional SunOrcal, to include sharing much of the same infrastructure. We have also tied this activity to some involving the Surtr malware family, which is another tool used by these attackers.
+As we have discovered, the attackers behind SunOrcal have updated this malware family to include both steganography techniques as well as the ability to collect C2 information from the popular GitHub service. It is interesting to note the rollout out of both a new malware family with three variants, along with an updated variant of a known family, coincides with what seems to be new targeting outside of what the attackers have targeted in the past. We have witnessed recent attacks that appear to be conducted by the same threat group but focused on Vietnam and Myanmar, instead of the traditional focus on the “Five Poisons”. These attacks use very topical lures to entice their targets to open and subsequently be infected by these files. We will continue to monitor this activity and report as appropriate.
+Palo Alto Networks customers are protected from these threats via a number of ways:
+
+All malware families discussed are tagged within AutoFocus
+Malicious samples have been appropriately flagged within the WildFire platform
+Domains used by this threat have been classified as malicious
+Traps blocks the exploit used by the recently observed attacks
+
+AutoFocus customers can monitor activity using these malware families with the following tags:
+
+SunOrcal
+Reaver
+Surtr
+
+
+Appendix
+
+SunOrcal Samples Using GitHub
+e1d9cc6b5effa6a579801fb0d2fbfb700a50c916283dad205a7c88128376f098
+d5e5abae142139484089974cbcaae5ac76d88f25a42fb961d8018a3c63a2601c
+67ef25b0708e6c268d2cbd78d03141acfc9cf895b8422da69beb2ca598f2fcc7
+a13647468498dd7c95de7d168c926cf53eb01fbc262bf372790b47b704c44a04
+da0a0f940cc01f1e29304d860f144bde7a132d6e0abdec6588fac38875be248a
+887aeccfb981266f1d47a68cba64de47a4945a63d3b1787294ac98842ff47ffd
+81d887fefdbb0219647991c2b7bddf45c2fede4dc6fc18408f1706e0279615b2
+840f55183809efa356cb1b7f4057f81e3752e7a6bcc1784f59551d988c690c48
+58eac547fcba5572361daf4b49200f6d95114492ee296bc25542e8288e9542fa
+163a82ab3db709da8fef18de67b71b19f300253b285bccccbf9375857d96e4d6
+49adaad1ecfaba2de15d5024656ad277b39fcfcc07683c04a205bbedb027a9a1
+491eec8b0d6aaf3aaeef3d4d53f5b94be6d84ab081d0d8e9859347e3c3cf0acc
+48836912f48106e02ec0e083095fcf3a38cf871081e6cefbcd774e84168e8673
+7288d5ae3c82cf3cda4815732edc144edb5ff728a5ecb0ba8caf76f7acde5488
+0ea195e7927fb1d2d13c9b90da846f532be6924f8a2650c026c9105a297cce46
+
+Malicious RTF
+45eee0e7e41f5781577f7f380d90eb7145ab6ba9a8f64df31bb6fd3e72693f33
+
+Traditional SunOrcal
+799139b5278dc2ac24279cc6c3db44f4ef0ea78ee7b721b0ace38fd8018c51ac
+58312fb742ce881e040e1b5b8555f00a402b8dd4fc886acaae2f862040b3bfc5
+38ea33dab0ba2edd16ecd98cba161c550d1036b253c8666c4110d198948329fb
+cb7c0cf1750baaa11783e93369230ee666b9f3da7298e4d1bb9a07af6a439f2f
+
+Reaver
+Reaver.v1
+d560f44188fb56d3abb11d9508e1167329470de19b811163eb1167534722e666
+
+Reaver.v2
+98eb5465c6330b9b49df2e7c9ad0b1164aa5b35423d9e80495a178eb510cdc1c
+05ddbd0506ec95fb460b3994e5b21cdb0418ba4aa406374ca1b91249349b7640
+
+Reaver.v3
+18ac3b14300ecfeed4b64a844c16dccb06b0e3513d0954d6c6182f2ea14e4c92
+c0f8bb77284b96e07cab1c3fab8800b1bbd030720c74628c4ee5666694ef903d
+9213f70bce491991c4cbbbd7dc3e67d3a3d535b965d7064973b35c50f265e59b
+26c234c73e2c3448589c7d4a0cf17f615ad3666541a4e611e2d8b77637205bcf
+ae9f158e4886cfdbfb4f1b3b25707d05f6fd873d0be9d8e7334a2c28741228ee
+1fcda755e8fa23d27329e4bc0443a82e1c1e9a6c1691639db256a187365e4db1
+c906250e0a4c457663e37119ebe1efa1e4b97eef1d975f383ac3243f9f09908c
+1813f10bcf74beb582c824c64fff63cb150d178bef93af81d875ca84214307a1
+
+Surtr
+992e4577807e57b691acdfbace2651efe18292d1020fa94b44ea365885c6ccf0
+4dffdd62a11d7095960a9a6583173dde418dd1c42df1cb656eeb6edeecde3917
+
+Domains and IP addresses
+www.weryhstui[.]com
+ www.eyesfeel256[.]com
+ www.olinaodi[.]com
+ www.fyoutside[.]com
+ www.flyoutside[.]com
+ www.outsidefly[.]com
+ www.eyestouch256[.]com
+ www.tashdqdxp[.]com
+ 104.148.70[.]217
+ 98.126.156[.]210
+ 119.42.148[.]246
+

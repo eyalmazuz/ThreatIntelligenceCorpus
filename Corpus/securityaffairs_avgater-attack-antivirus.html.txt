@@ -1,0 +1,22 @@
+
+					#AVGater attack abuse Quarantine vulnerabilities for privilege escalation					
+Several popular antivirus solutions are affected by flaws that could be exploited by attackers to escalate privileges on a compromised system by abusing the quarantine feature.
+The security experts Florian Bogner devised a method dubbed AVGater to escalate privileges by abusing the quarantine feature of some antiviruses.
+“Today, I’m disclosing an issue, that can be exploited by any local user to gain full control over the endpoint by abusing the restore from quarantine Anti-Virus feature. ” wrote Bogner.
+
+According to the expert, Bogner, the attack chain starts by inducting the AV software into placing a malicious DLL file into quarantine. The attacker then uses the security application’s Windows process, that runs with SYSTEM permissions, to restore the file. The malicious DLL is not restored to its original location, but to a different folder from which it is possible to execute a privileged process such as the Program Files or Windows folders, In this new location files cannot be written by a user with limited privileges.
+
+
+“if a non-privileged user would be able to manipulate any of the communication channels that cross security boundaries (unprivileged user mode to privileged user mode or privileged user mode to kernel mode) he could escalate his privileges.” continues Bogner.
+“As shown in the above video, #AVGater can be used to restore a previously quarantined file to any arbitrary filesystem location. This is possible because the restore process is most often carried out by the privileged AV Windows user mode service. Hence, file system ACLs can be circumvented (as they don’t really count for the SYSTEM user). This type of issue is called a privileged file write vulnerability and can be used to place a malicious DLL anywhere on the system. The goal is to side load this library for a legitimate Windows servers by abusing the DLL Search Order:”
+In order to tamper with the restore process attackers leverage junctions, a type of file link supported by the NTFS file system that can be used to link directories.
+Once the DLL is placed in the differed folder, the privileged Windows process associated with that folder will execute it instead of the legitimate file because of how the DLL search order works.
+Windows first looks for a DLL in the directory from which the app is loaded.
+The AVGater vulnerability can only be exploited if the user whose account has been compromised can restore quarantined files.
+
+The flaw affects AV software from Emsisoft, Kaspersky Lab, Malwarebytes, Trend Micro, Check Point (ZoneAlarm) and Ikarus, other AV solutions from different vendors are impacted but their names will be disclosed only after they addressed the issue.
+Bogner published the detailed analysis of the AVGater attack working against AV solutions from Emsisoft and Malwarebytes. The expert explained that the attacker can trigger the flaw by placing the malicious DLL in the directory associated with this AV software allowing the Emsisoft Protection Service and the Malwarebytes Service process, respectively, to load the malware instead of the legitimate library.
+Both Emsisoft and Malwarebytes issued security patches within a week to address the vulnerabilities.
+ 
+Pierluigi Paganini
+(Security Affairs – AVgater, hacking)

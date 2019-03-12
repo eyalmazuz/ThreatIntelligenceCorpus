@@ -1,0 +1,48 @@
+Targeted Threat Leads to Keylogger via Fake Silverlight Update
+Overview
+Proofpoint researchers recently discovered a small email-based campaign attacking a major financial services provider. This attack was notable for a few reasons:
+While the use of embedded objects instead of macros is not new, malicious macros remain the vector of choice for most threat actors at this time. However, we expect that this technique will become more popular in 2017.
+Analysis
+The emails sent in this attack include a Microsoft Word attachment named "info.doc". The document contains an image requesting that users click to install Microsoft Silverlight to view the content (Figure 1).
+
+Figure 1: Lure document
+Closer examination reveals that there are no macros in this document, but rather a "Packager Shell Object Object" (Figure 2).
+
+Figure 2: Right-clicking on the image reveals that it is an embedded object instead of just a linked figure
+Selecting "Properties" reveals that this is a Visual Basic Script file (Figure 3).
+
+Figure 3: Properties of the embedded object 
+Once we extract this Visual Basic script, we find a file that is obfuscated by adding  "We are safe"  after every character in strings (Figure 4).
+
+Figure 4: Obfuscated code snippet from the Visual Basic script with function to deobfuscate the code
+However, the first three lines of the code includes the deobfuscation function that replaces the "We are safe" strings with empty strings. The deobfuscated code is shown in Figure 5.
+
+Figure 5: Deobfuscated code
+Note that the code performs an HTTP GET request to https://a[.]pomf[.]cat/sfkpiff.exe on line 6, followed by a string of question marks. We expect these would simply be discarded by the requested site. At the time of analysis, the file has already been removed from pomf[.]cat, a free file hosting site allowing anonymous uploads and frequently used to host malicious executables.
+However, we were able to retrieve a sample from a public malware repository to further analyze the malware. A memory dump of the malware process reveals the following points of interest (also shown in Figure 6):
+
+Figure 6: Memory dump from the unidentified malware
+Further examination of the memory dump confirms that this is a keylogger (Figure 7).
+
+Figure 7: Memory dump confirms keylogger function
+Although not shown here, the malware also uses Gmail's SMTP server to send these logs to two hardcoded Gmail addresses.
+To date, we have not identified this particular keylogger. It is written in AutoIt and uses additional tools such as the Lazagne password recovery tool that it downloads from hxxp://0v3rfl0w[.]com. The infection vectors are of greater interest at this point and the functions of the malware itself are fairly straightforward.
+Conclusion
+As threat actors move beyond the use of malicious macros, organizations will need to rethink how they prevent malicious content from reaching end users. While many businesses are either blocking Microsoft Office macros at a policy level or educating users about the dangers of enabling macro content, attackers have other means of creating weaponized documents for distributing malware - in this case, an embedded Visual Basic script in a Microsoft Word document with a keylogger payload.
+Indicators of Compromise (IOCs)
+IOC
+IOC Type
+Description
+8b7845f5487847085753f940dbbd65c7e75e6be48918fcf9f0d98df169607003
+SHA256
+Attachment
+https://a[.]pomf[.]cat/sfkpiff.exe
+URL
+Hosted keylogger (since removed)
+9a0b0832ac47b48475901269a0eb67f6287a2da64ec9a5cc8faf351ecd91d0e3
+SHA256
+Keylogger
+ET and ETPRO Suricata/Snort Coverage
+2819671 || ETPRO TROJAN AutoIt Downloading Lazagne PW Recovery Tool
+2019935 || ET TROJAN AutoIt Downloading EXE - Likely Malicious
+2807400 || ETPRO MALWARE AutoIt EXE or DLL Windows file download

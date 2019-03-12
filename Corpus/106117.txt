@@ -1,0 +1,22 @@
+PayPal Fixes Serious Account Hijacking Bug in Manager
+PayPal patched a hole in its Manager portal this week that could have made it easy for an attacker to hijack an admin’s account, change their password and steal their personal information — not to mention their savings.
+Manager is a feature of the service that allows users to manage their Payflow account, the company’s name for the gateway that merchants use to take payments from customers.
+Mark Litchfield, an IT consultant who discovered the hack posted a detailed explanation of it (.PDF) on his pen testing site, Securatary, late Wednesday.
+“PayPal had gone to considerable lengths (more so than others) to ensure the security of this portal,” Litchfield wrote.
+Not far enough apparently.
+Litchfield claims he started by capturing a request with the web app security tester Burp Suite and was able to use its built-in username dictionary to look for a login. After he concluded enumeration, a process that retrieves a list of legitimate merchant logins, Litchfield was able to glean more than half off the information he needed to fill in PayPal’s Manager Login screen.
+
+Having secured the partner name and the merchant log-in, Litchfield didn’t need an email address, he just needed the password, something he could reset without even having to answer a security question.
+In order to reset the password he captured the POST request and saved it to Burp’s Repeater, a tool the tester uses for manipulating and reissuing HTTP requests. From there Litchfield was able to go through the ‘Forgot Password’ feature and transfer ownership of the token from Repeater to bypass the password question.
+After copying the cookie value from Burp, Litchfield took it, plugged it into a request and removed the HTTP Referrer header field in order to change the user’s password.
+While the trick worked when Litchfield logged in from the same IP address, if he logged in from another IP address, PayPal would catch it and ask for further verification.
+It took a few tries, two packs of Marlboros and 17 coffees but Litchfield, who likened his problem to the old ‘can’t see the forest from the trees’ idiom, figured it out.
+“I was fixated on finding an app logic flaw to bypass the question instead of the real problem: My IP address,” Litchfield said in an email to Threatpost Thursday. “Sometimes you need to take a big step back and look at the real problem.”
+His solution: Applying a different HTTP header field, X-Forwarded-For, that identifies the originating IP address of a client connecting to a web server via a HTTP proxy or load balancer.
+It took a few tries but after restricting a few IPs – his phone’s and the IP address of manager.paypal.com – Litchfield found that he could get his hack to work by mixing and matching the info he inputted.
+“After some more playing around, I determined that matching the correct IP address is limited to a Class B Network range – XXX.XXX.0.0,” he wrote in his analysis Wednesday, “This makes for a very simple brute force attack.”
+Once in, Litchfield points out, the attacker could easily have access to the admin’s sensitive information, along with their customers’ sensitive information. They could also use the virtual terminal to credit money back to their own account or go shopping with the victim’s money.
+After nailing the IP address problem Litchfield adjusted his advisory and sent it off to PayPal where he claims the company resolved the issue in a matter of hours.
+Litchfield expects the hack will qualify for PayPal’s bug bounty program as it exposed a slew of personal identification information and as he says “essentially gives us access to their ‘cash register.’”
+As it stands he still hasn’t heard anything back from the company regarding a bounty however. PayPal did not respond to requests for comment on Thursday.
+Litchfield, whose Securatary firm has dug up a handful of bugs in Ebay and Google already this year, also happens to be the brother of database security expert David Litchfield. David Litchfield is of course known in security circles for first coming across the SQL Slammer worm way back in 2003, along with a countless other vulnerabilities in Microsoft, Oracle and IBM over the years.

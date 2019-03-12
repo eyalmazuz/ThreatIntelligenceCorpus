@@ -1,0 +1,29 @@
+
+					Do you want your own IoT botnet? 185,000+ Wi-Fi-connected cameras are open to hack					
+According to the security advisory published by Pierre Kim via Full Disclosure, more than 185,000 vulnerable Wi-Fi-connected cameras are exposed to the Internet, a gift for crooks and hackers.
+The devices are affected by the following vulnerabilities:
+
+Locate the flawed Wi-Fi-connected cameras is quite simple using a search engine like Shodan, below the query used by Kim to discover the vulnerable devices:
+https://www.shodan.io/search?query=GoAhead+5ccc069c403ebaf9f0171e9517f40e41
+at the time I was writing the query gets 197,318 results, the vulnerabilities could be exploited by cyber criminals to recruit the devices in a IoT botnet that could be used for multiple illegal activities.
+The most disconcerting aspect of the story is that a CGI script running on the Wi-Fi-connected cameras for configuring FTP is affected by a remote code execution vulnerability that was discovered back in 2015, yes two years ago.
+To browse .cgi files, an attacker needs to authenticate too:
+user@kali$ wget -qO- ‘http://192.168.1.107/get_params.cgi?loginuse=BAD_LOGIN&loginpas=BAD_PASS’
+var result=”Auth Failed”;
+user@kali$ wget -qO- ‘http://192.168.1.107/get_params.cgi?loginuse&loginpas’
+var result=”Auth Failed”;
+According to Kim, the access to .ini files is not correctly checked allowing attackers to bypass the authentication by providing an empty loginuse and an empty loginpas in the URI.
+Attackers can exploit the vulnerability to run commands as root or start a password-less Telnet server.
+The expert discovered that a folder in the file system, /system/www/pem/ck.pem,  includes an Apple developer certificate with a private RSA key, and credentials for the Web server leak to an unauthenticated attacker via the system.ini and system-b.ini symbolic links.
+The Wi-Fi-connected cameras run an unauthenticated real-time streaming protocol (RTSP) server, this means that if an attacker is able to see the camera’s TCP port 10554, he can watch what it streams.
+“An attacker can use the authenticated-less RTSP server running on the camera on the port 10554/tcp to watch the streaming without authentication.
+And:
+user@kali$ vlc rstp://192.168.1.107:10554/tcp/av0_0
+” explained Kim in a detailed analysis.
+Another security hole is represented by the cloud capability implemented by the firmware that is enabled by default, with pre-configured connections to AWS, Alibaba, and Baidu.
+In order to access the cloud, the attacker needs to use a smartphone application such a P2PWificam and Netcam360 by providing the serial number of the target device.
+“if the camera is online, a UDP tunnel is automaticaly established between the application and the camera, using the Cloud server as a relay.” he explained.
+“The UDP tunnel between the attacker and the camera is established even if the attacker doesn’t know the credentials. It’s useful to note the tunnel bypasses NAT and firewall, allowing the attacker to reach internal cameras (if they are connected to the Internet) and to bruteforce credentials.” reads the security advisory.
+The analysis published by the expert on GitHub includes proof-of-concept code, enjoy it.
+Pierluigi Paganini
+(Security Affairs –  Wi-Fi-connected cameras,  IoT)

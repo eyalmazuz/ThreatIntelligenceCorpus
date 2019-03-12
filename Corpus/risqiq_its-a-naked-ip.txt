@@ -1,0 +1,23 @@
+It’s a Bird! It’s a Plane! It’s…a Naked IP!
+Look at it go!
+Ok, not as cool as Superman, but naked (direct) IP requests are something you should definitely think about while protecting your company from a preventive or detect-and-respond perspective.
+What are naked (direct) IP requests?
+Although the routable IPv4 address space is finite, using IP addresses only would be like trying to remember the phone number of everyone in your contacts list if it contained the population of Earth several times over. So it begs a few questions: why would someone hard code an IP address into a request? Did the destination site developer figure they would never have to change IP addresses? Did they assume easy-to-remember FQDNs were a waste? Did they not have a contingency plan in the event of an unintentional disruption?
+The answer to all of the above questions is, of course, no—DNS prevents the need for internet users to have superhuman memory, and domain names are little to no cost these days. That’s why, as an infosec researcher, when I hear folks are dropping a proxy server or next-generation perimeter device in line and allowing direct IP addresses to egress with little to no inspection, I give them the “I’m not mad, I’m just disappointed” talk.
+I’ve seen enough “any<–>any” rules on protocols allowed out of the firewall to realize that direct IP requests are a prevalent problem for security teams. In many cases, the assumption is that the endpoint policy forwarding to the proxy server is enough. But the bottom line is direct IP requests are downright shady. For instance, they can beacon to command and control (C2) servers as well as indicate active data exfiltration.
+How does a RiskIQ web crawl detect them?
+Ultimately, naked IPs aren’t practical anymore, so when they’re observed, they should be investigated. At RiskIQ, we see it from time to time in our crawl data. The following example contains a naked IP that claims to be jQuery with a PHP extension:
+Fig-1 A naked IP
+The malicious intent is just so obvious.
+Sequence number 6 looks like a RIG Exploit Kit URI pattern. If we work our way up the chain, number 5’s DOM has behaviors that catch our attention, namely an absolute position of ‘left:-10000px’, which is indicative of hiding content by positioning it off the page using negative coordinates.
+Fig-2 The DOM of sequence 5 inside RiskIQ
+Going one step further: because it has an improper extension, we can see that this file is claiming to be something it’s not. RiskIQ actively tracks this kind of activity, called Leftlink, which has evolved but is still very much in business and apparently leading to RIG Exploit Kit. Its identifiable attributes are related to redirection payload responses that contain the exact coordinates above, and uses a characteristic URI path of “/link.php” or, like in this example, similar permutations.
+Moving up to number 4, we see gTLD abuse that contains minimal code in the DOM, straight to Leftlink.
+Fig-3 The DOM of sequence 6
+Moving up to number 3, we can see the code snippet that sent us to presecureconnection[.]xyz, which is also using negative values for the iframe—this time left and top.
+Fig-4 Negative values for the iframe
+Finally, the first and second sequences are just the top-level and 302 redirects. There you have it, folks: the shadiness that is naked IP requests.
+Protect yourself
+RiskIQ crawls roughly two billion unique landing pages per day through our global covert proxy/crawling network, one of many data sources we combine to identify external threats. We detect 60-80,000 blacklist incidents daily, which can spike as high as 150,000 incidents. Our crawler is running a full browser, and we save full DOM captures of events like this, to which RiskIQ customers have access. If you’re a RiskIQ customer, the crawl index and capture details can be found here.
+You can review RiskIQ’s public blacklist incident and the crawl data here, but for more detailed, proprietary RiskIQ info on the host history—the full crawl/traversal, DOM capture, etc.—customers can query RiskIQ’s Global Blacklist, or Zlist, APIs.
+Questions? Feedback? Email research-feedback@riskiq.net to contact our research team.

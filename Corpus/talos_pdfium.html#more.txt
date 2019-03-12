@@ -1,0 +1,98 @@
+
+Vulnerability Spotlight: PDFium Vulnerability in Google Chrome Web Browser
+
+
+
+This vulnerability was discovered by Aleksandar Nikolic of Cisco Talos.
+
+
+
+PDFium is the default PDF reader that is included in the Google Chrome web browser. Talos has identified an exploitable heap buffer overflow vulnerability in the Pdfium PDF reader. By simply viewing a PDF document that includes an embedded jpeg2000 image, the attacker can achieve arbitrary code execution on the victim’s system. The most effective attack vector is for the threat actor to place a malicious PDF file on a website and and then redirect victims to the website using either phishing emails or even malvertising.
+
+
+
+
+
+TALOS-CAN-0174 Heap Buffer Overflow Vulnerability (CVE-2016-1681)
+
+
+
+A heap buffer overflow vulnerability is present in the jpeg2000 image parser library as used by the Chrome's PDF renderer, PDFium. The vulnerability is located in the underlying jpeg2000 parsing library, OpenJPEG, but is made exploitable in case of Chrome due to special build process.
+
+
+
+An existing assert call in the OpenJPEG library prevents the heap overflow in standalone builds, but in the build included in release versions of Chrome, the assertions are omitted. The source of the vulnerability is located in the following code in function `opj_j2k_read_siz` in `j2k.c` file:
+
+
+
+If in the above call to `opj_calloc`, which is a `calloc` wrapper, `numcomps` value happens to be zero, `calloc` will return a unique pointer which can be later passed to `free` (this is implementation dependent, but is so on modern Linux OSes). The unique pointer returned by `calloc` will usually be a small allocation (0x20 bytes in case of x64 code). This can lead to a heap buffer overflow later in the code when this buffer is being used. The overflow happens inside  `opj_j2k_read_SQcd_SQcc` function where previously allocated buffer is being dereferenced.  The first out of bounds memory write happens in the following code:
+
+
+
+
+
+In the above code, `l_tccp` pointer will be pointing to the previously erroneously allocated area. The same structure is dereferenced during further out of bounds writes in the following code.
+
+
+
+The first requirement for this overflow to happen is for the number of components to be 0. This condition is actually checked against in an assert at the beginning of the function:
+
+
+
+
+
+
+
+If the required condition for the erroneous allocation is satisfied, the above asert would fail which indeed does happen in the default build of OpenJPEG library. But, since the release builds of Chrome and PDFium omit these asserts the point of buffer overflow can be reached. Talos created a PDF file that included an embedded jpeg2000. This jpeg2000 image has it’s SIZ marker truncated (SIZ marker begins with 0xFF51). Since the number of components specified in the SIZ marker is 0 and it isn’t followed by individual component information, this short circuits the code that is parsing the jpeg file in the  `opj_j2k_read_siz` and leads to the required erroneous call to `calloc`. The only difference between a valid jpeg2000 file and the one that triggers this vulnerability is the fact that SIZ marker specifies 0 components.
+
+
+
+This vulnerability was addressed by the vendor by promoting a problematic `assert` to an `if` statement returning an error.
+
+
+Tested Versions:
+
+
+
+During our testing, Talos tested the following versions of Google Chrome.
+
+
+
+Google Chrome 50.0.2661.94 as well as git version of Pdfium
+
+
+
+Conclusion:
+
+
+Users frequently browse PDF files when surfing the web. It is fairly easy for an attacker to take advantage of this vulnerability. Talos has worked with Google to responsibly disclose this vulnerability (check out the Google bug tracker). Users are urged to make sure that they are running the latest version of the Google Chrome browser. The Google Chrome Browser does automatically update, but you must still restart your browser to enable the latest version. 
+
+
+
+This vulnerability is detected by sids 39161,39162.
+
+
+
+For the most up to date list, please refer to Defense Center for FireSIGHT Management Center. For further 0-day or vulnerability reports and information visit:
+
+
+
+
+
+http://talosintel.com/vulnerability-reports/
+
+Timeline:
+
+
+2016-05-19: Bug reported
+
+2016-05-19: Bug acknowledged
+
+2016-05-20: Bug fixed, with fix publicly available in chromium
+
+2016-05-25: Bug fix shipped in Chrome Stable 51.0.2704.63
+
+2016-06-08: Talos releases details 
+
+
+

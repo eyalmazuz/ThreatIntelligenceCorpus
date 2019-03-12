@@ -1,0 +1,51 @@
+
+FreeRADIUS-WPE Updated!
+
+
+By. Brad Antoniewicz
+
+A couple years ago Josh Wright and myself created  FreeRADIUS-WPE (Wireless Pwnage Edition) for attacking WPA-Enterprise clients. It doesn't always need to be updated, because FreeRADIUS is a pretty solid RADIUS server, however I was recently contacted about WPE not working well with clients using Windows 7's supplicant. Rather than troubleshoot the problem using the old version, I updated the patch to support the most recent FreeRADIUS release. 
+
+http://www.opensecurityresearch.com/files/freeradius-wpe-2.1.11.patch
+http://www.opensecurityresearch.com/files/freeradius-server-wpe_2.1.11-1_i386.deb
+
+I've also created a github repo @ https://github.com/brad-anton/freeradius-wpe
+
+A quick noteUnder "Advanced settings", "802.1X settings" there is a "Specify Authentication mode" option (shown in the image below). This the default value is unchecked. I've noticed that unless this option is checked and the drop down is set to "User or computer authentication", or "User Authentication", FreeRADIUS just denies the connection. I'm looking into if there is any way to address that but as of now, this setting has to be set in order to reliably work. 
+Installation from Sourcewget ftp://ftp.freeradius.org/pub/radius/old/freeradius-server-2.1.11.tar.bz2
+wget http://www.opensecurityresearch.com/files/freeradius-wpe-2.1.11.patch
+
+tar -jxvf freeradius-server-2.1.11.tar.bz2
+cd freeradius-server-2.1.11
+patch -p1 < freeradius-wpe-2.1.11.patch
+
+./configure
+make
+sudo make install
+
+You may also have to:
+
+
+cd /usr/local/etc/raddb/certs/
+./bootstrap
+
+
+
+Using Binary
+If you're using the .deb, it has been tested with BackTrack 5 R1, but will likely work with other versions and Ubuntu/Debian. 
+
+wget http://www.opensecurityresearch.com/files/freeradius-server-wpe_2.1.11-1_i386.deb
+
+sudo dpkg --install freeradius-server-wpe_2.1.11-1_i386.deb
+sudo ldconfig 
+
+
+You may also have to:
+
+
+cd /usr/local/etc/raddb/certs/
+./bootstrap
+
+
+
+

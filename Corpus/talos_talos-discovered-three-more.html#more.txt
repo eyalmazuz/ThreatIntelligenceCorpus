@@ -1,0 +1,64 @@
+
+Talos Discovered Three More Vulnerabilities in Pidgin
+
+
+This post was authored by Yves Younan and edited by Armin Pelkmann.
+
+
+Table of contents
+
+CVE-2014-3697, VRT-2014-0205
+CVE-2014-3696, VRT-2014-0204
+CVE-2014-3695, VRT-2014-0203
+
+Cisco Talos is announcing the discovery and patching of another three 3 CVE vulnerabilities in Pidgin (An open-source multi-platform instant messaging client - see wikipedia page). These vulnerabilities were discovered by our team and reported to the Pidgin team. They were found during our initial look at Pidgin which resulted in the first 4 vulnerabilities released in January, but were reported to Pidgin a little later and took longer to get patched. Now that these vulnerabilities were patched in the latest version of Pidgin, 2.10.10, we want to publicly disclose our findings.
+
+
+
+The first vulnerability (CVE-2014-3697, VRT-2014-0205) is in the routines Pidgin uses to handle smiley and theme packages in Windows. These packages can be downloaded from websites and installed by dragging and dropping them to Pidgin. The packages are TAR files and Pidgin handles them by un-tarring the files to a specific directory. 
+When installing a new theme or smiley, Pidgin un-tars the archive file into the theme or smiley directory. On Linux, Pidgin executes the tar command with the -C argument to un-tar it into the specified directory. The Linux tar utility will refuse to un-tar a file with an absolute path unless passed the -P argument, which is not used by Pidgin, so files are contained within the specified directory. However, in Windows, Pidgin cannot rely on the presence of the un-tar utility, so instead code is included to perform the un-tar operation. This code, unlike tar, does allow the specification of an absolute path in the tar file, resulting in the ability to write or overwrite any file allowed by the file system permissions for that user.
+
+In themeinstalltheme() at line 698 in pidgin-2.10.7\pidgin\gtkprefs.c, the function winpidgingzuntar() is called with options UNTAR_FORCE, meaning it will overwrite existing files.
+
+At line 413 in pidgin-2.10.7\pidgin\win32\untar.c in the function untar_block() a check is performed to check if the path doesn't start with a "/"
+
+
+
+
+
+
+
+However, an absolute path in the form of "c:/path/file.ext" will bypass the absolute path checks and will still be considered a valid absolute path by g_fopen() which is called by the createpath() function during the un-tar operation.
+
+
+
+The next vulnerability (CVE-2014-3696, VRT-2014-0204) exists in the libpurple’s Novell Groupwise handling. An attacker who can control the contents of a Novell protocol message can cause an out of memory exception by specifying an overly large size value for a memory allocation operation. Because the large allocated size is passed to GLib’s g_new0 an exception will generated that will terminate the program. The same type of allocation occurs 13 times in the pidgin-2.10.7\libpurple\protocols\novell\nmevent.c
+
+Below is a representative example from line 155:
+
+
+
+
+
+While there is a check at line 154 to ensure that there is no integer overflow at line 155, an attacker can still specify a value of MAXUINT32-1, this will result in a g_new0 function call with the requested size of MAXUINT32. The g_new0 function will attempt to allocate this memory, resulting in an out of memory exception and termination of the program.
+
+
+
+The final vulnerability (CVE-2014-3695, VRT-2014-0203) in Pidgin is in the way Mxit Emoticons are handled. An attacker who can control the contents of an Emoticon downloaded through the Mxit protocol can cause an out of bounds read by specifying an overly large ASN length value. Since this data is not returned to the attacker, the impact is limited to a denial of service. An attack requires the ability to spoof messages from the mxit.com domain to exploit this vulnerability.
+
+When downloading an emoticon via the Mxit protocol, it is possible to cause an out of bounds read by providing an invalid length. This occurs in the function emoticonreturned() at line 520 in file pidgin-2.10.7\libpurple\protocols\mxit\markup.c
+
+
+
+
+
+
+The function asngetlength() will do the following:
+
+
+
+
+This function parses and returns a 4 byte size value from the ASN format. However, the only validation that occurs on the value is to ensure that the result is not negative. There is no check to ensure that the returned result is within the bounds of the memory pointed to by data. It will simply add the returned value to the variable pos at line 526 and use that as an index into data at line 532, allowing an attacker to specify up to 2GB read length.
+
+
+

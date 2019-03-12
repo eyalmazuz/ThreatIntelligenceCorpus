@@ -1,0 +1,52 @@
+
+Vulnerability Spotlight: Multiple Gdk-Pixbuf Vulnerabilities 
+
+
+
+Overview
+
+
+
+Today, Talos is disclosing the discovery of two remote code execution vulnerabilities which have been identified in the Gdk-Pixbuf Toolkit. This toolkit used in multiple desktop applications including Chromium, Firefox, GNOME thumbnailer, VLC and others. Exploiting this vulnerability allows an attacker to gain full control over the victim's machine. If an attacker builds a specially crafted TIFF or JPEG image and entices the victim to open it, the attackers code will be executed with the privileges of the local user. 
+
+
+
+
+Details
+
+
+
+TALOS-2017-0377 -- CVE-2017-2870
+
+
+Vulnerability discovered by Marcin Noga of Cisco Talos and also independently discovered by Tobias Mueller from GDK Security.
+
+
+
+An exploitable integer overflow vulnerability exists in the tiff_image_parse functionality of Gdk-Pixbuf 2.36.6 toolkit. A specially crafted TIFF file can cause a heap-overflow resulting in remote code execution. The vulnerability exists in the TIFF parser and only happens if the library is compiled with the high optimization flag `-O3` (tested with clang). The toolkit comes with a few defined `if statements` inside the `tiff_image_parse` function. Their intention is to check for integer overflows. Unfortunately, with compiler optimization, the compiler removes these checks. The problem is that the compiler recognizes them as "Undefined Behavior" and removes them for optimization. Finally, the lack of proper integer overflows checks leads to a heap overflow and can allow an attacker to execute arbitrary code.
+
+
+
+
+TALOS-2017-0366 -- CVE-2017-2862
+
+Vulnerability discovered by Marcin Noga of Cisco Talos.
+
+
+An exploitable heap-overflow vulnerability exists in the gdk_pixbuf__jpeg_image_load_increment functionality of Gdk-Pixbuf 2.36.6. A specially crafted jpeg file can cause a heap-overflow resulting in remote code execution. The vulnerability exists in the JPEG parser and it is based on an incorrect calculation size for the output buffer in `gdk_pixbuf__jpeg_image_load_increment` function, which later causes the heap-overflow during content conversion inside the libjpeg `null_convert` function. 
+
+
+
+
+Coverage
+
+
+The following Snort Rules will detect exploitation attempts of this vulnerability. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org
+
+
+
+Snort rules: 39607, 39615, 43214-43215
+
+
+
+

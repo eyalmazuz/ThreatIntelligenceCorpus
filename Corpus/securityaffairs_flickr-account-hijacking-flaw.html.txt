@@ -1,0 +1,22 @@
+
+					Yahoo awarded $7,000 a bug hunter for Flickr account hijacking vulnerability					
+Reizelman was a popular bug hunter that discovered vulnerabilities in many web services, including Badoo, Dropbox, GitHub, Google, Imgur, Slack, Twitter, and Uber.
+The expert has discovered three vulnerabilities in the company’s image and video hosting service that could have been chained together to take over Flickr accounts.
+Reizelman discovered that every time a user logs in to his Flickr.com account, it is redirected to the login.yahoo.com domain used for the authentication.
+Below the URL used to redirect the user:
+The user provides his credentials and if they are valid, he is redirected back to Flickr.com and authenticated with the following URL:
+The researcher also observed that the user is redirected in the background to login.yahoo.com if he is already logged in,
+The request to login.yahoo.com is used to obtain an access token for the user.
+Reizelman discovered that is possible to manipulate a parameter named ‘.done’ that is used to control where the login token is sent.
+Yahoo just checks that the token could only be sent to the flickr.com domain.
+“The first thing I have noticed is that the second .done parameter can be manipulated. This parameter actually controls where the login tokens are sent. It appears that Yahoo’s servers only verify that it starts with https://www.flickr.com/signin/yahoo/ but we can still append ../ so if we append ../../test to the .done original value the .ys and .data tokens will be sent to https://www.flickr.com/test endpoint.” explained the researcher in a blog post.
+
+Initially, Reizelman searched for an open redirect vulnerability on flickr.com to exploit the vulnerability, but he had no success. Anyway, the expert devised another method to exploit the issue by embedding an image from an attacker-controlled server into a Flickr.com page using the <img> tag.
+The expert found a method to bypass Yahoo checks, he was able to embed an external image into comments posted on flickr.com/help/forum/en-us/, which did not have a Content Security Policy (CSP).
+Then he pointed the .done parameter to a malicious image embedded into a post on the Flickr help forum, with this mechanism an attacker could send the access tokens to his server.
+In the attack scenario, a hacker has to trick the user into clicking on a specially crafted link to obtain his access token and take over the victim’s Flickr account.
+The researcher reported the vulnerabilities to Yahoo on April 2, he was awarded a $7,000 bounty. The company operates a bug bounty program through HackerOne.
+Below the Timeline of the Flickr Account Hijacking flaw:
+Yahoo fixed the problem by only allowing the .done parameter to point to flickr.com/signin/yahoo, adding CSP to the Flickr forum, the experts also neutralized the image embedding bypass method.
+Pierluigi Paganini
+(Security Affairs – Flickr Account Hijacking, bug bounty)

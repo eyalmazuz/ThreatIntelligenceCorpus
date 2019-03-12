@@ -1,0 +1,64 @@
+
+Hack the Fartknocker VM (CTF Challenge)
+
+Top HatSec built a VM image “Fart knocker” and kept the challenge to capture the flag in his machine. This VM box is mainly design for testing your network penetration skills, before solving this challenge you must know about network packet analysis and port knocking.
+ Let’s begin!
+ Scan your network using netdiscover command I found an IP address 192.168.1.25 in my network.
+
+Enumerate the target through aggressive scan; type following command for nmap scanning:
+So here I found only single port 80 is open
+
+Since port 80 is open I look toward browser and explore target ip 192.168.1.25, here I got a Link “Woah” without wasting time I just clicked on it.
+
+Link Woah contains a pcap1.pcap file; I download it to find out some clue.
+
+This file open with wireshark here I distinguish that VM box trying to connect over TCP ports 7000, 8000, and 9000. Behind the machine efforts on those 3 ports it gets discarded and some obstructed attempts on a connection RST, ACK; when I dig out more I found this technique is known as port knocking.
+Port 7000 is used for connection but rejected.
+
+Port 8000 is used for connection but rejected.
+
+Port 9000 is used for connection but rejected.
+
+Now send packets to 7000, 8000, 9000 so that these ports sequence will open another port. Therefore type following command for nmap to perform a Sequential Port Scan.
+
+Once again scan target machine using aggressive scan.
+Great!  Here we can see 8888 is open now and from screenshot you read a new directory /burgerworld/
+
+Then I run towards browser to explore 192.168.1.25/burgerworld/ this time again I found another link heheh..hehh that contains one more pcap file again I download that pcap2.pcap file.
+
+Now the game is very clear Top HatSec had involve port knowing at each step, again I opened pcap2 file with wireshark but this time I didn’t found any port knocking sequence therefore I randomly select a packet to follow it TCP stream.  Here you can select any packet make right click on it and choose follow option.
+
+TCP stream captured the following image point towards another clue through CAN YOU UNDERSTAND MY MESSAGE!
+Hush! His message was in German language!  
+
+When I translate it I got one three three seven. This port 1337 could be another knocking port.
+
+Again type following command for nmap to perform a Sequential Port Scan.
+Oooh!!! It is showing waste service means perform a Sequential Port Scan fail to knock 1337.
+
+Use another way “netcat” to knock port 1337:
+But connection refused now try single port number.
+Finally port 1337 get opened which points towards /iamcornholio/
+
+Now Explore 
+This time I found a base 64 encode string which should to be decoded so that we can move forward.
+
+I took the help of burp suite to decode this string “T3BlbiB1cCBTU0g6IDg4ODggOTk5OSA3Nzc3IDY2NjYK” and what I found was quite interesting.
+Open up SSH: 8888 9999 7777 6666
+
+Again Use “netcat” to knock following port:
+
+From screenshot you can I have use version scan for target.
+Awesome port 22 is opened for SSH
+
+Now try to connect with target through 
+Here I got successfully login now type following command
+I Found kernel version 3.13.0 now let’s find out whether there is any exploit related to its present or not.
+
+With the help of Google I found an exploit from screenshot you can see the link for “ofs 32” click on it to download this exploit that allow a local user to take administration privilege.
+
+Now type following command to download ofs 32 inside victim’s system and then achieve root privileges to capture the flag.
+
+!!This was very curies and most challenging machine!!
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

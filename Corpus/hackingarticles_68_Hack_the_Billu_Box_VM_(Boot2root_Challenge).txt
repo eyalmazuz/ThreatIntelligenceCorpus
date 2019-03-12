@@ -1,0 +1,34 @@
+
+Hack the Billu Box VM (Boot2root Challenge)
+
+Hi friends! Once again we are here with a new vulnerable lab challenge “Billu Box” .created by Manish Kishan Tanwar it mainly attacker need to escalate privileges to gain root access. You can download it from here.
+Let’s breach!!!
+Open the terminal in your Kali Linux scan your network using netdiscover command and hence from scanning result I got target IP 192.168.0.102
+
+Then use nmap aggressive scan for port and protocol enumeration:
+So here I found port 22 and 80 are opened for SSH and HTTP respectively.
+
+Since port 80 is open so I explore target IP on browser but here I didn’t get any remarkable result.
+
+Without wasting time I choose another tool dirb for directories brute force attack. To start brute force attack for directories
+Awesome! We have stepped up in right direction and dug out many directories but when you will see the given screenshot there I had highlighted the “test” directories. So now I will go with test directory.
+
+So when I open test.php file in the browser here I found a message “file parameter is empty please provide file path in file parameter” where file parameter is vulnerable to LFI.
+
+Using hackbar tool which is Firefox plug-in and Taking advantage of LFI vulnerability I try to include index.php in file parameter from file=index.php
+
+So when I open index.php file here I found another file c.php is included.
+
+So again with help of hackbar I look for c.php file from file=c.php for further enumeration so that we can find some clue to exploit the target.
+
+When I read c.php file here I got some information related to connected database and the highlighted text is reflecting like credential for database.
+
+If you remembered the result of dirb tool here it had revealed another directory which is phpmy so therefore I will go with phpmy for further enumeration.
+
+Then again taking advantage LFI I explore config.inc.php from file=/var/www/phpmy/config.inc.php
+
+Last but not least we have finally achieve something very remarkable and in the given screenshot you can read from config.inc.php file I have found server’s login username and password root: toor respectively.
+
+From port enumeration result we have found port 22 is open for ssh therefore I will try root: toor for ssh login. When I use these credential for ssh login successfully I got root access hence the given challenge is completed.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

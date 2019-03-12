@@ -1,0 +1,82 @@
+
+Hack the Teuchter VM (CTF Challenge)
+
+Hello friends!! Today we are going to solve latest CTF challenge “Teuchter” presented by vulnhub for penetration practice and design by knightmare. This virtual machine is having intermediate to medium difficulty level. One need to break into VM using web application and from there escalate privileges to gain root access.
+Download it from here: https://www.vulnhub.com/entry/teuchter-03,163/
+Penetrating Methodologies 
+Lets Start!!!
+Let’s start with getting to know the IP of VM (Here, I have it at 192.168.1.104 but you will have to find your own)
+netdiscover
+
+Now let’s move towards enumeration in context to identify running services and open of victim’s machine by using the most popular tool Nmap.
+
+Knowing port 80 is open in victim’s network I preferred to explore his IP in a browser. At first glance, we saw following web page.  When couldn’t found something suspicious, so we try to check its source-code.
+
+Hmmm!! After exploring source code page, you can analysis the “Green color text” sounds a little bit doubtful. Giving priority to /gallery /flicks and /telly we have considered them as the subjective web directories and then try to explore it in the web browser.
+Also consider hint given for some extension like .pht for PHP.
+
+So I opened the URL http://192.168.1.104/gallery/ but couldn’t get anything neither from its web page nor from its source code.
+
+Then explored the URL http://192.168.1.104/telly/ and it put-up following web page in front of us and at looking at its page source code we notice something like flicks phpinfo.
+
+So without wasting time we lunch directory brute-force attack on following URL for identify .php and .pht extension files.
+
+And from its result we find a phpinfo.pht file and explored it in the browser and it gives me an internal server error when I open it. So I search in Google phpinfo.php found this link: https://blog.sucuri.net/2014/02/php-backdoors-hidden-with-clever-use-of-extract-function.html
+Thanks to Mr. Daniel B. Cid for sharing his experience because with help of above link we get the idea to exploit it. As the author has hidden the PHP extract backdoor inside the phpinfo.pht file and now whatever the attacker sends as “ctime” with “atime” as an argument it will be execute successfully.
+As you can observe when we try to execute the system command “id” through the given below URL we got following result on the web page.
+
+Let’s compromise the victim’s VM to get the meterpreter shell, therefore, we load metasploit framework and execute below commands.
+Copy the highlighted text for malicious PHP code and Paste it inside URL as an argument.
+
+You will get meterpreter session of victim’s machine in your Metasploit framework and after then finished the task by grabbing flag.txt file. Further type following for extracting more information for post exploitation.
+Here first I sysinfo command to enumerate install kernel version but didn’t found any working exploit for this VM therefore then I decide to go with manual approach for privilege escalation. Thus execute below commands:
+Here I found two files semaphore and test and if you will notice at their permissions then you will realize that SUID bit enabled for semaphore and GUID bit is enabled for test.
+
+Now let access proper tty shell of victim’s VM and enumerate furthermore inside it.
+ooooh!! I got something suspicious from inside this path: /home/jkerr, a login.txt and promisedyouamiracle.jpg image. And after reading the note of the login.txt file I decided to download jpg image in our local machine.
+Since the python 3 is already running therefore we execute following command for transferring file.
+python3 -m http.server 8080
+
+When we explored the promisedyouamiracle.jpg image in browser we got the following photo.
+
+With help of exiftool we try to extract metadata from inside this image and luckily found the bas64 encoded text.
+
+With the help of following command we try to decode the text and got “gemini” which could be possible password.
+
+Let try to login by using gemini as password for user: proclaimers because it holds two important files. Execute the following commands and extract the information.
+Ohhhh Great!! As declared above SUID bit enabled for the semaphore and GUID bit enabled for the test, let’s use grep command to get everything related to semaphore.
+AwesomeJ, I got a script at this path /usr/local/bin/numpties.sh; let’s open it with cat command.
+After reading it, I conclude that the cronjob will add the SUID bit to semaphore and also give root ownership to this file if the file exists.
+
+No wonder, if I replace the original semaphore by the fake semaphore file then our fake file will get SUID permission. So in our local we write a C-program to get bsah shell and compile it.
+
+ 
+Since we have complied file semaphores and also running python server therefore let’s download our fake semaphore at the place of original semaphores. Thus first I removed original semaphores and download complied file in same directory.
+After sometime when I checked the permission for the new semaphore I found the SUID bit was on. At that moment you should run the script which will give root terminal after getting executed and then look for flag inside /root directory.
+
+This was not actual the flag let’s try to get the original flag 
+So on………… and at last you will get /ariston which holding a zip file “TeuchterESX.zip”.
+cd ariston
+
+Again run following command in current directory to transfer zip file.
+
+Now download TeuchterESX.zip file in local machine and unzip it.
+
+We  got a vmdk file and further ran following command to check list of present drive for mounting disk image.
+Here we saw /dev/sdb1 which looks good mounting disk image thus I install the vmfs-tools package.
+
+So we have used vmfs-fuse to mount the drive and execute following commands:
+In this text messages the author had given hint to check ISO for getting the password which is related to TV advert and it’s of 25 character.
+
+So we mount the new folder /redkola.iso where we found an image file glass_ch.jpg with help of following command:
+
+Further we opened the image “glass_ch.jpg” and it was a picture of Irn-Bru soft-drinks. Probably there could be chances of hidden text in this image therefore we tried steghide to extract out hidden text but when I execute following command it ask to enter some passphrase which we don’t know yet and it should above said 25 character which we need to be found.
+steghide extract -sf glass_ch.jpg -xf /root/Desktop/finalflag.txt
+
+Taking help of above hint and image I search Irn-bru-wiki and got this link https://en.wikipedia.org/wiki/Irn-Bru
+And after spending a long time over wiki I got 25 character in ‘madeinscotlandfromgirders’, which was Irn-Bru advertising slogan and tried it as passphrase.
+
+We entered above passphrase and extracted the text file on the desktop.
+
+Congrats!! Finally we got the final flag.txt file as shown below.
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

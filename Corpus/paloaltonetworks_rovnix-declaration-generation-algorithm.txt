@@ -1,0 +1,29 @@
+Rovnix and the Declaration Generation Algorithm
+
+Since the success of Conficker in 2008, multiple malware families have started using Domain Generation Algorithms (DGAs) to make their command and control infrastructure more resilient to take-down. By generating new domains every day, the attacker can re-capture their botnet even if one of the command and control domains is taken down or if security teams block access to them. Most DGAs create new domains somewhat randomly based on the day, month and year, along with some predefined inputs that allow the attacker to predict which domain the malware will use on a particular day. On October 9, CSIS published a blog on the latest version of Rovnix, which appears to use the text of the US Declaration of Independence as an input to its DGA.
+While we haven’t reverse-engineered the DGA yet, this tactic caught our attention because the malware does not include the text of the declaration within it, but pulls the text from a well-known source at constitution.org: http://www.constitution.org/usdeclar.txt
+This text does not appear to be in control of the attacker, and if the owners of the website (The Constitution Society) were to change the content it would disrupt the DGA. Additionally, HTTP requests for this URL are now a potential indicator of a malware infection within a network (unless your company is filled with constitutional scholars). CSIS reported that this attack was targeting European organizations in June, so we checked our WildFire analysis system for malware which had downloaded the text from the constitution.org website this year. Between March and September WildFire picked up a total of 279 distinct samples that contacted the URL in question. Here’s how it breaks down by month:
+
+The attack started slowly in March with just a few unique samples and targets, but it quickly picked up in June and July with well over 10,000 sessions each month. The vast majority of these were e-mail based attacks using Polish language themes related to invoices (Faktura in Polish).
+The domains that result from the “declaration generation algorithm” contain small snippets of the declaration’s text melded together followed by one of the following top-level-domains:
+
+.com
+.eu
+.net
+.cn
+.ru
+.su
+.biz
+
+Here are just a few examples of the domains we picked up in WildFire:
+
+kingwhichtotallyadminis.biz
+thareplunjudiciary.net
+townsunalienable.net
+taxeslawsmockhigh.net
+transientperfidythe.biz
+inhabitantslaindourmock.cn
+thworldthesuffer.biz
+
+Compared to typical DGA domains, these read like poetry. Unfortunately, as CSIS noted in their blog and as the chart above illustrates, the latest Rovnix version has stopped using this DGA and is now using a fixed-domain for command and control. Fortunately, WildFire is already detecting the latest variants as malware and is still protecting Palo Alto Networks customers from this threat.
+

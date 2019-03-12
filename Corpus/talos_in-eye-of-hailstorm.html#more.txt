@@ -1,0 +1,173 @@
+
+In the Eye of the Hailstorm
+
+
+This blog post was authored by Jakob Dohrmann, David Rodriguez, and Jaeson Schultz.
+
+The Cisco Talos and Umbrella research teams are deploying a distributed hailstorm detection system which brings together machine learning, stream processing of DNS requests and the curated Talos email corpus. 
+
+Talos has discussed snowshoe spam before. Traditional snowshoe spam campaigns are sent from a large number of IP addresses, and a low volume of spam email per IP address. Using such techniques, snowshoe spammers intend to fly under the radar with respect to any reputation or volume-based metrics that could be applied by anti-spam systems. This post concerns "hailstorm" spam. Hailstorm spam is an evolution of snowshoe spam. Both snowshoe and hailstorm spam are sent using a large number of sender IP addresses, but unlike snowshoe spam, hailstorm campaigns are sent out in very high volume over a short timespan. In fact, some hailstorm spam attacks end just around the time the fastest traditional anti-spam defenses can update in response.
+
+The images below, taken from Umbrella Investigate, nicely illustrate the difference between a typical snowshoe spam campaign versus a typical hailstorm spam campaign. The top image below illustrates what the DNS query volume looks like for a domain involved in a typical snowshoe attack. Note the maximum query rate is only 35 queries per hour for the snowshoe domain example. The bottom graph, in contrast, shows the DNS query volume for a domain involved in a typical hailstorm attack. In this graph, there is practically no query volume until suddenly when the DNS query volume spikes to over 75K queries per hour, then drops back down to nothing.
+
+
+
+Typical DNS query volume patterns for traditional snowshoe spam (top) vs. hailstorm spam (bottom).
+
+
+Hailstorm spam is being sent from IP addresses located all around the globe. Looking at the geo-ip distribution from recent hailstorm spam campaigns, the US, Germany, Netherlands, Great Britain and Russia lead the pack in terms of volume of hailstorm spam sent by country. Hailstorm spam also involves domains registered at a wide array of Top Level Domains (TLDs). In a recent sample of ~500 hailstorm-related domains, the most common TLDs were .top, .bid, .us, .win and .stream. 
+
+
+Affiliate programs and sponsored links
+
+Most of the campaigns we initially detected advertise products comprising home-surveillance systems, flashlights, dietary supplements and all sorts of items "as seen on TV". Services as diverse as bathroom remodeling, online degrees and psychic readings are common as well. Below is an example of a typical affiliate offer, sent using hailstorm techniques. This particular hailstorm campaign was advertising dietary supplements. Links in the original email are redirected several times before reaching the landing page, which in turn links to an order form on an affiliate page. URL parameters containing recipient IDs, or any other Personally Identifiable Information (PII) have been redacted to protect the innocent.
+
+
+
+Email From: ultratrim350@secretaryship.coisow.us
+Contained links are of the form:
+  http://<subdomain>.coisow.us/about/us/<redacted> 
+These links are redirected several times, hitting domains such as lbmcgroup.com, trackwebly.com, trackwb.com, atomtrk.com, ecptrx.com, ih-trk.com.
+
+
+
+
+
+Landing page:
+http://fitnessandenergytips.com/diet/weightlosssecret/index.php?<redacted>
+This page contains multiple links to an external order form (see below).
+
+
+
+
+
+Order form:
+https://getultratrim350.com/lp/bellymelt-p/index.php?<redacted>
+In addition to the order form, this page contains a link to an affiliate sign-up page (see below).
+
+
+
+
+
+Sign-up page: 
+http://affiliates.ih-supplies.com/affiliate_signup.aspx
+The base ih-supplies.com domain itself leads to a landing page for parked domains on GoDaddy.com.
+
+
+
+The domains seen above are all registered using whois privacy services. The only exception is the domain used in the From header, coisow.us. That domain is registered by wireclick.tech@gmail.com, which in turn is associated with hundreds of other domains involved in similar spam campaigns.
+
+Another typical amortization scheme is to generate traffic on sponsored links. Below is an example of such a hailstorm spam campaign message, along with the corresponding landing page. Similar to our first example, these spammers are lazy and have terrible Operational Security (OPSEC). In this case, the domain used in the From address (babyfirstgames.com) is registered to an email associated with a number of other domains participating in hailstorm spam campaigns.
+
+
+
+
+
+
+
+Email From: jonathon.hinton@babyfirstgames.com
+Contained links are of the form:
+  http://www.babyfirstgames.com/<redacted>
+The link is redirected several times.
+
+
+
+
+
+Landing page:
+  http://ww1.cfcc.emazingsavingsnow.com/?<redacted>
+The links generally lead to legitimate businesses and vendors that are not themselves involved in the scheme.
+
+The following examples of From and Subject headers highlight the type of content observed in recent hailstorm spam campaigns:
+
+
+
+From:     Fresh Tax Relief <freshtaxrelief@chemiluminescent.duzeo.us>
+
+From:     Healthy baby formula <Healthybabyformula@crewgraphics.stream>
+
+From:     VOIP Phone System Options <voipphonesystemoptions@wait.cotib.us>
+
+From:     Own Star Night Laser <ownstarnightlaser@lanight.bid>
+
+From:     Match.com Partner <Match.comPartner@meterdown.top>
+
+From:     Caribbean Cruise Options <caribbean_cruise_options@firstthirteen.faith>
+
+From:     Costco Rewards Giveaway <CostcoRewardsGiveaway@horithms.stream>
+
+From:     Business Internet Service <BusinessInternetService@chineral.stream>
+
+From:     Paleo Secret <paleosecret@eumidnight.top>
+
+From:     Hybrid Cars <HybridCars@carhibrid.us>
+
+Subject:     Toss Your Alkaline Water Down the Drain
+
+Subject:     Government Overrun: 75% off "Super Flashlight"
+
+Subject:     Insanely Bright Military Headlight Just Released To The Public
+
+Subject:     Watch: How To Restore Bladder Control Naturally
+
+Subject:     Is Trump for real? Can he really make average Americans RICH?
+
+Subject: Cures to to the new blood sugar problems!
+
+Subject: Meet Lonesome Wives Home Alone ... and Waiting (Mature Content)
+
+Subject: You may have heard of folks making money over the internet?
+
+Subject: Numerology Reading...
+
+Subject: World's FASTEST Mobile HyperCharger - Period!
+
+
+While these campaigns are generally more of a nuisance rather than a threat, it goes without saying that clicking spam-distributed links is risky on several fronts. Drive-by downloads are as much a possibility as Business Email Compromise, fraud and identity theft, should any personal or financial information be disclosed by a recipient.
+
+
+Malware and phish
+
+As expected for any method that proves effective in raising the rate of successful delivery, hailstorm campaigns are used for much more damaging purposes than generating traffic to affiliate pages. Hailstorm tactics are also used by botnets like Necurs to spread malware. Below is an example of a malicious email message sent out via a hailstorm campaign.
+
+
+
+
+
+The message claims to be generated in response to a complaint filed with the United Kingdom's Companies House and tries to lure the recipient into opening an attached word document. The From address of the message is noreply@companieshouses.com while the legitimate government agency has their web presence at companieshouse.gov.uk. The attached Complaint.doc (SHA256: 985e9f4c5a49e26782141c7cd8f4ce87b0e0a026d078b67b006e17e12f9eb407) contains a macro that downloads and executes a Dyre/TheTrick Banking Trojan.
+
+As in previous examples, the registrant of the sending domain, workorders@pesiec.com, is associated with a number of other domains that are used in similar fashion.
+
+This hailstorm malware campaign shares many similarities with the first two examples, such as delivery of the whole campaign in a very short burst and the suspicious registrant, among others. Yet, there are also some significant differences from typical hailstorm spam campaigns: The messages are sent from a wider range of IPs, including addresses that do not resolve to the domain used in the From header. The message is more in line with traditional spam and bot behavior.
+
+The DNS Layer
+
+Hailstorm campaigns are correlated with bursts in DNS queries with an intensity of 9,000+ queries per hour at their peak(s). The initial spike in a hailstorm campaign stems from mail server activity caused by an influx of emails. One way to understand the life cycle of a hailstorm campaign is to look at how many mail servers are targeted with a given domain. Below, we compare three hailstorm domains and the fraction of mail servers that have been hit. We characterize the hailstorm campaign by contrasting the peak queries per hour (i.e. the largest spike in query volume) with the percent of the mail servers receiving hailstorm spam from each domain.
+Domain                      Peak queries/hour   % of mail servers hit
+
+cooperindustries.space                  8,049                  0.381%
+pourdra.top                            23,790                  3.457%
+cmobi.stream                          106,590                  4.013%
+
+In these few concrete examples we can glean clues about the magnitude and breadth of hailstorm campaigns. The data suggest a weak correlation between the size of a campaign and the probability of being targeted. Since these are just three data points from our pool of domains, we are not drawing too many conclusions.
+
+If we compare the distribution of mail servers targeted from a sample of 475 hailstorm domains hitting mail servers with an average of 9332 peak queries/hr we can see significantly more mailservers are being targeted inside the USA versus the rest of the world.
+Geographic Distribution
+Percent Mail-Servers Hit
+
+USA
+2.586%
+
+non-USA
+0.840%
+
+From the data above, we conclude that the majority of targets reside within the USA. This might be due to language preferences, amortization infrastructure, target audience or other reasons related to the spammers' workflow.
+
+
+Protection from the Storm
+
+In this collaboration, the Cisco Talos and Umbrella research teams have created a system that facilitates fast evaluation and conviction of in-the-wild hailstorm domains, then proceeds to gather predictive insights into other domains that are likely going to be used in future campaigns. As such, the system is fast in protecting customers at time-of-click in case a hailstorm message reaches an inbox. More importantly, the predictive nature of the system directly counters the hallmark of hailstorm campaigns: their rapid execution. Rather than waiting for a campaign to unfold and trying to catch up, protection against the next spam campaign is deployed ahead of time.
+
+As outlined in the examples, hailstorm comes in several flavors. We expect to see it evolve over time as anti-spam systems make it harder and harder for spammers to deliver their payload. The collaboration between Talos and Umbrella, matching spam activity and DNS traffic, enables us to quickly adapt and protect against the ever changing threat-landscape.
+
+

@@ -1,0 +1,112 @@
+Exploring the Cybercrime Underground: Part 3 – Into the RAT Nest
+
+In this third part of Unit 42’s Cybercrime Underground blog series, we’re taking a slightly different approach. In this blog we begin with data from a real attack in the wild, and use the evidence from that attack to make a connection back to underground forums and the actors who are using them.
+Rather than starting from an attack we had already explored, we looked into a third-party research report linking an Adwind malware sample to a specific command and control (C2) domain and loosely associating a number of other domains.
+Using Autofocus, we found an additional dozen samples on the same C2 – almost all of which were instead the LuminosityLink Remote Access Tool (RAT) – itself the subject of a recent Unit 42 report. RATs, Remote Access Tools, are sometimes defended as legitimate utilities but in fact are most typically used for illegitimate, unauthorized access, to control malware-infected systems. From there we dived into associated infrastructure, and underground forums, to see what connections we might find.
+Linking Command and Control Infrastructure
+We identified five further C2 domains contextually linked with the same naming scheme as the noted Adwind sample, but using different Dynamic DNS root domains. These led us further to additional IP addresses, themselves associated with other known malware C2s. Of immediate interest, not only were these C2s linked, but almost every C2 observed currently resolving to those IP addresses all appeared to be using similar dynamic DNS services.
+Figure 1 shows the cluster of Dynamic DNS C2s (right) resolving to the IP addresses associated with the initial C2 investigation (left). We found several thousand files in Autofocus that connected to this infrastructure – every one of them malware.
+
+Figure 1 Dynamic DNS domains and IP clusters
+The linked C2 domains include a handful of first-party and apparently-compromised domains, but are predominantly dynamic DNS. These dynamic DNS providers include abused, legitimate commercial services (e.g. NoIP, DynDNS), and what appears to be purposely-misleading and/or underground services (such as alcatelupd[.]xyz, appleupdate[.]xyz, fagdns[.]net) (Figure 2).
+The malware we observed on this infrastructure was almost uniquely commodity RATs including DarkComet, DarkTrack, LuminosityLink, NJRAT, ImminentMonitor, NanoCore, Orcus, NetWireRAT, BabylonRAT, Remcos, ZyklonHTTP, SandroRAT, RevengeRAT, SpyNote, QuasarRAT, and HWorm.
+
+Figure 2 Dynamic DNS including legitimate providers and deliberately misleading base domains
+Abusing legitimate dynamic DNS providers gives the actors a quick, easy, and reliable service – but with the risk of rapid takedown of their infrastructure if abuse is detected by or reported to the dynamic DNS provider. This has created a marketplace for shady home-grown dynamic DNS services which advertise on underground forums that they ignore such abuse. Figure 3 is an example of an underground forum member recommending such a service, over that of a legitimate commercial one.
+
+Figure 3 Recommending an Underground service over a legitimate commercial one.
+We observed clusters of such hosts contextually-linked across multiple domains, for example:
+
+
+
+
+amanghacker123.no-ip[.]biz
+amangkirkuki12.ddns[.]net
+
+dellboy27.eating-organic[.]net
+dellboy12.ditchyourip[.]com
+dellboy22.couchpotatofries[.]org
+
+indablood.ignorelist[.]com
+indahood.dynapoint[.]pw
+indablood.chickenkiller[.]com
+
+jmcoru.appleupdate[.]xyz
+jmcoru.ddns[.]net 
+jmcoru2.fagdns[.]com
+jmcoru2.appleupdate[.]xyz
+jmcoru.alcatelupd[.]xyz
+jmcoru.fagdns[.]com
+
+machination.duia[.]in
+machination.xinvasion[.]xyz
+machination.dynu[.]com
+machination.xresurrection[.]xyz
+machination.fishdns[.]com
+
+nn12.chickenkiller[.]com
+nn12.fagdns[.]com
+nn12.fishdns[.]com
+
+
+
+
+123456789101112131415161718192021222324252627
+
+amanghacker123.no-ip[.]bizamangkirkuki12.ddns[.]net dellboy27.eating-organic[.]netdellboy12.ditchyourip[.]comdellboy22.couchpotatofries[.]org indablood.ignorelist[.]comindahood.dynapoint[.]pwindablood.chickenkiller[.]com jmcoru.appleupdate[.]xyzjmcoru.ddns[.]net jmcoru2.fagdns[.]comjmcoru2.appleupdate[.]xyzjmcoru.alcatelupd[.]xyzjmcoru.fagdns[.]com machination.duia[.]inmachination.xinvasion[.]xyzmachination.dynu[.]commachination.xresurrection[.]xyzmachination.fishdns[.]com nn12.chickenkiller[.]comnn12.fagdns[.]comnn12.fishdns[.]com
+
+
+
+
+
+This not only groups activity, but suggests multiple actors are using this infrastructure. Several of those hosts were observed sharing multiple IP addresses already identified in this cluster, further linking the activity. Additionally, this expands on prior Unit 42 research into the LuminosityLink RAT, corroborating those C2s and contributing to further context on them.
+Marketplace
+The next question is, who is operating these dynamic DNS services, and where are they selling them. Using open source data and information from underground forums, we are able to connect some of these dots.
+A Swede in his 30s, Gustaf, runs “ra4wvpn”, which offers domains, hosting, and a VPN service.
+John, “Armada”, a Canadian also in his 30s and one of the persons behind the Orcus RAT (subject of another recent Unit 42 report) owns several of the C2 root domains and offers a paid DNS service advertised on underground forums.
+“LaPanthere” runs fagdns. He insists that his service does not tolerate abuse (despite the context of where the service is advertised). His ISP suspended fagdns[.]com for abuse, he returned with fagdns[.]su registered elsewhere – but his reputation took a hit as he now appears somewhat gun shy:
+And other underground providers face a similar fate – Punkbastard’s free service was discontinued when his domain was suspended by his provider, for abuse:
+
+Although LaPanthere advertises his service on an underground cybercrime forum, he protests that his service is legitimate – and suggests that those interested in illegal activities might want to consider the paid service of the Canadian, Armada, with a helpful flow chart:
+
+The domains of just two of these dynamic DNS providers alone are contacted by almost 3000 unique malware samples identified in our Autofocus service. As well as providers advertising their services on the underground forums, other forum members author advice and step-by-step tutorials, assisting technically unsophisticated miscreants in setting up their RAT systems. More details on this topic were covered in part two of this series. The below figures corroborate how threat actors collaborate in such forums by sharing attack methodologies and also buying and selling such services.
+
+
+
+
+
+ 
+
+Several forum actors offer complete setup services, at fairly low prices:
+
+Attribution
+We observed malware using the same C2 that originated this investigation being spread in email attacks. These appeared to be high-volume and indiscriminate, including both corporate targets and free-email-service addresses. Each email was sent to 16 recipients; the recipient list throughout the campaigns incrementing alphabetically, suggesting strongly they are simply parsing a huge email address database.
+We observed these emails sent from an email address at a legitimate Nigerian commercial organization – confirmed by its Nigerian IP address to be the actual originating domain, and not spoofed. The attacks leveraged content and filenames referencing that organization. This is most likely explained by either a compromised account or system, or possibly an insider. In other words, this is likely an example of true Business Email Compromise (BEC) as opposed to the less sophisticated, trickery-only Business Email Spoofing (BES).
+We noted a domain using the same naming pattern as the C2 in the original report registered for a few days in 2015, before being suspended for abuse. The WHOIS was apparently false, but with some interesting links:
+Registrant Name: Roger Lougheed
+Registrant Street: 200 Florida Ave Tavernier, FL 33070
+Registrant City: Tavernier
+Registrant State/Province: Florida
+Registrant Postal Code: 33070
+Registrant Country: Nigeria
+Registrant Phone: +1.3128699324
+Registrant Email: jmcoru@yahoo.com
+As well as another Nigerian reference, the registrant email address resolves to the Skype account “mikescotoru1”. This handle is found at a handful of coding/malware forums. Dropping the “1”, “mikescotoru” is found at other underground forums, including some very contextual links:
+
+Further posts suggest a rather unsophisticated user, asking very basic questions, and purchasing the pieces for his campaigns. The handle “jmcoru” is less unique, but also found on various underground hacking and website hosting forums.
+Conclusion
+Starting from a third party’s research report, we were able to use Autofocus and open-source intelligence to connect a real world attack to a series of actors operating malicious Dynamic DNS services and offering training and tools to help unskilled actors launch these attacks.
+The original report suggested that this was “a wave of persistent attacks against a number of commercial and non-commercial organizations”, characterized the observed activity as “refined APT campaigns”, and went on to conclude that that this was part of “small-scale, targeted attacks with small infrastructure”.
+Through our research, we instead understand that this specific malware was spread by an unskilled, opportunistic, financially-motivated Nigerian criminal. When we inspected email-borne attacks for samples on the original C2, the recipients more closely resembled indiscriminate, wide-scale targets.
+The infrastructure further led us away from attribution of this as APT activity, instead revealing low-sophistication “service providers” on underground forums, sharing of best practices and tutorials among script kiddies, and end-to-end full-service operations providing entire RAT system setups for even the least capable aspiring cyber criminal.
+Thanks to Brandon Levene and Jeff White for assistance in reviewing unknown malware seen on this infrastructure.
+IOCs
+As well as specific C2 host names / IPs, we also identified multiple malicious DNS providers / domains with multiple C2s.
+Palo Alto Networks customers are protected from this threat in the following ways:
+
+WildFire accurately identifies all malware samples using this infrastructure as malicious.
+C2s and malicious Dynamic DNS provider domains identified in this investigation are flagged as malicious by Threat Prevention.
+AutoFocus users can view malware using known malicious Dynamic DNS providers using the “AbusedDynamicDNSProvider” tag.
+
+You can download a copy of associated IoCs here.
+

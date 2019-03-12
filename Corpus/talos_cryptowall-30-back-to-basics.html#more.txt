@@ -1,0 +1,140 @@
+
+Cryptowall 3.0: Back to the Basics
+
+
+This post was authored by Andrea Allievi  & Earl Carter
+
+Ransomware continues to impact a large number of organizations and the malware continues to evolve. In January, we examined Cryptowall 2.0 and highlighted new features incorporated into the dropper and Cryptowall binary. When Cryptowall 3.0 appeared, we were interested in seeing what new functionality was incorporated into this latest variant in the Cryptowall series.
+
+The latest 3.0 sample that we analyzed was in a zip file. This zip file contains multiple dropper files which are essentially identical in functionality except for the encryption algorithm used to obfuscate the dropper and eventually build the Cryptowall 3.0 binary.
+
+Similar to the 2.0 version, the dropper is encrypted with a custom algorithm three times, but that is where the similarities end. In the 3.0 sample that we analyzed, the following dropper features (which we identified as being operational in version 2.0) have been removed:
+
+Switching between 32 and 64 bit operation
+Employing multiple exploits in the dropper
+Anti-VM check to prevent running in virtual environment
+
+
+Examining the dropper in the 3.0 sample indicates that it includes a lot of useless API calls and dead code. Apparently the dropper for this version of Cryptowall has been streamlined. The lack of any exploits in the dropper seems to indicate that the malware authors are focusing more on using exploit kits as an attack vector, since the exploit kit’s functionality could be used to gain privilege escalation on the system. Without privilege escalation, attempting to turn off many enabled security features on the system is likely to fail.
+
+
+Constructing the Unencrypted Cryptowall Binary
+
+During the first decryption stage, the dropper reads its encrypted code, decrypts and stores it at RVA 0x1B9E0A0 (in the data section). The second stage decryption code begins by locating the byte pattern  (0x35, 0x5e, 0x74) inside its “.data” section. Once this location is identified, it starts decrypting the data following that marker directly onto the stack. Finally, the third stage begins by transferring execution to the unencrypted code that was placed on the stack. During this third stage, the code builds the small IAT (more or less 30 APIs) that is needed to extract and decrypt the BASE64-encoded resource (ID 62) placed inside the “Message Tables” group. The resource is decoded and then decrypted. The decrypted resource is a file that contains the last encryption stage code.
+
+The last stage builds another IAT, cycles between all running processes trying to find out if its own process name is “perl.exe” or “python.exe”. If the check indicates that the parent process name is “perl.exe” or “python.exe”, then the program runs the following endless loop and never runs the Cryptowall 3.0 code.
+
+
+
+If the parent process is not “perl.exe” of “python.exe”, the encrypted code inside the resource (that is actual a PE file) is decrypted into an external buffer; a process is created in a suspended state (backed by the original packed executable) and the same trick used in the CryptoWall 2.0 is employed to inject the clean PE inside the suspended process (ZwUnmapViewOfSection / VirtualAllocEx / WriteProcessMemory). Finally the execution control is released to the clean CryptoWall 3.0 Code.
+
+
+Cryptowall 3.0 Analysis
+
+The CryptoWall 3.0 initialization code is the same as the previous version of the infection: a big IAT is built and the code is injected in a new spawned “explorer.exe”. The code located in the “explorer.exe” process installs Cryptowall 3.0 in the target system in exactly the same manner as the previous version (“Run” / “RunOnce” registry keys and “Startup” start menu folder). Finally all the system protections (and all System volume shadow images) are disabled and the code is injected in a new spawned “svchost.exe” process.
+
+
+Main SVCHOST Code
+
+The code injected inside the “Svchost.exe” process implements the main malware functionality. It starts building the large IAT and creating the main event. Cryptowall 3.0 acquires a lot of system information (like the computer name, main processor speed and type, and so on…) and generates a global MD5 used as Victim ID. One of the new feature of CryptoWall 3.0 is the usage of I2P network. The dropper generates its I2P network proxy and Url lists. In the dropper we have analysed, we found the following I2P CryptoWall Urls:
+
+proxy1-1-1.i2p
+proxy2-2-2.i2p
+proxy3-3-3.i2p
+proxy4-4-4.i2p
+proxy5-5-5.i2p
+
+Cryptowall registers the victim workstation to its Command & Control server: a request string is generated in the following format:
+
+{<Request ID>|crypt1|<Victim PC MD5>|<OS Ver Index>..||External Ip Address}
+
+To obtain the external Ip Address, Cryptowall 3.0 uses the same algorithm seen in its previous version. This string is encoded for the I2P network, and it is sent through an I2P Proxy. The included I2P proxy list contains the following addresses:
+
+91.121.12.127:4141
+5.199.165.160:8080
+94.247.28.26:2525
+194.58.109.158:2525
+195.29.106.157:4444
+94.247.31.19:8080
+194.58.109.137:3435
+94.247.28.156:8081
+209.148.85.151:8080
+
+Here is an example of Cryptowall Command & Control server registration string with a request ID of 1:
+
+{1|crypt1|9831374BF569D58A8BED493DF407F4EF|5|1|2||5.170.247.119}
+
+The CryptoWall 3.0 dropper tests each Proxy address, searching for the live ones. The connection will be established to the target I2P Url through the chosen proxy. A POST request is made, containing the encoded request string. The Command & Control server answers with a 3 digit ID. The ID is verified, and if all has gone fine, the dropper spawns the Main CryptoWall Thread.
+
+
+
+
+The Main Cryptowall Thread
+
+The main CryptoWall thread initializes the Windows Crypto functions and creates the main registry key: “HKCU\<Victim Pc MD5>”. It tries to acquire the Public key for the later files encryption, using another well-formed Command & Control Message (ID 7):
+
+{7|crypt1|<Victim PC MD5>|1}
+
+The Received public key is verified and imported in the Windows Cryptographic Provider using the “CryptImportPublicKeyInfo” API. The text version of the public key is stored in the registry, by a registry value name generated by a Cryptowall routine, using index 2 (the actual value name is calculated starting from the Victim PC MD5). The hash of the public key is used by the bad guys to generate the “User personal code”.
+
+The hash of the public key is also calculated and used to retrieve the CryptoWall PNG wallpaper, and to compile the “Decrypt Instruction” files. These instructions are based on the geolocation of the hosts IP address. This means that the instructions should hopefully appear in the native language of the user of the computer.
+
+When the PNG Wallpaper has been correctly downloaded, it is stored in the registry value with index 5. Even the decrypt instructions files are generated and saved on disk.
+
+Finally the code cycles between all the mounted volumes (obtained using “GetLogicalDriveStrings” API), and spawn one CryptoWall Encryption thread for each volume that is not an optical drive.
+
+
+IOCs
+
+Cryptowall 3.0.zip hash -
+(sha256: 838e19ff3f52952c292f945054520eb5707c80a389b1f88770b1ccc09f966c65).
+
+Dropper 1 hash -
+(sha256: 9e06d2ce0741e039311261acc3d3acbaba12e02af8a8f163be926ca90230fa89)
+
+Dropper 2 hash -
+(sha256: 55e866cc8580e5f9f7f6560e478f3b37b3362e9f94e88439beef6026c86c80be)
+
+Dropper 3 hash -
+(sha256: 45317968759d3e37282ceb75149f627d648534c5b4685f6da3966d8f6fca662d)
+
+I2P Proxy Addresses:
+
+91.121.12.127:4141
+5.199.165.160:8080
+94.247.28.26:2525
+194.58.109.158:2525
+195.29.106.157:4444
+94.247.31.19:8080
+194.58.109.137:3435
+94.247.28.156:8081
+209.148.85.151:8080
+
+
+Conclusion
+
+The dropper we analyzed is much more streamlined in functionality. Many of the dropper features deployed in Cryptowall 2.0 are no longer present in the 3.0 sample. New functionality has also been added, such as incorporating I2P network communication. Ransomware variants continue to try to improve the stealth of their network communications using networks such as TOR and I2P.
+
+Identifying and stopping ransomware variants definitely requires a layered security approach. Breaking any step in the attack chain will successfully prevent this attack. Therefore, blocking the initial phishing emails, blocking network connections to known malicious content, as well as stopping malicious process activity are critical to combating ransomware and preventing it from holding your data hostage.
+
+Establishing a solid backup and restore policy is also crucial to overcoming attacks to your data, whether they occur from natural disasters, such as a storm, or whether they occur from a malicious attack across the network.  Many companies believed they had a solid backup plan only to find the malware encrypted the backup to prevent them from restoring any data. It is imperative to adhere to industry wide best practices which include making sure that you backup copies are safe from both physical destruction, as well as corruption from viruses and other malicious software.
+
+
+Protecting Users from These Threats
+
+
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites used in these types of attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block spear phishing emails sent by threat actors as part of their campaign.
+
+
+

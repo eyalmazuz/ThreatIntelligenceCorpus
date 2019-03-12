@@ -1,0 +1,52 @@
+
+Hack the W1R3S.inc VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as W1R3S.inc. The credit for making this vm machine goes to “SpecterWires” and it is another capture the flag challenge in which our goal is to gain root access and capture the flag to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let’s start from getting to know the IP of VM (Here, I have it at 192.168.1.106 but you will have to find your own)
+netdiscover
+
+Now let’s move towards enumeration in context to identify running services and open of victim’s machine by using the most popular tool Nmap.
+nmap -p- -A 192.168.1.106 –open
+Awesome!! Nmap has done remarkable job by dumbing the details of services running on open port 21, 22 and 80.
+
+Knowing port 80 is open in victim’s network I preferred to explore his IP in browser but didn’t get any clue on its home page for next step.
+
+Next we use dirb  tool of kali to enumerate the directories and found some important directories such as /administrator /installation and /wordpress /
+dirb http://192.168.1.106 /
+
+So next I decided to explore http://192.168.1.106/administrator/installation through browser URL and received installation page as shown in given below image. Moreover noticed that the author has used Cuppa CMS.
+
+With the help of Google I check out for any exploit related to cuppa CMS. And from Google search result, I found exploit 25971 in its first link.
+
+This exploit was pointing toward Cuppa CMS File Inclusion vulnerability. The exploit having hint for exploiting LFI or RFI vulnerability, taking let help from highlighted hint let’s try to exploit our victim.
+
+According to our condition we need to paste malicious code in URL as http:192.168.1.106 /administrator/alerts/alertConfigField.php?urlConfig=../../../../../../../../../etc/passwd for exploiting lfi vulnerability.
+Sadly!! Again didn’t get anything accept following blank page of configuration.
+
+After wasting a lot of time on browser I decided to use curl for exploiting LFI vulnerability for obtaining etc/password file.
+curl -s –data-urlencode urlConfig=../../../../../../../../../etc/passwd http://192.168.1.106/administrator/alerts/alertConfigField.php
+When I executed above command for exploring etc/password file, it successfully work and I found first username “w1r3s”.
+
+Then again I executed below command for obtaining password file by using same process.
+curl -s –data-urlencode urlConfig=../../../../../../../../../etc/shadow http://192.168.1.106/administrator/alerts/alertConfigField.php
+Successfully I found salt password of user w1r3s as shown in given below image. Then I copied this password in a text file as pass.txt for cracking it with john the ripper.
+
+Next I had used john the ripper for cracking pass.txt and from given below image you can observe the highlighted text “computer” as plain text password.
+Hence we found username: w1r3s and password: computer
+
+If you remember the output result of nmap then it was showing port 22 is open for SSH. We had also grabbed the username and password, now without wasting timing let login into SSH using above credential username: w1r3s and password: computer.
+ssh wlr3s@192.168.1.106
+Wonderful!! We have successfully access PTs shell through SSH of victims system.
+id 
+lsb_release -a
+
+Since author has given two the challenges i.e. (i) take root access (ii) capture the Flag.
+Let’s take root access through sudo -i command as shown in below image.
+Congratulation!! We got root login successfully.
+For capturing flag I look into all directories and found flag.txt file. With help of cat command I successfully captured the flag and complete the all challenges of this vm.
+ls-la
+cat flag.txt 
+Solving challenge in this lab is not that much hectic therefore it is good task for beginners.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

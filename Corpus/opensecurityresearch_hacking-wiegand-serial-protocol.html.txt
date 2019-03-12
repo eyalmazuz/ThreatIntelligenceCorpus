@@ -1,0 +1,50 @@
+
+Hacking the Wiegand Serial Protocol
+
+
+By Brad Antoniewicz.
+
+
+
+
+
+"Wiegand" is used to describe a number of different things used within access control systems such as the format in which data is stored on a card, the protocol which is used to transmit the data, and different types of access cards that leverage it. In this blog post we'll focus on targeting the serial protocol while touching on some of the other uses. You'll find Wiegand used in magnetic strip, RFID (proximity card), and various other access card systems
+
+I originally came across Wiegand as part of my Attacking Proximity Card Access Systems talk where I demonstrated attacks against each of the components involved in access control systems. Later on someone told me about Zac Franken, who created Gecko, a sort of Wiegand man in the middle tool. This blog post will implement and expand on Franken's tool using an Arudino.
+On the Wire
+
+Wiegand is used to transmit data from the access card reader to the backend controller for processing. It's a super simple protocol consisting of two wires: DATA0 and DATA1. When the reader wants to send a zero, it lowers DATA0 and whenever it wants to send a one it lowers DATA1. Here's what it looks like within an logic analyzer. I've written the one's and zero's in green and translated them to the card values printed on the back of a proximity card.
+
+
+Accessing
+
+In a non-lab environment the wires are physically accessible anywhere between the reader and the controller. For a completely unauthenticated user, the easiest way is to pop off the cover of the reader which will expose the two screws. Remove the screws, pull the reader away from the wall, and you'll be able to access the wires. They're usually colored green for DATA0 and white for DATA1. You can also use the power wires (red and black) to power your Arduino.
+
+
+Capturing Card Values (Skimming)
+
+The first attack that's possible is to capture valid card values as they're being transmitted. The values can then be stored on a memory card off the Arudino or even transmitted wirelessly. The Gecko tool skimmed card values, then when a special replay card was provided, it would repeat a stored card value to the controller. 
+
+The Arduino code to implement this is pretty simple. Mike Cook created some basic code that places an interrupt on the wires, so when there is a change, the interrupt function will be called. I leveraged this technique in my Arduino code too. The skimmed card values are sent via the Arduino's serial interface. 
+
+The Skimmer is implemented in the emulator code in the next section.
+Emulating Card Values
+Something that's obvious but for some reason overlooked is that with direct access to the Wiegand interface, you can bypass all reader-level security. For instance, there are certain proximity cards that implement RFID authentication, encryption, and replay protection. In most cases this security is in place to protect the card value stored on the card. If you can somehow obtain a card value, it can be replayed via wiegand without ever considering the reader to human interface. This even extends to biometrics. 
+
+Furthermore, if you add a wireless component to your Arudino setup, you can wirelessly provide those card values. Here's the code:
+Arduino Wiegand Skimmer and Emulator
+Brute Forcing Values
+
+Another interesting idea is brute forcing values. There may be times that you have a valid (or once valid) card value and you need a card value with higher privileges (e.g. access to restricted areas). Due to the way certain card formats (e.g. 26-bit format) distribute card values, with knowledge of one card, you could determine other card values with a simple incremental brute force. This technique can be also be applied to the reader interface, but because of the delay between reads, you can only get about one read a second. Using the Weigand interface, you can get 5!
+
+Here's the code:
+Arduino Wiegand BruteForcer
+Fuzzing!
+Don't forget that both the controller and the backend system process the values received via Wiegand. This gives us two potential targets to fuzz. Although the test cases are pretty limited: length, raising DATA0 and DATA1 at the same time, raising the two for a long time, etc... It's still worthwhile to fuzz - if you get a crash, you can potentially implement the trigger in a RFID or magstripe card, and crash the system from reader's interface!!
+I implemented a basic fuzzer using the Arudino:
+Arduino Wiegand Fuzzer
+Expanding
+As mentioned, you can expand upon all of this by adding wireless capabilities. Another cool thought is that because all of this is on an Arduino, you can easily communicate with it via a cell phone, making things really inconspicuous :)
+Got any more ideas on expanding this? Let us know in the comments down below!!
+
+

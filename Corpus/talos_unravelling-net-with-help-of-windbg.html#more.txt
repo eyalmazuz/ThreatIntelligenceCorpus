@@ -1,0 +1,635 @@
+
+Unravelling .NET with the Help of WinDBG
+
+
+This blog was authored by Paul Rascagneres and Warren Mercer.
+
+
+Introduction
+
+.NET is an increasingly important component of the Microsoft ecosystem providing a shared framework for interoperability between different languages and hardware platforms. Many Microsoft tools, such as PowerShell, and other administrative functions rely on the .NET platform for their functionality. Obviously, this makes .NET an enticing language for malware developers too. Hence, malware researchers must also be familiar with the language and have the necessary skills to analyse malicious software that runs on the platform.
+
+Analysis tools such as ILSpy help researchers decompile code from applications, but cannot be used to automate the analysis of many samples.  In this article we will examine how to use WinDBG to analyse .NET applications using the SOS extension provided by Microsoft.
+
+This article describes:
+
+
+How to analyse PowerShell scripts by inserting a breakpoint in the .NET API. 
+
+
+
+How to easily create a script to automatically unpack .NET samples following analysis of the packer logic.
+
+
+Additionally, you can download a Python script (based on the WinDBG pykd extension) on our github to automate analysis of .NET. This script will be described in the article too.
+
+
+
+
+SOS Extension
+
+The SOS Extension provides .NET support for WinDBG. The extension provides a rich set of commands; in this article we will cover only a few that are useful for analysis..
+
+Firstly, the SOS extension is not located in the same library, depending the version of .NET used. Before we are able to use the SOS extension we must load the library into WinDBG.
+
+For .NET 4, the extension is located in CLR.dll and can be loaded with the following command:
+.loadby sos clr
+
+In .NET 2 and 3, the SOS extension is located is the mscorwks library:
+.loadby sos mscorwks
+
+Here are the commands used in this article:
+
+
+!bpmd: this command is used to put breakpoints in managed code (.NET). The command takes two arguments. The first argument is the .NET dll where the function is located and the second is the function name.
+
+!CLRStack: this command displays the CLR stack content. It is useful to identify the arguments of a .NET function.
+
+!DumpObj: this command displays information on a specific object specified in an argument.
+
+
+In this article these 3 commands will be used to create a breakpoint within a specific .NET API, to get the arguments passed to the API, and display the contents.
+
+
+Use Case #1: PowerShell Analysis
+
+Few people realise that PowerShell can use the .NET framework. By examining .NET API usage, we can easily automate PowerShell analysis.
+
+Example 1: Start-Process API
+
+In this example, we will analyse the following PowerShell code:
+PS> start-process notepad.exe
+
+When you perform this task, PowerShell uses the Process.Start() API. So, we can breakpoint, this is where we stop the code execution on purpose, on this API (after loading the SOS extension):
+0:011> .loadby sos clr
+
+0:011> !bpmd system.dll System.Diagnostics.Process.Start
+Found 6 methods in module 00007fff97581000...
+breakpoint: bp 00007FFF977C96D9 [System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo)]
+breakpoint: bp 00007FFF97E8057D [System.Diagnostics.Process.Start(System.String, System.String)]
+breakpoint: bp 00007FFF97E80539 [System.Diagnostics.Process.Start(System.String)]
+breakpoint: bp 00007FFF97E804B6 [System.Diagnostics.Process.Start(System.String, System.String, breakpoint: bp 00007FFF977C72DA [System.Diagnostics.Process.Start()]
+Adding pending breakpoints...
+
+Once the breakpoint is set, we can enter the command 'g' to execute the PowerShell script. WinDBG will stop when the Start-Process is executed:
+Breakpoint 0 hit
+System_ni+0x2496d9:
+00007fff`977c96d9 488d0d08711e00  lea     rcx,[System_ni+0x4307e8 (00007fff`979b07e8)]
+
+The CLRStack command displays the argument provided to the Process.Start API. In our case, the argument is a System.Diagnostics.ProcessStartInfo object.
+0:008> !CLRStack -p
+OS Thread Id: 0x2d34 (8)
+        Child SP               IP Call Site
+000000a7f9ace700 00007fff977c96d9 System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo)
+    PARAMETERS:
+        startInfo (<CLR reg>) = 0x0000028cbd5faa18
+
+Finally the DumpObj command shows the contents of this object:
+0:008> !DumpObj /d 0000028cbd5faa18
+Name:        System.Diagnostics.ProcessStartInfo
+MethodTable: 00007fff979ae380
+EEClass:     00007fff975e29f0
+Size:        144(0x90) bytes
+File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll
+Fields:
+              MT    Field   Offset                 Type VT     Attr   Value Name
+00007fff9897de98  40027f3    8        System.String  0 instance 28cbd5fde18 fileName
+00007fff9897de98  40027f4   10        System.String  0 instance 000 arguments
+[...redacted...]
+00007fff9897ad70  4002806   58 System.WeakReference  0 instance 000 weakParentProces
+00007fff979af0a0  4002807   60 ....StringDictionary  0 instance 000 environmentVaria
+00007fff982e5ec0  4002808   68 ...tring, mscorlib]]  0 instance 000 environment
+
+The first field of the ProcessStartInfo object is a System.String object called filename. We can retrieve the contents of the object using DumpObj:
+0:008> !DumpObj /d 0000028cbd5fde18
+Name:        System.String
+MethodTable: 00007fff9897de98
+EEClass:     00007fff982d35f0
+Size:        88(0x58) bytes
+File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_64\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\mscorlib.dll
+String:      C:\WINDOWS\system32\notepad.exe
+
+We can see  that the filename string is the path to the notepad binary.
+
+
+Example 2: DownloadFile API
+
+In this second example, we will analyse the following code:
+PS> $a = New-Object System.Net.WebClient
+PS> $a.DownloadFile("http://blog.talosintelligence.com/","c:\users\lucifer\demo.txt")
+
+The purpose of this code is to download a file and store it on the hard drive. This is a technique frequently used by malware to download a payload.
+
+If this case, we must put on breakpoint on the DownloadFile AP and press 'g' to execute the PowerShelI:
+0:008> .loadby sos clr
+0:008> !bpmd system.dll System.Net.WebClient.DownloadFile
+Found 2 methods in module 00007fff97581000...
+MethodDesc = 00007fff976c1fe8
+MethodDesc = 00007fff976c1ff8
+Setting breakpoint: bp 00007FFF97DCAE0C [System.Net.WebClient.DownloadFile(System.Uri, System.String)]
+Setting breakpoint: bp 00007FFF97DCADBC [System.Net.WebClient.DownloadFile(System.String, System.String)]
+Adding pending breakpoints…
+0:008> g
+
+When the API is executed, WinDBG will automatically stop the execution of the PowerShell script:
+Breakpoint 7 hit
+System_ni+0x84adbc:
+00007fff`97dcadbc 4885d2          test    rdx,rdx
+
+In this case, we could use the CLRStack and DumpObj commands exactly as previously. Instead, we will get the value directly from the register (the first string is located in RDX+0xC and the second one in R8+0xC, as according to the Microsoft standard for memory location) :
+0:008> du rdx+c
+0000028c`bd53f13c  "http://blog.talosintelligence.co"
+0000028c`bd53f17c  "m/"
+0:008> du r8+c
+0000028c`bd53f3b4  "c:\users\lucifer\desktop\demo.tx"
+0000028c`bd53f3f4  "t"
+
+Here is a snippet of the execution:
+
+
+
+
+Use Case #2: .NET Unpack
+
+Talos deals with packed malware samples on a daily basis. We recently identified a packed .NET executable that was being hosted on a Syrian government website: http://www[.]syriantax[.]gov[.]sy/css/igfxCUIService.exe. Initially we wondered if this was part of a targeted attack. After further research, we now believe that the website was compromised and used to deliver this malware. The malware turned out to be njRAT, a well-known public Remote Administration Tool that has been widely distributed for years. While finding njRAT is not particularly interesting, we thought that writing a blog post walking through the process of unpacking njRAT would be beneficial. 
+
+As such, this use case will explain how to deal with unknown .NET packers, using static analysis. We will also cover dynamic analysis using WinDBG as well as how to create a WinDBG script to automate the unpacking process for this type of packer. 
+
+
+Static Analysis
+
+We started our analysis of this malware sample by using de4dot as it can quickly identify known packers. It is an open source analysis platform available here
+C:> de4dot-x64.exe -d -r c:\to_test
+
+de4dot v3.1.41592.3405 Copyright (C) 2011-2015 de4dot@gmail.com
+
+Latest version and source code: https://github.com/0xd4d/de4dot
+Detected Unknown Obfuscator (c:\to_test\21acd3457c1a58[...]1bfeeaf3c0cd79bfe)
+Detected Unknown Obfuscator (c:\to_test\344ce133363f09[...]bbd2257a298484051)
+Detected Unknown Obfuscator (c:\to_test\45c695e610d786[...]af65408fb6080300f)
+Detected Unknown Obfuscator (c:\to_test\61653b2811fb7c[...]04f9807a775f25773)
+Detected Unknown Obfuscator (c:\to_test\ac7bd77245bdf2[...]aee4d06563f057ca6)
+Detected Unknown Obfuscator (c:\to_test\b607e87acdcb2e[...]d30eddddffbeec320)
+Detected Unknown Obfuscator (c:\to_test\e93c0aed6bbb4a[...]6c2efe65942f83504)
+
+In this section, we will also be using ILSpy an open source .NET decompiler available here.
+
+
+XORed variant
+
+Sample: 45c695e610d78178ec5ca6f4e1993afacf4e435b566cd2caf65408fb6080300f
+
+The entry point of the packer is ob6eaGgG7Bht6B35c0.G9puOotvCiNCkEEPD9.XHh0nc9pu, we can identify this information from unpacking with ILSpy:
+
+
+
+First, the packer decodes a Base64 encoded string (variable G9puOotvCiNCkEEPD9.EHQI8XHAH ). This decoded string is passed to the function G9puOotvCiNCkEEPD9.vovYCiNCk() along with a second argument that will function as the XOR key:
+
+
+
+Scrolling through the output, we are able to identify the XOR operation with ILSpy by looking through the decompiled .NET executable by seeing the '^' function used we can determine this is XOR operation.
+
+
+
+Finally the output of the function is passed as an argument to the function Assembly.Load(). This function is used to load .NET binaries.
+
+
+
+The argument passed to Assembly.Load() is a byte array and contains a Windows binary (PE32). In this case, the unpacked malware is in the byte array.
+
+
+AES variant
+
+Sample: 21acd3457c1a589e117988fe0456e50ed627f051a97ccd11bfeeaf3c0cd79bfe
+
+The logic contained within this variant of the packer is the same however instead of using XOR obfuscation, it uses AES encryption (also known as Rijndael):
+
+
+
+Finally the decrypted data is then loaded into memory using the Assembly.Load() function.
+
+
+Common points
+
+While the algorithm used by each of the analysed samples is different, encoding versus encryption, the logic is exactly the same. If we can dump the byte array variable found in the argument of the Assembly.Load() function, we have the unpacked malware.
+
+
+Dynamic Analysis with WinDBG
+
+
+.NET Version 4
+
+In order to perform dynamic analysis of .NET 4 samples, we need to obtain the WinDBG SOS extension available here. This extension allows for .NET 4 debugging using the Microsoft Debugger. 
+
+Let's execute the packed malware…
+
+The first step is to stop the debugger execution when the CLRJIT library is loaded:
+0:000> sxe ld clrjit
+0:000> g
+(dc0.1594): Unknown exception - code 04242420 (first chance)
+ModLoad: 70fc0000 71040000   C:\Windows\Microsoft.NET\Framework\v4.0.30319\clrjit.dll
+eax=00000000 ebx=00800000 ecx=00000000 edx=00000000 esi=00000000 edi=0044e000
+eip=7736e85c esp=006fe4fc ebp=006fe558 iopl=0         nv up ei pl nz na pe nc
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000206
+
+ntdll!NtMapViewOfSection+0xc:
+7736e85c c22800          ret     28h
+
+We then load the WinDBG SOS extension to perform analysis on the .NET application (managed application):
+0:000> .load "C:\\Psscor4\\x86\\x86\\psscor4.dll"
+
+We now have new WinDBG commands related to .NET debugging available. We can set a breakpoint based on .NET API usage. In this case, we are interested in the Assembly.Load() API:
+0:000> !bpmd mscorlib.dll System.Reflection.Assembly.Load
+Found 8 methods in module 71041000...
+MethodDesc = 71100b50
+MethodDesc = 71100b7c
+MethodDesc = 71100b88
+MethodDesc = 71100b94
+MethodDesc = 71100bb8
+MethodDesc = 71100bd0
+MethodDesc = 71100bdc
+MethodDesc = 71100be8
+Setting breakpoint: bp 71B29095 [System.Reflection.Assembly.Load(Byte[], Byte[], System.Security.Policy.Evidence)]
+Setting breakpoint: bp 71B29037 [System.Reflection.Assembly.Load(Byte[], Byte[], System.Security.SecurityContextSource)]
+Setting breakpoint: bp 71B28FFF [System.Reflection.Assembly.Load(Byte[], Byte[])]
+Setting breakpoint: bp 71B28F9C [System.Reflection.Assembly.Load(Byte[])]
+Setting breakpoint: bp 71395949 [System.Reflection.Assembly.Load(System.Reflection.AssemblyName, System.Security.Policy.Evidence)]
+Setting breakpoint: bp 713F3479 [System.Reflection.Assembly.Load(System.Reflection.AssemblyName)]
+Setting breakpoint: bp 71B28F3D [System.Reflection.Assembly.Load(System.String, System.Security.Policy.Evidence)]
+Setting breakpoint: bp 713C880D [System.Reflection.Assembly.Load(System.String)]
+Adding pending breakpoints...
+
+(There is currently a bug in the extension, requiring the command to be executed twice)
+
+The debugger will now stop the execution of the malware when the Assembly.Load() function is executed:
+0:000> g
+
+Breakpoint 3 hit
+eax=00000000 ebx=006ff2dc ecx=026b30b8 edx=0000000a esi=026b30b8 edi=006ff250
+eip=71b28f9c esp=006ff210 ebp=006ff218 iopl=0         nv up ei pl zr na pe nc
+cs=0023  ss=002b  ds=002b  es=002b  fs=0053  gs=002b             efl=00000246
+
+mscorlib_ni+0xae8f9c:
+71b28f9c e80368fdff      call    mscorlib_ni+0xabf7a4 (71aff7a4)
+
+Obviously, we can use the CLRStack and DumpObj commands to get the arguments exactly as mentioned in the previous use case. In this example, we will only use the register content. The argument passed to Assembly.Load() is available on the Stack (ESP):
+0:000> dp esp
+
+006ff210  00000000 026b30b8 006ff238 009504ae
+006ff220  00000000 00000000 00000000 00000000
+006ff230  00000000 00000000 006ff244 7240ea56
+006ff240  00a149a8 006ff298 724293ef 006ff2dc
+006ff250  006ff288 725b24b0 006ff3b0 724293a8
+006ff260  ecebc740 006ff404 006ff370 006ff324
+006ff270  7246e611 006ff2dc 00000000 ecebc740
+006ff280  006ff250 006ff370 006ff424 725b0890
+
+The second value in the stack is a pointer to the byte array: 0x026b30b8.
+0:000> dp 026b30b8 
+026b30b8  71504448 00005e00 00905a4d 00000003
+026b30c8  00000004 0000ffff 000000b8 00000000
+
+0:000> db 026b30b8+8 L16
+026b30c0  4d 5a 90 00 03 00 00 00-04 00 00 00 ff ff 00 00  MZ..............
+026b30d0  b8 00 00 00 00 00                                ......
+
+The second argument 0x5e00 is the size of the byte array (in red), after which we can see the file header of the PE file starting with MZ: 0x4d 0x5a (in blue, but reversed due to the data being stored in little endian format). We can now dump the unpacked sample directly from within WinDBG:
+.writemem C:\\unpacked_sample.exe 026b30b8+8 L00005e00
+
+
+.NET Version 2 & 3
+
+The dynamic analysis process for malware compiled with .NET Version 2 and 3 is the same. The difference is how the argument is passed to the Assembly.Load() API. In this case, the argument does not use the stack, it is stored in the ECX register instead:
+0:000> dp ecx
+024ba0b8  71504448 00005e00 00905a4d 00000003
+024ba0c8  00000004 0000ffff 000000b8 00000000
+
+0:000> db ecx+8 L16
+024ba0c0  4d 5a 90 00 03 00 00 00-04 00 00 00 ff ff 00 00  MZ..............
+024ba0d0  b8 00 00 00 00 00     
+
+The format is exactly the same as in the previous example the size of the array is in red and the binary to be loaded is in blue.
+
+
+Automated Unpacking
+
+Thanks to the analysis described previously, we can create a generic unpacker. You can find this WinDBG script in Appendix 2 for .NET versions 2, 3 and 4. 
+
+This script can be invoked using the following syntax:
+"c:\Program Files (x86)\Windows Kits\10\Debuggers\x86\cdb.exe" -c "$$>a< C:\unpack.script C:\unpacked_sample.exe" "c:\sample.exe"
+
+Here is a screenshot of the script execution:
+
+
+
+
+Python script
+
+You can download a python script to automate .NET analysis on our github repository. The script needs the pykd extension in order to allow python execution in WinDBG. The script uses SOS commands previously mentioned in the article, the purpose is to have a better output. The configuration is at the beginning of the script:
+dump_byte_array=1
+dump_byte_array_path="c:\\path\\to\\directory\\"
+
+bp_list = [ ["system.dll", "System.Diagnostics.Process.Start"],
+            ["system.dll", "System.Net.WebClient.DownloadFile"],
+            ["mscorlib.dll", "System.Reflection.Assembly.Load"]
+          ]
+
+The bp_list variable contains the list of breakpoint. In the example, the script will breakpoint on 3 .NET API (System.Diagnotics.Process.Start, System.Net.WebClient.Download.File and Sysyem.Reflection.Assembly.Load). The arguments of the 3 functions will be display in WinDBG.
+
+If the dump_byte_array variable is set to 1, the script will automatically dump the byte array in provided in the argument on the analysed functions (where the breakpoints are in place). The dump will be located in the dump_byte_array_path directory.
+
+The script allows text or json output. The output of the examples in this article is in text but we can switch in json by setting the JsonDebug variable to "True".
+
+
+Example 1:
+
+Here is the output of the script when the Assembly.Load function is called:
+0:000> .loadby sos clr
+0:000> .load pykd.dll
+0:000> !py C:\Users\lucifer\NET_plugin.py
+[.NET plugin] Beginning, setting breakpoints...
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0xb4fa65
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0xb4fa07
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0xb4f9cf
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0xb4f96c
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0x38a5a1
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0x3bda7d
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0xb4f90d
+[.NET plugin] breakpoint: mscorlib.dll System.Reflection.Assembly.Load mscorlib_ni+0x3968dd
+[.NET plugin] Let's go...
+
+[.NET plugin] Breakpoint: System.Reflection.Assembly.Load(Byte[])
+[.NET plugin] Argument 0: rawAssembly
+[.NET plugin] !DumpObj /d 0x02f67e04
+        Name:        System.Byte[]
+        MethodTable: 6b5f60f8
+        EEClass:     6b190878
+        Size:        5644(0x160c) bytes
+        Array:       Rank 1, Number of elements 5632, Type Byte (Print Array)
+        Content:     MZ......................@...............................................!..L.!This program cannot
+        Fields:
+        None
+        
+        [.NET plugin] let's dump 0x02f67e04+8 Size:5644
+        .writemem c:\users\lucifer\Desktop\dump_1496942775_0x02f67e04_5644.dmp 0x02f67e04+8 L5644
+
+The content of the byte array in argument of Assembly.Load is automatically stored in c:\users\lucifer\Desktop\dump_1496942775_0x02f67e04_5644.dmp
+
+Example 2:
+
+Here is the output of the script on a PowerShell script that execute start-process:
+[.NET plugin] Breakpoint: System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo)
+[.NET plugin] Argument 0: startInfo
+[.NET plugin] !DumpObj /d 0x000001ad173cdb68
+        Name:        System.Diagnostics.ProcessStartInfo
+        MethodTable: 00007ffd7e3ee798
+        EEClass:     00007ffd7e0229f0
+        Size:        144(0x90) bytes
+        File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll
+        Fields:
+           MT    Field   Offset                 Type VT     Attr      Value Name
+        07ffd69e969d0 40027fa   8     System.String  0 instance 01ad173d0f20 fileName
+        07ffd69e969d0 40027fb   10    System.String  0 instance 00000000000 arguments
+        07ffd69e969d0 40027fc   18    System.String  0 instance 1ad173d4bf8 directory
+        07ffd69e969d0 40027fd   20    System.String  0 instance 000000000000 verb
+        07ffd7e3c2a50 40027fe   78    System.Int32  1 instance          0 windowStyle
+        07ffd69ea1fb0 40027ff   7c    System.Boolean  1 instance        0 errorDialog
+        07ffd69eafc48 4002800   70    System.IntPtr  1 instance     0 errorDialogPare
+        07ffd69ea1fb0 4002801   7d    System.Boolean  1 instance     1 useShellExecut
+        07ffd69e969d0 4002802   28    System.String  0 instance 000000000000 userName
+        07ffd69e969d0 4002803   30    System.String  0 instance 000000000000 domain
+        07ffd69ea4068 4002804   38 ...rity.SecureString  0 instance 00000000 password
+        07ffd69e969d0 4002805   40    System.String  0 instance 0 passwordInClearText
+        07ffd69ea1fb0 4002806   7e    System.Boolean  1 instance,  1  loadUserProfile
+        07ffd69ea1fb0 4002807   7f    System.Boolean  1 instance   0  redirectStandar
+        07ffd69ea1fb0 4002808   80    System.Boolean  1 instance   0 redirectStandard
+        07ffd69ea1fb0 4002809   81    System.Boolean  1 instance   0 redirectStandard
+        07ffd69e9b048 400280a   48    System.Text.Encoding  0 instance 0 standardOutp
+        07ffd69e9b048 400280b   50    System.Text.Encoding  0 instance 0 standardErro
+        07ffd69ea1fb0 400280c   82    System.Boolean  1 instance   0 createNoWindow
+        07ffd69eadec8 400280d   58 System.WeakReference  0 instance 0000 weakParentPr
+        07ffd7e3ef4b8 400280e   60 ....StringDictionary  0 instance 0000 envVariables
+        07ffd697a69f0 400280f   68 ...tring, mscorlib]]  0 instance 0000 environment
+        
+                [.NET plugin] !DumpObj /d 000001ad173d0f20
+                Name:        System.String
+                MethodTable: 00007ffd69e969d0
+                EEClass:     00007ffd697950e0
+                Size:        82(0x52) bytes
+                File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_64\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\mscorlib.dll
+                String:      C:\WINDOWS\system32\calc.exe
+
+The script displays the argument and the content of the interesting field (in the example the fileName string).
+
+Example 3:
+
+Here is the output on the script when the DownloadFile API is used in Powershell:
+[.NET plugin] Breakpoint: System.Net.WebClient.DownloadFile(System.Uri, System.String)
+[.NET plugin] Argument 1: address
+[.NET plugin] !DumpObj /d 0x000001ad17315e78
+        Name:        System.Uri
+        MethodTable: 00007ffd7e3f4cf0
+        EEClass:     00007ffd7dfc5fd0
+        Size:        72(0x48) bytes
+        File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_MSIL\System\v4.0_4.0.0.0__b77a5c561934e089\System.dll
+        Fields:
+            MT    Field   Offset             Type VT     Attr            Value Name
+        07ffd69e969d0 400040b 8   System.String  0 instance 000001ad172c5ea8 m_String
+        07ffd69e969d0 400040c 10  System.String  0 instance 000000000 m_originalUnico
+        07ffd7e3f51d8 400040d 18  System.UriParser  0 instance 001ad17032b40 m_Syntax
+        07ffd69e969d0 400040e 20  System.String  0 instance 00000000000 m_DnsSafeHost
+        07ffd7e3c2788 400040f 30  System.UInt64  1 instance 37615763456 m_Flags
+        07ffd7e3f5590 4000410 28  System.Uri+UriInfo  0 instance 01ad17315f00 m_Info
+        07ffd69ea1fb0 4000411 38  System.Boolean  1 instance          0 m_iriParsing
+        07ffd69e969d0 40003fb 220 System.String  0   shared     static UriSchemeFile
+        07ffd69e969d0 40003fc 228 System.String  0   shared     static UriSchemeFtp
+        07ffd69e969d0 40003fd 230 System.String  0   shared     static UriSchemeGoph
+        07ffd69e969d0 40003fe 238 System.String  0   shared     static UriSchemeHttp
+        07ffd69e969d0 40003ff 240 System.String  0   shared     static UriSchemeHttps
+        07ffd69e969d0 4000400 248 System.String  0   shared     static UriSchemeWs
+        07ffd69e969d0 4000401 250 System.String  0   shared     static UriSchemeWss
+        07ffd69e969d0 4000402 258 System.String  0   shared     static UriSchemeMail
+        07ffd69e969d0 4000403 260 System.String  0   shared     static UriSchemeNews
+        07ffd69e969d0 4000404 268 System.String  0   shared     static UriSchemeNntp
+        07ffd69e969d0 4000405 270 System.String  0   shared     static UriSchemeNet
+        07ffd69e969d0 4000406 278 System.String  0   shared     static UriSchemeNetP
+        07ffd69e969d0 4000407 280 System.String  0   shared     static SchemeDelimit
+        07ffd7e3b4bd0 4000412 288 ...etSecurityManager  0       static s_ManagerRef
+        07ffd69e96fb0 4000413 290 System.Object  0   shared     static s_IntranetLock
+        07ffd69ea1fb0 4000414 9c4 System.Boolean  1   shared    static s_ConfigInitia
+        07ffd69ea1fb0 4000415 9c5 System.Boolean  1   shared    static s_ConfigInitia
+        07ffd7e3afef8 4000416 9c0 System.Int32  1   shared      static s_IdnScope
+        07ffd69ea1fb0 4000417 9c6 System.Boolean  1   shared    static s_IriParsing
+        07ffd69e96fb0 4000418 298 System.Object  0   shared     static s_initLock
+        07ffd69e97b20 400041c 2a0 System.Char[]  0   shared     static HexLowerChars
+        07ffd69e97b20 400041d 2a8 System.Char[]  0   shared     static _WSchars
+        
+                [.NET plugin] !DumpObj /d 000001ad172c5ea8
+                Name:        System.String
+                MethodTable: 00007ffd69e969d0
+                EEClass:     00007ffd697950e0
+                Size:        94(0x5e) bytes
+                File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_64\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\mscorlib.dll
+                String:      http://blog.talosintelligence.com/
+                Fields:
+                   MT    Field   Offset           Type VT     Attr         Value Name
+               07ffd69e99310  400026f  8  System.Int32  1 instance  34 m_stringLength
+               07ffd69e97b88  400027   c  System.Char   1 instance  68 m_firstChar
+               07ffd69e969d0  4000274  90 System.String 0   shared  static Empty
+
+[.NET plugin] Argument 2: fileName
+[.NET plugin] !DumpObj /d 0x000001ad172c61c8
+        Name:        System.String
+        MethodTable: 00007ffd69e969d0
+        EEClass:     00007ffd697950e0
+        Size:        92(0x5c) bytes
+        File:        C:\WINDOWS\Microsoft.Net\assembly\GAC_64\mscorlib\v4.0_4.0.0.0__b77a5c561934e089\mscorlib.dll
+        String:      c:\users\lucifer\desktop\demo.txt
+        Fields:
+             MT    Field   Offset                 Type VT     Attr      Value Name
+        07ffd69e99310  400026f  8    System.Int32  1 instance       33 m_stringLength
+        07ffd69e97b88  4000270  c    System.Char  1 instance        63 m_firstChar
+        07ffd69e969d0  4000274  90   System.String  0   shared      static Empty
+
+
+The first argument is a System.URI object. The object is automatically parsed and the relevant contents are displayed in WinDBG. In this case, the first field is displayed (the string m_string). This string contains the contacted URL. The second argument is a string which is displayed too.
+
+Example 4:
+
+Here is the output on the script in JSON (start-process execution):
+0:020> .loadby sos clr
+0:020> .load pykd
+0:020> !py c:\Users\lucifer\DotNETPlugin.py
+{
+  "date": 1500306926,
+  "bp": "System.Diagnostics.Process.Start(System.Diagnostics.ProcessStartInfo)",
+  "arguments": {
+    "0": {
+      "fields": {
+        "0": {
+          "Type": "System.String",
+          "Name": "fileName",
+          "string": "C:\\WINDOWS\\system32\\calc.exe"
+        },
+        "1": {
+          "Type": "System.String",
+          "Name": "arguments",
+          "string": ""
+        },
+        "2": {
+          "Type": "System.String",
+          "Name": "directory",
+          "string": "C:\\Users\\lucifer"
+        },
+        "3": {
+          "Type": "System.String",
+          "Name": "verb",
+          "string": ""
+        },
+        [...redacted...]
+        "20": {
+          "Type": "....StringDictionary",
+          "Name": "environmentVariables",
+          "value": "0000000000000000"
+        },
+        "21": {
+          "Type": "...tring,",
+          "Name": "environment",
+          "value": "instance"
+        }
+      },
+      "name": "startInfo",
+      "offset": "0x0000025c1c572170"
+    }
+  }
+}
+
+
+
+Conclusion
+
+WinDBG is a really powerful tool provided by Microsoft. A lack of familiarity with the syntax and interface means that it can be overlooked as a malware analysis tool. With the right extension, it can easily be used for the analysis of managed code (.NET). 
+
+We hope that this article piques your curiosity and that you will think about WinDBG next time you will have to analyse managed code such .NET.
+
+
+Appendix
+
+
+IOCs
+
+
+Packed samples SHA256
+
+
+
+21acd3457c1a589e117988fe0456e50ed627f051a97ccd11bfeeaf3c0cd79bfe
+
+344ce133363f005346210611d5abd2513934a32739bc6e1bbd2257a298484051
+
+45c695e610d78178ec5ca6f4e1993afacf4e435b566cd2caf65408fb6080300f
+
+61653b2811fb7c672584d00417cbc1a56c8372331f1913104f9807a775f25773
+
+ac7bd77245bdf284d36ce1f9e2cb6a21d2dbd38aa1964dbaee4d06563f057ca6
+
+b607e87acdcb2ef0f102298decc57ca3ea20fabbf02375fd30eddddffbeec320
+
+e93c0aed6bbb4af734403e02d399c124f2d07f8e701fb716c2efe65942f83504
+
+
+Unpacked samples SHA256
+
+
+
+35dee9106e4521e5adf295cc945355d72eb359d610230142e5dd4adda9678dee  
+
+b5ce02ee3dfccf28e86f737a6dde85e9d30ff0549ec611d115a1d575b5291c2e  
+
+d9a732dcf87764a87f17c95466f557fac33f041ac6f244dba006ba155d8e9aea  
+
+fe068ce56b258762c10cc66525c309e79026c0e44103ca9b223c51382722cb09  
+
+
+WinDBG scripts
+
+
+Before .NET 4
+sxe ld mscorjit
+g
+.loadby sos mscorwks
+!bpmd mscorlib.dll System.Reflection.Assembly.Load
+.echo "Weird bug... bp twice..."
+!bpmd mscorlib.dll System.Reflection.Assembly.Load
+g
+r $t1 = ecx
+.printf "Byte array: ";r $t1
+r $t2 = poi($t1+4)
+.printf "Size: ";r $t2
+db $t1+8 L$t2
+.echo "dump in the file: ${$arg1}"
+.writemem ${$arg1} $t1+8 L$t2
+.kill
+q
+
+
+.NET 4
+sxe ld clrjit
+g
+.load "C:\\Psscor4\\x86\\x86\\psscor4.dll"
+!bpmd mscorlib.dll System.Reflection.Assembly.Load
+.echo "Weird bug... bp twice..."
+!bpmd mscorlib.dll System.Reflection.Assembly.Load
+g
+r $t1 = poi(esp+4)
+.printf "Byte array: ";r $t1
+r $t2 = poi($t1+4)
+.printf "Size: ";r $t2
+db $t1+8 L$t2
+.echo "dump in the file: ${$arg1}"
+.writemem ${$arg1} $t1+8 L$t2
+.kill
+q
+
+
+

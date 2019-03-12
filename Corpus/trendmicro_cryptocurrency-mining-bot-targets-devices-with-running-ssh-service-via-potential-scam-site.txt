@@ -1,0 +1,57 @@
+Cryptocurrency-Mining Bot Targets Devices With Running SSH Service via Potential Scam Site
+by Jindrich Karasek and Loseway Lu
+The practicality of cryptocurrency mining on devices connected to the internet of things (IoT) is often a questionable matter in terms of computing power. Be that as it may, we’ve nonetheless seen miscreants targeting connected devices and even offering cryptocurrency malware in the underground.
+Our honeypot sensors, which are designed to emulate Secure Shell (SSH), Telnet, and File Transfer Protocol (FTP) services, recently detected a mining bot related to the IP address 192.158.228.46. The address has been seen to search for both SSH- and IoT-related ports, including 22, 2222, and 502. In this particular attack, however, the IP has landed on port 22, SSH service. The attack could be applicable to all servers and connected devices with a running SSH service.
+The bot searches for devices that have an open Remote Desktop Protocol (RDP) port, which enables the attacker to take advantage of vulnerable devices. Once the attacker identifies a device that can be taken advantage of, it tries to run a wget command to download a script to a directory that will subsequently run the script and install the malware.
+The operating model is that the bot uses hxxp://p1v24z97c[.]bkt[.]clouddn[.]com/ to host the malicious script, mservice_2_5.sh. The script will consequently download files from hxxps://www[.]yiluzhuanqian[.]com/soft/linux/yilu_2_5[.]tgz and save the output in the “/tmp” folder. (The domain name translates to “earn money all the way” in Chinese.) This technique is widely used in exploitation techniques against Linux-based servers. This particular bot is able to load miners on Linux, and it even has a persistence mechanism added in its installer script so that it’s able to add a service to the crontab, a configuration file where periodically run commands are specified.
+Upon checking the site from which the script tries to download files, we found that it appears to be a financial scam site. Judging from the attacker’s behavior, the first URL could be used only as a jumping-off point. This means that if the link is blocked, the attacker can just switch to another domain to continue operations without losing the potential scam site itself.
+Through social engineering, users are tricked into installing the miner that directly funnels profit (in the form of Monero and Ethereum coins, in this case) over to the site in question. The scam site is made to appear as a regular website, but when we dug deeper for more information on it, we uncovered a blog (hxxps://www[.]zjian[.]blog/148[.]html) and a video tutorial page (hxxps://www[.]bilibili[.]com/video/av19589235/) for the site that break down how mining can be facilitated.
+Once the mservice_2_5.sh script is run, it first checks for internet connectivity by pinging Baidu[.]com:
+
+Figure 1. Script checks for connectivity
+It then determines the operating system (OS) that it runs on, specifically which Linux distribution is being used:
+
+Figure 2. OS platform is determined
+After doing so, the malware sets user ID = “2” if it wasn’t initially supplied as an argument. The device name is also set as per the output of the command:
+
+Figure 3. Device name is set
+The hugepage and memlock are also set up so that the device would have enhanced performance and would allow more computational power for cryptocurrency mining:
+
+Figure 4. Hugepage and memlock setup
+Once those are set up, the script downloads the miner, disguised as a download of a libhwloc4 library. It then gets extracted to the folder “/opt” and is run with the following commands:
+
+Figure 5. Miner gets downloaded
+Interestingly, the malicious script also includes a basic persistence mechanism to keep the miner running even after reboot:
+
+Figure 6. Malicious script employs a persistence mechanism
+
+Figure 7. Resulting file structure created on the attacked host
+The file cmd.txt lists commands used to run the “mservice” binary with parameters, which then installs the actual miner, “YiluzhuanqianSer.” (Note that the miner is related to the potential scam site domain.):
+
+Figure 8. Cryptocurrency miner gets installed
+Additionally, there is the web shell/backdoor in a conf.json file. Meanwhile, the “Work” directory includes two binaries and even a cmd.txt file that contains commands used to run the miner. The parameters, for their part, are stored in the workers.json file:
+
+Figure 9. Web shell/backdoor in conf.json
+
+Figure 10. Work directory
+
+Figure 11. Parameters in workers.json
+As previously noted, this type of mining operation that targets connected devices for profit is not the first of its kind. Moreover, security incidents that make use of bots to target IoT devices have made headlines on several occasions, most notably in the case of the infamous Linux-based botnet Mirai. Using botnets is perhaps one of the most prevalent ways for attackers looking into abusing the IoT for their own gain (for cryptocurrency mining, in this example). A single compromised device may not be powerful enough, but when the malware is spread in a bot-enabled fashion, an army of mining zombies might just prove lucrative down the road.
+The attackers here appear to go the extra mile to cover up a mining operation with a seemingly run-of-the-mill scam site. Even so, the adverse effect remains: Surreptitiously mining for cryptocurrency on users’ devices consumes considerable amounts of electricity and exhausts computing power.
+As illicit cryptocurrency mining activities continue to gain traction, it is important to adopt standard security measures that mitigate the risks, such as:
+Users can also consider adopting security solutions that can provide protection from various iterations of cryptocurrency-mining malware through a cross-generational blend of threat defense techniques. Trend Micro™ XGen™ security provides high-fidelity machine learning that can secure the gateway and endpoint, and protect physical, virtual, and cloud workloads. With technologies that employ web/URL filtering, behavioral analysis, and custom sandboxing, XGen security offers protection against ever-changing threats that bypass traditional controls and exploit known and unknown vulnerabilities. XGen security also powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+Users of the Trend Micro™ Smart Home Network solution are protected from SSH brute force login via this rule:
+Indicators of compromise (IOCs)
+Filenames:
+mservice_2_5.sh
+yilu.tgz
+yilu_2_5.tgz
+URLs:
+hxxp://p1v24z97c[.]bkt[.]clouddn[.]com
+hxxps://www[.]yiluzhuanqian[.]com/soft/linux/yilu_2_5[.]tgz
+IP addresses:
+114.114.114.114
+192.158.228.46
+Destination ports:
+1993, 1992
+Related hashes (SHA256), detected as COINMINER_TOOLXMR.O-ELF:

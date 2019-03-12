@@ -1,0 +1,28 @@
+Introducing Linux Support for FakeNet-NG: FLARE’s Next Generation
+Dynamic Network Analysis Tool
+In 2016, FLARE introduced FakeNet-NG, an open-source network analysis tool written in Python. FakeNet-NG allows security analysts to observe and interact with network applications using standard or custom protocols on a single Windows host, which is especially useful for malware analysis and reverse engineering. Since FakeNet-NG’s release, FLARE has added support for additional protocols. FakeNet-NG now has out-of-the-box support for DNS, HTTP (including BITS), FTP, TFTP, IRC, SMTP, POP, TCP, and UDP as well as SSL.
+Building on this work, FLARE has now brought FakeNet-NG to Linux. This allows analysts to perform basic dynamic analysis either on a single Linux host or using a separate, dedicated machine in the same way as INetSim. INetSim has made amazing contributions to the productivity of the security community and is still the tool of choice for many analysts. Now, FakeNet-NG gives analysts a cross-platform tool for malware analysis that can directly integrate with all the great Python-based infosec tools that continually emerge in the field.
+If you are running REMnux, then good news: REMnux now comes with FakeNet-NG installed, and existing users can get it by running the update-remnux command.
+For other Linux distributions, setting up and using FakeNet-NG will require the Python pip package manager, the net-tools package, and the development files for OpenSSL, libffi, and libnetfilterqueue. Here is how to quickly obtain the appropriate prerequisites for a few common Linux distributions:
+Once you have the prerequisites, you can download the latest version of FakeNet-NG and install it using setup.py install.
+On Linux, FakeNet-NG can be deployed in MultiHost mode on a separate host dedicated to network simulation, or in the experimental SingleHost mode for analyzing software locally. Windows only supports SingleHost mode. FakeNet-NG is configured by default to run in NetworkMode: Auto, which will automatically select SingleHost mode on Windows or MultiHost mode on Linux. Table 1 lists the currently supported NetworkMode settings by operating system.
+ 
+SingleHost
+MultiHost
+Windows
+Default (Auto)
+Unsupported
+Linux
+Experimental
+Default (Auto)
+Table 1: FakeNet-NG NetworkMode support per platform
+FakeNet-NG’s support for SingleHost mode on Linux currently has limitations.
+First, FakeNet-NG does not yet support conditional redirection of specific processes, hosts, or ports on Linux. This means that settings like ProcessWhiteList will not work as expected. We plan to add support for these settings in a later release. In the meantime, SingleHost mode supports redirecting all Internet-bound traffic to local listeners, which is the main use case for malware analysts.
+Second, the python-netfilterqueue library is hard-coded to handle datagrams of no more than 4,012 octets in length. Loopback interfaces are commonly configured with high maximum transmittal unit (MTU) settings that allow certain applications to exceed this hard-coded limit, resulting in unanticipated network behavior. An example of a network application that may exhibit issues due to this would be a large file transfer via FTP. A workaround is to recompile python-netfilterqueue with a larger buffer size or to decrease the MTU for the loopback interface (i.e. lo) to 4,012 or less.
+In addition to the new NetworkMode setting, Linux support for FakeNet-NG introduces the following Linux-specific configuration items:
+Before using FakeNet-NG, also be sure to disable any services that may bind to ports corresponding to the FakeNet-NG listeners you plan to use. An example is Ubuntu’s use of a local dnsmasq service. You can use netstat to find such services and should refer to your Linux distribution’s documentation to determine how to disable them.
+You can start FakeNet-NG by invoking fakenet with root privileges, as shown in Figure 1.
+
+Figure 1: Starting FakeNet-NG on Linux
+You can alter FakeNet-NG’s configuration by either directly editing the file displayed in the first line of FakeNet-NG’s output, or by creating a copy and specifying its location with the -c command-line option.
+FakeNet-NG now brings the convenience of a modern, Python-based, malware-oriented network simulation tool to Linux, supporting the full complement of listeners that are available on FakeNet-NG for Windows. Users of REMnux can make use of FakeNet-NG already, while users of other Linux distributions can download and install it using standard package management tools.

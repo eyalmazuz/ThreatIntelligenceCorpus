@@ -1,0 +1,342 @@
+
+Setting up your Hacking Playground - Hyper-V Quick Use [Part 3]
+
+
+By Tony Lee.
+
+In first part of this series, we did a high-level comparison between free versions of VMWare ESXi and Microsoft’s Hyper-V. Next we highlighted the difficult challenge that exists when setting up Hyper-V to be a remotely managed, headless server.  In this part of the series, we will give you the essentials needed to start using Hyper-V and the winner of our comparison.
+Creating Virtual Networks
+
+After connecting to your server with Hyper-V Manager, you will notice that you have no Virtual Networks when you select the Virtual Network Manager.  If you want your virtual machines to have Internet access, you need to create a virtual network to provide it.  
+
+
+
+
+
+To create a new virtual network, click the hyperlink for “New virtual network”.  Assign a name, select the Network Interface Card (NIC) to bind it to, and optionally assign a VLAN ID.  Now when you are creating your virtual machines, you can assign them a network.
+
+
+
+
+ISO Storage
+
+If you are like me, you like to have an ISO drive so you don’t have to deal with physical media.  One VERY useful feature that Hyper-V Manager lacks is the ability to upload and download files to the data stores.  That may be a feature in the paid product, Microsoft System Center--but I wouldn’t know because I am trying to do this for free.  There is a 180-day evaluation you can download, but that is your call.  I don’t want to become dependent upon a very expensive crutch.  To get around this, you can copy the files over the network via a net use and CIFS, or you can put them on a USB drive and do something similar to the commands below:
+ c:\>wmic logicaldisk get name,description
+Description       Name
+Local Fixed Disk  C:
+Local Fixed Disk  D:
+Local Fixed Disk  E:
+CD-ROM Disc       F:
+CD-ROM Disc       G:
+Local Fixed Disk  H:  <-- This is our USB drive with our ISOs
+
+c:\> H:
+
+H:> cd \virtual-machines\ISO
+
+H:\virtual-machines\ISO>mkdir e:\ISO
+
+H:\virtual-machines\ISO>copy * e:\ISO
+BT5R3.iso
+Fedora-18-x86_64-Live-Desktop.iso
+linuxmint-13-mate-dvd-64bit.iso
+--snip--
+ 
+ 
+
+
+Now when you are creating VMs from scratch you can use the local ISOs. :)
+Creating a VM
+Speaking of creating a VM, this part is pretty easy and very similar to using VMWare vSphere client with ESXi.
+
+To create a VM:
+
+Click New -> Virtual Machine
+Name the VM and select where you want the VM stored
+Select the amount of memory
+Select the network connection
+Select the drive size
+Installation media and finish
+Connect to the VM
+Power on and walk through the typical installation
+
+
+
+The next four screenshots are what you should see:
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Converting a VMWare VM
+It would be far too easy if VMWare and Hyper-V used the same virtual machine format.  We should all pray for quicker adoption of OVF…  But, who doesn’t like a challenge?
+
+So, what are the differences between the two preferred formats?
+
+
+
+Category
+VMWare
+Hyper-V
+
+
+Bootable Hard Drive
+SCSI
+IDE
+
+
+File Type
+.vmdk
+VHD
+
+
+
+This may not seem like substantial differences at first, but the hard drive controller is a major concern.  So major that if your VMWare VM has a SCSI hard drive, you need to make sure you add an IDE drive of arbitrary size so the IDE drivers are loaded before conversion.  Isn’t there an easier way?
+
+Supposedly Microsoft System Center will do the conversion for you, but we have no monies...
+
+
+
+
+
+Fortunately for us, Microsoft has also provided a free tool similar to the free stand-alone VMWare converter tool.  Microsoft calls theirs: Microsoft Virtual Machine Converter (MVMC).
+Microsoft converter
+“The Microsoft Virtual Machine Converter (MVMC) Solution Accelerator is a Microsoft-supported, stand-alone solution for the IT pro or solution provider who wants to convert VMware-based virtual machines and disks to Hyper-V®-based virtual machines and disks.”
+Source:  http://www.microsoft.com/en-us/download/details.aspx?id=34591
+
+Sounds great, but…
+
+There are two MAJOR problems with Microsoft Virtual Machine Converter (MVMC):
+
+It only converts Windows guest VMs (Huh? WTH?)
+It only supports converting the VMs directly from a running vCenter, ESX, or ESXi (NOT from a powered down VM sitting on a hard drive!)
+
+
+
+
+
+
+
+
+
+
+
+Note that the command line interface of this tool can convert a hard disk, but not a virtual machine.  Meaning if you wanted to convert a .vmdk to a VHD in order to mount the drive in Windows (because Windows 7+ can mount VHDs) that is an option with this tool.  But you will not be able to automagically convert the disk and then boot it in Hyper-V as an OS.
+Manual VM Conversion
+Looks like we have to do a manual conversion now--Ugh!!!
+VMWare Files
+The first thing we should know about VMWare virtual disks is that they end with .vmdk.  However, sometimes there are many .vmdk files.  If you are downloading a virtual appliance that has multiple disks or a snapshot already taken or both, you will end up with a few files.  SIFT Workstation is such an appliance.
+
+You will notice in the screenshot below that there are 4 vmdk files.  The ones without the 6 #’s are the raw hard disks.  The ones with the 6 #’s are for snapshots.  We will attempt to convert the raw hard disks and start those in Hyper-V.
+
+
+
+
+Terminology
+Before we continue we should also discuss a little bit of virtual disk terminology.  When creating virtual machines, you have a choice between pre-allocating the disk space or growable disk space.  The advantage of pre-allocation is faster reads/writes and performance.  The disadvantage is that it takes up all of the disk space on the host hard drive regardless of whether you are actually using the space in the guest OS.  It appears that there is no standard term for these two options, thus I will list terminology below:
+
+
+Vendor
+Pre-Allocated
+Growable
+
+
+VMWare
+Thick
+Thin
+
+
+StarWind
+Pre-Allocated
+Growable
+
+
+Microsoft
+Fixed/Static
+Dynamic
+
+
+
+When conducting my initial research in VMWare to Hyper-V conversion, I found a few resources that were either outdated or had little to no information on how to proceed. Nonetheless there were some that did *sort of* help out:
+Blogs
+SteenKirkby wrote a great detailed blog post, but most of the information was no longer current. The vmdk2vhd (vmtoolkit.com) no longer exists on any reputable sites that I could find, but at least the steps were sound so I used that method with another tool.
+MVDC.exe
+Microsoft Virtual Machine Converter  comes with command line options to convert .vmdk files into .vhd files.  The problem we had was that the dynamic disk flag appeared to be ineffective - resulting in a static disk each time.  For VMWare virtual machines that use small hard drives, this may not be too big of a problem.  However, let’s examine the scenario below (for our tests we will use the pre-built SANS Investigate Forensic Toolkit (SIFT) workstation):
+
+We start by enumerating our options by running the binary with no parameters:
+
+
+
+
+Does anyone else find the “TODO: add description” a little worrisome?  :)  Eh, let’s give it a go anyway!
+First Attempt (Without the DYN Flag)
+ "c:\Program Files (x86)\Microsoft Virtual Machine Converter Solution Accelerator\MVDC.exe" "SIFT Workstation 2.14-0.vmdk" "SIFT Workstation 2.14-0.vhd"
+
+
+
+
+When we were trying to convert the SIFT Workstation, the VMWare appliance /dev/sdb disk was dynamically allocated consuming only 59MB of actual hard drive space.  MVDC.exe does not convert disks dynamically without the use of the /Dyn flag, thus it proceeded to expand the disk to its full (static) size of 200GB!
+
+
+
+
+
+The worst part is that nothing can stop MVDC once it has started the conversion without the /Dyn option.  Control+c had no effect.  Task manager could not kill MVDC.exe or the cmd.exe window.  tasklist /f /im MVDC.exe was ineffective as well.  A reboot was required to stop the madness.
+Second Attempt (With the DYN Flag)
+Even with the dynamic flag as shown below, the program still tried to create a 200GB disk.  The difference was with the /Dyn flag, the operation could be killed with ctrl+c and MVDC was slowly creating the 200GB disk instead of allocating the 200GB up front and then populating the data.
+ "c:\Program Files (x86)\Microsoft Virtual Machine Converter Solution Accelerator\MVDC.exe" "SIFT Workstation 2.14-0.vmdk" "SIFT Workstation 2.14-0.vhd" /Dyn
+
+
+
+
+
+
+
+
+Ok, since the MVDC /Dyn flag seems to also create a static disk, we need another option.
+StarWind
+
+The registerware (but free) StarWind V2V Converter claims on its website that it can "Converts from VMDK to VHD and vice versa", perform sector by sector copies, it doesn't modify the source image, and its easy to install and use!. Right up my alley :)
+
+The process was easy:
+
+Select your source File (VMDK, VHD, IMG)
+Choose a location to save the converted data file
+Click 'convert' and let the converter run 
+Import the resulting file into VMware, Hyper V, or mount the resulting image using StarWind”
+
+
+Remember to convert the base disk and not the snapshot files:
+
+Base files:
+10/13/2012  06:05 PM     5,956,304,896 SIFT Workstation 2.14.vmdk
+10/13/2012  06:05 PM        60,227,584 SIFT Workstation 2.14-0.vmdk
+
+
+
+
+Snapshot files:
+10/13/2012  06:06 PM        26,279,936 SIFT Workstation 2.14-0-000001.vmdk
+10/13/2012  06:06 PM         3,997,696 SIFT Workstation 2.14-000001.vmdk
+
+
+
+
+
+So just open StarWind and Click Next. Then select your source file (Remember not to choose the snapshot ####### files) for example, mine was SIFT Workstation 2.14.vmdk
+
+
+
+
+
+Next Select destination format (if you pick pre-allocated it will allocate the entire disk--used or not), for example mine was a "MS Virtual PC Growable Image"
+
+
+
+
+
+Select the destination location and just allow time for conversion
+
+
+
+
+General Warnings
+
+If you convert both the base and the snapshot files, they will result in the same size VHD, however, they are not the same file as they do not hash to the same value and both will not work.
+$ ls -al
+--snip--
+-rwx------+ 1  mkgroup   472501760 Apr  7 23:00 SIFT Workstation 2.14-0.vhd
+-rwx------+ 1  mkgroup   472501760 Apr  7 23:59 SIFT Workstation 2.14-0-000001.vhd
+
+$ md5sum.exe SIFT\ Workstation\ 2.14-0.vhd
+9a678f0e1350eaabfbae329272882c62 *SIFT Workstation 2.14-0.vhd
+
+$ md5sum.exe SIFT\ Workstation\ 2.14-0-000001.vhd
+c8c1505103dfbb70024f2279215b70b8 *SIFT Workstation 2.14-0-000001.vhd
+
+
+
+
+Converting the snapshot files to VHD will not boot.
+When finished converting, copy the base image VHD files to the Hyper-V server via SMB or USB.
+Create a new Virtual Machine and select the converted SIFT image as the base disk
+
+
+
+
+
+
+
+Finally after converting the first virtual disk and adding that to a new Hyper-V VM, we are able to boot the SIFT workstation.
+
+
+
+
+
+
+Unfortunately, we only have /dev/sda right now and will have to convert the second disk /dev/sdb and add that as a secondary hard drive.
+
+
+
+
+VM Size Comparison
+
+
+File
+Guest OS Info
+VMDK Size
+VHD Size
+
+
+SIFT Workstation 2.14.vmdk
+(/dev/sda 30GB guest OS)
+5.8GB
+18.9GB
+
+
+SIFT Workstation 2.14-0.vmdk
+(/dev/sdb 200GB guest OS)
+58MB
+461MB
+
+
+
+Looking at these numbers, it appears that the VMWare vmdk’s are 30% and 12% the size of the Hyper-V images for /dev/sda and /dev/sdb respectively.
+
+As a side note, Microsoft does have an OVA import tool, but it only links in with their paid System Center application.
+Conclusion
+Obviously Microsoft is looking to take away virtualization market share from VMWare and VMWare is trying to maintain that market share and ideally expand their footprint.  The problem is, neither solution is perfect (or anywhere near it).  Thus there is no clear winner as both companies and products have substantial limitations for the free at-home hacker.
+
+There are plenty of lessons learned if these companies would like to woo the nerds of the world which will ultimately help influence corporate purchasing.
+
+Microsoft:
+
+Continue innovating
+Clean up the remote management process - Very nice of John Howard to create the hvremote.wsf script, however it should not be necessary.  Kudos to John though.
+Enable file transfer through Hyper-V manager
+Become more flexible to allow users to convert operating systems other than a Microsoft OS (yes, they do exist)
+Import OVA files directly within Hyper-V manager
+Better promote adoption with the nerds - more instructional videos - better, more consolidated help and resources - Have official advice instead of relying on blogs and user base to provide support.
+
+
+VMWare:
+
+Start innovating again
+Increase memory limits of ESXi
+Improve critical items on the Hardware Compatibility List (HCL).  Support the most common devices.
+
+Feedback welcome
+In the meantime, we would love to hear your feedback.  Have you been experiencing similar issues with these products?  Do you have any free Type 1 hypervisors that you would recommend?  Are you a fan of XenServer, KVM, or something else?  Please chime in with your favorites.
+
+

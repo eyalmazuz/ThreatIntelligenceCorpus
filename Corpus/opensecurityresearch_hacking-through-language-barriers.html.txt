@@ -1,0 +1,128 @@
+
+Hacking Through Language Barriers
+
+
+By Tony Lee and Chris Lee.
+
+When assessing a global corporation's external network, a security consultant may not immediately realize geographically where in the world they may end up.  We are often given large IP blocks that contain hosts around the world.  As you interact with these systems, you may discover that the tools/applications you regularly use do not support the language of your target!  This article will help provide a few ideas on determining where in the world you end up and how to continue the hack—even if you cannot natively read what you are doing.
+I’m in! Now what?
+
+Inevitably you'll discover a misconfiguration or some other vulnerability that will yield you access to something on the target's external network. Sometimes you might not even be sure what the system is (e.g. access obtained via a weak password). We've seen tons of stuff fall into this category - from VOIP gateways and VPN appliances to SCADA sensors and controllers (ironically, we find the most unique equipment is usually available over dial-up --yeah War Games!).
+
+Nonetheless, here we are again, we have access to some unidentified host - but now what?  Since we don’t manage the device and may not immediately know what it is, we look for some sign of a manufacturer or version in the banner.  If it lacks a banner, we try to activate the help menu.  This is all well and good, however what if the help menu or the banner show up as non-printable characters?
+What the hex?
+
+On a recent engagement, we ran into just this problem.  The password prompt and a very lengthy copyright banner were legible, however all of the help functionality displayed as non-printable characters as shown in the example below:
+
+
+
+Since it is impossible to know every device out there the help menu can be crucial to navigating the device and turning low hanging fruit into further access or substantial impact.  So, how do we interpret the menu when it looks like that?
+
+The first thing we have to assume is that the device and our client application do not speak the same language.  This could be protocol or natural language.  In the screenshot above, we see that the protocol is most likely not the culprit because we can read some of the menu—thus we have to assume this is a natural language issue.  But what language is this?
+Location clues
+
+In order to pick the right language, it may help to figure out the geographic location of the device.  Again, even though this may be a company that is headquartered in the US or elsewhere, it does not mean that the device is located in that country or even configured to be in that language since it is often local employees that have to manage the device.
+
+To help discover the location, we will use the following clues:
+
+Manufacturer
+Login banners
+Hostname or DNS name
+GeoIP Data
+
+Manufacturer
+The manufacturer can sometimes be an indicator of the language, but this is not always the case due to global manufacturing and distribution of equipment, however there are countries that tend to purchase and support their own local products more often than they purchase foreign equipment.  With that said, this is probably the least accurate clue, but worth noting.  In the case above, Yamaha (a Japanese company) makes the device to which we have gained access.  Additionally, it looks like the Tokyo Institute of Technology and the Japan Advanced Institute of Science and Technology also have copyrights on this device.  Let’s see if this holds any weight as we move along.
+Login banners
+Warning and consent to monitoring banners will often have the company name and possibly location of the device.  If listed, this information is usually more accurate than extrapolating the device location from the manufacturer’s origin.
+
+Fictitious example:
+It is the policy of the law firm of the Smith group to monitor the Internet 
+access of its employees to ensure compliance with law firm policies.  
+Accordingly, your use of the Internet may be monitored.  The firm reserves 
+the right to disclose the fruits of any monitoring to law enforcement if it 
+deems such disclosure to be appropriate.
+
+Smith1 – Memphis
+
+Username: 
+
+
+
+Many security industry experts advise against this disclosure as it makes it very easy for the attackers to find and validate their targets—however it is still prevalent.  The client’s argument is that it is very useful for administrators to also know the location and ownership of the device.  In this situation, there was no consent to monitoring or other warning banner to clue us into the location.
+Hostname or DNS name
+Another tip-off can be the hostname or DNS Fully Qualified Domain Name (FQDN).  Companies will often put geographical location info either in the hostname or as part of the FQDN.
+Examples of this would be:
+
+VAWin2k8Server
+UKc2600
+Sharepoint.company.co.jp
+
+
+Looking at the examples above, one could probably infer that the first example is in VA, in the US, the second example is located in the UK, and the last example is in Japan.
+
+A real-world example can be seen when doing a traceroute to a device that is relatively far away:
+ traceroute to nyu.edu (128.122.119.209), 30 hops max, 60 byte packets
+ 1  56-92-10-6.static.twtelecom.net (56.92.10.6)  1.058 ms  1.307 ms  1.662 ms
+ 2  20-34-18-25.static.twtelecom.net (20.34.18.25)  4.991 ms  5.194 ms  5.196 ms
+ 3  lax2-pr2-xe-0-3-0-0.us.twtelecom.net (66.192.253.170)  6.109 ms  6.106 ms  6.239 ms
+ 4  xe-7-1-0.edge2.LosAngeles9.Level3.net (4.53.230.61)  6.438 ms  6.412 ms  6.423 ms
+ 5  vlan70.csw2.LosAngeles1.Level3.net (4.69.144.126)  7.172 ms vlan90.csw4.LosAngeles1.Level3.net (4.69.144.254)  13.436 ms vlan70.csw2.LosAngeles1.Level3.net (4.69.144.126)  7.302 ms
+ 6  ae-93-93.ebr3.LosAngeles1.Level3.net (4.69.137.45)  7.863 ms  8.785 ms ae-73-73.ebr3.LosAngeles1.Level3.net (4.69.137.37)  8.067 ms
+ 7  ae-3-3.ebr1.SanJose1.Level3.net (4.69.132.9)  15.933 ms  15.797 ms  17.652 ms
+ 8  ae-2-2.ebr2.NewYork1.Level3.net (4.69.135.186)  83.898 ms  84.117 ms  83.987 ms
+ 9  ae-82-82.csw3.NewYork1.Level3.net (4.69.148.42)  84.614 ms ae-72-72.csw2.NewYork1.Level3.net (4.69.148.38)  84.346 ms ae-92-92.csw4.NewYork1.Level3.net (4.69.148.46)  85.171 ms
+10  ae-1-60.edge4.NewYork1.Level3.net (4.69.155.20)  84.339 ms ae-3-80.edge4.NewYork1.Level3.net (4.69.155.146)  84.582 ms  84.581 ms
+11  NEW-YORK-UN.edge4.NewYork1.Level3.net (4.28.130.118)  85.143 ms  85.140 ms  85.119 ms
+
+
+
+
+It is interesting to see the physical path that packets take over long distance journeys.
+
+Unfortunately, in our case, this did not help us as we were working off of IP address only and the hostname was not displayed in the banner or resolvable via a reverse DNS lookup.
+GeoIP Data
+The last tactic you can use is a GeoIP location search engine and database.  This is a mapping of real world physical locations to Internet Protocol addresses.  I recommend using a couple of them to validate each other’s results.  Sometimes you may get one that is pretty far off in accuracy.
+
+Some potential sites to use are:
+
+http://www.geoiptool.com
+http://www.geobytes.com
+http://freegeoip.net/
+
+
+In our case, we included the result from geobytes below.  This confirmed our suspicion from earlier that it may be Japanese.
+
+
+
+
+Overall, these tools are fairly accurate, sometimes even down to the city, and will almost always get you in the right country.
+Encoding/language support
+Now that we know the language we want to try, the first attempt at making it readable was to try another program.  Unfortunately, Putty was no help in this instance.  None of the language settings under Putty Configuration then Translation seemed to match a Japanese character encoding.
+
+
+
+It turns out that you need to download a separate version of Putty called Puttyjp.
+
+Since we did not want to install a special version of Putty for this, we looked through the character encoding in gnome-terminal .  There are a few Japanese encodings, so we tried Japanese ISO-2022-JP as shown in the screenshot below:
+
+
+
+No dice!
+
+Let’s try another character encoding set, Japanese (SHIFTJIS)…  Voila!  We have something that is legible!  Sorta…  If you read Japanese you are in good shape.  For the rest of us, we can either make a friend who reads the language or there is Google Translator.
+
+
+Google translator to the rescue
+The detect language feature in Google Translate guessed incorrectly, but it can be overridden.  When in a pinch, this is not a bad option.  The Ping help menu even makes sense when you read the English version—or at least enough to understand the command and how to use it.  This was the same for the rest of the help menus which provided enough information to properly leverage the device.
+
+
+Conclusion
+Even though you may be assessing devices and networks around the world, it is not impossible to hit a home run on a device that you cannot even natively read.  With enough patience and careful fiddling, a foreign device can be utilized as if it were a native device.
+
+For those of you that were wondering what the mystery device was…  It was a VPN concentrator designed for small/medium size businesses.  One clue, intentionally not disclosed earlier, was the very subtle model number in the banner:  RT107e.
+
+
+
+Have you ever run into a language issue before?  If so, what clues did you use to figure out the language of the device?  What tools did you have to use to correctly render the text?  What did you use to translate it once it was properly rendered?
+
+

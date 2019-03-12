@@ -1,0 +1,70 @@
+“Blank Slate” Campaign Takes Advantage of Hosting Providers to Spread Ransomware
+
+In recent months, we’ve been tracking a malicious spam (malspam) campaign using emails with no message content and an attached zip archive to spread ransomware. We’ve nicknamed this campaign “Blank Slate” because the malspam messages are blank with nothing to explain the malicious attachments.
+Last month, we published a blog  that discussed farming Microsoft Word documents in AutoFocus associated with the Blank Slate campaign. It revealed more than 500 domains were used. These malicious domains were quickly taken offline, but Blank Slate actors quickly registered new ones, revealing a cycle of abuse towards legitimate hosting providers.
+Today’s blog describes the delivery, exploitation, and installation components of this attacker’s playbook, and it explores the cycle of abuse criminals follow against legitimate hosting providers to host ransomware associated with these infections.
+The infection chain
+The infrastructure behind the Blank Slate campaign has two distinct phases. The first phase is receiving malspam from a botnet. The second phase is when an attachment from the malspam retrieves ransomware from a web server. The ransomware is designed to infect Microsoft Windows computers, and a successful infection chain consists of the following steps:
+
+Attacker’s botnet sends malspam to the intended recipient.
+User ignores security warnings and opens the zip archive included in the malspam.
+User ignores security warnings and manually extracts either a Microsoft Word document or a JavaScript (.js) file.
+User ignores warnings and manually enables macros for the Word document or user double-clicks the .js file.
+Word macro or .js file retrieves a ransomware executable from a web server.
+Word macro or .js file executes the ransomware on the user’s computer in the user’s security context.
+
+
+Figure 1: The user receives an email from a host in the botnet.
+These Blank Slate emails come from a botnet consisting of numerous compromised hosts across the globe. Sending email addresses are always spoofed, and they have no relation to the actual botnet host sending the message.  The emails only consist of a zip archive sent as a file attachment.  As shown in Figure 2, these email messages have no text whatsoever, only an attachment that intended victims are meant to open.
+
+Figure 2: One of the malspam email messages.
+The malspam’s zip attachment is actually a double-zipped file, meaning it contains another zip archive which itself holds the malicious active content. We believe the attackers chose to use a double-zip tactic as a countermeasure against antispam/antimalware technologies. With an additional layer of user interaction, some intended victims may become frustrated or distracted, and this might lead to an increased failure/abandon rate. However, we believe the attackers decided this was less of a risk than detection by antispam/antimalware technologies.
+That second zip archive contains either a Microsoft Word document with a malicious macro as shown in Figure 3, or it contains a .js file as shown in Figure 4.
+
+Figure 3: Example of a malspam attachment with a double-zipped Word document.
+
+Figure 4 Example of a malspam attachment with a double-zipped .js file.
+The Word document macro has malicious Visual Basic for Applications (VBA) script that will execute after the user has opened the document and enabled macros. The .js file has malicious JavaScript that will execute within Windows Script Host when it is double-clicked.  In both cases, once the malicious script executes, it launches a PowerShell process to download and run ransomware on the Windows host as shown in Figure 5.
+
+Figure 5: Communications between malicious script and server hosting ransomware.
+Figure 6 shows an example of the traffic between a malicious .js file and a server hosting the Cerber ransomware.
+
+Figure 6: Traffic from February 2nd 2017 of a .js file retrieving Cerber.
+We primarily see Cerber ransomware distributed by the Blank Slate campaign, but other forms of ransomware like Sage 2.0 and Locky have also been noted.
+The Blank Slate campaign has followed consistent patterns, and we’ve confirmed matching activity in AutoFocus as early as July 5th 2016 as shown in Figure 7.
+
+ 
+Figure 7: Using AutoFocus to find Word documents from the Blank Slate campaign.
+These results indicate at least seven months of obvious malspam, which raises the question: if the malspam is obvious, why is the Blank Slate campaign so long-lived?
+Abusing hosting providers
+A key factor to Blank Slate’s longevity the abuse of hosting providers. Our previous post on this campaign listed 555 domains associated with this campaign over the span of seven months. These domains were active for a few days before they were taken off line. Then the criminals behind Blank Slate moved to newly-registered domains, sometimes using the same hosting provider. This cycle has repeated itself over and over since July 2016.
+To examine more closely, we reviewed a five-day period from January 29th to February 2nd 2017. During that timeframe, we found at least eight domains across seven IP addresses hosting Cerber ransomware. The following list shows each domain followed by its IP address.
+
+adibas[.]top – 46.173.219.161
+footarepu[.]top – 35.165.86.173
+guntergoner[.]top – 35.163.101.72
+guntergoner[.]top – 185.159.130.89
+ibm-technoligi[.]top – 35.165.251.24
+ibm-technoligi[.]top – 62.109.29.26
+polkiuj[.]top – 35.165.251.241
+polkiuj[.]top – 46.173.219.161
+suzemodels[.]top – 35.163.101.72
+astrovoerta[.]top – 185.159.130.89
+zofelaseo[.]top – 35.163.101.72
+
+These domain names were registered a day or two before they were active. They remained active for up to seven days or more, depending on how quickly the hosting providers were notified.
+So how do Blank Slate and other campaigns continue abusing hosting providers?
+The requirements for establishing an account at a hosting provider are easy to acquire. The criminals only require a valid email, phone number, and credit card.
+Most of these requirements are easy to obtain. Various free email services easily provide anyone a valid email address. Criminals can also purchase pre-paid phones without a contract (known as “burner phones”) that are hard to track. And finally, criminals often use stolen credit card data when establishing these accounts.
+
+Figure 8: Requirements for an account at a hosting provider.
+Criminal accounts on hosting providers are relatively short-lived, since the domains are quickly discovered and reported to the provider’s abuse department. However, these domains can stay online for a week or more before an abuse complaint is resolved. When a server is taken off-line, the criminals can easily establish another server through a new account using a different email, phone number, and stolen credit card data.
+The cost is relatively inexpensive. A new email account can be established for free. Burner phones are cheap, as low as 20 to 30 dollars in the US. In the Russian underground, prices for a set of stolen credit card credentials are as low as five US dollars.
+The situation lends itself to a cycle of abuse as criminals establish new servers, those servers are reported, the hosting provider shuts them down, and the criminals establish new servers.
+
+Figure 9: The cycle of hosting provider abuse.
+Conclusion
+As implied by the cycle of abuse, domains and IP addresses associated with the Blank Slate campaign are constantly changing. With the current popularity of ransomware, we continue to see malspam daily in both targeted attacks and wide-scale distribution. We expect this trend will continue.
+Palo Alto Networks customers are protected against this threat through our next-generation security platform. WildFire continues to identify Microsoft Office documents using these techniques as malicious. Finally, AutoFocus users can identify associated malware by using the PowerShellCaretObfuscation and CerberSage_Distribution tags.
+ 
+

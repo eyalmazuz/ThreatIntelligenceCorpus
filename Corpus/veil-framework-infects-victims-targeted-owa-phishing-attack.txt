@@ -1,0 +1,26 @@
+Veil-Framework Infects Victims of Targeted OWA Phishing Attack
+Overview
+Proofpoint researchers recently observed a novel targeted phishing attack that combined Outlook Web Access (OWA) credential phishing with a malicious document download.  In May we also observed an Office 365 credential phishing attack leading to iSpy Keylogger [1], but the combination of OWA with this infection chain takes a different approach. While it is not clear whether the primary goal of the attack was delivering the malicious payload or capturing the targets' OWA credentials, this attack uses an OWA phish to additionally pushes a malicious document with a Veil-Framework payload capable of downloading further malware.
+Analysis
+We observed what appeared to be a typical Outlook phishing template on October 24. As is often the case with OWA phishing pages, this one was missing a few normal branding items (Fig. 1).
+
+Figure 1: Outlook Web Access credential phishing page
+This particular OWA phishing template is visually the same as that used in a previously documented targeted attack [2]. However there are no other similarities (URI structure is different and we did not compare the code). Figure 2 shows the POST data if a user submits their credentials on this page.
+
+Figure 2: POST data following submission of credentials in the OWA phishing page; the sendsecuremail[.]com domain has been used for some time in phishing attacks
+Recipients who enter their OWA credentials are presented with a prompt to download a file.
+
+Figure 3: Prompt to download a malicious document following entry of credentials into the phishing page
+Clicking the link prompts the user to download an XLS file, as shown in Figure 4:
+
+Figure 4: Download of the malicious Microsoft Excel spreadsheet
+This XLS file uses macros to deliver malware (Fig. 5), a technique that has been widely used for many years. In this case, the filename ViolationReport.xls employs a social engineering trick to create a sense of urgency in the recipient to open the file and quickly determine the nature of their "violation" and see what they did wrong.
+
+Figure 5: Malicious Microsoft Excel spreadsheet - note the filename, a social engineering tactic to create a sense of urgency
+Once enabled, the malicious macro in the spreadsheet runs PowerShell commands that can execute on both 32-bit and 64-bit systems (Figure 6).
+
+Figure 6: PowerShell command to download an unknown payload
+This PowerShell code downloads a payload from a hardcoded  HTTPS URL. Four random characters are appended at the end of the URL, for example hxxps://[IP_ADDRESS]:443/Rb5t.
+This PowerShell downloader code has been developed with the Veil-Evasion portion of the Veil-Framework, a legitimate and widely used penetration testing tool. Veil-Evasion is typically used in tandem with Metasploit. These tools allow attackers to implement multiple threat vectors at once; as the name suggests, the Veil-Evasion module is focused on evading detection, including the use of the URL pattern noted above. The use of Veil-Evasion, the small number of occurrences of this threat across our customer base indicate that this is a more targeted attack than a standard phishing campaign. While the IP address the loader attempts to contact is currently unresponsive, preventing us from determining the intended final payload, the Veil-Evasion code will typically load a meterpreter shell into the PowerShell process and resume it as a new thread to establish communication with the attacker.
+Conclusion
+Threat actors are continuously looking to maximize the return on their investments and shifting their tactics accordingly. In the case of Locky ransomware, this takes the form of massive "spray and pray" email campaigns with frequently shifting types of document attachments. The Dridex banking Trojan, once a favorite of high-volume campaigns now appears almost exclusively in smaller, targeted attacks. And for phishers, as in this case, a multi-pronged attack that can potentially yield Outlook Web Access credentials even if victims don't install a secondary malware payload improves effectiveness and increases the attack surface. Combining phishing with malware distribution remains relatively rare but this is likely a harbinger of things to come as cybercriminals explore ways to increase the payout associated with their efforts. For targeted spearphishing, including a malware payload is another potential beachhead for additional attacks as well.

@@ -1,0 +1,110 @@
+
+GitHub and the Man On The Side Attack
+
+
+
+
+Recently most of the people used to collaborate through GitHub experienced a new kind of Denial Of Service Attack widly recognized as Main-On-The-Side Attack. The Github DDOS attack was driven by the State of China (NewYorkTime) with the intent to alert GitHub company about the violation of the Chinese censorship policies.
+
+
+"Because GitHub is fully encrypted, China’s domestic web filters cannot 
+distinguish between pages that host code useful to programmers and code 
+that circumvents censorship." (Source: NewYorkTime)
+
+
+The cyber attack has made possible because the Chinese Government poisoned web traffic throuugh its "great firewall" (Golden Shield Project) injetting a malicious javascript payload into specific http requests.  Chinese Government sacrified a local analytics company named Baidu injecting into its analytics scripts a malicious content able to load multiple times the tergeted github pages. A simple attack flow follows:
+
+A unaware user is browsing from outside China
+The website the user visits loads a javascript from a server located in China, for example Baidu Analytics script (much like Google Analytics)
+The user web broswet requests for Baidu javascript
+The requested javascript is intercepted by Chinese passive infrastructures as it enter in China perimeter
+A compromised response is sent out from China instead of the actual Baidu Analytics script
+The compromised response tells to the user browser to contnuosly load specific pages on GitHub.com.
+
+
+Finding the original malicious code in order to analyze it,  was actually the real challenge (at least for me). I've tried to execute tons of Baidu urls GET requests but no malicious payloads were found. Fortunately Urlquery.net saw the code and stored it (here). The following image shows one of the used payloads (that report proves tha multiple payloads were involved).
+
+
+
+Script From Baidu during the Chinese Github Attack
+
+
+
+After a couple of deobfuscation "raunds" (JDetox would help you out) the piece of javascript coming out the analysis owned two specific URLs: github.com/greatfire and github.com/cn-nytimes . Both of the URLs are mirror sites for GreatFire.org and the Chinese New York Times.
+        GreatFire and NYT both use GitHub to circumvent the online censorship performed by the Great Firewall of China (GFW).
+
+
+
+Decripted "Malcode"
+
+
+The connections path captured by urlquery is shown in the following picture where is almost evident the query to cloudfront comming after having loaded a fake baidu script. 
+
+
+
+
+Connection Flows
+
+
+
+
+
+
+
+
+Getting little bit deeper -- a malicious payload downloaded from --
+
+
+
+
+ 123.125.115.164
+HTTP/1.0 200 OK
+
+Content-Type: text/html
+
+Server: nginx
+Date: Wed, 18 Mar 2015 09:56:57 GMT
+Content-Length: 114
+Last-Modified: Wed, 18 Mar 2015 05:43:55 GMT
+Etag: "5509109b-72"
+Expires: Wed, 18 Mar 2015 09:56:57 GMT
+Cache-Control: max-age=0
+Accept-Ranges: bytes
+Connection: keep-alive
+
+
+
+
+forced the user browser to load content from:  d18yee9du95yb4.cloudfront.net
+
+
+
+GET /?1425380212 HTTP/1.1
+
+Host: d18yee9du95yb4.cloudfront.net
+
+User-Agent: Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.1; .NET CLR 1.1.4322)
+Accept: text/plain, */*; q=0.01
+Accept-Language: en-us,en;q=0.5
+Accept-Encoding: gzip,deflate
+Accept-Charset: ISO-8859-1,utf-8;q=0.7,*;q=0.7
+Keep-Alive: 115
+Connection: keep-alive
+Referer: http://pos.baidu.com/wh/o.htm?ltr=&cf=u
+Origin: http://pos.baidu.com
+ 
+Currently the host has been blocked down due to the described attack as follows:
+ 
+
+
+Blocked host because the "Chinese Attack"
+
+ 
+ 
+ 
+
+
+I decided to write a little bit about this attack since it is one of the most "dramatic" 
+examples on how "states" might perform wide attacks using unware services and state infrastructures...
+
+

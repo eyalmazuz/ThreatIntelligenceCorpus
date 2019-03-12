@@ -1,0 +1,14 @@
+ABANDON CLOUD! Docker Linux containers spring a security leak
+A security exploit has surfaced that can allow rogue programs to break out of Docker containers and access files on their host OS, but the flaw has been sealed in the latest version of the tech.
+Unlike virtualization, which launches a separate operating system instance for every virtual machine, Linux containerization sticks multiple, cordoned-off apps on the same host OS instance.
+Although it has many performance advantages over virtualization, the security of this approach has been a concern and this flaw will not help matters. (For this reason, most cloud providers like Amazon and Google limit Docker installs on their cloud to one Docker container per VM).
+The flaw "Demonstrates that any given Docker image someone is asking you to run in your Docker setup can access ANY file on your host, e.g. dumping hosts /etc/shadow or other sensitive info, compromising security of the host and any other docker VM's on it," according to a comment published alongside the exploit.
+The exploit affected version 0.11 of the fundamental Docker Engine runtime and packaging tech, but does not pose a threat to version 0.12, which came out within the 1.0 release of Docker last week.
+"The proof of concept exploit relies on a kernel capability that allows a process to open any file in the host based on its inode. On most systems, the inode of the / (root) filesystem is 2. With this information and the kernel capability it is possible to walk the host’s filesystem tree until you find the object you wish to open and then extract sensitive information like passwords," Docker explained in a blog post published after the flaw came out.
+"In earlier Docker Engine releases (pre-Docker Engine 0.12) we dropped a specific list of kernel capabilities, ( a list which did not include this capability), and all other kernel capabilities were available to Docker containers. In Docker Engine 0.12 (and continuing in Docker Engine 1.0) we drop all kernel capabilities by default. Essentially, this changes our use of kernel capabilities from a blacklist to a whitelist."
+The company recommends that users run Docker along with AppArmor or SE Linux to provide further containment, and to map groups of mutually-trusted containers to separate machines.
+"Please remember, however, that at this time we don't claim that Docker Engine out-of-the-box is suitable for containing untrusted programs with root privileges," the company wrote – a staggeringly sensible bit of advice. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

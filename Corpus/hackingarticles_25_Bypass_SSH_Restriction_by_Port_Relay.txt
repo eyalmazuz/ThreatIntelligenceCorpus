@@ -1,0 +1,38 @@
+
+Bypass SSH Restriction by Port Relay
+
+Today we are going to access the ssh port which is blocked by the firewall and is forwarded to another port through Port relay tool. Netcat relay is quite useful tool to connect with any remote system by evading the firewall restriction.
+Attacker: Kali Linux (IP: 192.168.1.2)
+Victim: Ubuntu Server (IP: 192.168.1.7)
+Lets first try to get the normal SSH shell.  As you can see in the given screenshot we successfully get a ssh shell on the port 22 of the Server 192.168.1.7.
+Command: ssh pavan@192.168.1.7
+
+Now let’s block SSH service Port 22 for Incoming TCP Packet using Iptables. Here we are making an inbound rule to block the tcp packets on the port 22 if the packet source is Kali (192.168.1.2)
+Command: iptables –A INPUT –s 192.168.1.2 –p tcp –dport 22 –j DROP
+
+After Blocking the port let’s try to get a shell. From given below image you can observe that we got a Connection Time Out Error as the packets are dropped by the firewall.
+
+Now let’s make a rule in the firewall to accept the tcp packets on the port 4444 if the packet source is Kali (192.168.1.2).
+Command: iptables –I INPUT 1 –s 192.168.1.2 –p tcp –dport 4444 –j ACCEPT
+
+Check Netcat communication between Attacker and Client
+Let’s check if we can get a netcat session on the port 4444 to the Kali (192.168.1.2).
+Command: nc –v –l –p 4444
+
+Command: nc 192.168.1.7 4444
+As you can see in the given Image that we have received a netcat session on the port 4444 from SSH server on the Kali (192.168.1.2).
+
+Now we will have to make a Relay. But first, let’s understand, what the commands depicted below do?
+The First command makes a special type of file called a FIFO or named pipe. We call it backpipe because it is going to carry our responses back through the relay.
+Now the second command makes a netcat listener that is allowed through the firewall. This Netcat listener will connect its standard input (0<) to the backpipe. We then forward the standard output of this Netcat listener to Netcat client, which connects to our localhost (127.0.0.1) on TCP port 22 where sshd listens. We then use the forward pipe (1>) to send data and receive responses simultaneously. We need a back and forward pipe because Netcat provides a two-way communication.
+Command: mknod /tmp/backpipe p
+[p]: Tells the mknod to create a FIFO
+Command: nc –l –p 4444 0</tmp/backpipe | nc localhost 22 1>/tmp/backpipe
+[-l]: Listener
+[-p]: Port
+
+Now let’s try to connect the ssh connection through the port 4444.
+Command: ssh pavan@192.168.1.7 –p 4444
+[-p]: To specify Port
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

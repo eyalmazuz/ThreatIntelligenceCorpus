@@ -1,0 +1,157 @@
+Monero Miners Continue to Plague Users via Russian BitTorrent Site
+
+As 2018 begins, we’ve witnessed an increased trend in cryptocurrency miners. The latest identified threat comes in the form of a Russian BitTorrent site that is covertly distributing malware, primarily mining the Monero cryptocurrency, to its users. This particular Russian BitTorrent site, b-tor[.]ru, has been active since July 2017, and has been observed bundling malware with legitimate files served to its users since September 2017. Like many similar operations, the cryptocurrency miners are delivered without the user’s knowledge. In fact, the operator behind this attack makes specific attempts to ensure that the end user doesn’t realize that malware has been loaded on his or her machine.
+ 
+Delivery
+The attack begins when a user navigates to b-tor[.]ru, which provides BitTorrent files for users that in turn allow them to download any number of items. The list includes games, operating systems, software, books, magazines, audiobooks, TV shows, and movies. Based on data provided by this Russian BitTorrent site, over 275,000 unique torrent files are hosted.
+
+Figure 1 Translated view of b-tor[.]ru from Russian to English
+ 
+When a user attempts to download one of the files presented from this website, they are guided to download the file directly via ubar-pro[.]ru, which is a Russian program designed for searching, downloading, or playing files from the Internet. The most interesting event occurs when a user attempts to download the torrent file associated with the files advertised.
+
+Figure 2 File download options from b-tor[.]ru
+ 
+When a user attempts to download the torrent file, they are instead presented with a compressed file with the corresponding name. Once unzipped, an executable of the same name is presented to this user.
+Using Figure 2 as the example, should the user download the torrent file, they will be presented with the following:
+klient_world_of_.torrent.zip
+Once unzipped, the following file would be presented to the user:
+klient_world_of_.torrent.exe
+As you can see, the attackers are also making use of double file extensions to further attempt to trick the user into believing this file is a legitimate torrent. Additionally, the executable makes use of an icon for the popular uTorrent BitTorrent client. Once executed, this file will download and execute the actual torrent file from b-tor[.]ru/dl.php via HTTPS. Simultaneously, it will also download and execute an instance of the XMRig Monero mining program that will run in the background.
+The entire flow of execution once the malware is downloaded by the victim is as follows:
+
+Figure 3 Flow of execution by malware provided by b-tor[.]ru
+ 
+Malware Analysis
+For the entirety of this analysis, we’re using klient_world_of_.torrent.zip, the file that was served in the example images shown within the Delivery section. It has the following characteristics:
+
+
+
+Original Filename
+klient_world_of_.torrent.zip
+
+
+File Type
+Zip archive data, at least v2.0 to extract
+
+
+SHA256
+792dd221088a6f023021d8709b30229a738dca492784a884f6dfa69f20e14c01
+
+
+
+ 
+
+
+
+Original Filename
+klient_world_of_.torrent.exe
+
+
+File Type
+PE32 executable (GUI) Intel 80386 Mono/.Net assembly, for MS Windows
+
+
+SHA256
+0007f17157e9fe34a305d938bc55e9a7189cf15d91ff3bde6af13fbea6852ece
+
+
+Compile Date
+2018-01-29 22:05:3 UTC
+
+
+
+ 
+The malware used in these attacks may be broken up into a few parts—an initial download/dropper, a secondary payload, and a final payload.
+ 
+Initial Dropper/Downloader
+The initial file received by the victim performs two actions—to drop and run an embedded .NET executable on the victim’s machine, and to download the legitimate .torrent file expected by the victim. When this dropper/downloader first runs, it will begin by loading an embedded .NET executable and placing it in the following directory:
+%APPDATA%\Defender Utility\defupdater.exe
+After it is dropped on the filesystem, it is started in a new process. The malware then spawns a new file save dialog box, asking where they’d like to save the expected .torrent file.
+
+Figure 4 Save file dialog shown by the malware
+ 
+The window title shown in the above screenshot translates from the Russian ‘Загрузка файлов’ to ‘Uploading files’ in English. If the user attempts to save this file, the malware will download the .torrent file from the following URL and place it in the specified location:
+hxxps://b-tor[.]ru/dl.php?id=33308
+Otherwise, the malware will exit without dropping the expected .torrent file. Regardless, the secondary payload will be dropped and run on the system.
+ 
+Second Stage
+We observed this second stage payload to be named ‘defupdater.exe’ in all instances of this malware. Additionally, it has an internal .NET name of ‘defupd’. As such, we will refer to this stage of the malware as ‘defupdater’ within this post going forward. This particular malware stage is responsible for ensuring persistence, as well as downloading an executing another stage of the malware.
+It begins by creating a mutex of ‘defenderutility’ to ensure only a single instance of this malware is running at a given time. It then checks the internal Assembly version of the executable file. In the event no version is present, it will default to ‘0.0.0.1’. It then creates the following directory:
+%APPDATA%\Defender Utility\
+After this directory is created, it will check for the presence of the ‘update.exe’ file within this path. Should it exist, it will be deleted. The malware then creates two threads— one to both set persistence and ensure that the final stage of the malware is continuously running, and one to download an execute the third stage payload.
+The ‘defupdater’ malware proceeds to enter a loop that occurs every 10 minutes, which will both set a registry key for persistence, as well as check for the presence of a specific process.
+In order to set persistence, the following registry key is written:
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Defender Updater Utility – %APPDATA%\Defender Utility\defupdater.exe
+After the registry key is written, the loop will check to see if the ‘taskhostms’ process is running. This process is eventually created by the fourth stage of this malware family. In the event this process is not found to be running, the loop will execute the following file:
+%APPDATA%\AdGuard\taskhostms.exe
+In order to download and execute the third stage payload, defupdater will make a request to the following URL and retrieve the contents:
+
+hxxps://strak[.]xyz/updateinfo.xml
+
+At the time of writing, this URL had the following contents:
+
+Figure 5 Returned results from HTTPS request to strak[.]xyz
+ 
+The defupdater malware proceeds to check each XML element, searching specifically for one with an ‘id’ of ‘wave2’. The version from this element is compared against the previously extracted Assembly version of defupdater, and in the event the one contained within the XML is higher, defupdater will download the file from the specified URL. Using Figure 5 as an example, defupdater would download the third stage payload from the following URL:
+
+hxxps://strak[.]xyz/wave2/update
+
+This file contains a compressed file named ‘update.gz’ and it is placed within the previously created ‘Defender Utility’ directory. The ‘update.gz’ file is decompressed and the resulting ‘update.exe’ is dropped in the same directory before the original ‘update.gz’ file is deleted. Finally, the third stage payload of ‘update.exe’ is executed.
+ 
+Third Stage
+The third stage of this malware family is yet another .NET executable, with an internal name of ‘update’. It is ultimately responsible for dropping and running two embedded executables contained within it. It begins by creating a mutex of ‘defenderupdate’ to ensure only a single instance is running at a time.
+It then creates the following directory:
+%APPDATA%\AdGuard\
+This stage drops the following two payloads to disk:
+
+%APPDATA%\Defender Utility\defupdater.exe
+%APPDATA%\AdGuard\taskhostms.exe
+
+The ‘defupdater.exe’ is an updated instance of the second stage payload, and the ‘taskhostms.exe’ file contains the fourth stage of this malware family. Both of these samples are executed by the third stage.
+ 
+Fourth Stage
+This fourth stage is once again a .NET executable, with an internal name of ‘taskhostms’. It begins by spawning a new thread that constantly checks for the presence of the ‘taskmgr’ process. In the event this process is not found, a global Boolean variable of ‘canMine’ is set to True. Otherwise, this variable is set to false. This flag is used by the malware to determine if mining is performed on the victim machine.
+The following registry key is set to ensure persistency:
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Defender Launcher Utility – %APPDATA%\AdGuard\taskhostms.exe
+The malware proceeds to check the version of the Operating System (OS). In the event that a 32-bit OS is in use, the malware will drop an embedded executable that is internally named ‘xm32’. Otherwise, it will drop an embedded executable that is internally named as ‘xm64’. These are copies of the 32-bit and 64-bit versions of XMRig respectively.
+This instance of XMRig is dropped to the following location:
+
+%APPDATA%\AdGuard\adGuardms.exe
+
+Finally, the malware will execute this newly dropped instance of XMRig with a series of arguments. In the file analyzed, the following arguments were used:
+-o 185.154.13[.]213:3333 -u wave7 -p wave7 -k –nicehash –donate-level=1 –max-cpu-usage=100 –cpu-priority 1
+It should be noted that both b-tor[.]ru and strak[.]xyz domains resolve to the same IP address of ‘185.154.13.213’, which is the same host that is acting as an XMRig proxy. All of the activity witnessed by this particular attacker from start to finish occurs on the same IP address.
+It’s also worth pointing out that the attacker is configuring the miner to use 100% of the victim’s CPU power, which will likely alert the victim to the miner’s presence. We’ve seen other actors in the past modify this value to only use a small percentage of the victim’s CPU to minimize the likelihood that the victim will notice it running in the background.
+ 
+Conclusion
+The delivery of cryptocurrency miners is far from a new tactic. In fact, it has become increasingly common in the past 4-5 months as the value of cryptocurrency saw a drastic rise in value in early December 2017. This particular operation targets a small subset of Russian-speaking users that are looking for content that often is considered to be illegal. As such, a relatively small number of users have likely been affected. However, it represents yet another instance where criminals are attempting to maliciously use a victim’s machine with the end goal of generating cryptocurrency. It is a trend that continues to rise over time, and one that will likely continue to be witnessed over time.
+Palo Alto Networks customers are protected against this threat in a number of ways:
+
+All samples related to this operation have been flagged as malicious in the WildFire platform
+All related domains have been marked as malicious
+Traps prevents the execution of these samples on a host machine
+
+ 
+Appendix
+ 
+Created Files
+%APPDATA%\Defender Utility\defupdater.exe
+%APPDATA%\AdGuard\taskhostms.exe
+%APPDATA%\AdGuard\adGuardms.exe
+ 
+Created Mutexes
+defenderutility
+defenderupdate
+ 
+Registry Keys
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Defender Launcher Utility
+HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Defender Updater Utility
+ 
+SHA256 Hashes
+For a full list of hashes associated with this attack, please refer to our GitHub repository.
+ 
+Domains/IP Addresses
+b-tor[.]ru
+strak[.]xyz
+185.154.13[.]213
+

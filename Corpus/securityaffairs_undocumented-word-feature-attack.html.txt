@@ -1,0 +1,28 @@
+
+					Hackers exploit an undocumented Word feature for user fingerprinting					
+Kaspersky researchers discovered a new attack technique leveraging Microsoft Word documents to gather information on users. The technique is innovative because it doesn’t use active content such as macros or exploits, it exploits an undocumented Word feature to fingerprint users.
+The attackers sent phishing emails using Word documents in OLE2 format and contained links to PHP scripts hosted on third-party web resources. Once the user opened the files in Microsoft Office, the application accesses one of the links, resulting in the attackers receiving information about the software installed on the target machine.
+“They were in OLE2 format and contained no macros, exploits or any other active content. However, a close inspection revealed that they contained several links to PHP scripts located on third-party web resources.” reads the analysis published by Kaspersky Lab. “When we attempted to open these files in Microsoft Word, we found that the application addressed one of the links. As a result, the attackers received information about the software installed on the computer.”
+One of the documents analyzed by the researchers contained tips on how to use Google search more effectively, it doesn’t contain active content, no VBA macros, embedded Flash objects or PE files. Once opened Word sends a GET request to an internal link.
+“This code effectively sent information about the software installed on the victim machine to the attackers, including info about which version of Microsoft Office was installed,” continues the analysis.
+The researchers discovered that the document used an undocumented Word feature, they noticed the presence of an INCLUDEPICTURE field that indicates that an image is attached to certain characters in the text.
+The experts highlighted that there is no description for Microsoft Office documentation provides basically no description of the INCLUDEPICTURE field.
+The attackers used the INCLUDEPICTURE field to include a suspicious link there, although not the URL addressed by Word.
+The text in Word documents is stored in the WordDocument stream in a ‘raw state that doesn’t contain formatting except for so-called fields. The fields are used to instruct Word that a certain segment of the text must be presented in a specific way. The field INCLUDEPICTURE indicates that an image is attached to certain characters in the text.
+The experts identified the following characters inside the document:
+Begin = 0x13
+Sep = 0x14
+End = 0x15
+Field = <Begin> *<Field> [Sep] *<Field> <End>
+
+A byte between the separator (SEP) and the end (END) tells words that an image should be inserted at that point. The experts first located the byte sequence with the picture placeholder, then they discovered at which offset the image should be located in the Data stream.
+“So, we go to offset 0 in the Data stream and see that the so-called SHAPEFILE form is located there:
+Forms are described in a different Microsoft document: [MS-ODRAW]: Office Drawing Binary File Format. This form has a name and, in this case, it is another suspicious link:” continues the analysis.
+Experts noticed that a combination of flags was used to indicate that additional data should be attached to the form. According to Kaspersky, this data constitutes a URL that leads to the actual content of the form.
+“This indicates that additional data should be attached to the form (it is highlighted in yellow in the screenshot), and that this data constitutes a URL that leads to the actual content of the form. Also, there is a ‘do not save’ flag, which prevents this content from being saved to the actual document when it is opened.” continues the analysis.
+The attackers devised this complex technique to fingerprint users opening the Word documents.
+“This is a complex mechanism that the bad guys have created to carry out profiling of potential victims for targeted attacks. In other words, they perform serious in-depth investigations in order to stay undetected while they carry out targeted attacks,” Kaspersky says.
+
+According to Kaspersky, the Office feature exists in Word and Windows, Microsoft Office for iOS, and Microsoft Office for Android. LibreOffice and OpenOffice do not implement this feature
+Pierluigi Paganini
+(Security Affairs – undocumented Word, hacking)

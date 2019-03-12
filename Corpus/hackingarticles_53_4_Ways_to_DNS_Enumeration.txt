@@ -1,0 +1,40 @@
+
+4 Ways to DNS Enumeration
+
+Today we are going to perform DNS enumeration with Kali Linux platform only. It has in-built tool for DNS enumeration. For this tutorial you must be aware of DNS server and its records, if you are not much aware of DNS then read our previous article “Setup DNS Penetration Testing Lab on Windows Server 2012”.
+Following command will try to discover hosts’ services using the DNS Service Discovery protocol. It sends a multicast DNS-SD query and collects all the responses.
+The script first sends a query for _services._dns-sd._udp.local to get a list of services. It then sends a follow up query for each one to try to get more information.
+ nmap –script=broadcast-dns-service-discovery.
+ From given screenshot you can observe the running service on a DNS server.
+
+Following command will try to enumerate DNS hostnames by brute force guessing of common subdomains. With the dns-brute.srvargument, dns-brute will also try to enumerate common DNS SRV records.
+Wildcard records are listed as “*A” and “*AAAA” for IPv4 and IPv6 respectively.
+nmap -T4-p 53 –script dns-brute www.hackingarticles.in
+ From screenshot you can observe DNs hostname
+
+By default, the DNS server performs recursive queries on behalf of its DNS clients and DNS servers that have forwarded DNS client queries to it
+Attackers can use recursion to deny the DNS Server service. Therefore, if a DNS server in your network is not intended to receive recursive queries, recursion should be disabled on that server
+Following command will Checks if a DNS server allows queries for third-party names. It is expected that recursion will be enabled on your own internal nameservers.
+From https://technet.microsoft.com
+nmap -Pn -sU -p 53 –script=dns-recursion 192.168.1.150
+As result you can observe that recursion is enable on targeted system
+
+Following command will enumerates various common service (SRV) records for a given domain name. The service records contain the hostname, port and priority of servers for a given service. The following services are enumerated by the script: – Active Directory Global Catalog – Exchange Autodiscovery – Kerberos KDC Service – Kerberos Passwd Change Service – LDAP Servers – SIP Servers – XMPP S2S – XMPP C2S
+nmap –script dns-srv-enum –script-args “dns-srv-enum.domain=’google.com’
+
+ Multithreaded perl script to enumerate DNS information of a domain and to discover non-contiguous ip blocks.
+OPERATIONS:
+Following command will avoid enumeration of reverse lookup and save the output result into xml format.
+dnsenum –noreverse -o mydomain.xml hackingarticles.in
+
+DNSRecon provides the ability to perform:
+Following command will enumerate DNS record of targeted website
+dnsrecon-d hackingarticles.in
+You can observe the result from given below image.
+
+Fierce is a reconnaissance tool. Fierce is a PERL script that quickly scans domains (usually in just a few minutes, assuming no network lag) using several tactics.
+Type following command for DNS enumeration on targeted website
+Fierce-dns hackingarticles.in
+From screenshot you can see that we have scanned almost same result as from above tools.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

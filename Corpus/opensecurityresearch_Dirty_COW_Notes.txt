@@ -1,0 +1,117 @@
+
+Dirty COW Notes
+
+
+
+
+I am not used to write about vulnerabilities because there are too much vulnerabilities out here and writing about just one of them is not going to contribute security community at all. So why am I writing about Diry Cow ? I am going to write about it because, in my personal opinion, it is huge. When I say "huge" I don't really mean it will be used to exploit the "entire world" but I mean it highlights two mains issues:
+
+Even patched code could easily hide the same vulnerability, just in a different way. How many patched code are not really "patched" ?
+A new pragmatic approach to identify vulnerabilities: looking into patched code and check the  patch implementation.
+
+
+
+But let's start from the beginning by taking a closer look to the exploit code.
+
+
+
+
+
+Click to enlarge: Taken From Here
+
+
+
+As many other kernel vulnerabilities it relays on concurrency; the exploit code fires on two separate threads who will access at the same time to the same resource.  Taking a closer look to the main function you will see that the mmap syscall has been used.
+
+
+
+
+calling mmap function
+
+
+From documentation:
+
+
+creates a new mapping in the virtual address space of the
+       calling process.  The starting address for the new mapping is
+       specified in addr.  The length argument specifies the length of the
+       mapping.
+
+
+
+
+
+
+
+mmap does not create a memory copy but rather it creates a new mapping of that (filedescriptor) memory area. It means the process will read data directly from the original file rather than from a copy of it.  While most of the parameters are obvious the MAP_PRIVATE flag is the "core" of the vulnerability. It enables the "copy on write" (from here the name COW) which basically copies the original data in a new memory area during the write access to the same data. Since the mmap has just mapped a readonly area and the process wants to write data on it, mmap (MAP_PRIVATE) will create a copy of that data on write actions, the modified data will not be propagated to the original memory area. 
+
+
+
+Now the exploit runs two threads which will exploit a race condition to get "write access" to the original memory area. The first thread runs several times the function call madvise (memory advise) which is used to increase process performances by tagging a memory area according to its usage: for example  the memory could be tagged as NORMAL,  SEQUENTIAL, FREE or WILLNEED, an so on... In the exploit, the mmap memory is continuously tagged as DONTNEED,  which basically means the memory is not going to be used in the next future so the kernel could free its space and reload the content only when needed.
+
+
+
+First Thread implementing madvise
+
+
+
+On the other hand another thread is writing on its own memory space (by abusing the pseudo file notation: /proc/self/mem) directly on the mmap area pointing to the opened file. Since we have invoked the mmap function through the MAP_PRIVATE flag we are not going to write on the specifi memory but on a copy of it (copy on write).
+
+
+
+
+Second Thread implementing write on pseudo self/mem
+
+
+
+
+The race condition between those two threads tricks the write on copy on the original memory area since the copied area could be tagged has DONTNEED while the write procedure is not finished yet. And voilà you are going to write in a readonly file !
+
+
+
+OK now we figured out how the trick worked so far but what is most interesting is the story behind it?
+
+
+
+Going on issue tracker: Linus Trovalds (maximum respect) wrote:
+
+
+
+This is an ancient bug that was actually attempted to be fixed once
+(badly) by me eleven years ago in commit 4ceb5db9757a ("Fix
+get_user_pages() race for write access") but that was then undone due to
+problems on s390 by commit f33ea7f404e5 ("fix get_user_pages bug").
+
+In the meantime, the s390 situation has long been fixed, and we can now
+fix it by checking the pte_dirty() bit properly (and do it better).  The
+s390 dirty bit was implemented in abf09bed3cce ("s390/mm: implement
+software dirty bits") which made it into v3.9.  Earlier kernels will
+have to look at the page state itself.
+
+Also, the VM has become more scalable, and what used a purely
+theoretical race back then has become easier to trigger.
+
+S390 is ancient IBM technology.... I am not even sure it still exists on real world (at least if compared to recent systems). Probably linux community forgot about that removal otherwise would left it in the recent memory managers.
+
+
+Anyhow the bug now "has been fixed" by introducing a new internal Flag called FOLL_COW (really !?J) which basically says "yes I already did the copy on write".
+Basically the process can write to even unwritable pte's, but only after it has gone through a COW cycle and they are dirty. Following the diff patch
+
+
+
+Dirty Cow Patch3 on October 2016
+
+
+
+
+
+
+Dirty Cow vulnerability blowed in my mind a new vulnerability hunting process. On one hand laboratories with extremely sophisticated, tuned and personalised fuzzers perform the "industrial" way (corporate and/or governative) to find new vulnerabilities, on the other hand more romantic and crafty way done by professionals and/or security researchers used to adopt handy works and smart choices. But another smart approach (industrial or romantic) could be to investigate into the patched code by itself.
+
+
+
+Patched code is by definition where a bug or issue where located. The most difficult part of finding vulnerabilities (not exploiting them) is to figure out where they are in thousands lines of code. So finding vulnerability on patched code could be much more quick even if with high "hypothetical" complexity since a patch is involved. But as this case testifies ...  is not always the case!
+
+
+
+

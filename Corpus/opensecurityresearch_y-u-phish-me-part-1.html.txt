@@ -1,0 +1,111 @@
+
+Y U Phish Me? [Part 1]
+
+
+By Melissa Augustine.
+Some emails have been censored for your protection :)
+
+A few days ago while I was browsing my inbox, I came across an interesting email from "Paypal" with the subject of "Help Centre!". Something didn't look right. Here's the Email:
+
+
+I was a bit suspicious of this, but at first blush it looked pretty OK. Then I looked at the email header:
+
+support@paypal.com via shepard.sypherz.com? I'm pretty sure Paypal hasn't decided to send email through a third party, something is odd here. 
+SMTP Header
+Lets take a look more into the header. You can click on the down arrow (near the "Reply" button on the new Gmail interface and click 'Show Original') to see the full header.
+
+When analyzing SMTP Header data you start at the bottom (1st action) and work up to the time (most recent action):
+
+
+Let's dig into each of the numbered areas of this header:
+
+This section shows the actual sending of the email from shepard.sypherz.com. Postfix is an open source mail agent. Also note the time and date, January 11, 2014 09:5501 (-0600). This gives us an idea of the timezone of the offending server and we can do some DNS lookups to try and find anything interesting about it. 
+Here we see something about 'authentication results' and an SPF string. SPF stands for Sender Policy Framework and was meant to detect spam and spoofing. It did this by verifying the senders IP address.
+From Wikipedia: 
+"SPF allows administrators to specify which hosts are allowed to send mail from a given domain by creating a specific SPF record (or TXT record) in the Domain Name System (DNS)". 
+
+So basically if I am trying to relay mail through a non-authorized IP and SPF is enabled, it would be blocked. We see here though the IP address 95.211.6.133 (www-data@shepard.sypherz.com, another domain name) was vouched by its DNS.  Well that’s nice. We can do an nslookup to see what we can about that IP:
+
+
+
+This looks like a potential NL IP? Geo-IP confirms this.
+
+
+
+Next we see it getting handed over to google.com. We see another server name which we saw earlier with nslookup, nexus.sypherz.com. The time here is 07:55:03 -0800 (PST). This is the time zone for Mountain View, CA
+We then see it bouncing around Google (its 10.x.x.x which means its internal servers)
+
+
+Ok, so what that means is... well, its not from Paypal at all :)
+Email Addresses
+
+I can also see (just take my word for it) that there are a decent amount of email addresses in here. I copy and paste them out to a text file, but they are not on one per line so its hard for me to do much with it (I like order). Vim provided a great solution:
+/[ ]
+:%s//\r&/g
+
+
+The above code is two separate commands run within vim. The first one searches for whatever is in the square brackets, in our case, a space. The 2nd says to search (/s) and replace the space (if you put nothing in here it takes the last search) in every instance (the %) with a carriage return (r&). If that doesn't make sense, look here. I still had to go through and fix a few email addresses up (I think it was due to just addresses hitting the edge and continuing on the next line), but in the end, a lot less work than doing it all by hand!
+
+Now that that’s done, lets see what we got.
+$wc -l address.txt
+>> 2887 adress.txt
+
+$ sort address.txt | uniq address.txt > uniqaddress.txt
+$ wc -l uniqaddress.txt
+>> 2887 uniqaddress.txt
+
+
+
+So all unique addresses, and looked like it was part of a larger list. I say this because it started with m’s and ended at z’s and the list pre-edited looked sorted already. 
+Domains
+
+Ok great, let’s scroll down the original text to view the message body. You can see the HTML here
+
+
+
+Looking at it, it’s hard to see what you are looking for, but let's focus on domains again. I'll copy out the body and save as a file (body.txt). Next some command line magic to pull out all domains with "http".
+$ grep -E -o "http://[a-zA-Z0-9.-_]+" body.txt 
+>> http://images.paypal.com/en_US/i/logo/logo_emailheader_113wx46h.gif
+>> http://images.paypal.com/en_US/i/scr/pixel.gif
+>> http://images.paypal.com/en_US/i/scr/scr_emailTopCorners_580wx13h.gif
+>> http://images.paypal.com/en_US/i/scr/pixel.gif
+>> http://hoabinhltd.com/
+>> http://images.paypal.com/en_US/i/scr/pixel.gif
+>> http://images.paypal.com/en_US/i/scr/scr_emailBottomCorners_580wx13h.gif
+$ grep -c http body.txt 
+>> 6
+
+
+
+
+Whew! Let’s go through the 1st grep shall we?
+
+grep - pretty obvious, invokes the command grep
+-E - this will interpret the pattern as an Extended regular expression
+-o - prints only the matching part of the line (not the whole line which is default)
+“[stuff]” - this is our regex
+
+http:// - find me anything with ‘http://’
+[a-zA-Z0-9.-_]+ - in addition, find me one or more (that’s the +) instances of alphanumeric characters (upper and lower), a ‘-‘, or a dot ‘.’
+
+
+I ran the last grep to make sure I didn't miss anything. I see a discrepancy, the count gave me 6 but the regular expression gave me 7... what gives? Well if you look at the man page for grep you see that it counts the lines where the expression was found. So... this means http was found twice on one line. I could have also piped another grep to remove the paypal with the -v option. You can also look for https domains with this as well!
+$ grep -E -o "http://[a-zA-Z0-9.-_]+" body.txt | grep -v paypal
+
+
+
+Sweet I found instantly a domain I may want to focus on! We can search in vim for the domain to get more context as to when that domain was called. 
+ <td><span style="color: rgb(8, 68, 130); outline-width: 0px;" <p>Click Update to Confirm Your Account Now <a href="http://hoabinhltd.com/" target=_blank>  update</a></td>
+
+
+
+Well this definitely looks like what I would call the suspicious domain! CentralOps provides some information about the domain:
+ 
+
+..and we can use Geo-IP as well:
+ 
+
+
+So this is looking like a classic phishing campaign… what happens if we go to this domain? Tune in next time, same blog time… same blog channel!
+
+

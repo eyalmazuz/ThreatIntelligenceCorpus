@@ -1,0 +1,240 @@
+
+Ransomware: Because OpSec is Hard?
+
+
+
+This blog was authored by Edmund Brumaghin and Warren Mercer
+
+
+
+
+Summary
+
+Talos recently published research regarding a new variant of destructive ransomware, which we dubbed Ranscam. During further analysis of Ranscam samples, we discovered several indicators of compromise (IOCs) that piqued our curiosity as to which malware this threat actor might be involved in or responsible for besides Ranscam. We began to expand the scope of our research into other destructive "ranscamware" in an effort to determine if they had any shared characteristics that might indicate the same threat actor or group might be responsible for multiple variants. We found several interesting ties between known destructive ransomware variants such as Jigsaw and AnonPop which correlated with the threat actor we believe to be responsible for Ranscam.  
+
+
+
+
+Tying It All Together
+
+As you may recall from reading our previous research into Ranscam, the domains associated with this malware were registered to a single registrant, cryptofinancial[@]yandex[.]com. We decided to begin there. We began researching all of the domains associated with this email address via the use of reverse WHOIS information available within OpenDNS Investigate. We very quickly identified, based upon historical WHOIS information, that two of the domains used by our Ranscam actor had been recently transferred to a second registrant account, using the email minercount[@]yandex[.]com. The registrant details associated with both of these email addresses also included the use of the same phone number.
+
+
+
+
+
+
+
+The two domains that were transferred between the registrant accounts were:
+
+kipibank[.]com (Ownership transferred on 02-26-2016)
+
+cryptowallremoval[.]com (Ownership transferred on 05-28-2016)
+
+
+
+
+
+We then began researching other malicious samples that had been previously seen in the wild that were associated with either of the recently transferred domains. We discovered that both AnonPop and Jigsaw, two previously discovered variants of destructive ransomware known to delete victim's files, had been seen being hosted on domains currently or previously associated with cryptofinancial[@]yandex[.]com - our original starting point. 
+
+Additionally, we discovered an online actor using the alias "minercount" on various underground hacking and programming forums, conducting activities that could be linked to characteristics we identified in both Ranscam and AnonPop. Both of these malware variants are delivered as obfuscated .NET executables. Here we see an individual who goes by the username "minercount" posting in a thread detailing release information for a Crypto Obfuscator for… you guessed it .NET executables!
+
+The release announcement, shown below, is associated with this obfuscation utility that our actor potentially used.
+
+
+
+
+
+Our potential actor, "minercount" appears to have signed up to this very same forum and his only solitary post was to offer some thanks to the developer of the obfuscation utility:
+
+
+
+
+
+Scouring some other forums we came across "minercount" again around the April timeframe where he is offering a fully customizable ransomware programme:
+
+
+
+
+We also see our potential actor discussing his planned use of the tool in an attempt to extort accounting companies whilst offering it for the low price of "$50 to the first 10 people" to ensure AV companies do not obtain a sample.
+
+Interestingly enough, within the post details, the individual links to an admin panel image which was hosted on his own infrastructure at kipibank[.]com/panel.jpg as well. As you'll recall, this is one of the domains that was previously owned by cryptofinancial[@]yandex[.]com prior to being transferred to minercount[@]yandex.com. This domain has also been used to host Jigsaw samples as well as various components that Anonpop uses and/or attempts to download post-infection.
+
+Examples: 
+
+hXXp://www[.]kipibank[.]com/55.exe                  # Jigsaw 
+
+hXXp://www[.]kipibank[.]com/anon.jpg                # AnonPop
+
+hXXp://www[.]kipibank[.]com/i2.html                         # Anonpop
+
+hXXp://www[.]kipibank[.]com/complaint376878.zip         # Anonpop 
+
+
+
+
+
+Finally, we discovered the same username being used on a bitcoin mining web forum in a post that links back to the domain, waldorftrust[.]com, which is still registered to cryptofinancial[@]yandex[.]com as of the time of this writing. This domain is also clearly tied to Jigsaw as we've identified Jigsaw samples having been hosted there as well.
+
+Example:
+
+hXXp://waldorftrust[.]com/56.exe        # Jigsaw
+
+
+
+
+
+
+
+During the writing of this blog we were also able to discover an unseen/unreleased new version of 'Ranscam' which our actor had uploaded to one of his websites which lacked any attempt at hiding its contents. The "default_public" instance was still available with a directory listing showing an upload on July 13th in the form of a file called 'rs13.zip' -- after our original blog on Ranscam. We like to believe he liked the name Ranscam and titled his new version RS appropriately. The compressed archive contained the full Visual Studio project files as well as the compiled binary 'mnstr.exe' (SHA256 included below).
+
+
+
+
+
+Interestingly enough, static analysis of this new version of Ranscam showed the following compiler artifact intact within the source files associated with the Visual Studio project:
+
+C:\Users\Monument\Desktop\winpopfiles\RansNEW\RS630\winopen\bin\Debug\winopen.pdb
+
+There have also been jigsaw samples that have been observed with intact compiler artifacts that appear to have been produced by someone operating with the same username:
+
+C:\Users\Monument\Desktop\mean\BitcoinBlackmailer\BitcoinBlackmailer\obj\Release\BitcoinBlackmailer.pdb
+
+
+The Reddit Affair
+
+Thus far, we have been able to identify overlaps of infrastructure and IOCs used by these malware samples, we've corroborated potential identities based on activity and behaviours on some shady forums. The plan now was to further enhance these ties based on either behaviour or additional online activities. The aim was to further solidify the ties between the various ransomware variants. So we did what any reasonable security researchers would do in this situation, we decided to go browse Reddit.
+
+Searching for domains associated with both of the email accounts that we were investigating, we discovered an interesting fact. A single Reddit user was associated with a large number of low volume posts to bitcoin-related subreddits, linking back to several of the domains we were investigating. For each post, the user in question cross posted to several other bitcoin related subreddits simultaneously. Additionally, we didn't observe any other Reddit users posting links to these domains.
+
+waldorftrust[.]com (owned by cryptofinancial[@]yandex[.]com]) 
+
+
+
+
+
+cryptowallremoval[.]com (owned by minercount[@]yandex[.]com, previously owned by cryptofinancial[@]yandex[.]com)
+
+
+
+
+
+cryptoglobalbank[.]com (owned by cryptofinancial[@]yandex[.]com)
+
+
+
+
+
+The domain cryptoglobalbank[.]com has also been seen distributing downloaders associated with Anonpop. The user associated with these posts goes by the name "cryptoconsulate", and is also the moderator of a subreddit called /r/cryptowallremoval, which ties back to the domain cryptowallremoval[.]com that was initially registered to cryptofinancial[@]yandex[.]com then transferred to minercount[@]yandex[.]com.
+
+
+
+
+
+
+
+
+
+When we began to focus on this specific Reddit user, we noticed that they had previously submitted a post, purporting to be a guide to mining bitcoins. The post linked to an executable hosted at waldorftrust[.]com/bitcoinsmining.
+
+
+
+
+It turned out to be an AutoIT executable called "waldorf.exe". Unsurprisingly, it dropped ransomware onto systems when the file was executed. The ransom note associated with this sample is below:
+
+
+
+
+
+The bitcoin wallet listed in the ransom note displayed by this ransomware is:
+
+1HXQ5fs6PNhSuQurU7Ccy9HCRnULs1aa2v
+
+Also not surprising by this point, this is the same bitcoin address used by Jigsaw samples that we analyzed. It is possible that our actor is not the author of Jigsaw, but may have simply purchased Jigsaw directly from the author or via a darknet forum. 
+
+This is a pretty direct tie to an actor responsible for both Ranscam & Jigsaw. We believe it's unlikely that the actor would share the private key associated with the Bitcoin address as this would potentially allow other actors to sweep the Bitcoin keys and any associated Bitcoin transactions. This re-use of Bitcoin addresses is reflective of someone who does not have a good understanding of OpSec.
+
+We also came across another post from the same user, this time claiming to be a guide to maintaining anonymity with regards to bitcoin transactions: 
+
+
+
+
+
+This post links to a ZIP archive hosted on MEGA Upload that contains a PDF, an executable which purports to be a modified version of Tor Browser, and a text file. We were able to obtain a copy of this archive for analysis. Below is the ThreatGrid report for the included executable:
+
+
+
+
+
+So, in addition to our actor being responsible for distributing destructive ransomware, we are now also able to identify them as a distributor of copyrighted materials. The PDF contained within the ZIP archive was an eBook of "Darknet: A Beginner's Guide to Staying Anonymous Online" by Lance Henderson.
+
+We established that the domain cryptoconsulate[.]com (which matches the name of the Reddit user we investigated) is registered to an account associated with the email address minercount2[@]yandex[.]com. Interestingly, the registrant name used during the initial registration of this domain matches the registrant name used for all domains owned by cryptofinancial[@]yandex[.]com. We also noted that cryptoconsulate[.]com and cryptowallremoval[@]com both resolved to the same IP address (108.167.140.232) at the time of this writing.
+
+Having researched all of the infrastructure, malware and actor information we were able to sum up the shared infrastructure. This shows the direct links between the malware being distributed and the actor infrastructure being used.
+
+
+
+
+
+Conclusion
+
+As we have further analyzed the IOCs associated with Ranscam, we have been able to draw several ties back to IOCs associated with other destructive malware variants that were previously discovered, including Jigsaw and Anonpop. As observed by tracking the activities of the threat actor associated with Ranscam, new versions of this destructive malware are continuing to be developed and used in an attempt to coerce victims into paying out without necessarily requiring the threat actor to invest the resources required to maintain an advanced or stealthy operation. 
+
+This also provides evidence that indicates that while there may be a greater number of distinct destructive ransomware variants targeting systems, this may not directly correlate to a larger number of distinct threat actors operating in the ransomware space. As seen in this example, a single actor could be responsible for multiple distinct variants in an attempt to maximize their profits, or as they refine their tactics in an attempt to maximize the amount of revenue they collect from victims.
+
+
+
+
+
+Indicators of Compromise (IOCs)
+
+File Names
+
+BitcoinBlackmailer.exe
+mnster.exe
+t4.exe
+t5.exe
+anonpop.exe
+
+Hashes
+
+622d4a52e70c9831eafb2427b51abfbb311ecc34b719432cc19906c80c88aa92         (SHA256)
+7cd8f7baf45a7a1847f4329e31cf88a9a549830d6ca00ea1837e99567619bb8f         (SHA256)
+763cbd6fb5d35d040ab1783c517c4fca43c81a0d72cc4c873b89c789cc2d6bec        (SHA256)
+Fca8fc0f91c9507f4ef678efbff06386fa10bc8819d74a3cdef03072484bda36        (SHA256)
+2074fdc9424cf0bc0317562af7dfdea4a861519a97231c6686c5e7a7f4a3c942        (SHA256)
+Ba6c31e51350c074c6092e270a3401ccee2e78aaa2e48d23e0ab2e11e7ef18d8        (SHA256)
+0d0c99a3cc19099f68f6c9aec7e2dc5bf40cc83e629e3751ead76b0d36d548fc        (SHA256)
+
+Domains
+
+Kipibank[.]com
+waldorftrust[.]com
+cryptoconsulate[.]com
+cryptowallremoval[.]com
+cryptoglobalbank[.]com
+crypted[.]site88[.]net
+publicocolombiano[.]com
+
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+
+
+Advanced Malware Protection (amp) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+
+
+cws or wsa web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+The Network Security protection of ips and ngfw have up-to-date signatures to detect malicious network activity by threat actors. 
+esa can block malicious emails sent by threat actors as part of their campaign.
+
+
+
+
+
+

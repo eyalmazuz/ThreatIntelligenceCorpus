@@ -1,0 +1,131 @@
+Declaring machine war against malicious Android packages
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 1 April 2014
+
+Declaring machine war against malicious Android packages
+Do you know the notion "machine war"? If you're a fan of the Matrix movie trilogy then probably, yes. It denotes the fictional rise of artificially intelligent machines against the human race and their violent conquest of human beings. We want to apply a similar dominance of computationally powerful machines, not to create a population of slaves, but against numerous malicious Android packages that wildly proliferate on unofficial markets.
+The idea of malware detection with no human interaction appeared earlier on our blog. In a fundamental article about AVAST research activities by AVAST's COO, Ondřej Vlček, he effectively described the technologies we employ to deal with Windows threats. Two techniques have been mentioned explicitly, Malware Similarity Search and Evo-Gen, both working with Windows PE file format. Sometimes the latter form of detection technique is denoted as weak automated anti-malware heuristic.
+The main effort is to reach two slightly conflicting qualities at the same time: The robustness, which means that suggested methods cover as many threats as possible; and simplicity, so that the methods are easily implemented in AVAST's mobile security solution. The search for balance between those qualities is assisted by lessons learned from automated heuristic for Windows PE executables.
+
+Principle
+The process of automatic classification and detection of Android application packages is sketched in the following scheme:
+
+Each Android application package contains a lot of relevant information. We fix a list of more then 100 features which are relevant and easily obtained. The features of a new - possibly malicious - sample are confronted with collections of known samples - clean and malware sets. In case there are a lot of known malicious samples close to the one we are examining, the whole group is passed to the next step. The procedure, called Detection Maker, would try to generate a description of the group in terms of features in a way that no file from the clean set satisfies it. If the detection is produced, it will be included in the virus database of the product.
+Examples
+Here are a few interesting examples of malicious groups that were successfully covered. The first one is a cluster consisting of Russian fake installers (Android:FakeInst). The main functionality is to send SMS to premium numbers. The conjunction of the conditions in the following table describes thousands of similar malicious Android packages, without a single clean file in the collection of hundreds of thousands of them. The chosen permission features are content-related while the other features in the list, like the file size of the main Dalvik executable, say something about the form of the package.
+
+
+
+feature
+value
+
+
+android.permission.SEND_SMS
+YES
+
+
+android.permission.WRITE_SMS
+NO
+
+
+android.permission.RECEIVE_BOOT_COMPLETED
+NO
+
+
+android.permission.DISABLE_KEYGUARD
+NO
+
+
+android.permission.ACCESS_FINE_LOCATION
+NO
+
+
+file size of classes.dex
+less than 720 kilobytes
+
+
+count of files of type PNG in the package
+between 3 and 7
+
+
+length of the longest string in resources
+shorter than 68 chars
+
+
+
+Next, let's see how that worked with fake Korean banking applications that were misused to perform fraudulent payments by attackers (Android:Telman). The following four conditions group together hundreds of related samples that were already flagged, using several classic signatures:
+
+
+
+feature
+value
+
+
+android.permission.RECEIVE_SMS
+YES
+
+
+android.permission.MOUNT_UNMOUNT_FILESYSTEMS
+YES
+
+
+android.permission.CALL_LOG
+YES
+
+
+android.permission.ACCESS_WIFI_STATE
+NO
+
+
+
+Another type of Android app misuse are benign application like games repackaged with a piece of code that is malicious to the user, so called "piggyback attacks." An example of this form of attack is an instance of Vietnamese SMS senders (Android:VietSMS-K ). The following conditions distinguish the original application from the one with edited distribution:
+
+
+
+feature
+value
+
+
+package name
+bgate.game.moorhuhnseasons
+
+
+android.permission.SEND_SMS
+YES
+
+
+android.permission.ACCESS_COARSE_LOCATION
+YES
+
+
+
+In this case, the coverage of malware space is not numerous. However, the package name of the benign app together with the suspicious permission are the key combination leading to the desired classification.
+Visualization
+Without clustering, the malware space can be imagined as a night sky with many isolated dots (stars) scattered uniformly all over the space. Each star represents one malicious sample. In the clustered space, the formation of stars with smaller and bigger sizes, indicating their frequency, is observed. This leads to the scrollable visualization of Android malware space. The whole picture is clearer when overlaps of stars are omitted. Adding more data, like the estimated geographical origin, and manifesting them with different colors is another improvement. Finally, a snapshot of the constructed Android threat universe could look like this:
+
+Acknowledgement
+This joint work will be presented on CARO Workshop 2014 on 15th-16th May. Thanks goes to thought leaders from the avast! Research department: Robert Žáček and Peter Kováč for the design of this project and to Libor Mořkovský for the visualization. The theme of machines eliminating the villainous Android Robot was created by Veronika Begánová.
+Thank you for using avast! Antivirus and recommending us to your friends and family. For all the latest news, fun and contest information, please follow us on Facebook, Twitter and Google+. Business owners – check out our business products.
+
+
+
+Check 1 comments or write your comment
+
+
+
+
+
+
+
+
+

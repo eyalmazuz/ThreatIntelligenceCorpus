@@ -1,0 +1,95 @@
+
+Configuring Snort Rules (Beginners Guide)
+
+Hello friends! Today we are going to explore “How to write any rules in Snort” that could be work as NIDS and NIPS but for this first you need to configure Snort in your machine which we had already discussed in our previous article “IDS, IPS Penetration Testing Lab Setup with Snort”
+Since I have already configure snort in ubuntu machine therefore now I can proceed for loading rules inside it which will turn enable the NIDS mode of snort. From given image you can read I had installed snort 2.9.11 in my system.
+Type snort  -V command in terminal to know install version of snort as shown in given below image.
+
+Check your network interface configuration by executing ifconfig command; from here I came to know 192.168.1.103 is my network IP.
+
+Open snort.conf file in text editor by using following command
+sudo gedit /etc/snort/snort.conf
+Now enter your local network address as HOME_NET as given below in image, here you can also add only your system IP.
+
+Snort Rule Format
+Snort offer its user to write their own rule for generating logs of Incoming/Outgoing network packets. Only they need to follow snort rule format where packets must meet the threshold conditions. Always bear in mind that the snort rule can be written by combining two main parts “the Header” and “the Options” segment.
+The header part contains information such as the action, protocol, the source IP and port, the network packet Direction operator towards the destination IP and port, the remaining will be consider in the options part.
+Syntax: Action Protocol Source IP Source port -> Destination IP Destination port   (options)
+
+Header Fields:-
+Action: It informs Snort what kind of action to be performed when it discover a packet that matches the rule description. There are five existing default job actions in Snort: alert, log, pass, activate, and dynamic are keyword use to define action of rules. You can also go with additional options which include drop, reject, and sdrop.
+Protocol: After deciding the option for action in rule, you need to describe specific Protocol (ip, tcp, udp, icmp, any) on which this rule will be applicable.  
+Source IP: This part of header describes the sender network interface from which traffic is coming.
+Source Port: This part of header describes the source Port from which traffic is coming.
+Direction operator (“->”, “<>”): It denotes the direction of traffic flow between sender and receiver networks.
+Destination IP: This part of header describes the destination network interface in which traffic is coming for establishing connection.
+Destination Port: This part of header describes the destination Port on which traffic is coming for establishing connection.
+Option Fields:
+The body for rule option is usually written between circular brackets “()” that contains keywords with their argument and separated by semicolon “;” from another keywords.
+There are four major categories of rule options.
+General: These options contains metadata that offers information with reference to the.
+Payload: These options all come across for data contained by the packet payload and can be interconnected.
+Non-payload: These options come across for non-payload data.
+Post-detection: These options are rule specific triggers that happen after a rule has fired.”
+General Rule Options (Metadata)
+In this article are going to explore more about general rule option for beginners so that they can easily write basic rule in snort rule file and able to analyst packet of their network. Metadata is part of optional rule which basically contains addition information of about snort rule that is written with the help of some keywords and with their argument details.
+
+Syntax: config classification: name, description, priority number.
+Let’s start writing snort rule:
+To check whether the Snort is logging any alerts as proposed, add a detection rule alert on IP packets in the “local.rules file”.
+Now open your local rules in a text editor using following command:
+sudo gedit /etc/snort/rules/local.rules
+
+Once the empty file “local.rules” will get open type your rule inside it as shown below and save it. The rule will generate an alert message for every captured IP packet.
+This rule is not useful since it does not transmit any information. It will quickly congest your disk space if you leave it inside rules file but it perform good job of testing if Snort is running and is capable to generate alerts.
+
+After loading your rule in local.rule file you can test the configuration file once again by executing following command:
+Now we can start snort in NIDS mode by typing given below command and wait for alerts to be generated.s 
+-A Set alert mode: fast, full, console, test or none
+-q stands for Quiet, Don’t show banner and status report.
+–u Run snort uid as <uname> user
+-g Run snort gid as <gname> group (or gid)
+-c <rules> Use Rules File
+-i listen on interface
+Congrats!!  Our NIDS is working terrifically, from given below image you can check IP packet of network is being detected by snort.
+
+In similar way you can add rule for ICMP packets to detect system pinging with your network. Again open the file “local.rules” from path: /etc/snort/rules/local.rules and add rule for ICMP protocol as shown below.
+[Note: I had erased previous rule of “IP packet detected” therefore did not change the value for sid and rev.  Now ICMP rule will considered first rule to be load in snort rules file. ]
+The above rule will generate an alert when found any network IP sending ICMP packets in our network by pinging IP 192.168.1.103.
+Then again turn On NIDS mode of snort using same command and wait for alert to be generated.
+
+Now let’s ping the IP: 192.168.1.103 from another system to test whether our NIDS will generate alert for ICMP packet or not. From given image you can read the command: ping 192.168.1.103 -n 2; here n=2 denote 2 only 2 ICMP packets to be sent on target IP.
+
+Here I took help of wireshark in order to notice traffic flow between source and destination, from given below image you can observe 4 ICMP packets in network. Here it is showing two packets as ICMP Echo-request and two packets as ICMP Echo-reply.
+
+As result snort with NIDS mode had capture only 2 ICMP packets from IP 192.168.1.101 which you can observe from given below image that generated alert for “ICMP Packets found”, this happens because in above rule we had applied “->”one-directional operators which mean it will only capture traffic coming from source IP to destination IP.
+Here you can perceive that both two packets of ICMP is coming from 192.168.1.101 to 192.168.1.103 which means it has only captured ICMP Echo-request packets form source IP. 
+
+On other hand if you want to capture all packets of network traffic either coming or going packet then you should use “<>” bi-directional operators as shown in given below image.
+
+Again repeat same process to ping 192.168.1.103
+
+Now if notice given below image then you will consider that this time bi-directional traffic has been captured by snort in sequence of ICMP Echo-request from 192.168.1.101 to 192.168.1.103 and ICMP Echo-reply from 192.168.1.103 to 192.168.1.101
+
+Similarly you can write rule for TCP protocol and analyst TCP network packets as shown below:
+Above rules will generate an alert when someone tries to connect with any IP through port 21, 22 and 80.
+Then again turn On NIDS mode of snort using same command and wait for alert to be generated.
+Now again we are trying to connect with IP 192.168.1.103 via port 21 in order to access FTP service for file transfer as shown given below image.
+
+From given below image you can perceive that we are connected t FTP server successfully and will verify its alert log in snort later on.
+
+As result NIDS generated alert when captured TCP packets for Port 21 as shown below in image.
+
+Further I try to connect with SSH server 192.168.1.103 via port 22 with the help of putty as shown in given below image.
+
+From given below image you can observe, here also I had successfully connected with 192.168.1.103 and will verify log alert in snort later on.
+
+As result NIDS generated alert when captured TCP packets for Port 22 as shown below in image.
+
+At last I try to access HTTP server 192.168.1.103 via port 80 as shown in given below image; here also I had successfully connected with 192.168.1.103. Now let verify the NIDS alert for all this action we had perform in order to get connect with 192.168.1.103. 
+
+As result NIDS generated alert when captured TCP packets for Port 80 as shown below in image.
+In this way we can build our own rules in snort which work as NIDS for your network to analyst all kinds of packets. 
+Reference: link1 & link2
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

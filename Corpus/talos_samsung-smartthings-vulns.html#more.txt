@@ -1,0 +1,198 @@
+
+Vulnerability Spotlight: Multiple Vulnerabilities in Samsung SmartThings Hub
+
+
+These vulnerabilities were discovered by Claudio Bozzato of Cisco Talos.
+
+
+
+
+
+
+Executive Summary
+
+Cisco Talos recently discovered several vulnerabilities present within the firmware of the Samsung SmartThings Hub. In accordance with our coordinated disclosure policy, Cisco Talos has worked with Samsung to ensure that these issues have been resolved and that a firmware update has been made available for affected customers. These vulnerabilities could allow an attacker to execute OS commands or other arbitrary code on affected devices. 
+
+The SmartThings Hub is a central controller that monitors and manages various internet-of-things (IoT) devices such as smart plugs, LED light bulbs, thermostats, cameras, and more that would typically be deployed in a smart home. The SmartThings Hub functions as a centralized controller for these devices and allows users to remotely connect to and manage these devices using a smartphone. The firmware running on the SmartThings Hub is Linux-based and allows for communications with IoT devices using a variety of different technologies such as Ethernet, Zigbee, Z-Wave and Bluetooth. 
+
+Given that these devices often gather sensitive information, the discovered vulnerabilities could be leveraged to give an attacker the ability to obtain access to this information, monitor and control devices within the home, or otherwise perform unauthorized activities. Some example scenarios are listed below:
+
+
+
+Smart locks controlled by the SmartThings Hub could be unlocked, allowing for physical access to the home.
+
+Cameras deployed within the home could be used to remotely monitor occupants.
+
+The motion detectors used by the home alarm system could be disabled.
+
+Smart plugs could be controlled to turn off or on different things that may be connected.
+
+Thermostats could be controlled by unauthorized attackers.
+
+Attackers could cause physical damage to appliances or other devices that may be connected to smart plugs deployed within the smart home. 
+
+
+Given the wide range of possible deployments of these devices, this is not a complete list of different scenarios. Cisco Talos recommends ensuring that affected SmartThings Hubs are updated to the latest version of firmware to ensure that these vulnerabilities are addressed.
+
+
+Exploitation
+
+In total, Talos found 20 vulnerabilities in the Samsung SmartThings Hub. These vulnerabilities vary in the level of access required by an attacker to exploit them and the level of access they give an attacker. In isolation, some of these might be hard to exploit, but together they can be combined into a significant attack on the device. While we discuss all 20 of these vulnerabilities later in this blog post, in this section we will discuss how an attacker can chain together three  vulnerability classes that are present in the device to gain complete control of the device. 
+
+
+Chains
+
+It is possible to gather the set of preconditions needed to exploit bugs that would otherwise be unreachable by using multiple vulnerabilities. This is commonly referred to as "chaining." When considering the severity of vulnerabilities, it is essential to keep in mind that they might be used as part of a chain, as this would significantly elevate their severity.
+
+We identified three notable chains, the last of which allows for remotely compromising the device without prior authentication:
+
+
+A
+
+Remote code execution: TALOS-2018-0556 describes a post-auth vulnerability that allows for the execution of arbitrary SQL queries against a database inside the device. When used alone, it only allows for altering the whole database. However,  TALOS-2018-0557, TALOS-2018-0576, TALOS-2018-0581 and TALOS-2018-0583 describe a set of memory corruption vulnerabilities that allow for executing arbitrary code, assuming the attacker is capable of issuing arbitrary SQL queries. Since TALOS-2018-0556 provides this capability, they can be chained together to achieve code execution from the network. Note, however, that this list is not exhaustive, as other combinations may be viable.
+
+
+B
+
+Remote information leakage: TALOS-2018-0556 can also be used to create an empty file anywhere inside the device. As described in TALOS-2018-0593, the existence of an empty file at path "/hub/data/hubcore/stZigbee" will make the "hubCore" process to crash. Moreover, as described in TALOS-2018-0594, when the "hubCore" process crashes, it triggers an information leak that can be captured from the network. By chaining these 3 vulnerabilities in order, an attacker can obtain a memory dump of the `hubCore` process, which contains most of the core logic, and consequent sensitive information, of the Hub.
+
+
+C
+
+Pre-auth remote code execution: TALOS-2018-0578 describes a vulnerability that allows for injecting semi-controlled HTTP requests to the internal `video-core` process, from the network and without prior authentication. Since the injected requests are not completely controllable, TALOS-2018-0577 can be chained (using all its 3 CVEs together) to further refine the injected HTTP request: TALOS-2018-0577 shows how to modify the method, path, and body components of an HTTP request, by exploiting a bug while handling HTTP pipelining. Finally the chain could end with TALOS-2018-0573, which exploits a buffer overflow on the stack by sending a local HTTP request to the `video-core` process. By chaining these 3 vulnerabilities together, an attacker can compromise the device remotely without prior authentication. Note that other similar vulnerabilities could be used as the last element of the chain. However, they might be more complex to implement.
+
+
+Attack vectors
+
+Chain C can be executed without prior authentication. Chains A and B, however, as well as the majority of the vulnerabilities reported, have different preconditions depending on the attack vector.
+
+To understand the attack surface, it is useful to note that there is a trust relationship between the SmartThings Hub and the remote servers that it communicates with. This allows for the remote monitoring and management of the smart home via a smartphone application, as well as for the addition of custom features to make the Hub compatible with other, non-officially supported devices.
+
+In the scope of the vulnerabilities that we reported, we identified multiple notable attack vectors:
+
+
+X
+
+Anyone owning a valid OAuth bearer token, or the relative username and password pair to obtain it, can talk to the remote SmartThings servers as an authenticated user. At this stage, an attacker could exploit some of the bugs that we reported, as demonstrated in TALOS-2018-0539.
+
+
+Y
+
+Third-party developers can write a "SmartApp" to make unknown hardware able to transparently communicate with the hub. SmartApps can be either published on the public marketplace or exist exclusively on the developer's hub. Since SmartApps are supposed to communicate with unsupported hardware, they need a way to send network messages. In fact, a SmartApp can instruct the Hub to perform network connections on its behalf. These network messages are sent by the remote SmartThings servers (which are where the SmartApp is actually executed) and sent to the Hub. Internally, these connections are performed by the `hubCore` process.
+
+This has the side effect of giving SmartApps the power to communicate with localhost-bound services, such as `video-core`, which wouldn't otherwise be reachable.
+
+Thus, the existence of SmartApps make chains A and B, as well as any `video-core` vulnerability, exploitable without authentication, but with the requirement of having a custom SmartApp enabled on the device.
+
+
+Z
+
+Anyone able to impersonate the remote SmartThings servers can talk to the `hubCore` process in the hub, which in turn allows an attacker to talk directly to the `video-core` process and exploit any of its bugs. Note that the SmartThings server that communicates with the Hub is not supposed to be able to run arbitrary code on it, as is proven by the fact that firmware update packages, although sent over this same TLS connections, are encrypted and authenticated, and likely packaged by a different, more privileged, machine.
+
+
+Vulnerability Details
+
+Samsung SmartThings Hub RTSP Password Command Injection Vulnerability (TALOS-2018-0539 / CVE-2018-3856)
+
+The Samsung SmartThings Hub can be used to register, configure, and view the video stream from various IP cameras. The smart hub also provides users the ability to modify the camera's password, which is then stored by `video-core` in an internal database.  Accessing the camera's video feed causes the camera to invoke the `ffmpeg` command using the `camera-password` parameter that is retrieved from this database. By including a space character in the camera password, an attacker could cause the `ffmpeg` binary to be launched with attacker-controlled command-line options. These options could be used to execute arbitrary system commands. TALOS-2018-0539 has been assigned CVE-2018-3856. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core samsungWifiScan Code Execution Vulnerability (TALOS-2018-0548 / CVE-2018-3863 - CVE-2018-3866)
+
+Multiple buffer overflow vulnerabilities exist within the samsungWifiScan handler of the `video-core` HTTP server used by the SmartThings Hub. An attacker could send specially crafted HTTP POST requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings hub improperly processing user-controlled JSON that is submitted as part of an HTTP POST request to /samsungWifiScan. The values of the `user`, `password`, `cameraIp`, and `callbackUrl` keys can be used to trigger these vulnerabilities as this data is transferred to a destination buffer in memory using `strcpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0548 has been assigned CVE-2018-3863 through CVE-2018-3866. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub video-core samsungWifiScan Callback Code Execution Vulnerability        (TALOS-2018-0549 / CVE-2018-3867)
+
+An exploitable buffer overflow vulnerability exists within the Samsung WifiScan callback notification functionality present within the `video-core` HTTP server used by the SmartThings Hub. An attacker could send specially crafted HTTP POST requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings hub incorrectly processing communications received from smart cameras during the smart camera discovery process. An attacker could host specially crafted HTTP contents using an HTTP server that could be used to trigger this vulnerability. During the smart camera registration process, the SmartThings Hub will attempt to retrieve these contents from the host specified. The retrieved contents are then transferred using `sprintf` without first checking the size of the destination buffer. This vulnerability could be exploited to execute arbitrary code. TALOS-2018-0549 has been assigned CVE-2018-3867. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core credentials videoHostUrl Code Execution Vulnerability (TALOS-2018-0554 / CVE-2018-3872)
+
+Multiple exploitable buffer overflow vulnerabilities exist within the `credentials` handler of `video-core` HTTP server used by the SmartThings Hub. An attacker could send a specially crafted HTTP POST request to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings Hub improperly processing user-controlled JSON that is submitted as part of a POST request to `/credentials`. The value of the `videoHostUrl` key can be used to trigger this vulnerability, as the data contained within this key is transferred to a destination buffer in memory without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0554 has been assigned CVE-2018-3872. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core credentials Code Execution Vulnerability (TALOS-2018-0555 / CVE-2018-3873 - CVE-2018-3878)
+
+Multiple exploitable buffer overflow vulnerabilities exist within the `credentials` handler of the `video-core` HTTP server used by the SmartThings Hub. An attacker could send a specially crafted HTTP POST request to affected devices to exploit this vulnerability. These vulnerabilities manifest due to the SmartThings Hub improperly processing user-controlled JSON that is submitted as part of a POST request to `/credentials`. The values of the `secretKey`, `accessKey`, `sessionToken`, `bucket`, `directory`, and `region` keys can be used to trigger these vulnerabilities, as the data contained within those keys is transferred to a destination buffer in memory using `strncpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0555 has been assigned CVE-2018-3873 through CVE-2018-3878. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core credentials Parsing SQL Injection Vulnerability (TALOS-2018-0556 / CVE-2018-3879)
+
+A SQL injection vulnerability exists within the `credentials` handler of the `video-core` HTTP server used by the SmartThings Hub. An attacker could send specially crafted HTTP POST requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings Hub improperly processing user-controlled JSON that is submitted as part of a POST request to `/credentials`. The SmartThings Hub allows for the changing of credentials that the hub uses when connecting to other devices. This process includes an HTTP POST request containing JSON which is made up of all of the parameters required to change the credentials. This information is not properly sanitized prior to being stored in an internal SQLite database. By including JSON and SQL syntax within this request, it is possible to trigger a JSON injection that, in turn, triggers a SQL injection condition. TALOS-2018-0556 has been assigned CVE-2018-3879. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub video-core Database find-by-cameraId Code Execution Vulnerability (TALOS-2018-0557 / CVE-2018-3880)
+
+An exploitable buffer overflow vulnerability exists within the database 'find-by-cameraId' functionality present within the `video-core` HTTP server used by the Samsung SmartThings hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the `video-core` process incorrectly handling records present within the SQLite database it uses. After first adding a camera to the 'camera table' of the SQLite database along with overly long camera information, an attacker can trigger this vulnerability by sending a specially crafted HTTP DELETE request specifying the camera that was previously added, causing an overflow condition.. This works due to a lack of restriction on the data that was pulled in during the database lookup for the camera. TALOS-2018-0557 has been assigned CVE-2018-3880. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub video-core clips Code Execution Vulnerability (TALOS-2018-0570 / CVE-2018-3893 - CVE-2018-3897)
+
+Multiple exploitable buffer overflow vulnerabilities exist within the `/cameras/XXXX/clips` handler present in the `video-core` HTTP server used by the Samsung SmartThings Hub. An attacker could send specially crafted HTTP POST requests to affected devices to exploit these vulnerabilities. These vulnerabilities manifest due to the SmartThings Hub improperly processing user-controlled JSON that is submitted as part of a POST request to "/cameras/<camera-id>/clips." The values of the 'captureTime', 'startTime', 'endTime', 'correlationId', and 'callbackUrl' keys can be used to trigger these vulnerabilities, as the data contained within those keys is transferred to a destination buffer using `strncpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0570 has been assigned CVE-2018-3893 through CVE-2018-3897. For additional information please see the advisory here.
+
+Samsung SmartThings Hub video-core Camera URL Replace Code Execution Vulnerability (TALOS-2018-0573 / CVE-2018-3902)
+
+An exploitable buffer overflow vulnerability exists within the camera "replace" feature present within the `video-core` HTTP server used by the Samsung SmartThings hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings Hub improperly processing user-controlled JSON that is submitted as part of an HTTP PUT request to "/cameras/<camera-id>." The value of the 'url' key can be used to trigger this vulnerability as the data contained within this key is transferred to a destination buffer using `memcpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0573 has been assigned CVE-2018-3902. For additional information please see the advisory here.
+
+Samsung SmartThings Hub video-core Camera Update Code Execution Vulnerabilities (TALOS-2018-0574 / CVE-2018-3903 - CVE-2018-3904)
+
+Multiple exploitable buffer overflow vulnerabilities exist within the camera "update" feature present within the `video-core` HTTP server used by the SmartThings Hub. An attacker could send specially crafted HTTP requests to affected devices to exploit these vulnerabilities. These vulnerabilities manifest due to the SmartThings hub improperly processing user-controlled JSON that is submitted as part of a PATCH request to "/cameras/<camera-id>." The values of the 'url' or 'state' keys can be used to trigger these vulnerabilities as the data contained within these keys is transferred to a destination buffer using `memcpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0574 has been assigned CVE-2018-3903 and CVE-2018-3904. For additional information please see the advisory here.
+
+Samsung SmartThings Hub video-core Camera Creation Code Execution Vulnerability (TALOS-2018-0575 / CVE-2018-3905)
+
+An exploitable buffer overflow vulnerability exists within the camera "create" feature present within the `video-core` HTTP server used by the Hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the SmartThings hub improperly processing user-controlled JSON that is submitted as part of a POST request to "/cameras." The value of the "state" key can be used to trigger this vulnerability as the data contained within this key is transferred to a destination buffer using `memcpy` without first checking the size of the destination buffer, resulting in an overflow condition. TALOS-2018-0575 has been assigned CVE-2018-3905. For additional information please see the advisory here.
+
+Samsung SmartThings Hub video-core Database shard.videoHostURL Code Execution Vulnerability (TALOS-2018-0576 / CVE-2018-3906)
+
+An exploitable stack-based buffer overflow vulnerability exists within the retrieval of a database field within the `video-core` HTTP server used by the SmartThings Hub. An attacker could send a specially crafted HTTP request to affected devices to exploit this vulnerability. This vulnerability manifests due to the `video-core` HTTP server improperly extracting the "shard.videoHostURL" field from its SQLite database, causing a stack-based buffer overflow condition. To exploit this vulnerability, an attacker would need to modify the value of this field in the SQLite database. This could be accomplished by leveraging TALOS-2018-0556. TALOS-2018-0576 has been assigned CVE-2018-3906. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub video-core REST Request Parser HTTP Pipelining Injection Vulnerabilities (TALOS-2018-0577 / CVE-2018-3907 - CVE-2018-3909)
+
+Multiple exploitable vulnerabilities exist within the REST parser present within the `video-core` HTTP server. An attacker could send specially crafted HTTP requests to affected devices to exploit these vulnerabilities. These vulnerabilities manifest due to the SmartThings Hub incorrectly handling pipelined HTTP requests. These vulnerabilities could allow an attacker to overwrite the methods and contents of an HTTP request in order to insert malicious data for a variety of different reasons. These vulnerabilities could be leveraged along with other vulnerabilities to further maximize the attacker's impact on affected devices. TALOS-2018-0577 has been assigned CVE-2018-3907 through CVE-2018-3909. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub hubCore Port 39500 HTTP Header Injection Vulnerability (TALOS-2018-0578 / CVE-2018-3911)
+
+An exploitable HTTP header injection vulnerability exists within the communications present between the Hub and the remote servers it communicates with. An attacker could send a specially crafted HTTP request to affected devices to exploit this vulnerability. This vulnerability is present within the JSON processing performed by the `hubCore` binary present within the SmartThings hub and could be combined with other vulnerabilities present within affected devices to achieve code execution. TALOS-2018-0578 has been assigned CVE-2018-3911. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core Database shard Code Execution Vulnerabilities (TALOS-2018-0581 / CVE-2018-3912 - CVE-2018-3917)
+
+Multiple exploitable stack-based buffer overflow vulnerabilities exist within the retrieval of database fields within the `video-core` HTTP server used by the Samsung SmartThings hub. An attacker could send specially crafted HTTP requests to affected devices to exploit these vulnerabilities. These vulnerabilities manifest due to the `video-core` HTTP server improperly extracting the contents of several fields from its SQLite database, causing a stack-based buffer overflow condition. To exploit these vulnerabilities, an attacker would need to modify the value of these fields within the SQLite database. This could be accomplished by leveraging TALOS-2018-0556. TALOS-2018-0581 has been assigned CVE-2018-3912 through CVE-2018-3917. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub hubCore Port 39500 Sync Denial Of Service Vulnerability (TALOS-2018-0582 / CVE-2018-3918)
+
+A vulnerability exists within the communications between the Samsung SmartThings Hub and the remote servers it communicates with. This vulnerability is present within the "sync" operation used to determine which cameras should be managed by the Hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. Due to the lack of proper authentication, a remote attacker could leverage this trust relationship to delete cameras that should otherwise be managed by the SmartThings hub. TALOS-2018-0582 has been assigned CVE-2018-3918. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub video-core Database clips Code Execution Vulnerability (TALOS-2018-0583 / CVE-2018-3919)
+
+An exploitable stack-based buffer overflow vulnerability exists within the retrieval of database fields in the `video-core` HTTP server used by the Hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the `video-core` server not properly processing and extracting the fields from the "clips" table within its SQLite database. Leveraging TALOS-2018-0556, an attacker could arbitrarily insert a "captureTime" value within this table that exceeds the maximum size expected by the Hub, which results in a buffer overflow condition due to the lack of proper enforcement of this maximum size value. TALOS-2018-0583 has been assigned CVE-2018-3919. For additional information, please see the advisory here. 
+
+Samsung SmartThings Hub video-core AWSELB Cookie Code Execution Vulnerability (TALOS-2018-0591 / CVE-2018-3925)
+
+An exploitable buffer overflow vulnerability exists within the the remote video-host communication that is present within the `video-core` HTTP server used by the Samsung SmartThings Hub. An attacker could send specially crafted HTTP requests to affected devices to exploit this vulnerability. This vulnerability manifests due to the `video-core` server not properly handling the contents of AWSELB cookies. The cookie value that is obtained from the remote video-host servers is copied to a destination buffer without first checking the length of the cookie value leading to a buffer overflow condition. TALOS-2018-0591 has been assigned CVE-2018-3925. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub hubCore ZigBee firmware update CRC16 check Denial of Service Vulnerability (TALOS-2018-0593 / CVE-2018-3926)
+
+An exploitable integer underflow vulnerability exists within the ZigBee firmware update process present within the `hubCore` binary used by the SmartThings Hub. An attacker could create a specially crafted file present within the "data" directory used by this process to create an infinite loop that ultimately crashes the service. Due to a logic error present within the ZigBee firmware update process that takes place on the SmartThings Hub, an attacker could leverage  TALOS-2018-0556 to upload a specially crafted file that causes the process to continuously loop until a crash occurs. TALOS-2018-0593 has been assigned CVE-2018-3926. For additional information, please see the advisory here.
+
+Samsung SmartThings Hub hubCore Google Breakpad backtrace.io information disclosure vulnerability  (TALOS-2018-0594 / CVE-2018-3927)
+
+An exploitable information disclosure vulnerability exists within the exception handler present within the `hubCore` binary used by the SmartThings Hub. The Hub currently leverages Google Breakpad for the purpose of creating minidumps in situations where a crash is encountered. After these minidumps are created by the Hub, they are transmitted to a remote service (backtrace.io) for analysis via the "curl" utility, which is configured to leverage the "-k" switch for this data transmission. This insecure switch allows curl to establish a connection with a remote server that responds with a self-signed SSL certificate. An attacker with the ability to impersonate the remote server could intercept this minidump using a self-signed certificate in order to extract sensitive process data. TALOS-2018-0594 has been assigned CVE-2018-3927. For additional information, please see the advisory here.
+
+
+Versions Tested
+
+Talos has tested and confirmed that the following Samsung SmartThings Hub firmware versions are affected:
+
+Samsung SmartThings Hub STH-ETH-250 - Firmware version 0.20.17
+
+
+
+
+
+Conclusion
+
+While devices such as the SmartThings Hub are typically deployed to provide additional convenience and automation to users, special consideration must be made to ensure that they are configured securely, and updated when new firmware updates are made available by the manufacturer. Given that these devices can be deployed in many different scenarios, the impact of a successful attack against them could be severe. Talos recommends that these devices are updated as quickly as possible. As Samsung pushes updates out to devices automatically, this should not require manual intervention in most cases. It is important to verify the updated version has actually been applied to devices to ensure that they are no longer vulnerable. Samsung has released a firmware update that resolves these issues. An advisory related to these vulnerabilities can be found here. 
+
+
+Coverage
+
+The following Snort rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your Firepower Management Center or Snort.org.
+
+Snort Rules: 45891, 46079, 46090, 46149, 46150-46155, 46211, 46217, 46296, 46319, 46320, 46321, 46390 - 46392, 46395, 46543, 46661
+
+
+

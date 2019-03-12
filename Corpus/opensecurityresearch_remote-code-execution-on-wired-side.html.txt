@@ -1,0 +1,32 @@
+
+Remote Code Execution on Wired-side Servers over Unauthenticated Wireless
+
+
+By Brad Antoniewicz.
+Update 8/28/2013: Cisco has confirmed that the vulnerability is in all current versions of Cisco ACS for Windows (4.x). There is a 5.x ACS version, which is not vulnerable - but I believe that does not run on Windows. CVE-2013-3466 was assigned to this issue. 
+
+TL;DR - There's a remote code execution vulnerability that can be exploited via 802.11 wireless to compromise a wired side server. The attacker needs no prior knowledge of the wireless network or authenticated access in order to exploit. This is in an older version of Cisco ACS; Cisco is investigating it and will determine if its present in newer versions as well. Check out the video below to see the exploit in action over a wireless network:
+
+Some Background Info
+IEEE 802.1x is a standard that describes a way to authenticate users before they "connect" to a network. This happens at layer 2, before the system is assigned an IP address. Basically, the connecting system (supplicant) communicates via a switch or access point (authenticator) to a back end RADIUS server (authentication server). The supplicant and authentication server communicate using EAP to exchange authentication messages. If all goes well and the user is properly authenticated, the Authentication server sends an "EAP-Success" which prompts the authenticator to allow the user onto the network.
+
+In wired networks, this all happens after the user plugs in their Ethernet cable, while in wireless networks implementing WPA Enterprise, this happens after the standard 802.11 session establishment.
+
+
+
+The bottom line is that in both wired and wireless networks the unauthenticated user communicates with the authentication server. 
+Vulnerability Details
+Probably the most important thing to point out is that the remote code execution vulnerability I discovered is in an older version of Cisco Secure Access Control Server (ACS). It's possible that it may be present in newer versions which Cisco is investigating under case PSIRT-1771844416 and bugID CSCui57636.
+
+The vulnerability can be triggered before the user is authenticated, which means that in the case of a wireless network running WPA Enterprise, an attacker just needs to be in the physical proximity of the wireless network to fully compromise the ACS server. 
+
+Although there is a communication channel between the attacker and the authentication server when the vulnerability is triggered, it's very difficult to leverage this channel as part of post-exploitation activities. It's more realistic that an attacker would use this vulnerability to establish an reverse shell back via the internet. It may also be possible to redirect the execution flow to result in an "EAP-Success" message (or countless other functions). The video above simply demonstrates code execution. Note that in the video the presence of the wired connection between the authentication server and the attacker is there to show the observer path (how the video was recorded) and the potential reverse shell path; in the case of WPA Enterprise, no wired access is required by the attacker to exploit the vulnerability.
+
+Impact
+
+Besides the obvious impact concerns (e.g. system compromise), authentication servers are particularly sensitive systems. They're usually on privileged network segments, integrated with Active Directory, and can be responsible for VPN authentication. ACS in particular also supports TACACS which could allow an attacker to compromise network devices such as routers, switches and firewalls. For an attacker, compromising the authentication server is a very strong foothold into the environment.
+Further Information
+As mentioned, Cisco is currently investigating this vulnerability. They've been provided a full working exploit and have been extremely responsive and accommodating thus far. The exploit or any further details will not be publicly released until Cisco has had enough time to determine the full extent of the vulnerability. Stay tuned! 
+Follow me on twitter - @brad_anton
+
+

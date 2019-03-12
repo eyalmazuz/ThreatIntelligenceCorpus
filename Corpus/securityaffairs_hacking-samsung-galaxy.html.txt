@@ -1,0 +1,20 @@
+
+					Hacking Samsung Galaxy via Modem interface exposed via USB					
+Do you know that modems in a number of Samsung Galaxy devices are open to receiving AT commands over the USB cable even when they are locked?
+The circumstance is serious if we consider that is is very common to leave a locked phone on their desk believing that no one could access it.
+A number of researchers and users are discussing the issue on Github, in particular, security experts Roberto Paleari and Aristide Fattori reported that devices connected via USB to a computer automatically expose, or can be forced to do it, a serial interface that interacts directly with the USB modem.
+“This communication channel is active even when both USB tethering and USB debugging (i.e., ADB) are disabled,” they write, “and can be accessed even when the device is locked. An attacker who gains physical access to a (possibly locked) device can thus use this interface to send arbitrary AT commands to the modem. This permits to perform several actions that should be forbidden by the lock mechanism, including placing phone calls or sending SMS messages.”
+Older mobile devices expose the USB serial modem by default, meanwhile, newer phones need to be forced, in this last scenario it is not necessary that the phone is unlocked.
+In the case of old Samsung mobile and firmware versions (i.e. the GT-I9192 (Samsung S4 Mini with build I9192XXUBNB1)), is is sufficient to plug the smartphone into a Linux host to expose a usb serial modem which is then accessible by using the corresponding Linux device (e.g., /dev/ttyACM0). Once established the connection to the modem it is possible to send certain AT commands. The attacker can perform a number of operations exploiting this connection, using the AT command AT+USBDEBUG command he enables USB debugging, and AT+WIFIVALUE enables the device’s Wi-Fi.
+The security duo developed a proof-of-concept to analyze the attack scenario.
+“For our PoC we developed a very rough C tool, usbswitcher, that switches any attached Samsung device to USB configuration #2 (this is fine for the devices we tested, but your mileage might vary). The tool uses libusb to do the job, but the same task can probably be accomplished using the /sys/bus/usb pseudo-filesystem.
+The trick we used to force the phone to switch the configuration is to first reset the USB device (via usb_reset()), and then switching the configuration (via usb_set_configuration()). Sometimes it doesn’t work at the first try, so just run usbswitchertwice to ensure the configuration is switched properly :-)”
+
+On newer mobile and firmware versions the situation is more complex as explained by the researchers.
+“Exploitation of this vulnerability on more recent firmware versions (e.g., latest versions of the Samsung S4 and Samsung S6 software) is not so straightforward: in the default configuration, when the device is connected it exposes to the host only a MTP interface, used for file transfer.
+However, we discovered that an attacker can still access the modem by switching to secondary USB configuration. As an example, consider our test Galaxy S6 device. When USB debugging is off, the device exposes two USB configurations, with the CDC ACM modem accessible via configuration number 2.”
+
+The possible consequences of the attack are obvious, the access to the modem allows the attacker to make phone calls and send SMS messages. The command ATD+123456 allow to starts a phone call to +123456, even when the device is locked.
+Below the list of devices tested by the duo:
+Pierluigi Paganini 
+(Security Affairs – Samsung Galaxy, serial modem)

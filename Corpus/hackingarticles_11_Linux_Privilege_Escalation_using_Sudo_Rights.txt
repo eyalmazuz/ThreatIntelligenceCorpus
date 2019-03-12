@@ -1,0 +1,95 @@
+
+Linux Privilege Escalation using Sudo Rights
+
+In our previous articles, we have discussed Linux Privilege Escalation using SUID Binaries and /etc/passwd file and today we are posting another method of “Linux privilege Escalation using Sudoers file”. While solving CTF challenges, for privilege escalation we always check root permissions for any user to execute any file or command by executing sudo -l command. You can read our previous article where we had applied this trick for privilege escalation.
+Let’s Start with Theoretical Concept!!
+In Linux/Unix, a sudoers file inside /etc is the configuration file for sudo rights. We all know the power of sudo command, the word sudo represent Super User Do root privilege task. Sudoers file is that file where the users and groups with root privileges are stored to run some or all commands as root or another user. Take a look at the following image.
+
+When you run any command along with sudo, it needs root privileges for execution, Linux checks that particular username within the sudoers file. And it concluded, that the particular username is in the list of sudoers file or not, if not then you cannot run the command or program using sudo command. As per sudo rights the root user can execute from ALL terminals, acting as ALL users: ALL group, and run ALL command.
+ If you (root user) wish to grant sudo right to any particular user then type visudo command which will open the sudoers file for editing. Under “user privilege specification” you will observe default root permission “root ALL=(ALL:ALL) ALL” BUT in actual, there is Tag option also available which is optional, as explained below in the following image.
+Consider the given example where we want to assign sudo rights for user:raaz to access the terminal and run copy command with root privilege. Here NOPASSWD tag that means no password will be requested for the user.
+NOTE: 
+
+Let’s Begin!!
+Let’s get into deep through practical work. First, create a user which should be not the sudo group user. Here we have added user “raaz” who’s UID is 1002 and GID is 1002 and hence raaz is non-root user.
+ 
+If system administrator wants to give ALL permission to user raaz then he can follow below steps to add user raaz under User Privilege Specification category.
+
+On other hands start yours attacking machine and first compromise the target system and then move to privilege escalation phase. Suppose you successfully login into victim’s machine through ssh and want to know sudo rights for the current user then execute below command.
+In the traditional method, PASSWD option is enabled for user authentication while executing above command and it can be disabled by using NOPASSWD tag. The highlighted text is indicating that current user is authorized to execute all command. Therefore we have obtained root access by executing the command.
+
+If system administrator wants to give root permission to user raaz to execute all command and program then he can follow below steps to add user raaz under User Privilege Specification category.
+Here also Default PASSWD option is enabled for user authentication.
+
+Again compromise the target system and then move for privilege escalation stage as done above and execute below command to view sudo user list.
+sudo -l
+Here you can perceive the highlighted text which is representative that the user raaz can run all command as root user. Therefore we can achieve root access by performing further down steps.
+Note: Above both methods will ask user’s password for authentication at the time of execution of sudo -l command because by Default PASSWD option is enabled.
+
+Sometimes the user has the authorization to execute any file or command of a particular directory such as /bin/cp, /bin/cat or /usr/bin/ find, this type of permission lead to privilege escalation for root access and it can be implemented with help of following steps.
+ NOTE: Here NOPASSWD tag that means no password will be requested for the user while running sudo -l command.
+ 
+Again compromised the Victim’s system and then move for privilege escalation phase and execute below command to view sudo user list.
+sudo -l
+At this point, you can notice the highlighted text is indicating that the user raaz can run any command through find command. Therefore we got root access by executing below commands.
+ 
+Sometimes admin assigns delicate authorities to a particular user to run binary programs which allow a user to edit any system files such as /etc/passwd and so on. There are certain binary programs which can lead to privilege escalation if authorized to a user. In given below command we have assign sudo rights to the following program which can be run as root user.
+
+At the time of privilege, escalation phase executes below command to view sudo user list.
+Now you can observe the highlighted text is showing that the user raaz can run Perl language program or script as root user. Therefore we got root access by executing Perl one-liner.
+id 
+ 
+After compromising the target system and then move for privilege escalation phase as done above and execute below command to view sudo user list.
+sudo -l
+At this point, you can perceive the highlighted text is indicating that the user raaz can run Python language program or script as root user. Thus we acquired root access by executing Python one-liner.
+
+For the privilege, escalation phase executes below command to view sudo user list.
+sudo -l
+
+Here you can observe the highlighted text which is indicating that the user raaz can run less command as root user. Hence we obtained root access by executing following.
+
+It will open requested system file for editing, BUT for spawning root shell type !bash as shown below and hit enter.
+You will get root access as shown in the below image.
+
+After compromise, the target system then moves for privilege escalation phase as done above and execute below command to view sudo user list.
+sudo -l
+At this phase, you can notice the highlighted text is representing that the user raaz can run AWK language program or script as root user. Therefore we obtained root access by executing AWK one-liner.
+
+For privilege escalation and execute below command to view sudo user list.
+sudo -l
+Here you can observe the highlighted text is indicating that the user raaz can run man command as root user. Therefore we got root access by executing following.
+
+It will be displaying Linux manual pages for editing, BUT for spawning root shell type !bash as presented below and hit enter, you get root access as done above using Less command.
+
+
+After compromising the target system and then move for privilege escalation phase as done above and execute below command to view sudo user list.
+sudo -l
+Here you can observe the highlighted text which is indicating that user raaz can run vi command as root user. Consequently, we got root access by executing following.
+sudo vi
+
+Thus, It will open vi editors for editing, BUT for spawning root shell type !bash as shown below and hit enter, you get root access as done above using Less command.
+
+You will get root access as shown in the below image.
+NOTE: sudo permission for less, nano, man, vi and man is very dangerous as they allow user to edit system file and lead to Privilege Escalation. 
+ 
+There are maximum chances to get any kind of script for the system or program call, it can be any script either Bash, PHP, Python or C language script. Suppose you (system admin) want to give sudo permission to any script which will provide bash shell on execution.
+For example, we have some scripts which will provide root terminal on execution, in given below image you can observe that we have written 3 programs for obtaining bash shell by using different programing language and saved all three files: asroot.py, asroot.sh, asroot.c (compiled file shell) inside bin/script.
+NOTE: While solving OSCP challenges you will find that some script is hidden by the author for exploit kernel or for root shell and set sudo permission to any particular user to execute that script.
+
+Now allow raaz to run all above script as root user by editing sudoers file with the help of following command.
+ 
+For the privilege, escalation phase executes below command to view sudo user list.
+sudo -l              
+The highlighted text is indicating that the user raaz can run asroot.sh as root user. Therefore we got root access by running asroot.sh script.
+ 
+Execute below command for privilege escalation to view sudo user list.
+sudo -l
+At this time the highlighted text is showing that user raaz can run asroot.py as root user. Therefore we acquired root access by executing following script.
+
+After compromising the target system and then move for privilege escalation and execute below command to view sudo user list.
+sudo -l
+Here you can perceive the highlighted text is indicating that the user raaz can run shell (asroot.c complied file) as root user. So we obtained root access by executing following shell.
+Today we have demonstrated the various method to spawn root terminal of victim’s machine if any user is a member of sudoers file and has root permission.
+HAPPY HACKING!!!!
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

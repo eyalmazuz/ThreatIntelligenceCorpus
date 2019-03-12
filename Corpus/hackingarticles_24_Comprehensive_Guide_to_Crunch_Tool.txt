@@ -1,0 +1,116 @@
+
+Comprehensive Guide to Crunch Tool
+
+Hello friends!! Today we will demonstrate how a pentester can generate his own wordlist for username either password using the most powerful tool CRUNCH. In kali Linux you can easily get crunch by exploring Application > Password Attacks > Crunch 
+Crunch can generate a wordlist subject to the conditions you specify and its output file can be used in any other another program or file.
+
+We are using crunch version 3.6 for this tutorial and followed given below parameters for generating wordlist.
+Syntax: <min> <max> [character-string] [options]
+Min-len:  This parameter specify minimum length string required for crunch to start generating wordlist.
+Max-len: This parameter specify maximum length string required for crunch to end.
+Charset string: This parameter specify character sets for crunch to use for generating wordlist from that string, if you have not specified any string then crunch will default characters string.
+Options: crunch serves you a list of options which increase its functionality for generating wordlist as per your requirement.
+
+Execute given below command which will generate a dictionary that contains minimum 2 character letters and maximum 3 by using default character sets. It will start from aa and end with zzz.
+crunch 2 3 -o  /root/Desktop/0.txt
+Here we had used following parameters for generating a dictionary:
+Min_len: 2 for two character letters
+Max_len: 3 for three character letters
+-o: This option denotes the path to save the output in a text file.
+From given below image you can observe that it has generated 18252 number of lines and saved in 0.txt file.
+
+Now here we had used cat command to read the content from inside 0.txt file where we can perceive that it has start from aa and end with zzz as shown in given below image.
+cat /root/Desktop/0.txt
+
+
+Now execute given below command which will generate a dictionary that contains minimum 3 character letters and maximum 4 by using “raj” as specified string. Similarly it will start from rrr and end with jjjj.
+crunch 3 4  raj -o  /root/Desktop/1.txt
+From given below image you can observe that it has generated 108 number of lines and saved in 1.txt file.
+
+Now we had used cat command to read the content from inside 1.txt file where we can perceive that it has start from rrr and end with jjjj.
+cat /root/Desktop/1.txt
+Similarly we can use string of any number for making a dictionary which contains numeric characters.
+For example: some users set their date of birth as password and we would like to generate a dictionary that contains combination of four number such that it represent month and date for instant 25th May as 2505 then you can use “2505” as character string for generating a numeric wordlist.
+
+You can generate you own alpha-numeric wordlist, execute given below command which will generate a dictionary that contains minimum 2 character letters and maximum 3 by using “raj123” as specified string. 
+You can set minimum and maximum length for your wordlist as per your requirement.
+crunch 2 3  raj123 -o  /root/Desktop/3.txt
+
+Again we had used cat command to read the content from inside 3.txt file where we can perceive that it has combination of alpha-numeric character.
+cat /root/Desktop/3.txt
+
+Following command will generate wordlist using space character (\) with string “raj”. Instead of using (\) you can also use double quotes around string as “raj ” along with space within double quotes. 
+crunch 1 3  raj\ -o  /root/Desktop/4.txt
+
+As we known rainbow crack has a character set file which is used for cracking hashes by using rainbow table, but we’ll use this character set file for generating a complex wordlist as per situation demands.
+cat /usr/share/rainbowcrack/charset.txt
+We had used cat command to express the list of character set that has been stored in charset.txt of rainbowcrack.  From given below image you can observed that it is showing following list of character set.
+
+Now you can choose any character set for generating wordlist. Let suppose I want to generate a wordlist which contains lower alphabets letter along with numeric number for 5 letter words so for that I will execute following command.
+crunch  4 5  -f /usr/share/rainbowcrack/charset.txt loweralpha-numeric -o  /root/Desktop/5.txt
+Here –f denotes Specifies a character set from the charset.lst
+
+Again we had used cat command to read the content from inside 5.txt file where we can perceive that it has combination of alpha-numeric character.
+cat /root/Desktop/5.txt
+
+Crunch provides –t option to generate a wordlist using a specific pattern as per your requirement.
+Using option –t you can generate 4 type patters as specified below:
+For generating a wordlist that contains 3 numeric characters on the right side of string “raj” for instant raj123, we need to execute following command.
+Since we have 3 letters from string raj and we are assuming 3 more numeric number after the given string, therefore the minimum length should be sum of string and pattern character.
+crunch 6 6 -t raj%%% -o/root/Desktop/6.txt
+Here –t denotes % pattern is used for editing 3 numeric character.
+
+Again we had used cat command to read the content from inside 6.txt file where we can perceive that it has combination of alpha-numeric character.
+cat /root/Desktop/6.txt
+
+Crunch let you bound the repetition of character by using –d parameters along with the given pattern. 
+As we saw, above the pattern for raj%%% starts with raj000 which means every single number will consecutive either twice or thrice such as it will contain word as raj000, raj001, raj111, raj110 and so on in the wordlist.
+If you don’t wish to create a wordlist with repeated number then you can use –d option to set filter for repetition.
+For example: I want to generate a wordlist by using above pattern i.e. raj%%% and consecutive repetition of each number almost twice. For implementing such type of dictionary we need to execute below command.
+crunch 6 6 -t raj%%% -d 2% -o/root/Desktop/6.1.txt
+here we had use following parameter
+–t denotes % pattern is used for editing 3 numeric character
+-d denote % pattern is used for editing 3 numeric character with repetition of each number almost twice.
+
+Again we had used cat command to read the content from inside 6.1.txt file where we can perceive that it has combination of alpha-numeric character with repetition of each number two times.
+cat /root/Desktop/6.1.txt
+Now if you will compare output file 6.txt and 6.1.txt then you can notice difference of number repetition.
+
+For generating a wordlist that contains 3 uppercase characters on the right side of string “raj” for instant rajABC, we need to execute following command.
+Since we have 3 letters from string raj and we are assuming 3 more uppercase letter after the given string, therefore the minimum length should be sum of string and pattern character.
+crunch 6 6 -t raj,,, -o/root/Desktop/7.txt
+Here –t denotes (,) pattern is used for editing 3 uppercase letter character.
+
+Again we had used cat command to read the content from inside 7.txt file where we can perceive that it has combination of mix-alpha character.
+cat /root/Desktop/7.txt
+
+Similarly we can set limit for uppercase letter repletion as done above. So if I want that alphabets should not be consecutive then we can execute given below command for generating such type of dictionary.
+crunch 6 6 -t raj,,, -d 1, -o/root/Desktop/7.1.txt
+–t denotes (,) pattern is used for editing 3 uppercase character
+-d denote (,) pattern is used for editing 3 uppercase character with repetition of each number almost one.
+
+Again we had used cat command to read the content from inside 7.1.txt file where we can perceive that it has combination of mix-alpha character with repetition of each number two times.
+cat /root/Desktop/7.1.txt
+Now if you will compare output file 7.txt and 7.1.txt then you can notice difference of alphabet repetition.
+
+-p option is used for generating wordlist with help of permutation, here can ignore min and max length of character string. Moreover it can be used with one word string or multiple words string as given below.
+crunch 3 6 –p raj chandel hackingarticles
+From given below image you can analysis the output result and get maximum number of permutation generated.
+
+If you will observe above all output result then you will find crunch has generated dictionary and displays the number of line for each dictionary. For instance text file 0.txt has 18252 number of line and each line contains one word only.
+So if you wish to set filter for certain number of line should be generated then execute given below line.
+crunch 5 5 IGNITE -c 25 -o /root/Desktop/8.txt
+It will generate a dictionary of 25 words only and save output in 8.txt.
+
+Again we had used cat command to read the content from inside8.txt file where we can perceive that it has only 25 alpha character.
+cat /root/Desktop/8.txt
+
+Use –b option for wordlist fragmentation that split a single wordlist into multi wordlist. It is quite useful option for dividing wordlist which is in GB can break into MB.
+crunch 5 7 raj@123 -b 3mb –o START 
+From given below image you can observe that it has divided a 7MB file into three text file.
+
+Crunch let you generate compress wordlist with option –z and other parameters are gzip, bzip2, lzma, and 7z, execute given below command for compression.
+crunch 5 7 raj@123 –z gzip –o START 
+ From given below image you can observe that it has generated compress text file.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

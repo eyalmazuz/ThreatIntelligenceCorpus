@@ -1,0 +1,15 @@
+Aw, snap! How huge HTML links can crash Chrome tabs in one click
+Behind the bug A bug in the most recent version of the Chrome allows miscreants to crash browser tabs simply by embedding a link with a malformed URL in the HTML of a page.
+The vulnerability, dubbed "AwSnap" by web developer Jason Blatt, affects Chrome version 41 on Windows, OS X, and Chrome OS, though reports vary as to whether it exists in Chrome on Ubuntu or other desktop Linux flavors.
+The bug crashes the browser without the user taking any direct action other than loading the affected page. All that's needed is to insert an excessively long and/or malformed link into the page's code, such as something like this:
+The exploit works because of Chrome's habit of prefetching page data, such as performing DNS lookups on domain names in links on a page, in a preemptive attempt to speed up future loads. This causes the browser to try to process malformed URLs even before the user has clicked on them, triggering the crash.
+It also means you have to load the malicious HTML over a network for the exploit to work. Loading bad HTML from a local file:// URL won't crash the browser.
+The fix is pretty simple, simply adding a length check to the DNS lookup string, as the patch shows:
+kMaxDnsHostnameLength is defined as 255: the maximum length of a DNS name is 255 octets. It appears from looking at the Chromium source that the page rendering code sends the long DNS name in a message to a hostname lookup component during the pre-fetch. This component flags up an error when it checks the length of the DNS name and sees that it exceeds kMaxDnsHostnameLength – triggering the "AwSnap" crash. It's a case of one part of Chromium sending too much information to another.
+Beyond being a mere annoyance, the bug is significant because it can be used to launch denial-of-service attacks. A malicious actor who inserted a bad URL into a post of an online forum would make the entire conversation thread inaccessible to Chrome users, for example.
+If you really, really want to see such an attack in action, this link to Reddit has already been poisoned by a bad URL and should cause Chrome 41 to crash. [Note: We warned you. – ed.]
+Fortunately, a patch that fixes the bug has already been submitted and merged, so it should become a non-issue once the Stable channel of Chrome is updated to version 42. In the meantime, watch out for random links; true to form, the interwebs appear to have discovered something even more annoying than being Rickrolled. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

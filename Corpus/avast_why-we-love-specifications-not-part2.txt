@@ -1,0 +1,48 @@
+Why we love specifications (not)! Part II
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 12 April 2013
+
+Why we love specifications (not)! Part IIDealing with file formats is not really enjoyed by us. Usually the format designers haven't had the security and parsing by foreign applications in mind, sometimes the specifications are hard to get, but, what is worst is the specification which claims something and then the major implementation does not follow it, allowing the bad guys to evade easily our strict parsers (as strict as specified in docs). We've already blogged about such problem in the past.
+As I dealt with Embedded Open Type (EOT) in the past I have received some undetected samples from my colleague. It was EOT sample mentioned in this blog and some other sample downloaded by her. EOT is a compact form of OpenType font - it uses some special compression based on this specific file format to decrease file size.
+
+I ran our internal tool on the undetected files to see what I missed in previous analysis and I quite quickly discovered where the problem lies. I had to read specification of OpenType Font File again to see if I missed something. The first 4 bytes of the OpenType font file containpodi field called "sfnt version".  Specification of OpenType Font File says:
+OpenType fonts that contain TrueType outlines should use the value of 1.0 for the sfnt version. OpenType fonts containing CFF data should use the tag 'OTTO' as the sfnt version number. NOTE: The Apple specification for TrueType fonts allows for 'true' and 'typ1' for sfnt version. These version tags should not be used for fonts which contain OpenType tables.
+Also Apple TTF specification says:
+Fonts for Windows must use 0x00010000.
+This validates for well known font files like arial.ttf - see image arial.ttf. But when we analyzed the downloaded malicious EOT file and unpacked it to obtain TTF file, we've seen the content as pictured on image PjNmvEsWb.eot unpacked.
+[caption id="attachment_13481" align="alignnone" width="628"] arial.ttf
+
+
+
+PjNmvEsWb.eot unpacked[/caption]
+
+
+
+So it looks that the field "sfnt version" of OpenType Font File can also contain the value 0x00020000 (value of 2.0). So I tried to modify the arial font - I changed the second byte from 0x01 to 0x02 and opened it in Microsoft Windows XP SP3 and it worked! I also tried some other values, but with no success. So I modified the detection as you can see on VirusTotal results:
+Original sample from article:
+2615b79cdd657be56da9a351a7517dc72d166f30ef2a42b8c9205bbc8923a973
+Sample downloaded by colleague:
+dd64866d2668faadf9e06f5cc1dde83ce0c9459d320c9ae2565c597da17416bd
+
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,17 @@
+
+					ASUS router firmware affected by root command execution flaw					
+The Security researchers Joshua Drake discovered a serious vulnerability in the firmware running on several ASUS routers that allows an unauthenticated attacker to run arbitrary command on the device. According to the expert, the security vulnerability may affect all current versions of the ASUS router firmware, Drake posted an advisory on the flaw that include details on the flaw. Vulnerable devices include RT-AC66U, RT-N66U, and many others.
+The security researcher analyzed in the post the flaw and discovered that the problem resides in the infosvr service, which is used to help the administrators find and configure ASUS routers on a network segment.
+“Several models of ASUS’s routers include a service called infosvr that listens on UDP broadcast port 9999 on the LAN interface. It’s used by one of ASUS’s tools to ease router configuration by automatically locating routers on the local subnet. This service runs with root privileges and contains an unauthenticated command execution vulnerability. The source code for this service, as well as the rest of the router, is available from ASUS’s Support Site.” reads the description for the flaw provided by Drake on Github.
+The expert speculate that vulnerability resides in a block of code that is related to the processPacket function, which invoked after receiving a packet of INFO_PDU_LENGTH (512) bytes.
+The following block contains what is believed to be the root cause of this vulnerability.
+
+“The block starts off by excluding a couple of OpCode values, which presumably do not require authentication by design. Then, it calls the memcpy and suspiciously checks the return value against zero. This is highly indicative that the author intended to use memcmp instead. That said, even if this check was implemented properly, knowing the device’s MAC address is hardly sufficient authentication,” said Drake.
+Drake recommends to remove the remote command execution function from the vulnerable service to protect the routers.
+“Remove the remote command execution functionality from this service. Even if it were guarded with strong authentication, broadcasting a password to the entire LAN isn’t really something to be desired. If command execution is truly desired it should be provided via SSH or similar secure mechanism.”Drake wrote in his advisory.
+David Longenecker recommends the use of a script (JFFS) in combination with the script_usbmount nvram setting to kill the infosvr process on the boot of the ASUS router. Another precious suggestion is provided by Eric Sauvageau (@RMerl) that suggests firewalling port 9999 off.
+Another possibility is to disable the infosvr service by killing the process after each boot.
+For extra fun/irony, use the exploit to do this:
+The CVE assigned to this vulnerability in the ASUS router firmware the code CVE-2014-9583.
+Pierluigi Paganini
+(Security Affairs –  ASUS Router firmware, CVE-2014-9583)

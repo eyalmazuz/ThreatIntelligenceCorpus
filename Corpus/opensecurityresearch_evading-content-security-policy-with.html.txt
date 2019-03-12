@@ -1,0 +1,73 @@
+
+Evading Content Security Policy with CRLF Injection
+
+
+By Gursev Kalra.
+
+Content Security Policy (CSP) was developed with the aim of reducing content injection attacks like Cross Site Scripting. CSP allows the developers to specify the permitted content sources for their web applications and relies on HTTP response headers to enforce content restrictions.
+
+When CSP is implemented by the web application and supported by the web browser, content injection attacks can be performed by:
+
+Exploiting flaws in browser CSP implementation
+Manipulating HTTP response headers.
+
+CRLF injection is one possible technique by which an attacker can control HTTP response headers. If client provided parameters are returned in response headers without any validation, CRLF injection can be used to bypass CSP restrictions. 
+
+For demonstrations, two web pages were setup with the following content at two different origins
+Webpage 1: http://localhost:3000/csp
+Content:
+http://localhost:3333/xss.js
+
+
+Webpage 2: http://localhost:3333/xss.js 
+Content:
+alert('XSS’)
+
+
+CRLF Injection and CSP:
+If a HTTP response contains same HTTP header multiple times, different browsers interpret the headers  differently. Certain browsers interpret the first occurrence of the HTTP header, others choose the last one. Hence, positioning of CSP directive (X-Content-Security-Policy) in application response can play an interesting role. In the discussion below, we assume that the web application implements CSP and is vulnerable to CRLF injection:
+
+Case 1: Attack vector is returned before the CSP header in the HTTP response headers: 
+Case 1a: If the browser picks the first occurrence of the CSP header, CRLF injection can then be used to insert a CSP header with following attack vector:
+
+lang=en_US%0d%0aX-Content-Security-Policy: allow *
+
+In this case, the web browser will interpret the first CSP header and will happily retrieve content from any malicious URL.
+
+
+
+
+
+Image shows malicious CSP directive inserted before the legitimate header 
+
+Case 1b: If the browser picks the last occurrence of the CSP header, following CRLF injection attack vector can be used to insert custom CSP header.
+
+lang=en_US%0d%0aX-Content-Security-Policy: allow *%0d%0a%0d%0a 
+
+Two trailing occurrences of CRLF will push the CSP directive into the content and will not be interpreted as a CSP directive. This again allows attacker to bypass CSP protection and execute and source arbitrary content.
+
+
+Image shows CSP directive pushed out to response body and rendered ineffective 
+
+Case 2: Attack vector is returned after the CSP header in the HTTP response headers 
+Case 2a: If the browser picks the first occurrence of the CSP header, the CSP directive cannot be overridden for the current resource. For an attack to function one has to look into the possibility of exploiting HTTP Response Splitting.
+
+Case 2b: If the browser picks the last occurrence of the CSP header, CRLF injection can be used to insert a malicious header similar to case 1a.
+
+lang=en_US%0d%0aX-Content-Security-Policy: allow * 
+
+This will cause the browser to interpret the CSP directive as allow * to retrieve content from arbitrary URLs.
+
+It was observed that when more than one X-Content-Security-Policy headers were received by Firefox (7.0.1), it securely defaulted to same origin policy for all content. 
+
+The POC below pushes the headers out to the response body by two CRLF sequences to achieve script execution.
+
+
+
+Image shows script execution prevented from a different origin (http://localhost:3333)
+
+
+Image shows successful script execution when the page was vulnerable CRLF injection
+
+
+

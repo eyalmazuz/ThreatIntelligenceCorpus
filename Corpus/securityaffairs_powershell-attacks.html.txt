@@ -1,0 +1,79 @@
+
+					Go to HELL, PowersHELL : Powerdown the PowerShell Attacks					
+Lately, I have been working on analyzing the PowerShell attacks in my clients’ environment. Based on the analysis and research, I have come up with a few indicators that will help to detect the potential PowerShell attacks in your environment using windows event logs. First, we will understand how PowerShell is weaponized in the attacks that are observed in the wild and then we will look at the detection mechanism.
+As all of us are aware that PowerShell is extremely powerful and we have seen that attackers are increasingly using PowerShell in their attack methods lately. PowerShell is a default package that comes with Microsoft Windows OS and hence it is readily available on the victim machines to exploit.
+“Powershell is Predominantly used as a downloader”
+The most prominent use of PowerShell, that is observed in the attacks in-the-wild, is to download the malicious file from the remote locations to the victim machine and execute it using commands like Start-Porcess, Invoke-Item OR Invoke-Expression (-IEX) file OR downloading the content of the remote file directly in to the memory of the victim machine and execute it from there.
+Two methods of System.net.Webclient that are prevalent in the live attacks
+ (New-object System.net.webclient).DownlodFile()
+The simplest example of this method to check how it works is shown in the snapshot below. (an experiment that one can perform to check the functionality of this method by setting up a http/s server using program like Xampp )
+
+In the example shown above, the file is downloaded to the disk as evilfile.txt at the path C:\Users\kirtar_oza\AppData\Roaming set by calling the environment variable $Appdata and then this file is executed using “Invoke-Item” command.
+Following is an example from one of the attacks in the wild
+In above example, the remote file is downloaded using .downloadfile() method and dropped under users’ appdata directory using environment variable and “Start-Process” is used to execute the dropped binary.
+The following are some more examples of the PowerShell downloads and invocation that have been seen in the wild
+(New-object System.net.Webclient).DownloadString()
+DownloadString() does not download any file to the disk but it copies the content of the remote file directly to the memory of the victim machine. These files typically are malicious scripts which get executed directly into the memory using Powershell –Command argument. This technique is wildly used to create so-called file-less malware where the evil script is executed directly in the memory of the victim machine without dropping any file as such on the hard disk. This technique is used to bypass signature-based detection.
+The simplest example of this method to check how it works is as below
+
+Where cmd.js is a remote script that starts calc.exe process on the victim machine without any file on the disk – runs from memory. [ Note : just write calc.exe in a notepad file and save it as .js extension]
+The following snippet is from one of the attacks in the wild
+In above example, both of the methods have been used together – downloadstring() is used to download some php code from the remote host.
+Attackers use a variety of options available in PowerShell to keep their operation as stealthy as possible. Following are the flags which are widely used in the attacks – and that could be used to build our list of Indicators of Compromise (IOC)
+–WindowStyle hidden / -w hidden: to make PowerShell operation stealth by making program window hidden from user
+–Exec Bypass: to bypass/ignore the execution policy like Restricted which restricts the PowerShell scripts from running
+– Command / -c : to execute any commands from PowerShell terminal
+–EncodedCommand / -e / -Enc: to pass encoded parameters as command lines
+–Nop / -Noprofile : to ignore the commands in the Profile file
+Examples of the various flags 
+You can refer the example in the previous section to understand the use of flags – -nop -Exec Bypass –Command
+The following are the examples of various flags used by the attackers in the wild
+Now, I will talk about the indicators of compromise that helps u to detect any suspicious PowerShell activities in the environment.
+Typically, when we run PowerShell using windows start menu or from its location on the disk, it starts under explorer.exe – you can see parent-child relationship tree using Process Explorer OR Process Hacker on your system.
+It looks like as shown in left – Explorere.exe is the parent process to the Powershell.exe
+Most of the times, in PowerShell attacks, PowerShell script / commands launched through command line process – therefore, we usually have observed that the parent process to the Powershell Process is cmd.exe in the attacks which are in the wild.
+Now, there are legit cases also where cmd.exe will be the parent process for PowerShell process – like administrator wants to fire some PowerShell script and he launches powershell form command prompt (cmd.exe)
+“Therefore, it is important to have a look at the Grandparent process as well like – who spawned the cmd.exe – that will give you an indication if this could be part of the attack.”  
+So, if the Grandparent process is winword.exe, mshta.exe, wscript.exe, wuapp.exe – then it is a fair indication that cmd.exe is spawned by a script and that script is worth to look at.
+“There are cases where we have observed PowerShell Process is directly spawned by windword.exe – that is a clear indication of a suspicious activity that we need to log and investigate.”
+This kind of behavior typically seen in Phishing cases where user clicked/opened the word document which has embedded macro (vbscript) in it which spawns the PowerShell process to download the malicious content from the web.
+Therefore, log and pay attention to the PowerShell process if
+-It is spawned by winword.exe ( its parent process is winword.exe)
+-It is spawned by cmd.exe (its parent process is cmd.exe) and if cmd.exe is spawned by
+winword.exe (Grandparent of PowerShell is winword.exe)
+mshta.exe
+wscript.exe
+wuapp.exe
+tasking.exe
+-It is spawned by any of the above processes (Its Parent is any of above process – mshta,wscript, cscript, wuapp, tasking etc. )
+Have a look at the following snippet from Process Monitor that shows Process Creation order after the sample script is executed – PowerShell is executed by Wscript.exe – that means Wscript.exe is a parent process for PowerShell and PowerShell is in-turn the Parent process for conshost.exe which spawns the calc.exe.
+
+Sample Script is as below – copy these 2 lines of code in Notepad and save it as .js and run it
+The indicators discussed above are indicative and by no means, it is a comprehensive set of relationships but this can be a good starting point form where we can start logging PowerShell execution in the environment and then focus on above IOCs to investigate them further for any suspicious activity.
+Many of the Powershell attacks can be detected by just monitoring command line parameters passed along with the PowerShell process. Moreover, it will help us to further investigate the incident by providing the cues on where to look next for further evidence. For example, if downlodFile() method is used – we will come to know the location on the hard disk where the malicious file might have dropped and the malicious site from where the malicious file is downloaded. We can take these clues and investigate further to assess the impact and behavior of the attack.
+There are multiple ways to enable logging for PowerShell based on the version of the PowerShell and operating system used.
+Today, I am going to talk about the windows event code that will help us to identify the IOCs described above. By just enabling and logging this event id, it is possible to effectively detect the PowerShell attacks.
+I am talking about windows security event id 4688 – Process Creation. Yes, it will generate hell lot of events but applying basic filtering techniques, we can log and monitor only the logs of interest. By default, Process Creation audit is disabled – so first and foremost, we need to enable this feature using GPO. You can read more on this here.
+In addition to that – it is important to log command line parameters which are passed at the time of process creation. Command line auditing feature is made available on Microsoft starting from Windows 8.1 and Windows Server 2012 R2. We just need to enable this feature by enabling Include command line in process creation events at Administrative Templates\System\Audit Process Creation and you can roll this out using GPO.  You can read more on this here.
+Microsoft has come up with the update to make this feature available on its other supported versions of Windows 7, Server 2008 and Server 2008 R2. You can read more on this here and here.
+Event ID 4688 will give us two key information based on which alerts can be created on the SIEM to detect such attacks.
+I would take an example of Splunk and explain how alerts can be created to detect the suspicious PowerShell activities in your environment. I will also mention caveats associated with the alert.
+First of all, we are interested in capturing Powershell attacks so we need to monitor the events where Powershell.exe is created or spawned. Typicall, 4688 Event ID looks like following – that includes the field called “New_Process_Name” – that gives information about which process is created.
+
+So, we need to pick-up those events by following search
+Next step is to review the command line arguments passed with Powershell Process initiation.
+Process_Command_Line gives information about the command line parameters that are passed to the newly created process – i.e. Powershell. We can create the alert based on the frequently used parameters like –e, -Encod, -windowstyle , Bypass , -c , -command etc.
+Better option is to create the input lookup list for the known suspicious command line arguments and lookup against that in your alert.
+Starting with Windows 10 and Windows Server 2016 – Microsoft has added a field called “Creator Process Name” in Event Id 4688 which gives the name of the Parent Process. This filed helps to create the alerts based on the suspicious parents.
+“Unfortunately, PowerShell commands / scripts are easy to obfuscate.”
+There are many ways by which the PowerShell scripts can be obfuscated. Random variables or string concatenation can be introduced in the PowerShell that can easily fool static comparison between command lines with the input lookup (as shown above). The following are few obfuscation methods that can render our static comparison ineffective.
+Three is an excellent research article on PowerShell Attack Methods by Symantec THE INCREASED USE OF POWERSHELL IN ATTACKS which includes excellent examples of obfuscation taken from a Derbycon 2016 talk by Daniel Bohannon on Powershell obfuscation. Following are a few examples of obfuscation, out of many discussed in this paper
+Example: (neW-oBjEct system.NeT.WeBclieNT). dOWNloadfiLe
+Example: (New-Object Net.WebClient). DownloadString(“ht”+’tp://’+$url)
+Example: (new-object net. webclient).”d`o`wnl`oa`dstr`in`g”($url)
+Example: “-window 1” instead of “-window hidden”
+However, it is important to monitor the PowerShell execution in your environment and if the command lines are obfuscated, the chances are very high that it is run as a part of the cyber-attack. Hence, it is imperative to log Event ID 4688 – you may apply filter to log only PowerShell process creation and monitor the command line arguments passed with each PowerShell process creation. 
+So till next time – KEEP CALM and STAY VIGILANT !!!
+About the author: Kirtar Oza CISSP,CISA, MS
+Edited by Pierluigi Paganini
+(Security Affairs – PowerShell, Hacking)

@@ -1,0 +1,61 @@
+
+Penetration Testing in SMB Protocol using Metasploit (Port 445)
+
+In Hacking, Ports and Protocols play a major role as hacking is not possible without them. And to work with them, let us first understand ports and protocols.
+In information technology, a protocol is the special set of rules that end points in a telecommunication connection use when they communicate. Protocols specify interactions between the communicating entities. So, basically, Network protocols are the language of rules and conventions used for handing communicated between network devices and ensuring the optimal operation of a network. Network protocols include key internet protocols such as IP and IPv6 as well as DNS and FTP, and it also includes more network-specific protocols like SNMP and NTP.
+In the internet protocol suite, a port is an endpoint of communication in an operating system. A port in computer networking is a logical access channel for communication between two devices. Bi-directional communications and more complex connections may use multiple ports (channels) simultaneously. It is always associated with an IP address of a host and the protocol type of the communication, and thus completes the destination or origination address of a communication session.
+A port is identified for each address and protocol by a 16-bit number, commonly known as the port number.
+This understood Ports and Protocols. Now, to work with SMB protocol, let us understand it.
+SMB:  Server Message Block, the modern dialect of which was known as Common Internet File System, operates as an application-layer network protocol for file sharing  that allows applications on a computer to read and write to files and to request services from server programs in a computer network. The SMB protocol can be used on top of its TCP/IP protocol or other network protocols. Using the SMB protocol, an application (or the user of an application) can access files or other resources at a remote server. This allows applications to read, create, and update files on the remote server. It can also communicate with any server program that is set up to receive an SMB client request.
+Presently, the latest version of SMB is the SMB 3.1.1 which was introduced with Windows 10 and Windows Server 2016. This version supports AES 128 GCM encryption in addition to AES 128 CCM encryption added in SMB3, and implements pre-authentication integrity check using SHA-512 hash. SMB 3.1.1 also makes secure negotiation mandatory when connecting to clients using SMB 2.x and higher.
+Working of SMB: SMB functions as a request-response or client-server protocol. The only time that the protocol does not work in a response-request framework is when a client requests an opportunistic lock (oplock) and the server has to break an existing oplock because the current mode is incompatible with the existing oplock. Client computers using SMB connect to a supporting server using NetBIOS over TCP/IP, IPX/SPX, or NetBUI. Once the connection is established, the client computer or program can then open, read/write, and access files similar to the file system on a local computer.
+SMB Protocol Security: The SMB protocol supports two levels of security. The first is the share level. The server is protected at this level and each share has a password. The client computer or user has to enter the password to access data or files saved under the specific share. This is the only security model available in the Core and Core plus SMG protocol definitions. User level protection was later added to the SMB protocol. It is applied to individual files and each share is based on specific user access rights. Once a server authenticates the client, he/she is given a unique identification (UID) that is presented upon access to the server. The SMB protocol has supported individual security since LAN Manager 1.0 was implemented.
+In metaslpoit, there are very simple commands to know if the remote host or remote PC supports SMB or not.
+SMB 2.0 Protocol Detection
+Detect systems that support the SMB 2.0 protocol
+use auxiliary/scanner/smb/smb2
+msf exploit (smb2)>set rhosts 192.168.0.104
+msf exploit (smb2)>set rport 445
+msf exploit (smb2)>exploit
+
+Once you hit enter after exploit, you will see the result providing you with al the information about the opened SMB Protocol.
+SMB Version Detection
+Display version information about each system
+use auxiliary/scanner/smb/smb_version
+msf exploit (smb_version)>set rhosts 192.168.0.104
+msf exploit (smb_version)>exploit
+
+After the command has been run, it will inform you about the version of SMB running on our remote PC.
+SMB Share Enumeration
+This module determines what shares are provided by the SMB service and which ones are readable/writable. It also collects additional information such as share types, directories, files, time stamps, etc. By default, a netshareenum request is done in order to retrieve share information, but if this fails, you may also fall back to SRVSVC.
+use auxiliary/scanner/smb/smb_enumshares
+msf exploit (smb_enumshares)>set rhosts 192.168.0.104
+msf exploit (smb_enumshares)>smb smbuser raj
+msf exploit (smb_enumshares)>smb passuser raj
+msf exploit (smb_enumshares)>exploit
+
+And so, after the execution of the command the result will be displayed. Some of the access is denied a most of the systems that are probed. Passing user credentials to the scanner will produce much different results.
+SMB User Enumeration (SAM EnumUsers)
+Determine what local users exist via the SAM RPC service
+use auxiliary/scanner/smb/smb_enumusers
+msf exploit (smb_enumusers)>set rhosts 192.168.0.104
+msf exploit (smb_enumusers)>smb smbuser raj
+msf exploit (smb_enumusers)>smb passuser raj
+msf exploit (smb_enumusers)>exploit
+
+As the command executes we can see that it has provided us with the list of users of our remote PC.
+SMB SID User Enumeration (LookupSid)
+Determine what users exist via brute force SID lookups. This module can enumerate both local and domain accounts by setting ACTION to either LOCAL and DOMAIN
+ use auxiliary/scanner/smb/smb_lookupsid
+msf exploit (smb_lookupsid)>set rhosts 192.168.0.104
+msf exploit (smb_lookupsid)>smb smbuser raj
+msf exploit (smb_lookupsid)>smb passuser raj
+msf exploit (smb_lookupsid)>exploit
+
+And so, you can find all the users which you never even knew that existed.
+Now that you scan your remote PC’s IP with nmap you will see that these ports were opened through which you gathered all the desired information.
+nmap -sV 192.168.0.104
+
+And in the result, as above, you can see that Ports 445, 139 were infecting open.
+Conclusion: Understanding a port and finding such things through a given port helps us to exploit our victim much more accurately as gather the most minute piece of information. Collecting such information about a port and knowing what to do with it give the exploiter certain power of manipulation. Therefore, understanding a port and what it can do and how to find information about it on our remote PC helps us improve our hacking skills as this is the foundation of hacking.
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

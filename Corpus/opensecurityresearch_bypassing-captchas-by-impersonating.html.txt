@@ -1,0 +1,57 @@
+
+Bypassing CAPTCHAs by Impersonating CAPTCHA Providers
+
+
+By Gursev Kalra.
+
+CAPTCHA service providers validate millions of CAPTCHAs each day and protect thousands of websites against the bots. A secure CAPTCHA generation and validation ecosystem forms the basis of the mutual trust model between the CAPTCHA provider and the consumer. A variety of damage can occur if any component of this ecosystem is compromised.
+
+During Analysis of the CAPTCHA integration libraries provided by several CAPTCHA providers (including reCAPTCHA) revealed that almost all of the CAPTCHA verification API’s relied on plain text HTTP protocol to perform CAPTCHA validation. Because of this, the CAPTCHA provider’s identity was not validated, message authentication checks were not performed and the entire CAPTCHA validation was performed on an unencrypted channel. This vulnerability was also reported to reCAPTCHA team several months back. 
+
+If you decompile the .NET Plugin, you'll be able to pull out reCAPTCHA's verification URL, which demonstrates the absense of HTTPS:
+
+
+
+
+In the current scenario, two types of attacks can be launched against vulnerable CAPTCHA implementations. These attacks are based on the assumption that an attacker is able to intercept the CAPTCHA validation traffic between target website and the CAPTCHA provider.
+Private Key Compromise
+
+Most of CAPTCHA providers issue private and public keys to identify a particular consumer and to enforce an upper limit on the number of CAPTCHAs used by them. Private keys are often sent over to the CAPTCHA provider during the CAPTCHA validation process. If the public and private keys are sent using plain text HTTP, an attacker could sniff the private keys and:
+
+Use the CAPTCHA service for without registering for the service by using the captured keys.
+Exhaust the target web site’s CAPTCHA quota for the service, which depending on the CAPTCHA provider may cause a wide variety of unexpected issues.
+
+The CAPTCHA Clipping Attack
+The following image describes what I call the "CAPTCHA Clipping Attack". Notice that steps 5 and 6 in blue would be the normal operation of events. We'll go into the attack in a little more detail below.
+
+
+
+
+Since the website’s application server acts as a client to CAPTCHA provider during steps 5 and 6 (in blue) and the application server often neglects to validate the  CAPTCHA provider’s identity and the session integrity checks, an attacker may be able to impersonate the CAPTCHA provider and undermine the anti-automation protection (steps 5 and 6 in red). CAPTCHA validation responses are mostly Boolean (true or false, success or failure, pass or fail, 0 or 1).  The response format and its contents are also publicly available as part of CAPTCHA provider’s API documentation. This allows an attacker to easily construct the finite set of possible responses, impersonate the CAPTCHA provider, and perform malicious CAPTCHA validation for the application servers. 
+
+To exploit this vulnerability an attacker performs the following:
+
+The attacker acts as a legitimate application user and submits a large number of requests to the web application.
+At the same time, he/she intercepts CAPTCHA validation requests, masquerades as the CAPTCHA provider and approves all submitted requests. 
+
+
+Masquerading as the CAPTCHA provider and not forwarding the CAPTCHA validation requests to the actual CAPTCHA provider is the CAPTCHA Clipping Attack.
+clipcaptcha
+clipcaptcha is a proof of concept exploitation tool that specifically targets the vulnerabilities discussed above and allows complete bypass of CAPTCHA provider protection. clipcaptcha is built on the sslstrip codebase and has the following features:
+
+Performs signature based CAPTCHA provider detection and clipping.
+Can be easily extended to masquerade as any CAPTCHA provider by adding corresponding signatures to the configuration XML file.
+Has built in signatures of several CAPTCHA providers including reCAPTCHA, OpenCAPTCHA, Captchator etc…
+Logs POST requests that match any supported CAPTCHA provider to capture private and public keys. Unmatched requests are forwarded as is. 
+clipcaptcha supports five operational modes. These are “monitor”, “stealth”, “avalanche”, “denial of service” and “random”.
+
+
+
+
+Download
+clipcaptcha can be downloaded here:
+https://github.com/OpenSecurityResearch/clipcaptcha
+
+Want more info? We'll have a new whitepaper about the attack in Foundstone's whitepaper section soon!
+
+

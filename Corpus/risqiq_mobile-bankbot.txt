@@ -1,0 +1,26 @@
+How Mobile Bankbots Disguise as Perfectly Trustworthy Apps
+Also by Valentin Konev
+When it comes to the mobile bankbot, some apps are not what they seem.
+Most smartphone users have a growing portfolio of apps to aid them in all facets of their daily lives. Mobile app developers respond to this desire for immediacy and convenience by developing and delivering apps for all occasions, supported by different funding models. Some malicious apps, however, ask for more than you’d like to give. 
+We recently discovered an app in the Google Play Store called “Cryptocurrencies Market Prices.” On the surface, the app delivers what it promises, timely information for people who engage in cryptocurrency marketplaces. However, the price users don’t realize they’re paying is the keys to their financial accounts. Cryptocurrencies Market Prices belongs to the Bankbot family of mobile Trojan, which uses the overlay technique within a variety of financial and retail mobile apps to phish for sensitive data. 
+By using social-engineering, drive-by-download, and other means of installation, the app grants itself access, specifically targeting Android devices. Once installed, Bankbot monitors the device for a list of target apps from which it can phish information. If one of the target apps is launched on the phone, the Bankbot app opens a window on top of the legitimate app and phishes the unsuspecting victim for data input, usually a banking customer’s login credentials. These stolen credentials can later be used to start suspicious transactions. The app can also intercept TAN (Transaction Authentication Number) messages and two-factor authorization using text messages allowing the criminal to authorize transactions.
+The instance of Bankbot below was distributed using social-engineering. A user manually downloads and installs the fully functional app on their Android device to compare cryptocurrency market prices with Fiat currency values. Once installed, the user is presented with an app that can actually perform cryptocurrency exchange monitoring:
+Fig-1 The seemingly legitimate app
+However, the Bankbot is using this seemingly legitimate application to mask its actual purpose. By giving the victim an app that works, the user may be less suspicious of the nefarious nature of the app.
+The above app asks for the following permissions when initially installed on the device (the ones marked in red are deemed suspicious due to the supposed nature of the app):
+In addition to the permissions, the app has a set of intent filters. These filters allow the app to respond to or ask for certain functionality. We’re mainly interested in filters from com.sws and com.google.firebase groups:
+Fig-2 List of intent filters
+Based on the identified permission set, the app can intercept and write SMS messages. Another interesting observation is the modification of a development platform called Firebase, which allows the monitoring of activities such as storage, authentication, and analytics.
+The app itself is a bundled application as described in the ‘Detection’ section of this document. It is a combination of a legitimate functionality—comparing actual cryptocurrency market prices with global Fiat money—and a Bankbot instance. In the sample below, the threat actors are not using masquerading techniques and the suspicious code is readable and exposed. It is possible to trace calls to the SMS receiving functions, which reveal an initial C2 footprint:
+Fig-3 Suspicious code in plain sight
+ 
+Fig-4 C2 footprint comes into focus
+By looking at related function calls, there are signs of modifications in the legitimate Firebase library:
+Fig-5 Modifications in the Firebase library
+This particular instance is looking to a set of Polish banks. Below is a list of official package names being tracked within the code:
+The C2 server is hosted on 91[.]226[.]11[.]200. It serves the overlay pages to phish Polish banks, log information sent from infected devices, and act as Admin Panel for the threat actors. Below is the corresponding WHOIS information from RiskIQ Community Edition for the C2 server showing a Russian address:
+Fig-6 Corresponding WHOIS information from RiskIQ Community Edition
+Since being detected, ‘Cryptocurrencies Market Prices’ has been removed from the Google Play Store. However, it serves as a reminder of the sophistication of malicious mobile apps and the need for users to be vigilant in evaluating all apps before downloading them, even apps from trusted app stores. Below, you can see that the Initial APK was found in the Google Play Store and despite being malicious, still has a shiny “verified” tag:
+Fig-7 Even apps marked as “verified’ can be dangerous
+With mobile Trojans on the rise, organizations need a tool that monitors the mobile app ecosystem looking for malicious apps in the wild. With a proactive, store-first scanning mentality, RiskIQ observes and categorizes the mobile threat landscape as a user would see it while visiting or attempting to download apps. Apps we encounter are downloaded, executed, analyzed, and stored. RiskIQ also records changes and new versions of apps as they evolve. For more information about how RiskIQ can help you manage mobile threats to your organizations, employees, and customers, contact us today. 
+ 

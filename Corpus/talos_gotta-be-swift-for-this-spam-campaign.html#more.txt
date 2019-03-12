@@ -1,0 +1,70 @@
+
+Gotta be SWIFT for this Spam Campaign!
+
+
+This blog post was authored by Warren Mercer
+
+
+Summary
+
+
+Talos have observed a large uptick in the Zepto ransomware and have identified a method of distribution for the Zepto ransomware, Spam Email. Locky/Zepto continue to be well known ransomware variants and as such we will focus on the spam email campaign. We found 137,731 emails in the last 4 days using a new attachment naming convention. It was just coincidence that the number is a palindrome. The naming choice this time for this spam campaign is "swift [XXX|XXXX].js", where 'X' is some combination of letter/numbers we have seen both 3 and 4 char strings after the "swift" name. This began Monday 27th June with approx 4000 emails being caught within our Email Security Appliances (ESA) & Cloud Email Security platform (CES). This started to ramp up over the next few days, with spikes occurring around 7-10pm UTC and 7-10am over the next 4 days.
+
+
+
+Fig1. Email Traffic
+We took a look at the javascript samples across our email telemetry and we identified 3305 unique samples from the 137K emails, the sha256 hashes are included at the bottom of this post. They were all following the "swift" naming convention, all used a compressed .zip archive which included the malicious .js - the user was tricked with various subject lines as shown below and with various sender profiles such as 'CEO' or 'VP of Sales' to further encourage the user.
+
+The body of the emails were generally urging the user to look at their "requested" documentation. The name of the attached .zip file is created by combining the username in the 'To' email address header, an underscore, plus a random number:
+
+Fig2. Example email
+The email body was also customized to include mail-merged salutations such as "Dear" and "Hello" which use the same string from the email address username. In our example above that would represent "Dear peter". The email bodies changed slightly through the timeline of this attack, and also varied the Subject headers. We observed this attack primarily utilizing four  Subject headers:
+
+
+
+Fig3. Subject Breakdown
+When run in a sandbox Zepto exhibits a number of questionable behaviors that quickly leads to its conviction as malware.
+
+
+
+Fig4. ThreatGrid Behaviors
+We captured a video of Zepto in action showing the resulting activity from the malicious Javascript and how it runs, rather silently, on the victim's machine slowly locking files with the .zepto extension:
+
+
+Video1. Zepto Infection
+The javascript files found all contained "swift" followed by a string, interestingly which consisted of a hexadecimal character set, that is 0-9 and a-f, the reason for this is currently unknown but it was an interesting observation to note.
+
+
+
+Fig5. Swift naming instances
+Once executed the malicious javascript uses 'wscript.exe' to launch HTTP GET requests to the defined C2 domains - this is where some of the samples differed as some would initiate connectivity to a single domain, whilst others, would communicate with up to 9 domains.
+
+Once the binary is downloaded and executed the machine begins a process of encrypting the local files and then demands ransom from the user to decrypt the files. The user will be presented with the following "_HELP_instructions" screens, both from Internet Explorer for the .HTML file dropped by the malware, an image file presented with Windows Picture & Fax Viewer and also a background/wallpaper change to highlight you have been encrypted using this piece of malware.
+
+
+
+Fig6. Compromised victim view
+
+Conclusion
+This is not a new method of attack, however, it is one which is gaining ground. The phishing/spam campaigns now generally carry a large risk of associated ransomware and this is no different. The ability to withhold files from users is, unfortunately, becoming very normal with attacks that people are faced with everyday. Our adversaries do not care as to what they destroy or ransom from you, they simply care about their endgames, payment. The email attack vector will continue to be used as email is an everyday occurrence now and the ability to generate large lists of emails for spam campaigns like this is growing easier. The breaches which occur include email data which is actively sold to bidders on the underground for this type of campaign. Ensuring users are careful with email attachments, like the ones used in this campaign, will help in an attempt to null the effects of this and further spam campaigns. Talos recommend you ensure you have a good backup strategy should you be hit with ransomware and we strongly advise that payment is never made to these actors.
+
+IOCs
+A list of all hashes is included in zepto_hash_IOCs.txt
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors. 
+
+ESA can block malicious emails sent by threat actors as part of their campaign.
+
+
+
+
+

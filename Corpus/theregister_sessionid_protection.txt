@@ -1,0 +1,14 @@
+Attention developers: Your SESSIONIDs are showing
+Protecting passwords is important, but do you take the same care with your SESSIONIDs? You should.
+Here's how they work: When you log into a web application, you exchange your credentials for a SESSIONID cookie. This cookie gets sent with every subsequent request from your browser until you log out or the session times out. During that window, if an attacker steals your SESSIONID, they have full access to your account.
+What is your SESSIONID? Log into a website and type "javascript:alert(document.cookie)" into your browser. That number is very important and must be kept secret. Anyone who has it can hijack your account.
+So what do you need to do to protect your application's SESSIONIDs? Here are some tips.
+First, you want to make sure your SESSIONIDs are not guessable. Just like a password, they should be long and random so that attackers can't use a brute force attack. Some web applications and web services still create their own SESSIONID token, and a few even use a sequential integer. You should stick to the standard SESSIONID provided by your container.
+Some web applications use SSL for the username and password, but then fall back to a non-SSL connection after authentication. Unfortunately, this means that the SESSIONID is transmitted in the clear in every HTTP request, where it can be easily read by anyone with access to the network. This attack is called "sidejacking," and there are simple tools available to exploit this weakness.
+Don't forget your AJAX requests, as they may also contain a SESSIONID. Gmail has this problem, as the application sometimes falls back to non-SSL for AJAX requests, exposing the user's Gmail SESSIONID on the wire. Google recently added a setting to "always use SSL" that you should enable right now. Despite performance issues, the only solution to protect your SESSIONIDs on the wire is to use SSL for every single page from your login form to your logout confirmation.
+Even if your application always uses SSL, attackers may try to trick the browser into exposing the SESSIONID over a non-SSL connection by getting victims to view a page including the following type of tag:
+When the browser sees this tag (even in the attacker's page), it will generate a non-SSL request and send it to www.example.com. The request will include the SESSIONID, and the attacker can sidejack the user's session. The solution is to use the "Secure" flag on your SESSIONID. This flag tells the browser to send the cookie only over an SSL connection.
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

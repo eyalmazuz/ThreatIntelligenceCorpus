@@ -1,0 +1,89 @@
+Upatre: Old Dog, New [Anti-Analysis] Tricks
+
+Malware authors must constantly iterate on their techniques in order to stay relevant in today’s fast moving Information Security environment. The Upatre downloader has been around for nearly three years and has consistently evolved its anti-analysis capabilities to better ensure payload delivery. Using Palo Alto Networks AutoFocus, we identified several thousand functionally identical Upatre binaries with unique hashes that exhibited unusual anti-analysis behaviors. We dove into the most recent phishing campaign to identify the new anti-analysis routines designed to maneuver around behavioral analysis systems.
+Diving In
+Upatre’s new technique takes advantage of undocumented NtQuerySystemInformation structures. It attempts to call the ZwQuerySystemInformation API a few times to determine the idle time of the system. The ZwQuerySystemInformation API takes a SYSTEM_INFORMATION_CLASS as an argument for what to query. There are several options to query for, all with respective structures.
+
+ZwQuerySystemInformation Function Specification
+Upatre first calls ZwQuerySystemInformation querying for the SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION with a value of 0x0008.
+
+SYSTEM_PROCESSOR_PERFORMANCE_INFORMATION Struct
+
+Screenshot Showing Upatre’s Anti-Analysis Technique in Assembly
+The first call returns 0xC0000004 for STATUS_INFO_LENGTH_MISMATCH. On Windows 7 this successfully returns the size of the buffer required for the structure on the top of the stack. On Windows XP it returns 0 on the top of the stack for the ReturnLength. Upatre checks the ReturnLength by performing a shift-right by 2 and testing if the resulting value is 0.
+
+Windows 7 returning the ReturnLength on the top of the stack
+On Windows 7 Upatre calls ZwQuerySystemInformation again with the same SYSTEM_INFORMATION_CLASS 0x0008 and including the appropriate parameters to receive the structure into a buffer. If the function fails, Upatre exits.
+
+Windows 7 Second Call to ZwQuerySystemInformation
+Upatre then checks the second dword of the IdleTime to see if it is above 1 and if it is not, it exits. This value is the processor’s “total idle time, measured in units of 100-nanoseconds”[1] This check is designed to make sure that the system Upatre is running on has had a sufficient amount of idle time like a real system might have and not an analysis system.
+
+Windows7 Comparing IdleTime to 1
+On Windows XP Upatre uses a different SYSTEM_INFORMATION_CLASS for the second call. It queries for the SYSTEM_PERFORMANCE_INFORMATION with a value of 0x0002 and tests to make sure the API successfully completed. If it doesn’t complete, Upatre exits.
+
+Upatre Querying ZwQuerySystemInformation for SYSTEM_PERFORMANCE_INFORMATION on WindowsXP
+The SystemPerformanceInformation is an undocumented structure, but thanks to Matt Graeber’s research we can see that it holds the following information:
+
+Snippet of SYSTEM_PERFORMANCE_INFORMATION Struct
+Upatre checks the second dword of idleProcessTime to make sure that the IdleProcessTime is above 2.
+Example Sample:
+9eadcc852b87429dfb8c7e61da7951a8fb8c28eb88ec91d90eea290248747dff
+Conclusion
+Each of the techniques described above attempts to identify hosts which exhibit evidence of being part of a malware analysis system. WildFire, the Palo Alto Networks behavioral analysis system identifies these techniques and properly executes the malware to determine a malicious verdict.
+Upatre continues to be distributed through mass phishing campaigns and relies heavily upon social engineering tactics to fool users into opening malicious attachments. Users should always be suspicious of all e-mail attachments, but especially those that they have received from senders they do not regularly communicate with.
+
+November 16th Phishing Campaign: the subject and filename of this campaign were unique per recipient.
+Indicators
+Related Hashes
+9eadcc852b87429dfb8c7e61da7951a8fb8c28eb88ec91d90eea290248747dff
+6fea45fbc2590105b3a9e97a966e7c5928d5ce3e72c63ce3d9b187b79ea25baa
+Upatre Command and Control Servers
+109.196.1.13:4443
+109.205.116.174:443
+132.255.212.105:443
+134.249.180.41:4443
+141.105.69.251:443
+150.129.49.11:443
+162.243.249.68:443
+172.242.228.68:4443
+173.185.166.94:4443
+173.252.50.124:4443
+173.45.239.194:443
+176.105.101.194:4443
+176.106.122.32:443
+176.97.40.144:443
+181.174.76.17:4443
+185.46.217.70:443
+185.49.68.104:443
+185.49.68.129:443
+185.66.9.108:443
+185.66.9.141:443
+185.66.9.225:443
+190.104.167.234:4443
+190.95.138.66:443
+193.151.240.79:4443
+193.189.77.76:443
+195.206.60.33:443
+197.155.67.190:443
+197.254.104.166:4443
+203.183.172.196:3478
+212.182.101.2:4443
+217.17.108.47:4443
+37.1.200.112:443
+41.215.182.109:443
+41.75.67.80:443
+46.44.28.44:443
+5.149.251.162:443
+5.152.196.217:443
+54.84.208.13:443
+78.58.131.116:443
+78.83.226.74:443
+82.103.71.149:4443
+83.241.176.230:4443
+85.25.217.30:443
+91.191.48.38:443
+91.192.131.229:443
+91.203.62.195:4443
+—
+[1] Nebbett, G. (2000). Windows NT/2000 native API reference. Indianapolis, IN: Macmillan Technical Pub.
+

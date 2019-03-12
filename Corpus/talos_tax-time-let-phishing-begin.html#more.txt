@@ -1,0 +1,95 @@
+
+Tax Time: Let the Phishing Begin
+
+
+This post was authored by Earl Carter and Craig Williams.
+
+With the April 15th US tax deadline only about 2 months away, a new wave of tax related phishing is underway. In this latest spear-phishing campaign, attackers are attempting to gain access to your system so that they can steal your banking and other online credentials. An interesting twist to this latest campaign is that they seem to be specifically targeting high level security professionals and CTOs in technical companies.
+
+On Tuesday, Talos noticed the beginning of a phishing campaign in our telemetry data. The subject of the emails all revolve around payment confirmation or Federal taxes. Some of the common subjects include:
+
+Payment Confirmation
+Federal tax payment received
+Federal TAX payment
+Payment Service
+
+These initial emails seemed to come from an email address that was related to the government, such as support@gov.com or support@link2.gov. The attachment was a Word doc named receipt_4676373.doc, which included a malicious VBA script that automatically executed if you opened the attachment. The body claims that your confirmation number is 4676373 and is similar to the following:
+
+
+
+1st Email Body
+
+
+
+By Wednesday, the campaign had changed the emails slightly. Now the source addresses are more widely varied. A few of the source addresses include, but are no longer limited to addresses with gov in them:
+
+Federal Payment <confrim@federal.com>
+Confrim Federal Tax Payment <autopayment@mail.com>
+Confrim Federal Tax Payment <payment@government.com>
+Federal TAX Payment <payment@federal.gov>
+
+The attachment changed to receipt_3458934.doc. The body of the message was also updated.  The claim number was changed to match 3458934 in the attachment name. Furthermore, the body now includes a line indicating a refund amount similar to “Тotal: $1206.86”. Finally, another line was added stating that the reader needed to edit the attachment and send it back. A sample of the 2nd generation message is shown below:
+
+
+
+Revised Email Body
+
+
+The Word document attachment is also being updated throughout the campaign. So far, the following hashes have been identified:
+
+e031685f71240913721b278b1253d09101faab9953e713ff840b31e5fdc387da
+56517d72954dac8b8c879bc617e6cdaf22319b2e66bfb482eacf2f0cdc86fa87
+24e7bfc4b879bfc0390ef500518d169a0c5310e163ebfc952138436e180b0d18
+87b12e7532d540d01d2eaccfef232d83bcb935866f6cd76add1bc8fd497741c9
+8aafccce2c48eb1a498170e0c183e054da8ca4e6c3e411fff61c8a3d24ccaeb3
+816bdf94dd735c287f50e7ae19e3bfb5b15d7358d9ee488677983e9ba5e40e5c
+
+Examining the Word document reveals that it contains a malicious visual basic macro that downloads and launches an executable that then, pulls down a malicious “Banking Trojan” commonly referred to as “Vawtrak”.  Vawtrak  (69aab7ca3a69dec64cdfbe3f548b7e102a3dc875cf4dbfba6f9670d8cde3150b) is downloaded from paulcimon.com. The following is a snippet from the vba script which shows a C&C call.
+
+
+
+
+
+
+Vawtrak is designed to capture user credentials for over a hundred different specific online sites. Although a large percentage of the sites targeted are banking/financial sites, the list does include some phone providers and other online retail sites. For most of the sites they are targeting multiple web URL’s for each site in order to collect as much information as possible from the target user. It is interesting to note that the malware attempted to detect if it was being run within a sandbox as well as trying to determine if a debugger was detected. This is likely to try and hinder automated analysis.
+
+
+
+
+
+
+Using the ThreatGRID sandbox we were able to find VBA script files associated with this malware dating back to December of 2014, additional components dated back to 2013.
+
+
+
+
+
+
+IOCs
+
+Valtrack Banking Trojan
+69aab7ca3a69dec64cdfbe3f548b7e102a3dc875cf4dbfba6f9670d8cde3150b
+
+Malicious Word Attachments
+e031685f71240913721b278b1253d09101faab9953e713ff840b31e5fdc387da
+56517d72954dac8b8c879bc617e6cdaf22319b2e66bfb482eacf2f0cdc86fa87
+24e7bfc4b879bfc0390ef500518d169a0c5310e163ebfc952138436e180b0d18
+87b12e7532d540d01d2eaccfef232d83bcb935866f6cd76add1bc8fd497741c9
+8aafccce2c48eb1a498170e0c183e054da8ca4e6c3e411fff61c8a3d24ccaeb3
+816bdf94dd735c287f50e7ae19e3bfb5b15d7358d9ee488677983e9ba5e40e5c
+
+
+Conclusion
+
+Phishing is still a commonly utilized attack vector. Instead of randomly utilizing this technique, threat actors time these attacks to coincide with some well known event. Whether that is the latest tragedy, the latest storm, or in this case tax time. Maintaining a layered approach to security helps to fight against this constant threat, but users must always think before they click, and be wary of unknown attachments or links, especially those in emails that that they receive.
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites, including watering hole attacks, and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block spear phishing emails sent by threat actors as part of their campaign
+
+

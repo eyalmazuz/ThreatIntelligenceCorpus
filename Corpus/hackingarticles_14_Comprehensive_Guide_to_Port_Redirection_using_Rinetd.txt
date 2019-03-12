@@ -1,0 +1,99 @@
+
+Comprehensive Guide to Port Redirection using Rinetd
+
+Hello friends today we will discuss what is Port redirecting/ forwarding and necessary Steps for this technique for accessing network traffic through firewall restricted port.
+First check out following things:
+What is Port redirecting?
+In computer networking, port forwarding/redirecting or port mapping is an application of network address translation (NAT) that redirects a communication request from one address and port number combination to another while the packets are traversing a network gateway, such as a router or firewall. This technique is most commonly used to make services on a host residing on a protected or masqueraded (internal) network available to hosts on the opposite side of the gateway (external network), by remapping the destination IP address and port number of the communication to an internal host.(From Wikipedia)
+Why we need port redirection?
+Suppose you are in your workplace where network admin has blocked all 65,535 ports in the network except port 80 and 443 for outgoing traffic. Now you want to access any service which is running on different port other than 80 and 443 but you are not allow to sent request packet on that port because port 80 and 443 are open ports in your network that can access web server only.
+Hence to overcome such situation we need to apply port redirection techniques.
+For example: you are in office and your IP is 192.168.1.102 and firewall has restricted outgoing traffic through all 65535 ports except port 80 and 443 which are allowed to take the request packet outside network. Now you want to take access of remote system 192.169.1.114 which is running on port 3389 but firewall will block your request packet on port 3389. With help of proxy server 192.168.1.125 you (192.168.1.1.102) can access RDP server 192.168.1.114 for remote conection as proxy server will forward all incoming traffic to router and hence you will get access of port 3389.   
+Now let’s go through detail with its practical
+Requirement
+Windows operating system (Workstation machine) holding IP: 192.168.1.102
+Windows operating system (Remote server) holding IP: 192.168.1.114
+Linux operating system (proxy server) holding IP: 192.168.1.125
+
+From given below image you observe RDP server IP: 192.168.1.114
+
+From given below image you observe User system IP: 192.168.1.102 who will be bounded by firewall restriction policy.
+
+Network configuration of Proxy server holding IP: 192.168.1.125.
+
+Implementing Firewall on Users System 
+Create a new rule in firewall outbound rules for applying filter on outgoing traffic from your network. Enable Port option for creating a rule that controls connection for a tcp or udp port.
+
+Apply rule for all TCP ports from 0-65535 as shown in below image.
+
+Choose Block option as action should be taken when a connection matches specified condition.
+
+Enable all three check box to which action will be implemented.
+
+Provide title name to your implemented rule for your awareness.
+
+Again create another new rule in firewall outbound rules for applying filter on outgoing traffic from your network. Enable Port option for creating a rule that controls connection for a tcp and do mention port 80,443 this time.
+
+ 
+And this is phase changer step, enable “Allow the connection option” for all network i.e. domain, private and public. Give suitable title to rule name for your awareness.
+Conclusion: Now being a network admin we have applied firewall rule to block outgoing traffic from port 0 to 65,535 but simultaneously allowed port 80 and 443 to take out traffic from our network to any web servers.
+
+Situation: In a workstation any employee working in restricted network requires to connect with remote system: 192.168.1.14 via port 3389 but get failed due to firewall then how he can access port 3389 without turn off firewall in that network?
+
+Solution: Port forwarding with proxy server using rinetd — internet redirection server”.
+Rinetd redirects TCP connections from one IP address and port to another. It is a single-process server which handles any number of connections to the address/port pairs specified in the file /etc/rinetd.conf. Since rinetd runs as a single process using nonblocking I/O, it is able to redirect a large number of connections without a severe impact on the machine. This makes it practical to run TCP services on machines inside an IP masquerading firewall.
+For more details visit this link: https://boutell.com/rinetd/
+By the means of above theory we need to install Rinetd in a system which is free from firewall restriction, hence it can be any system that is not a client a machine of your workstation. For example you can use your home PC/laptop for installing rinetd.
+Similarly I had install rinted with help apt repository in my Home PC [192.168.1.125] operates at Linux platform that will act as proxy server.
+apt-get install rinetd
+
+After installing rinetd, open its configuration file from /etc/rinetd.config for configuring it as per your requirement.
+
+Here we need to enter following details for port redirection.
+
+Then saved the file and restart the service with help of below command.
+service rinetd restart
+
+To establish remote connection with RDP server 192.168.1.114 you need send request packet for remote connection to Proxy server 192.168.1.125 on port 80 which will forward incoming traffic for the connection request to port 3389 of actual destination machine through router.
+
+Enjoy!! The desktop of RDP server in your firewall congested network.
+
+HTTP Port Redirection
+Example 2nd: In office my system is bound under firewall rules as configured above which will block outgoing traffic on every TCP port other than 80 and 443 but I wanted to access a web server which is running on port 8080 for security perspective reasons. Why should I do? Answer is Port redirection with proxy server using rinetd.
+Let’s figure out how?
+ Requirement
+Linux operating system (Workstation machine) holding IP: 192.168.1.128
+Ubuntu operating system (web server) holding IP: 192.168.1.110
+Linux operating system (proxy server) holding IP: 192.168.1.132
+
+Network configuration of user’s workstation system holding IP: 192.168.1.128.
+
+Implement firewall rule using IP table for blocking all outgoing TCP packets and allow port 80 and 443 for sending network traffic.
+iptables -I OUTPUT -j DROP
+iptables -I OUTPUT -p tcp –dport 80 -j ACCEPT
+iptables -I OUTPUT -p tcp –dport 443 -j ACCEPT
+
+Network configuration of proxy server system holding IP: 192.168.1.132.
+
+Network configuration of web server holding IP: 192.168.1.110.
+
+Here for security reason we are editing listen port from 80 to 8080 and to do so open ports.conf file form inside /etc/apache2 and make desirable changes.
+
+As you can see we have transfer web server apache service on port 8080.
+
+Then saved the file and restart the service with help of below command.
+service apache2 restart
+
+Now I had install rinted with help apt repository in my Home PC 192.168.1.132 operates at Linux platform.
+apt-get install rinetd
+
+After installing rinetd, open its configuration file from /etc/rinetd.config for configuring it as per your requirement.
+
+Here we need to enter following details for port redirection.
+
+Then saved the file and restart the service with help of below command.
+service rinetd restart
+
+Now when you explore your proxy 192.168.1.132 server via port 80 it will redirect incoming traffic to destination web server 192.168.1.110 on port 8080 and you will access of it.
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

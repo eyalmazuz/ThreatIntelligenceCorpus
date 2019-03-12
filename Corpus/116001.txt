@@ -1,0 +1,11 @@
+FreeBSD Patches Kernel Panic Vulnerability
+FreeBSD has patched a denial-of-service vulnerability affecting versions configured to support SCTP and IPv6, the default configurations on later version of the open source OS.
+Researchers at Positive Technologies in the U.K. said versions 9.3, 10.1 and 10.2 are affected and can be exploited by a specially crafted ICMPv6 packet, which will cause a kernel panic; kernel panics are the UNIX equivalent of a Windows Blue Screen of Death.
+An advisory from FreeBSD says kernels compiled without support for SCTP or IPv6 are not vulnerable. SCTP is the Stream Control Transmission Protocol, used to facilitate communication between endpoints on the same network. The vulnerability is exploitable remotely and without authentication, FreeBSD said.
+“A lack of proper input checks in the ICMPv6 processing in the SCTP stack can lead to either a failed kernel assertion or to a NULL pointer dereference,” FreeBSD said. “In either case, a kernel panic will follow.”
+Positive Technologies said in a report published Friday the denial-of-service condition happens because FreeBSD does not properly check the length of a SCTP packet header coming from an ICMPv6 error message. A SCTP socket need not be open to exploit the flaw, the company said.
+From the Positive Technologies advisory:
+“When the kernel receives the error message via ICMPv6, it transfers the upper-level protocol packet to a necessary parser (sctp6_ctlinput()). The SCTP parser considers the incoming header has the required length, tries to copy it using m_copydata(), which has offset values and the number of bytes. Since a twelve-byte chunk is expected, if the attacker sends a packet with an eleven-byte header, a NULL pointer is dereferenced causing kernel panic.”
+As a temporary mitigation, users are advised to disable IPv6 addressing, block ICMPv6 or IPv6 traffic, or disable the SCTP stack support in the FreeBSD kernel if possible.
+The patch requires users to recompile the kernel.
+ 

@@ -1,0 +1,64 @@
+
+					EOS Node Remote Code Execution Vulnerability — EOS WASM Contract Function Table Array Out of Bounds					
+We found and successfully exploit a buffer out-of-bounds write vulnerability in EOS when parsing a WASM file.
+To use this vulnerability, attacker could upload a malicious smart contract to the nodes server, after the contract get parsed by nodes server, the malicious payload could execute on the server and take control of it.
+After taken control of the nodes server, attacker could then pack the malicious contract into the new block and further control all nodes of the EOS network.
+2018-5-11                  EOS Out-of-bound Write Vulnerability Found
+2018-5-28                Full Exploit Demo of Compromise EOS Super Node Completed
+2018-5-28                Vulnerability Details Reported to Vendor
+2018-5-29                 Vendor Fixed the Vulnerability on Github and Closed the Issue
+2018-5-29                   Notices the Vendor the Fixing is not complete
+Some Telegram chats with Daniel Larimer:
+We trying to report the bug to him.
+He said they will not ship the EOS without fixing, and ask us to send the report privately since some people are running public test nets
+
+He provided his mailbox and we send the report to him
+
+
+EOS fixed the vulnerability and Daniel would give the acknowledgment.
+
+
+This is a buffer out-of-bounds write vulnerability
+At libraries/chain/webassembly/binaryen.cpp (Line 78),Function binaryen_runtime::instantiate_module:
+for (auto& segment : module->table.segments) {
+Address offset = ConstantExpressionRunner<TrivialGlobalManager>(globals).visit(segment.offset).value.geti32();
+assert(offset + segment.data.size() <= module->table.initial);
+for (size_t i = 0; i != segment.data.size(); ++i) {
+table[offset + i] = segment.data[i]; <= OOB write here !
+}
+}
+Here table is a std::vector contains the Names in the function table. When storing elements into the table, the |offset| filed is not correctly checked. Note there is an assert before setting the value, which checks the offset, however, unfortunately, |assert| only works in Debug build and does not work in a Release build.
+The table is initialized earlier in the statement:
+table.resize(module->table.initial);
+Here |module->table.initial| is read from the function table declaration section in the WASM file and the valid value for this field is 0 ~ 1024.
+The |offset| filed is also read from the WASM file, in the data section, it is a signed 32-bits value.
+So basically with this vulnerability, we can write to a fairly wide range after the table vector’s memory.
+./eosio-build.sh
+https://github.com/EOSIO/eos/wiki/Tutorial-Getting-Started-With-Contracts
+We have provided a proof of concept WASM to demonstrate a crash.
+In our PoC, we simply set the |offset| field to 0xffffffff so it can crash immediately when the out of bound write occurs.
+To test the PoC:
+cd poc
+cleos set contract eosio ../poc -p eosio
+If everything is OK, you will see nodes process gets a segment fault.
+The crash info:
+This vulnerability could be leveraged to achieve remote code execution in the nodeos process, by uploading malicious contracts to the victim node and letting the node parse the malicious contract. In a real attack, the attacker may publish a malicious contract to the EOS main network.
+The malicious contract is first parsed by the EOS supernode, then the vulnerability was triggered and the attacker controls the EOS super node which parsed the contract.
+The attacker can steal the private key of super nodes or control content of new blocks. What’s more, attackers can pack the malicious contract into a new block and publish it. As a result, all the full nodes in the entire network will be controlled by the attacker.
+We have finished a proof-of-concept exploit, and tested on the nodeos build on 64-bits Ubuntu system. The exploit works like this:
+You can refer to the video we provided to get some idea about what the exploit looks like, We may provide the full exploit chain later.
+
+Bytemaster on EOS’s github opened issue 3498 for the vulnerability that we reported:
+
+And fixed the related code
+
+But as the comment made by Yuki on the commit, the fixing still has problems on 32-bits process and not so perfect.
+
+The 360 Core Security Team credited Yuki Chen of Qihoo 360 Vulcan Team and Zhiniang Peng of Qihoo 360 Core Security for the discovery of the vulnerability.
+About the Author: 360 Core Security Team
+Original post available @
+http://blogs.360.cn/blog/eos-node-remote-code-execution-vulnerability/
+Pierluigi Paganini
+(Security Affairs – EOS, hacking)
+
+

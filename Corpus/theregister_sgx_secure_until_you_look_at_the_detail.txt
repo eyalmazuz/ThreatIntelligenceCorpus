@@ -1,0 +1,24 @@
+Intel's SGX security extensions: Secure until you look at the detail
+A pair of cryptography researchers have published a graduate thesis that accuses Intel of ruining its “Software Guard Extensions” (SGX) with bad implementation decisions.
+Victor Costan and Srinivas Devadas of MIT criticize [PDF] the way SGX obtains cryptographic keys over the internet. Launched in 2013, SGX added CPU features that let programmers create locked containers of code and data, with hardware enforcing access to both the code and data inside the container.
+The long and very detailed analysis of SGX was published this month by the respected International Association for Cryptologic Research, and gets out the chainsaw when it comes to describing the system's “attestation model”.
+What's at issue here is that there seems to be a serious gap between how the model works, and how Chipzilla explained how it works to developers. Here's what Intel says about attestation:
+The enclave contacts the service provider to have its sensitive data provisioned to the enclave. The platform produces a secure assertion that identifies the hardware environment and the enclave.
+[The “enclave” referred to here is the protected software container.]
+It's how that "secure assertion" is obtained that's gained the attention of the crypto community, who think it's anti-privacy and insecure because SGX attestation keys have to be obtained from Chipzilla.
+As prominent Johns Hopkins University researcher Matt Green put it:
+Green's concerns are directed to a detailed and technical analysis in Section 5.8 of the paper, perhaps best crystallized in this quote (from Section 6.6.1):
+“Once initialized, an enclave is expected to participate in a software attestation process, where it authenticates itself to a remote server. Upon successful authentication, the remote server is expected to disclose some secrets to an enclave over a secure communication channel.”
+The problem section is highlighted by us:
+
+provisioning keys are passed over the internet
+The problem is that, as the image in Green's tweet (from the paper, reproduced in full left) shows, Intel intends the symmetrical provisioning key to reside both in the SGX-enabled chip and in Intel servers.
+To establish an enclave, the software will offer its provisioning key to Intel, and if there's a match in the database, Intel will issue the attestation key that lets SGX set up the enclave.
+(This happens using a combination of the Intel-issued attestation key, and a Seal Key that's burned into the processor and never leaves it.)
+The Costan/Devadas paper also notes that SGX puts Intel at the center of the software universe: “The SGX patents disclose in no uncertain terms that the Launch Enclave was introduced to ensure that each enclave’s author has a business relationship with Intel, and implements a software licensing system.”
+That puts Intel in a position of huge power, they write: “Intel has a near-monopoly on desktop and server-class processors, and being able to decide which software vendors are allowed to use SGX can effectively put Intel in a position to decide winners and losers in many software markets.”
+Over to you, Chipzilla. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

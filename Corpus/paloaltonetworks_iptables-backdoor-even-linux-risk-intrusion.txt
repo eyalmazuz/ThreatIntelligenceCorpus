@@ -1,0 +1,170 @@
+Iptables Backdoor: Even Linux Is At Risk of Intrusion
+
+A backdoor implant is an increasingly common mechanism for maintaining unauthorized access and control over a computer asset. The terms remote administration tool (RAT) and trojan downloader are often used synonymously with such implants. Once installed (i.e. implanted on a system), the modern backdoor typically offers much more than simple (i.e. command line) access to a system.
+Depending on the backdoor’s specialization and sophistication, it can also capture keystrokes, take screenshots, scrape memory for valuable information, search for files meeting certain criteria, query databases, download files and additional malware, exfiltrate data and files, and even serve as an attack platform. Effectively, a backdoor implant affects loss of control over a computer asset.
+The tangible and intangible impacts of this loss of control vary based on respective backdoor capabilities, and may include the following: leakage of authentication credentials, loss of intellectual property, exposure of sensitive information, negative standing or reputation, and various levels of liability for actions executed on or from the compromised asset.
+Recently Palo Alto Networks discovered a backdoor program ( md5: b826fb1253a52a3b53afa3b7543d7694, sha256: 6bedd1b0716fe7632188932451f75295346836545e6d2bfee1b56121e02ca110 ) that is used to control a linux operating system.
+This particular linux backdoor will install itself to “/usr/bin/btdaemon” and create a startup service at “/etc/init.d/bluetoothdaemon” with symbolic links so that it will run in any startup mode.  The file contents are a simple bash script that runs the original btdaemon file.  The backdoor when run will create threads for each connection listed in its config file.
+The sample that was caught by our systems contains 3 IP addresses in its config file.
+
+ 61.33.28.194 || INTERCAN4024357D | Bongcheon-dong Kwanak-gu SEOUL | KR
+115.23.172.47 || KORNET-KR | Korea Telecom | KR
+103.20.195.254 || PCCWME-HK | FLAT 1405,14/F BLK A FUK KEUNG IND BLDG | HK
+
+For each IP address the btdaemon service will attempt to make a connection on UDP ports 53, 80, 110, and 443.  Upon successful connection it will send the string “¡°MlCROS0FT|1.2 Apr 26 2014  02:37:05|Linux Kernel Version¡±” and will wait for an “Auth” packet from the server.
+If the backdoor receives a packet in the form of a “cmdType|cmdBody” it will check the cmdType list and execute the equivalent instruction.  Valid instructions are between 0-9 and there functionality varies depending on the command.
+ 
+
+
+
+Command Type
+Command Body
+Details
+
+
+0
+N/A
+Syncs memory to disk and reboots the service.
+
+
+1
+urlfile
+Download the urlfile to /tmp/helloworld and execute the file.
+
+
+1
+urlfile!savepath
+Download urlfile to savepath and execute the file.
+
+
+2
+exec_cmd
+Execute the command.
+
+
+2
+exec_cmd arg1 arg2 …
+Execute the command with the passed in arguments.
+
+
+3
+PID
+Kill the process with PID.
+
+
+4
+URL
+Download URL/run.txt and URL/getsetup.rar files.
+
+
+5
+N/A
+Set disablerun to 0.
+
+
+6
+N/A
+Set disablerun to 1.
+
+
+7
+N/A
+Disconnect.
+
+
+8
+N/A
+Calls the Kill command to terminate all processes in the calling process group.
+
+
+9
+N/A
+Execute /usr/bin/btdaemon.
+
+
+
+ 
+While running the btdaemon process also inspects whether there is an “.IptabLes” or “.IptabLex” local process, and sends back status for monitoring purposes.  If the “disablerun” command is sent the backdoor will download a file named “run.txt” from one of the following URLs:
+
+http://103.20.195.254
+http://115.23.172.31
+http://61.33.28.194/
+http://kill.et2046.com
+ http://sb.et2046.com
+
+The file data is in the format “exe_path_1 | exe_path_2 | … | exe_path_N”.  If none of the paths is correct then a “getsetup.rar” file is downloaded and run.  This is an ELF file and there are various encrypted portions within it.  There exist two embedded zlib-encrypted blocks at file offset 0x8C0C0 and 0xE6B40 respectively.  When run if the filename does not include the “IptabLes” string then the data is decrypted, written to disk, and then executed, installing itself as a startup service on the machine and place itself in one of the following locations:
+
+ /boot/.IptabLes
+ /usr/.IptabLes
+ /.IptabLes
+
+The second encrypted block is configuration data, which includes some IP addresses and DNS data which is used when it writes the first decrypted block to a file.
+“dns.po888.com|122.228.242.51|119.145.148.56|162.221.13.82”.
+If the file is run in a path including the “IptabLes” string then it installs itself as a startup service and proceeds into its main loop.  Either path the “getsetup.rar” file takes is meant to ensure that it is installed as a startup service, ensuring persistence.   Once the file is running it creates a process identifier (PID) so that only one instance is running at any given time.  The file will connect to an IP and port configured from the configuration data and sends along information that includes the cpu and memory information.  If the file does not receive any data within 30 seconds it will send a “xy” response back to the server.  If the file does receive data from the server in excess of 20 bytes it will be in the following format:
+<2 byte data length><0xABCDEF88><zlib-encrypted data>
+The decrypted data will contain the following fields:
+
+ Destination IP Address
+ Destination Port
+ Attack Type
+ Packet Length
+ Domain
+ Task ID
+ Src IP Begin
+ Src IP End
+ ttime
+ atime
+
+The attack type field is used to determine if a SYN DDoS or DNS DDoS is used in an attack.  The Src IP Begin and End are the start and ending IP ranges used as a fake src addresses in the DNS DDoS.  The IP range can also be controlled by global variables within the binary itself as well.
+If the received data has 0x22 as the first set of bytes then the received data will be in the following format:
+<0x22><IP Address 1(4bytes)><IP Address 2 (4bytes)>
+It will also do the following UDP connection test:
+
+
+
+
+int ip1 = *(int*)&data[1];
+
+int ip2 = *(int*)((char*)data + 5);
+
+int n=0;
+
+do
+
+{
+
+  SendCheckForgotIp(ip1 + n);
+
+  usleep(400000);
+
+  v2 = ip2 - n;
+
+  n += 2;
+
+  SendCheckForgotIp(v2);
+
+  usleep(400000);
+
+}
+
+while ( n != 10 );
+
+
+
+
+12345678910111213141516171819202122232425
+
+int ip1 = *(int*)&data[1]; int ip2 = *(int*)((char*)data + 5); int n=0; do {   SendCheckForgotIp(ip1 + n);   usleep(400000);   v2 = ip2 - n;   n += 2;   SendCheckForgotIp(v2);   usleep(400000); } while ( n != 10 );
+
+
+
+
+
+If the first value in the packet is 0xC8 then the file will set “g_mainsrvinfo.srandipb” and “g_mainsrvinfo.srandipe” and “g_mainsrvinfo.udpport” to the passed in values.
+If the first value in the packet is 0xCC then the file will set “g_mainsrvinfo.srandipb” and “g_mainsrvinfo.srandipe”.
+If the first value in the packet is 0x33 the file will use tcp to download a file and execute it.
+If the first value in the packet is 0x20 the file will delete all DDoS tasks.
+If the first value in the packet is 0x10 then the file will send back the current socket handle as a response back.
+Currently these IP addresses are alive and active.  Palo Alto Networks strongly recommends you inspect your systems and update your firewall rules and IPS systems.
+Palo Alto Networks customers with active subscriptions to Threat Prevention are protected against these threats automatically, signature #13469 was released to protect against this specific threat.  Similar to any other malware family or threat, Palo Alto Networks customers should use the entire security framework for threat mitigation and threat prevention coverage.
+

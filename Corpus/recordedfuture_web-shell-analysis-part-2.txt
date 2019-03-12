@@ -1,0 +1,124 @@
+Shell No! (Part 2) Introducing Cknife, China Chopper’s Sibling
+By Levi Gundert on July 19, 2016
+In part one of our web shell series we analyzed recent trends, code bases, and explored defensive mitigations. In part two we investigate a new web shell created by Chinese-speaking actors.
+
+On March 26, 2016, Recorded Future’s natural language processing (NLP) engine produced an alert for Cknife.
+
+Recorded Future alert showing Cknife reference.
+A Recorded Future timeline summary of Cknife references reveals the first mention in December 2015. A subsequent spike in references in late March 2016 corresponds to Cknife’s official open source release.
+
+Recorded Future timeline showing six months of Chinese language chatter involving Cknife.
+A steady stream of Chinese language forum posts reveals a web shell that is inspired by, and paying homage to, China Chopper.
+The authors — Chora and MelodyZX — introduce Cknife with nostalgia for an era defined by China Chopper, specifically stating (translated), “This tool is not intended to replace the Chinese kitchen knife, it is a symbol of an era, it is irreplaceable.”
+The authors go on to talk about the reasons for creating Cknife and their commitment to ongoing development. “I want to make it physically replace Chinese kitchen knife tool. Choppers is convenient at the same time, but a lot of problems have accumulated over the years. I extract the core functionality and added some of my own industry experience, that is cross-platform, file-based configuration Chinese kitchen knife, all operation given to the user to define.”
+China Chopper is a cleverly built 4KB web shell allegedly used in multiple criminal and nation-state campaigns, including victimizing U.S. defense contractors. The web shell was first publicly labeled in 2012 and the source subsequently identified on maicaidao[.]com.
+
+Recorded Future timeline showing four years of China Chopper activity.
+ReversingLabs has over 250 unique China Chopper samples dating back to 2013, emphasizing the web shell’s historic popularity.
+A number of icons (PNG files) are located in Cknife-master/src/com/ms509/images/ and the SHA1 hash of main.png is 4c805a9064d3d7d230c6241e63db4fcf7a1a1e15.
+Google image results for main.png include Chinese websites referencing China Chopper beginning in 2013, and more recently Cknife, specifically:
+China Chopper uses a visually identical icon (less the blur) to Cknife, even though they’re cryptographically different.
+
+SHA1: 4c805a9064d3d7d230c6241e63db4fcf7a1a1e15
+
+SHA1: 4ce780088b93a3e6e6592de9de1d2c2f85012b59
+
+
+Above is a main.png reference from the MainFrame.java file.
+
+Running Cknife.jar produces a GUI panel that uses main.png as the menu icon (upper-left corner).
+At least seventy-eight unique China Chopper samples use this icon beginning in 2013.
+It’s interesting that both authors chose the same web shell icon. Chora and MelodyZX may have identified the original icon after viewing China Chopper’s, or perhaps the relationship between authors is more familiar.  
+Another similarity between China Chopper and Cknife web shell files is that they both use the specific “->|” and “|<-” characters in their HTTP POST responses, either Response.Write(“->|”), Response.Write(“|<-”), echo (“->|”), or echo (“|<-”).
+The below graph of China Chopper samples processed by ReversingLabs depicts an increase in March 2016 which roughly corresponds to the open source release of Cknife and the corresponding spike in Chinese language forum references.
+
+China Chopper samples processed by ReversingLabs by month.
+Chora and MelodyZX are the online monikers for two individuals that comprise (at least partially) the MS509Team, responsible for creating and releasing Cknife.
+
+Cknife Copyright MS509 Team.
+The MS509Team was recently invited to present at the “2016 annual meeting of China’s network security lectures” indicating that their research is potentially viewed as legitimate in China.
+Additionally, MelodyZX is number 50 on Alibaba’s vulnerability disclosure list with eight Alibaba proprietary “security credits” for participating in the bug bounty program and responsibly informing Alibaba of a web application vulnerability(s).
+
+
+MelodyZX’s profile on Alibaba’s Security Response Center.
+In the original Cknife release forum post, Chora documents Cknife’s features and use cases, specifically stating that the web shell is meant to bypass web application firewalls (WAF), which could be useful for Red Team exercises.
+However, it’s probable that Cknife is meant for malicious purposes as it’s unlikely that Chora would fail to understand the implications of open sourcing a new customizable web shell.
+The Cknife panel menu is also only available in Chinese, perhaps because the target user audience is meant only for Chinese speakers. Chora and MelodyZX are committed to ongoing development demonstrated by their continued Cknife updates on Chinese-speaking forums. 
+
+Cknife updates: fixing bugs and releasing new features.
+The absence of further Cknife context leaves an opaque author motivation. Known information about MelodyZX as well as the purpose and intent of Cknife as stated in the readme file paints a picture of two grey hats.
+
+
+Chora posting about Cknife in Chinese-speaking forums.
+Chora performed Cknife’s design and Java coding while MelodyZX created the database schema using SQLite.
+Cknife is written in Java for the express purpose of being cross-platform compatible. Cknife also uses the older Swing GUI framework for native operating system rendering. Swing is an interesting choice for this client-side Java application because popular sentiment among Java developers is that it’s difficult to use and support, making it an interesting choice for Cknife development.
+One explanation is that a large batch of Swing code was copied from a legacy application saving Chora time. 
+Cknife’s GitHub readme instructions include a link to the original Java archive (JAR) file hosted on Baidu (password “f65g” is required to download the zip file). Building Cknife from the latest GitHub source produces an updated version of Cknife.jar. Executing the Cknife Java archive (sudo java -jar Cknife.jar) results in the Cknife GUI panel (the client). A right-click menu appears anywhere in the main panel space, with a sub-menu that includes various skins, indicating real effort to produce a full-featured and convenient web shell administration tool.  
+
+Cknife skin options and corresponding Java code from Cknife.java.
+The last general menu option leads to the proxy configuration sub-menu which accepts a proxy address with corresponding port, username, password, and proxy type.
+
+Cknife proxy configuration menu.
+A quick method for understanding basic network traffic between the Cknife client (Cknife.jar control panel) and web shell on Ubuntu 14.04 is to start a basic PHP server from the same local directory as the cus.php web shell file. 
+
+After the PHP server is running, we initiate TCPDump to capture subsequently generated packets on the loopback interface, specifically port 80, and save them to a file for review.
+
+Next, we use the Cknife client to connect to the local cus.php web shell (navigating to cus.php from a web browser produces a blank page, and the PHP server logs, “PHP Notice: Undefined index: Cknife in [path]cus.php on line three”). 
+
+Connecting from the Cknife client to a local cus.php web shell.
+
+Encoding options before connecting to the Cknife web shell.
+After configuring the connection parameters, the URI right-click menu presents multiple chinese language options for connecting to the web shell and enumerating remote files on the web server, connecting to a remote database, and/or launching a remote shell for command line access.
+
+Client connection options.
+After connecting to the remote web shell file, the Cknife client will display a 10 second pop-up window with the HTTP status code. Additional test functionality requires launching the web shell files on a fully functional web server with integrated database. 
+The 1019 bytes of the basic connection between the Cknife Java client and web shell appears below.
+
+Cknife’s User-Agent is notable because client-side Java applications are relatively rare. Like most web shells, Cknife uses a Base64 encoded string to obfuscate the HTTP POST data for transmission and storage before it’s rendered as code by the web server using PHP’s ubiquitous “eval” function.
+
+The decoded string (as shown above) contains Chinese characters and the @set_magic_quotes_runtime() function we discussed in part one of our web shell blog series, which could be used for Cknife PHP web shell traffic detection.
+Fortunately, Cknife currently uses HTTP for communication, making detection relatively straightforward. Unfortunately, there is code in Request.java for SSL implementation, specifically MyX509TrustManager() which is set to accept any SSL certificate.
+This functionality appears to be included for future development work, and Chora specifically states that encrypted communication between the client and web shells is coming. Translated from Chinese:
+Follow-up will increase the core function of a plug that is, the user can customize write encryption, can also customize what you want to write a function such as a web browser, but I will not go in itself irrelevant to add some features. Also the next version will add custom request headers and agents.
+To test the 1.jsp and cus.aspx web shell files we configure a remote IIS server and place the files in writable directories.
+
+The Cknife client connected to three different web shells.
+The respective HTTP POST request/response traffic (partial) for both web shells appears below.
+
+Primary options from Cknife’s client — following a successful connection — include enumerating the target web server’s directories/files, uploading additional files, connecting to a remote database, and directly accessing the underlying operating system via a command line interface (CLI) shell.
+
+Code from Shell.java specifying the CLI parameters to execute depending on whether the target web server is running Windows or Linux.
+
+Remote target database connection options.
+Signatures are marginally effective as discussed in part one. In the case of Cknife, it’s probable that skilled adversaries are going to heavily customize the Cknife web shells for specific victims, rendering the following signatures ineffective.
+Operational defenders should always strive to identify higher-level detection choke points that will maintain efficacy regardless of future file customization.
+File: Cknife.jar — Java Client UI (July 2016 Beta3 build)
+SHA1: 15c5385f4df2e8d0ed1b5ff937803e3bfff3e01e
+SHA256: 9275d080fb9f46c9bb4a4ecebbb62b2cf9868630d35f55144950a781cf8cb63c
+File: Cknife.jar — Java Client UI (December 2015 Build)
+SHA1: 4a7676d1924a14a01822b5c4a426d0d28aad6c50
+SHA256: 4be346bff7a0ef0ba007bc8e5cc02475e1407d1ad42abb5c723aaa7b2d121eb
+File: 1.jsp — Java Server Page Web Shell
+SHA1: 99fa2dc05929f2e6a8620f298ed64fa244cf069d
+SHA256: a182cb2d696a99caa3052475b916110ca10fdccb35a11724c59bac4e05eb4740
+File: cus.asp — Active Server Page Web Shell
+SHA1: a23791cf96fddcfbaf3f87ae083447b6c9e96422
+SHA256: 5110dcd8b18b59ed8d1a88fcf5affe489586a9928b3c0ac5c977e134595ab398
+File: cus.aspx — Active Server Page Web Shell
+SHA1: a4951b97e8c6dff6223c24eca5ab0c3458cee651
+SHA256: 2bc0ed9f40b81c8641cedae93cc33bc40a6d52b38542b8bc310cb30fb843af47
+File: cus.php
+SHA1: 19c3210903082b7fd078312fddd50ffb1abb0764
+SHA256: 35128ca92e2c8ed800b4913f73b6bc1de2f4b3ee2dd19ef6c93d173b64c92221
+
+Cknife is a Chinese cross-platform compatible Java web shell framework — that operates more like a RAT for web servers — based on China Chopper.
+The authors — Chora and MelodyZX, part of MS509Team — may consider themselves white hats, but nationality may color self-perception, as the open sourcing of Cknife will certainly be used by black hats, making Chora and MelodyZX suspect grey hats.
+The motivation for Cknife’s release appears (based on the author’s comments) to be driven by a desire to improve upon China Chopper which is revered as a cultural icon.
+Accelerating chatter in Chinese-speaking forums over the past six months is a good signal for increased intent to use Cknife maliciously as awareness of Cknife proliferates. Current and future targets are difficult to predict, but if China Chopper is any indication, criminal and nation-state actors are likely already leveraging Cknife, and future victims will likely align with past China Chopper targets by industry vertical.
+
+Increasing Cknife interest.
+China Chopper and Cknife share a visually identical icon, but code comparisons are irrelevant due to different programming language choices. Cknife currently initiates distinctive HTTP traffic between the Java client and remote web shell file, but Chora is promising future functionality and upgrades that will make traffic profiling much more difficult.
+Additionally, nation-state adversaries are likely to heavily customize both the web shell file and the Java client to further stymie malicious detection. Currently, Cknife is provided as a client control panel via the Cknife.jar file, and individual web shell files are included (depending on the type of web server being targeted) as 1.jsp, cus.asp, cus.aspx, and cus.php.
+The goal of threat intelligence is to decrease operational risk by providing proactive insight into threats that may cause material impact and harm to the business, above and beyond governance, risk, and compliance (GRC) objectives.
+Cknife is a credible threat that Chinese actors have been discussing (and likely using) for the past six months. Given the broad attack surface area around web servers and their respective applications and frameworks, and the historic success of its predecessor China Chopper, Cknife is a legitimate threat that should be seriously addressed in the immediate future.
+Special thanks to Dr. Christopher Ahlberg, Carl Ekerot, Matt Kodama, and Victor Damian Chicon for their contributions to this blog.

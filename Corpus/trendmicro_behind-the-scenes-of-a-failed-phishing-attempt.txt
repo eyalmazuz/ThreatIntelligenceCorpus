@@ -1,0 +1,30 @@
+Behind the Scenes of a Failed Phishing Attempt
+ 
+– by Steven Weinstein
+One of our customers recently asked us to analyze a phishing email claiming to be from Wells Fargo that was well enough crafted to bypass their spam filters. What makes this phishing attempt unique is where the link actually sends you once it has been clicked. It should be noted immediately that Wells Fargo did not send this email, nor did it originate from Wells Fargo systems. This phishing email has already been reported to the appropriate Wells Fargo security teams.
+At a quick glance, the email shows a traditional phish attempt in which there were no attachments, as the attackers were solely looking to steal account credentials by tricking the user into clicking a link. It also contains a typo and at least one grammatical error, which suggests whoever created the content may not use English as their native language. Below is a screenshot of the original email:
+
+Analysis of the raw contents shows that Wells Fargo is not actually the sender, as expected, and that the “Signin” link does not point to a Wells Fargo page.
+
+It can be assumed at this point that the “Signin” link will lead to a Wells Fargo themed bank login page. However, attackers make mistakes, and sometimes these mistakes are more apparent than others. This was one of those cases.
+Clicking the “Signin” link in the phishing email leads the unsuspecting user to what may actually be a compromised host at hxxps://www.tuaterra[.]com/images/eM.php, which at the time of this writing resolved to IP address, 217.114.210[.]3, hosted in Germany. This page contains something very unexpected:
+
+The above image shows the attacker’s panel, which can be used to send phishing or spam emails to any email address. What immediately stands out is the fact that this panel is not password protected and can be accessed by anyone. The panel provides options for customizing or spoofing different fields including the sender address and name, reply-to address, and even allows the attacker to include an attachment. The form accepts plain text or HTML formatted email bodies, and accepts the target email addresses as well.
+It seems the attacker accidentally pasted the wrong URL into the HTML of the email template, and sent out a link to the panel instead of the phishing page. Begging the question – is this the actual panel that was used to send the Wells Fargo phishing email? The short answer is yes. As demonstrated below, after copying the raw HTML contents of the original phishing email and pasting it into the form, I was easily able to generate a nearly identical email, which I sent to a throw-away Gmail account that I created.
+
+
+As you can see in the image above, fortunately Gmail was able to catch this and mark it as spam. Below we can see the same information in the header:
+
+Now, another interesting point about this situation is the title of the page hosting the panel:
+
+We can see from the title that this panel came from “Spammer Store spammer[.]ro”. Spammer[.]ro is a Romanian domain (hosted on Russian IP 146.185.128[.]43) used for selling all things spam related, from mailer scripts to hosting to bulk email lists. The below screenshot shows some of the available items:
+
+It appears that the panel used was a very slight modification of the “PHP Inbox Mailer Web”, or even perhaps a slightly older version. This panel can be purchased for only $17.
+
+This clearly wasn’t a very sophisticated phish, but even still, it was enough to bypass spam filters initially. We learn once again, how crucial it is for users to remain vigilant and to think before clicking on links from untrusted senders. Fortunately in this case, our customer noticed this was a phishing attempt and reported it. Luckily for others who received this same email, there were no malicious attachments, and even if they had fallen for the phishing attempt, visiting the link wouldn’t have yielded the attacker any information because of a simple mistake.
+Below is a list of the indicators from this phishing email, which depending on your organization’s incident response or protection policies, could be used to block emails of this nature:
+Subject: Online Security Enhancements
+From: Wells Fargo <onlinebanking@ealerts.wellsfargo.com>
+Reply-To: connect@wellsfargomail.com
+Return-Path: <anonymous@xen101.newshell[.]it>
+Received: from xen101@newshell[.]it (xen101@newshell[.]it. [217.114.210[.]3])

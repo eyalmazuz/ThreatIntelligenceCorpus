@@ -1,0 +1,61 @@
+Digmine Cryptocurrency Miner Spreading via Facebook Messenger
+by Lenart Bermejo and Hsiao-Yu Shih
+We found a new cryptocurrency-mining bot spreading through Facebook Messenger, which we first observed in South Korea. We named this Digmine based on the moniker (비트코인 채굴기 bot) it was referred to in a report of recent related incidents in South Korea. We’ve also seen Digmine spreading in other regions such as Vietnam, Azerbaijan, Ukraine, Vietnam, Philippines, Thailand, and Venezuela. It’s not far-off for Digmine to reach other countries given the way it propagates.
+Facebook Messenger works across different platforms, but Digmine only affects Facebook Messenger’s desktop/web browser (Chrome) version. If the file is opened on other platforms (e.g., mobile), the malware will not work as intended.
+Digmine is coded in AutoIt, and sent to would-be victims posing as a video file but is actually an AutoIt executable script. If the user’s Facebook account is set to log in automatically, Digmine will manipulate Facebook Messenger in order to send a link to the file to the account’s friends. The abuse of Facebook is limited to propagation for now, but it wouldn’t be implausible for attackers to hijack the Facebook account itself down the line. This functionality’s code is pushed from the command-and-control (C&C) server, which means it can be updated.
+A known modus operandi of cryptocurrency-mining botnets, and particularly for Digmine (which mines Monero), is to stay in the victim’s system for as long as possible. It also wants to infect as many machines as possible, as this translates to an increased hashrate and potentially more cybercriminal income.
+
+Figure 1: Digmine’s attack chain
+
+
+Figure 2: Link to Digmine sent via Facebook Messenger (top, cropped) and the file pretending to be a video (bottom); original image source: c0nstant (bottom right)
+Infection Chain
+Digmine is a downloader that will first connect to the C&C server to read its configuration and download multiple components. The initial configuration contains links where it downloads components, most of which are also hosted on the same C&C server. It saves the downloaded components in the %appdata%\<username> directory.
+ 
+
+Figure 3: Configuration for the downloader (top); and the downloaded components (bottom)
+Digmine will also perform other routines such as installing a registry autostart mechanism as well as system infection marker. It will search and launch Chrome then load a malicious browser extension that it retrieves from the C&C server. If Chrome is already running, the malware will terminate and relaunch Chrome to ensure the extension is loaded. While extensions can only be loaded and hosted from the Chrome Web Store, the attackers bypassed this by launching Chrome (loaded with the malicious extension) via command line.
+
+
+Figure 4: Digmine downloader component in the autostart registry entry (top), and a marker indicating the malware has infected the system (bottom)
+
+
+Figure 5: Currently running Chrome process terminated (top) and relaunching Chrome with parameter to load extension (bottom)
+The extension will read its own configuration from the C&C server. It can instruct the extension to either proceed with logging in to Facebook or open a fake page that will play a video.
+The decoy website that plays the video also serves as part of their C&C structure. This site pretends to be a video streaming site but also holds a lot of the configurations for the malware’s components.
+
+
+Figure 6: Configuration link for the decoy video if a separate routine is set by the configuration from the C&C (top), and screenshot of a fake streaming site used to play video as decoy (bottom)
+
+Figure 7: Initial configuration used by the browser extension
+Propagation
+The browser extension is responsible for propagation via interaction with Chrome, and by extension, Facebook Messenger. This routine is triggered by conditions available in the configuration file retrieved from the C&C server.
+If the user has their Facebook account automatically logged in by default, the browser extension is able to interact with their account. It does so by downloading additional code from the C&C server. Digmine’s interaction with Facebook could get more functions in the future since it’s possible to add more code.
+
+Figure 8: Part of additional codes retrieved from C&C server, which allows interaction with Facebook
+Mining Component
+The miner module will be downloaded by codec.exe, which is the miner management component. It will connect to another C&C server to retrieve the miner and its corresponding configuration file.
+The mining component miner.exe is an iteration of an open-source Monero miner known as XMRig. The miner was reconfigured to execute using the config.json file instead of receiving parameters directly from the command line.
+
+
+Figure 9: Miner configuration (top) and codec.exe code launching the miner component with config (bottom)
+C&C Communication and Protocol
+Both the downloader and mining management component use specific HTTP headers to communicate with the C&C server. When downloading the initial configuration, the malware constructs the HTTP GET request before sending to the C&C server:
+GET /api/apple/config.php HTTP/1.1
+Connection: Keep-Alive
+Accept: */*
+User-Agent: Miner
+Window: <Window name of active window>
+ScriptName: <filename of malware>
+OS: <OS version>
+Host: <C&C>
+
+Of note is how the malware uses a specific User-Agent called Miner. It denies access to the initial configuration file if the HTTP header request is incorrect.
+Best Practices
+The increasing popularity of cryptocurrency mining is drawing attackers back to the mining botnet business. And like many cybercriminal schemes, numbers are crucial—bigger victim pools equate to potentially bigger profits.  The fact that they’re piggybacking on popular platforms such as social media to spread their malware is unsurprising. To avoid these types of threats, follow best practices on securing social media accounts: think before you share, be aware of suspicious and unsolicited messages, and enable your account’s privacy settings.
+We disclosed our findings to Facebook, which promptly removed many of the Digmine-related links from its platform. In Facebook’s official statement, “We maintain a number of automated systems to help stop harmful links and files from appearing on Facebook and in Messenger. If we suspect your computer is infected with malware, we will provide you with a free anti-virus scan from our trusted partners. We share tips on how to stay secure and links to these scanners on facebook.com/help.”
+Indicators of Compromise (IoCs):
+Hash detected as TROJ_DIGMINEIN.A (SHA256);
+Hash detected as BREX_DIGMINEEX.A (SHA256):
+Hash detected as TROJ_DIGMINE.A (SHA256):
+C&C servers related to Digmine (including subdomains):

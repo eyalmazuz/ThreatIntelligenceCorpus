@@ -1,0 +1,81 @@
+Dridex and Locky Return Via PDF Attachments in Latest Campaigns
+Dridex and Locky, two prolific malware families that made waves in 2016 after being distributed in several high-volume spam campaigns, have returned after a brief hiatus. FireEye observed a decline in the volume of Dridex and Locky in the latter half of 2016, but we recently observed two new large campaigns.
+While the PDF downloader described in this post is responsible for spreading both Dridex and Locky, for the purposes of this blog, we will be discussing the PDF downloader and the Dridex binary.
+The larger of the two campaigns (Figure 1) involved a “payment receipt” theme and, according to our telemetry, primarily affected the insurance industry in the U.S.
+
+Figure 1: Telemetry for the larger campaign
+In the smaller of the two campaigns (Figure 2), the attachment was claimed to be an alert from a printer for a scanned document. This campaign primarily affected the government sector in the Middle East, U.S., and Japan.
+
+Figure 2: Telemetry for the smaller campaign
+As seen in Figure 3, at a high-level, the execution flow consists of:
+
+Figure 3: Full Execution Flow
+We observed two patterns of subject lines used in these campaigns. One is Payment_XXX, where XXX refers to any random number, while the other one is Scanned image from MX-2600N. Figure 4 shows sample spam emails from both campaigns.
+
+Figure 4: Spam Email Examples
+The PDF attachment contains several objects, but the most relevant ones are an embedded DOCM file (a macro enabled doc file) and a JavaScript object that drops and launches the DOCM file. Figure 5 shows the embedded DOCM file, and Figure 6 shows a snippet of the JavaScript that drops the DOCM file.
+ 
+
+Figure 5: DOCM file header in Object 3
+
+Figure 6: Dropper JavaScript snippet with reference to DOCM file to be dropped and executed
+When the PDF document is opened, Adobe Reader displays a warning as shown in Figure 7, clearly stating that the attached file may be harmful.
+
+Figure 7: Security Warning by Adobe
+If the user ignores the warning and clicks OK, the DOCM file is written to %temp% and then launched.
+The document file opens in read only or protected mode, which means the macro inside the document file is not able to execute. To bypass this mechanism, the document displays a message prompting the user to “Enable Editing”, as seen in Figure 8.
+
+Figure 8: Protected Document Asking for Permission to Enable Editing
+Once a victim clicks “Enable Editing”, the embedded macro executes. In Figure 9, we can see that the command to be executed is hidden in the caption of form1. This macro executes a PowerShell command to communicate with the C2 server and downloads the next payload.
+
+Figure 9: Embedded Macro
+Figure 10 shows how the command is hidden a form.
+
+Figure 10: Command Hidden a Form
+The powershell is obfuscated and it can be de-obfuscated with the algorithm in Figure 11. Once executed, the scripts main function is to connect with the C2 server to retrieve a payload. The script contains an array of URIs, and it tries each one until it successfully receives a valid response from the server.
+
+Figure 11: De-obfuscation routine for the obfuscated Powershell script
+After de-obfuscating the script, it appears to be divided into two parts:
+
+Figure 12: C2 Communication
+During a sample run, the script requests the resource “/dfv45” from 192.232.251.217 and 216.87.186.133 and successfully receives a response from the second host.
+The response is XOR encrypted. Figure 13 shows the response header.
+
+Figure 13: C2 Response Header
+The PowerShell script decodes the response and writes the decoded executable into %temp%. A python script to decode the response is shown in Figure 14.
+
+Figure 14: Decryption Routine Code Snippet
+Up to this point, the process for distributing Dridex and Locky payloads has been the same. The malware that is delivered depends on the C2 server that is contacted.
+In this case, the sample fetched the Dridex payload. When executed, Dridex unpacks and runs itself within the context of svchost.exe or spoolsv.exe via process hallowing to evade detection.
+Dridex and Locky have been highly active and prolific in the past several months, and although the delivery mechanism often changes, the core behavior of the family remains unchanged. Dridex is one of the most active banking Trojans from the last few years, and Locky is one of the most active ransomware families. If the past year is any indication, Dridex and Locky distributors will continue to search for ways to evade detection. FireEye is committed to remaining vigilant against these efforts.
+URLs seen distributing Dridex
+til.co.za/dfv45
+awarepictures.com/dfv45
+ursanne.com/dfv45
+sokpinter.com/dfv45
+wenable.com/dfv45
+martijnfeller.nl/dfv45
+dont.pl/9yg65
+bhmech.com/9yg65
+sherwoodbusiness.com/9yg65
+uwdesign.com.br/9yg65
+URLs seen distributing Locky
+mentoryourmind.org/kjv783r
+lawrenceres.com/kjv783r
+cloud9ss.com/kjv783r
+mentalmysteries.com/kjv783r
+medjobsmatch.com/kjv783r
+i-call.it/kjv783r
+super-marv.com/874hv
+Dridex C2 Servers
+216.177.132[.]93:4143
+152.66.249[.]132:44343
+85.214.113[.]207:4743
+192.184.84[.]119:4743
+199.36.194[.]27:4743
+104.131.182[.]74:4743
+199.233.245[.]109:4743
+74.220.207[.]120:80
+Mitigations
+Due to the widespread nature of these phishing campaigns, organizations can better protect themselves by addressing several key areas:
+FireEye Multi Vector Execution (MVX) engine is able to recognize and block this threat.

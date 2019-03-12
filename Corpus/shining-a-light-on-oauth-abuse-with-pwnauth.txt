@@ -1,0 +1,111 @@
+Shining a Light on OAuth Abuse with PwnAuth
+May 21, 2018 | by Douglas Bienstock
+Introduction
+Spear phishing attacks are seen as one of the biggest cyber threats to an organization. It only takes one employee to enter their credentials or run some malware for an entire organization to become compromised. As such, companies devote significant resources to preventing credential harvesting and payload-driven social engineering attacks. Less attention, however, has been paid to a non-traditional, but just as dangerous, method of social engineering: OAuth abuse. In an OAuth abuse attack, a victim authorizes a third-party application to access their account. Once authorized, the application can access the user's data without the need for credentials and bypassing any two-factor authentication that may be in place.
+
+Today, I’m releasing PwnAuth, a platform to allow organizations and penetration testers an opportunity to test their ability to detect and respond to OAuth abuse social engineering campaigns. In releasing the tool, we hope to increase awareness about this threat, improve the security community’s ability to detect it, and provide countermeasures for defenders.
+
+Head over to our GitHub to start using PwnAuth.
+
+What is OAuth?
+OAuth 2.0 is described as "An open protocol to allow secure authorization in a simple and standard method from web, mobile and desktop applications..." It has become the de facto protocol that major Internet companies such as Amazon, Google, Facebook, and Microsoft use to facilitate granting third-party applications access to user data. An application that accesses your Microsoft OneDrive to allow for easy file sharing is an example of an application that would leverage OAuth.
+
+Let’s use an application accessing OneDrive as an example to define some roles in an OAuth authorization flow:
+
+The Application, or "Client"
+The third-party application that is requesting access. In this case, the application that wishes to access your OneDrive files is the "Client."
+
+The API "Resource"
+The target application the "Client" wishes to access. In this case, the Microsoft OneDrive API endpoint is the "Resource."
+
+The "Resource Owner"
+The person granting access to a portion of their account. In this case, you.
+
+The Authorization Server
+The Authorization Server presents the interface that the Resource Owner uses to give or deny consent. The server could be the same as the API Resource or a different component. In this case, the Microsoft login portal is the "Authorization Server".
+
+Scope
+The Scope is defined as the type of access that the third-party application is requesting. Most API Resources will define a set of scopes that applications can request. This is similar to the permissions that an Android phone application would request on installation. In this example, the application may request access to your OneDrive files and user profile.
+
+OAuth 2.0 provides several different authorization "grant types" to facilitate the different applications that we, as users, interact with. For the purpose of this post, we are interested in the "Authorization Code" grant type, which is used by web applications implementing OAuth. The following is an example authorization flow:
+
+1.  A "Consent" link is created that directs the Resource Owner to the Authorization Server with parameters identifying the Application and the scopes requested.
+
+https://login.microsoftonline.com/auth
+?response_type=code
+&client_id=123456789
+&redirect_uri=https%3A%2F%2Fexample-app.com%2Fcallback
+&scope=mail.read+offline_access
+2.  The Resource Owner will be presented with an authorization prompt, stating the application name and requested scopes. The Resource Owner has the option to approve or deny this authorization request.
+
+3.  Upon approval, the Authorization Server will redirect back to the Application with an authorization code.
+
+HTTP/1.1 200 OK
+Content-Type: application/json
+Cache-Control: no-store
+Pragma: no-cache
+
+{
+"access_token":"aMQe28fhjad8fasdf",
+"token_type":"bearer",
+"expires_in":3600,
+"refresh_token":"OWWGE3YmIwOGYzYTlmM2YxNmMDFkNTVk",
+"scope":"mail.read+offline_access"
+}
+4.  The Application can then use the authorization code and request an access token from the Authorization Server. Access tokens can be used for a set duration of time to access the user’s data from the API Resource, without any further action by the Resource Owner.
+
+Room For Abuse
+OAuth applications provide an ideal vector through which attackers could compromise a target and harvest confidential data such as email, contacts, and files. An attacker could create a malicious application and use the obtained access tokens to retrieve victims' account data via the API Resource. The access tokens do not require knowledge of the user's password, and bypass any two-factor enforcement. Further, the only way to remove an attacker's access is to explicitly revoke access to the OAuth application. In order to obtain OAuth tokens, an attacker would need to convince a victim to click a "Consent link" and approve the application via social engineering. Because all victim interaction is on sites owned by the legitimate Resource Provider (e.g. Microsoft), it can be hard for an untrained user to differentiate between a legitimate OAuth application and a malicious one.
+
+Though likely not the first instance of such campaigns, OAuth abuse first came to the media's attention during the 2016 presidential election. FireEye wrote about APT28's usage of OAuth abuse to gain access to emails of U.S. politicians in our M-TRENDS 2017 report. Since then, FireEye has seen the technique spread to commodity worms seeking to spread across Gmail.
+
+PwnAuth
+PwnAuth is a web application framework I wrote to make it easier for organizations to test their ability to detect and respond to OAuth abuse campaigns. The web application provides penetration testers with an easy-to-use UI to manage malicious OAuth applications, store gathered OAuth tokens, and interact with API Resources. The application UI and framework are designed to be easily extendable to other API Resources through the creation of additional modules. While any cloud environment that allows OAuth applications could be targeted, currently PwnAuth ships with a module to support malicious Office 365 applications that will capture OAuth tokens and facilitate interaction with the Microsoft Graph API using those captured tokens. The Office 365 module itself could be further extended, but currently provides the following:
+
+Reading mail messages
+Searching the user's mailbox
+Reading the user's contacts
+Downloading messages and attachments
+Searching OneDrive and downloading files
+Sending messages on behalf of the user
+The interface is designed to be intuitive and user-friendly. The first step to using PwnAuth would be to create a Microsoft Application. That information must then be entered into PwnAuth (Figure 1).
+
+
+Figure 1: Importing a Microsoft App into PwnAuth
+
+Once configured, you can use the generated "Authorization URL" to phish potential victims. When clicked, PwnAuth will capture victim OAuth tokens for later use. An example victim listing is shown in Figure 2.
+
+
+Figure 2: Listing victim users in PwnAuth
+
+Once PwnAuth has captured a victim's OAuth token, you can begin to access their data. Use PwnAuth to query the victim's mailbox for all messages containing the string "password", for example (Figure 3).
+
+
+Figure 3: Searching the mailbox of a victim
+
+See the GitHub wiki for more information on usage.
+
+Mitigations
+Our FireEye technology stack includes network-based signatures to detect potentially malicious OAuth consent URLs. Attackers tend to include certain scopes in malicious apps that can be detected and flagged. Organizations with social engineering training programs can add OAuth abuse scenarios to their existing programs to better educate users about this attacker vector. Additionally, organizations can take steps to limit the potential impact of malicious OAuth applications and increase their detection capabilities. The options available to an organization vary greatly depending on the API Resource, but, in general, include:
+
+Limit the API scopes third-party apps can request.
+Disable third-party apps in an organization.
+Implement a whitelist or blacklist for applications.
+Query an organization's user base for all consented applications.
+Log any user consent events and report suspicious activity.
+Office 365 in particular offers some options for administrators:
+
+Organizations with Cloud App Security can make use of the "app permissions" feature to query and block third party applications.
+Administrators can block access to third-party applications globally.
+Administrators can take actions if they believe a malicious app was granted access to an account.
+The Unified Audit Log records whenever a user consents to a third-party application; however, the specific scopes and app information is not recorded in the log.
+I have created a collection of scripts to assist administrators in hunting for malicious OAuth applications in cloud environments. Currently there is a script to investigate Office 365 tenants with plans to add other cloud environments.
+
+Conclusion
+OAuth abuse attacks are a dangerous and non-traditional phishing technique that attackers can use to gain access to an organization's confidential data. As we move more services to the cloud, organizations should be careful to lock down third-party application access and ensure that their monitoring and detection strategy covers application consent grants. Organizations and security professionals can use PwnAuth to test their ability to detect and respond to this new type of attack.
+
+Head over to our GitHub and start using PwnAuth today.
+
+This entry was posted on Mon May 21 11:15 EDT 2018 and filed under tools, Douglas Bienstock, and OAuth.
+
+

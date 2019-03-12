@@ -1,0 +1,109 @@
+
+Understanding Guide for Nmap Timing Scan (Firewall Bypass)
+
+In this article we are going to scan the target machine with normal Nmap scan along with Timing template and the time between packets can be confirmed by analysis of Nmap traffic through Wireshark.
+Timing template in nmap is defined by –T<0-5> having -T0 as the slowest and –T5 as the fastest. By default all nmap scans run on –T3 timing template. Timing template in Nmap is used to optimize and improve the quality and performance of scan to get desired results.
+Let’s start!!
+This template is used for sending packets insanely fast and waits only 0.3 seconds for response. The time difference between two packets sent is upto 5 milliseconds. This timing template makes the scan superfast but the accuracy is sacrificed sometimes. Nmap gives-up on a host if it couldn’t complete the scan within 15 minutes. Other than that, -T5 should be used only on fast network and high end systems as sending packets this fast can affect the working of the network or system and can result into system failure.
+For using timing template use the attribute –T<0-5> after Nmap while scanning a target network
+
+Here are the packets sent to the target IP are sent by a maximum difference of 5 milliseconds or 0.005 seconds
+Packet 1 has Arrival Time of 04:41:04.557153433
+
+Packet 2 has Arrival Time of 04:41:04.557225304
+The difference between the arrival time of Packet 1 and Packet 2 is about 0.07 milliseconds.
+
+This template is used for sending packets very fast and waits only 1.25 seconds for response. The time difference between two packets sent is upto 10 milliseconds. Nmap official documentation recommends using –T4 for “reasonably modern and reliable networks”.
+
+Here are the packets sent to the target IP are sent by a maximum difference of 5 milliseconds or 0.005 seconds
+Packet 1 has Arrival Time of 05:58:34.636899267
+
+Packet 2 has Arrival Time of 05:58:34.637122896
+The difference between the arrival time of Packet 1 and Packet 2 is about 0.2 milliseconds.
+
+This is the default nmap timing template which is used when -T argument is not specified.
+
+Packet 1 has Arrival Time of 06:01:12.574866212
+
+Packet 1 has Arrival Time of 06:01:12.575059033
+The difference between the arrival time of Packet 1 and Packet 2 is about 0.1 milliseconds.
+
+This template is used for sending packets quickly then –T0 and –T1 but still slower than normal scan. The time difference between two packets sent is 0.4 seconds.
+
+Packet 1 has Arrival Time of 06:07:38.139876513
+
+Packet 2 has Arrival Time of 06:01:12.540686453
+
+This template is used for sending packets quickly but still slower than normal scan. The time difference between two packets sent is 15 seconds.
+
+Packet 1 has Arrival Time of 06:17:02.354879724
+
+Packet 2 has Arrival Time of 06:17:17.371063606
+The difference between the arrival time of Packet 1 and Packet 2 is about 15 seconds.
+
+This template is used for sending packets very slowly as only one port is scanned at a time. The time difference between two packets sent is 5 minutes.
+
+Packet 1 has Arrival Time of 06:32:25.043303267
+
+Packet 2 has Arrival Time of 06:37:25.080804929
+The difference between the arrival time of Packet 1 and Packet 2 is about 5 minutes.
+
+Even though we can speed up the scan by –T5 and –T4 templates, there are chances that the target system is using some kind of firewall rules to secure itself. Here are some examples of the firewall rules and methods to bypass them.
+This rule will block tcp packets from an IP address if the packet count goes more than 1. In other words only first packet will be responded from an IP address in 1 second.
+
+If you’re scanning more than 1 port on a target system having above rule, the result will not be as desired. Like if we use -T5 or -T4 in nmap scan, the time difference between packets is very much less than 1 second so if we scan five ports at a time it will show one as open/closed and others as filtered. But -T5 has also –max-retries set to 2 means it will retry to get reply from ports 2 more times hence there will be 3 out 5 ports with accurate open/close status and the rest 2 with filtered status
+From given below image you can observe that it has shown 3 ports are open and 2 ports are filtered.
+
+The packet transfer between the target and the victim is captured through wireshark, it clearly shows that the TCP SYN packets are send multiple times on ports 22 and 23 and didn’t received any reply packet for those request packet.
+
+1st method
+Use –max-retries argument to increase the –max-retries value so that each retry gives accurate status of one port at a time. Execute given below command for increasing maximum retries with T5 scan here I had 4 you can modify it as per your requirement.
+now if you notice from given below image you can observe that it has shown all 5ports are open.
+
+Here, the packet transfer shows that in each retry one different port sends the reply in order to confirm its statusas shown in given below image.
+
+2nd Method
+The second method is to use a timing template which has a greater time difference between packets, like here we can use time template below T5 i.e. from T4 to T0 to bypass above rule.
+nmap -T4 -p21-25 192.168.1.104
+or
+nmap -T3 -p21-25 192.168.1.104
+or
+nmap -T2 -p21-25 192.168.1.104
+or
+nmap -T1 -p21-25 192.168.1.104
+or
+nmap -T0 -p21-25 192.168.1.104
+
+Here, the packet transfer shows that each port has sent the reply but first reply was instantly and other ports replied one by one after some time.
+
+Now given below rules will block tcp packets from an IP address if the packet count goes more than 1. In other words only first packet will be responded from an IP address in 3 seconds.
+
+Here we are using -T4 for scanning 5 ports, the time difference between packets is very much less than 1 second so if we scan five ports at a time it will show one as open/closed and others as filtered. But –T4 has also –max-retries set to 6 means it will retry to get reply from ports 6 more times but as the time limit exceeds the total time taken by all retries it will show all ports filtered
+nmap -T4 -p21-25 192.168.1.104
+or
+nmap -T3 -p21-25 192.168.1.104
+or
+nmap -T2 -p21-25 192.168.1.104
+or
+Result of T4, T3, and T2 scan can be as either all port will be filtered or any one port can show open/close state. From given below image you can observe that it has shown all 5 ports are filtered.
+
+Here we can see that none of the packets got reply
+
+To bypass this kind of rule we have to use a Timing Template which is slower than -T4
+
+Here we can see that all the packets got reply because time interval in T1 is almost 15 seconds.
+
+Now this rule is to block tcp packets from an IP address if the packet count goes more than 1. In other words only first packet will be responded from an IP address in 200 seconds.
+
+Now repeat the T1 scan again as given below and this time you will found that firewall is blocking our Nmap probes for identify open/close state of any port.
+Results of T1 scan can be as either all port will be filtered or any one port can show open/close state. From given below image you can observe that it has shown all 4 ports are filtered.
+
+Here we can see that only one of the packets got reply rest are drop by firewall.
+
+To bypass this kind of rule we have to use a Timing Template which has time difference in packets for more than 200 seconds, therefore use paranoid time scan because time difference between two packets is near about 5 mints as discussed above.
+From given below image you can observe that it has taken 1813.61 sec which is close to 30 mints for scanning 5 ports and found open state for all 5 ports.
+
+Here we can see that we have got response of every packet even though the firewall had the security rules set.
+To evade any type of IPS or Firewall, you need to remember that it will take much longer time than usual to scan the target system using slower timing template so try to specify a small number of ports so that the slower scans doesn’t take time to scan the ports that you don’t intended to.
+
+Auhtor:  Deepanshu is a Certified Ethical Hacker and a budding Security researcher. Contact here.

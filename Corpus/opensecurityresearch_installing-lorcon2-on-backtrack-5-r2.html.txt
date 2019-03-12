@@ -1,0 +1,206 @@
+
+Installing Lorcon2 on Backtrack 5 R2
+
+
+Robert Portvliet
+
+Recently I wanted to play around with some of the wireless dos and fuzzing tools in Metasploit, which requires the installation of Lorcon2. I found this to be a bit of an adventure so I figured I would write up a quick blog post for those who may encounter the same issues in the future. 
+
+So, the Metasploit documentation states to install Lorcon2 as follows: 
+ $ sudo bash  
+ # cd /opt/metasploit3/msf3/external/ruby-lorcon2/  
+ # svn co http://802.11ninja.net/svn/lorcon/trunk lorcon2  
+ # cd lorcon2  
+ # ./configure --prefix=/usr && make && make install  
+ # cd ..  
+ # ruby extconf.rb  
+ # make && make install  
+
+
+This sort of worked - when I ran the ./configure, I noticed a bunch of strange warnings about if_arp.h, and wireless.h:
+
+
+
+A quick dive into the autoconf documentation (http://www.gnu.org/software/autoconf/manual/autoconf.html#Present-But-Cannot-Be-Compiled) yields:
+
+20.7 Header Present But Cannot Be Compiled
+The most important guideline to bear in mind when checking for features is to mimic as much as possible the intended use. Unfortunately, old versions of AC_CHECK_HEADER and AC_CHECK_HEADERS failed to follow this idea, and called the preprocessor, instead of the compiler, to check for headers. As a result, incompatibilities between headers went unnoticed during configuration, and maintainers finally had to deal with this issue elsewhere. 
+The transition began with Autoconf 2.56. As of Autoconf 2.64 both checks are performed, and configure complains loudly if the compiler and the preprocessor do not agree. However, only the compiler result is considered.
+
+Ok, so those warnings weren't really that bad. 
+libnl-dev 
+There is still the missing libnl library warning. Installing the libnl-dev package fixed those: 
+ apt-get install libnl-dev 
+ Troubleshooting test.rb
+
+With the ruby all set up and installed, its time to run the test.rb script provided in the /opt/metasploit3/msf3/external/ruby-lorcon2/. You'll notice if you try to run it, you're going to get this error:
+
+
+
+
+To make a long story short, after a fair bit of searching I found a very helpful post at http://www.secgeeks.com/fix_for_lorcon2_ruby_1_9_2.html which stated the following:
+
+Faced a minor problem with Lorcon2 wrapper module, in compiling with ruby 1.9.2. Following will fix the issues for those who are facing it:
+Change STRCCSTR function in file ruby-lorcon-1.0.0/Lorcon.c at line 443,441:
+ driver = STR2CSTR(rbdriver);
+
+intf = STR2CSTR(rbintf);
+
+to:
+ driver = StringValuePtr(rbdriver);
+
+intf = StringValuePtr(rbintf);
+
+Hope it helps.
+
+Yes it did Secgeek, thanks very much! However, in the case of Lorcon2, you have to edit three lines instead of two: 
+
+
+
+Change all three “STR2CTR” on these three lines to “StringValuePtr”. When you are done it should look like this:
+
+
+
+After that, running ‘ruby test.rb’ gives us the desired output.
+
+
+ Couple More Ruby Issues 
+
+Ok, so let’s test one of the Metasploit modules that use Lorcon2 to see if it works.
+
+
+
+No dice…
+
+A bit more searching led me to a closed bug report at http://redmine.backtrack-linux.org:8080/issues/153 which stated the following:
+Solution: they should be compiled with ruby 1.9.1 and placed in /opt/framework3/ruby/lib/ruby/site_ruby/1.9.1/i686-linux
+
+install ruby1.9.1
+cd to
+/opt/framework3/msf/external/ruby-lorcon2
+ruby1.9.1 extconf.rb
+make
+copy Lorcon2.so to the directory
+specified above.
+do the same for
+/opt/framework3/msf/external/pcaprub
+copy liborcon* files from
+/usr/local/lib to /opt/framework3/lib replacing existing files
+
+
+
+Following these instructions, I copied the liborcon* files , which were in /usr/lib in my case, to /opt/metasploit/msf3/lib/, and copied Lorcon2.so from /opt/metasploit/msf3/external/ruby-lorcon2 to /opt/metasploit/ruby/lib/ruby/site_ruby/1.9.1/i686-linux/. 
+Its working! (not completely)
+
+Fired up Metasploit again….. Nice!
+
+
+
+Kismet confirms its working.
+
+
+
+Then I tried ssidlist_beacon.rb: 
+
+
+
+Not so nice…. WTF?
+
+When I cracked it open I saw that while all the other wireless modules use Lorcon2, it references Lorcon in the ‘includes’ section. So, I tried changing it to Lorcon2. I fired up Metasploit again:
+
+
+
+Better… different error, now it complains about an undefined method ‘channel’. After taking a look at the other wireless
+modules, I found two others, netgear_ma521_rates.rb , and netgear_wg311pci.rb that did not work either, and gave the same error. They all also used the same syntax to determine the channel 
+ "\x03" + "\x01" +
+channel.chr
+
+
+While the FakeAP.rb module, which works, uses the following: 
+ "\x03" + "\x01" +
+datastore['CHANNEL'].to_i.chr 
+ 
+
+Using that to replace the previous line fixed the problem.
+It works! (for real now)
+
+
+
+All kinds of SSID’s in the air now :)
+
+
+
+The channel issue seemed to affect the following modules, I received the same error from all of them and when I replaced that line as described above, they all appeared to work properly. 
+
+auxiliary/dos/wifi/netgear_ma521_rates         NetGear MA521 Wireless Driver
+Long Rates Overflow
+
+auxiliary/dos/wifi/netgear_wg311pci           NetGear WG311v1 Wireless
+Driver Long SSID Overflow 
+
+auxiliary/dos/wifi/ssidlist_beacon             Wireless
+Beacon SSID Emulator
+
+auxiliary/fuzzers/wifi/fuzz_beacon Wireless Beacon Frame
+Fuzzer auxiliary/fuzzers/wifi/fuzz_proberesp  Wireless Probe Response Frame Fuzzer
+
+
+When running the auxiliary/fuzzers/wifi/fuzz_beacon module, beacons appear to be fuzzing properly :)
+
+
+
+As does auxiliary/fuzzers/wifi/fuzz_proberesp:
+
+
+
+I wrote a quick bash script to correct these issues and install Lorcon2. I ran it through a few times and all seemed well, but let me know if you expererience any issues.
+ #!/bin/bash
+
+# Script to install Lorcon2 on Backtrack 5 R2
+# By Robert Portvliet
+# Foundstone
+
+# Set up variables
+msfwifi_dir="/opt/metasploit/msf3/modules/auxiliary/dos/wifi/"
+rubylorcon_dir="/opt/metasploit/msf3/external/ruby-lorcon2/"
+msfuzz_dir="/opt/metasploit/msf3/modules/auxiliary/fuzzers/wifi/"
+
+echo "[*] This script will install Lorcon2 on Backtrack 5 R2"
+
+echo "[*] Install libnl netlink library"
+apt-get install libnl-dev
+
+echo "[*] Downloading Lorcon2 from SVN"
+svn co http://802.11ninja.net/svn/lorcon/trunk lorcon2
+
+echo "[*] Copying Lorcon2 to MSF"
+cp -r ./lorcon2 $rubylorcon_dir
+
+echo "[*] Fixing MSF wireless modules"
+sed -i 's/+ channel.chr/+ datastore['\''CHANNEL'\''].to_i.chr/g' $msfwifi_dir/ssidlist_beacon.rb
+sed -i 's/+ channel.chr/+ datastore['\''CHANNEL'\''].to_i.chr/g' $msfwifi_dir/netgear_*
+sed -i 's/+ channel.chr/+ datastore['\''CHANNEL'\''].to_i.chr/g' $msfuzz_dir/*.rb 
+sed -i 's/Lorcon/Lorcon2/g' $msfwifi_dir/ssidlist_beacon.rb
+
+echo "[*] Fixing Ruby-Lorcon2 before building"
+sed -i 's/STR2CSTR/StringValuePtr/g' $rubylorcon_dir/Lorcon2.c
+
+echo "[*] Building Lorcon2"
+cd $rubylorcon_dir/lorcon2
+./configure --prefix=/usr && make && make install
+
+cd ..
+
+echo "[*] Building Ruby-Lorcon2"
+ruby ./extconf.rb && make && make install
+
+echo "[*] Copying Lorcon2 libraries into Metasploit"
+cp $rubylorcon_dir/Lorcon2.so /opt/metasploit/ruby/lib/ruby/site_ruby/1.9.1/i686-linux/
+cp /usr/lib/liborcon2* /opt/metasploit/msf3/lib/
+
+echo "[*] Finished, fire up a wireless module and see if it works"
+
+
+
+
+

@@ -1,0 +1,20 @@
+
+					Nexpose appliances were shipped with a weak default SSH configuration					
+Owners of Nexpose appliances have to apply an update to their systems to fix the issue in the default SSH configuration.
+The devices were shipped with an SSH configuration that allowed obsolete algorithms to be used for key exchange and other functions.
+
+The Nexpose appliances were allowing to used weak and out of date encryption algorithms such as AES192-CBC, Blowfish-CBC, and 3DES-CBC, and KEX algorithms such as diffie-hellman-group-exchange-sha1.
+“Because these algorithms are enabled, attacks involving authentication to the hardware appliances are more likely to succeed. ” states the advisory published by Rapid7.
+“This vulnerability is classified as CWE-327 (Use of a Broken or Risky Cryptographic Algorithm). Given that the SSH connection to the physical appliances uses the ‘administrator’ account, which does have sudo access on the appliance, the CVSS base score for this issue is 8.5.” 
+Nexpose devices designed to help users analyze vulnerabilities and reduce the surface of attack. The issue affects all the Nexpose appliances, owners with root access can fix the problem by editing /etc/ssh/sshd_config file in the appliance to ensure only modern ciphers, key exchange, and MAC algorithms are accepted.
+Disclosure on CVE-2017-5243: Nexpose hardware appliance SSH enabled obsolete algorithms https://t.co/DHI7uLJ5yj (Thanks to @LiamMSomerville)
+— Rapid7 (@rapid7) May 31, 2017
+
+After updating the configuration file, users need to verify that the changes have been correctly applied. Any missing part of the configuration may trigger a syntax error on service restart with consequent loss of connectivity.
+“You can run this command and compare the three output lines with the configuration block above:
+“After verifying the configuration change, restart the SSH service by running “service ssh restart”. Once that completes, verify you can still connect via ssh client to the appliance in a separate terminal. Do not close the original terminal until you’ve successfully connected with a second terminal.” states the advisory.
+“This change should not impact connections from Nexpose instances to the physical appliance. The main impact is shoring up access by SSH clients such that they cannot connect to the appliance using obsolete algorithms,” Huckins wrote.
+The vulnerability could have let an attacker in a privileges position on the network to force an algorithm downgrade between an SSH client and the Nexpose appliance during the authentication phase.
+In order to mitigate the issue, it is possible to remove server-side support for the out of date encryption algorithms.
+Pierluigi Paganini
+(Security Affairs – hacking, Nexpose appliances)

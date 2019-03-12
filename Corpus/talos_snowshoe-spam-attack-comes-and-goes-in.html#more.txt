@@ -1,0 +1,82 @@
+
+Snowshoe Spam Attack Comes and Goes in a Flurry
+
+
+This post is authored by Alex Chiu, Jaeson Schultz and Craig Williams.
+
+Every so often, we observe certain spam campaigns that catch our interest. On August 15, we observed a particular spam campaign that caught our attention because it was using "snowshoe" spam techniques combined with PDF exploitation. While neither of these techniques are new, we have seen a growing trend involving snowshoe spam and we wanted to explain why the bad guys seem to be moving in that direction with a real world example. As you can see from the chart below, we’ve seen the amount of snowshoe spam double since November of 2013.
+
+
+
+Snowshoe spam can be a challenge for some anti-spam detection techniques because it typically uses multiple IP addresses with very low spam volume per IP address. Depending on how an anti-spam technology works, this can cause severe problems with detection. Typically technologies that use multiple defensive layers of protection, like Cisco’s ESA, are much more successful at combating snowshoe spam. We’ve previously discussed these tactics in a previous blog post.
+
+
+
+
+The Spam
+
+Despite the large number of IP addresses used in this spam campaign, the messages themselves appear suspicious due to the spam-like characteristics in the headers and body of the message. Message in this spam campaign have a subject like "inovice 2921411.pdf" where the number in message subject is randomly generated and the word "inovice" is misspelled. The From header in the message varies, but typically contains unusual character strings such as "EOF", "endobj", and "endstream". These messages have little to no content inside the message body itself, but instead have a PDF attachment that the message body refers to in order to entice the user to download and open the attachment. An example of one of the messages we observed follows.
+
+
+
+
+
+
+In taking a closer look at the attachments in this spam campaign, we noticed that all the PDF attachments across all of the messages were the same. The only slight difference was in the attachment filename where the random number in the filename matched the one in the Subject header. A quick analysis using AMP immediately flags the PDF (SHA-256: 2562f92cc72a0217ab58f402d529098246a57267940dc53783ae9a71c8717425) as a Trojan exploiting CVE-2013-2729, an integer overflow vulnerability found in Adobe Reader version families 9.x, 10.x and 11.x.
+
+Another interesting aspect of this spam campaign was its blitz-style nature. We observed the campaign lasted a grand total of about 3 hours from start to finish, but account for almost 10% of the spam volume at one point in the 3 hour interval.
+
+
+
+
+
+
+Freezing Snowshoe Spam in its Tracks
+
+There are several generic ways to mitigate snowshoe spam. One of the best ways to combat snowshoe spam is to rely on more than simple reputation. While the DNS infrastructure is highly mutable - especially when using technologies like Dynamic DNS - the IP infrastructure is not. In this particular spam campaign, a large majority of the spam messages we observed came from a different IP address. Classic snowshoe spam. Here is a list of about 250 IPs we observed participate in this spam campaign.
+
+Snowshoe attacks are designed to evade IP address reputation metrics. Consider the variety in the IP addresses used for this particular attack -- there is very little reuse of IP infrastructure. Despite this, we can still look at other factors, such as email server hygiene, to get an idea if where the message originates from is valid. Many of the IPs deployed in this spam campaign lacked matching forward and reverse DNS — an instant black mark on your record if you aren’t a legitimate mail server. Many of these IPs also had no record of ever sending mail until this campaign started, indicating that the miscreants behind the attack are likely compromising machines with the explicit purpose of turning them into fresh snowshoe infrastructure they can then use to propagate spam to others.
+
+Fortunately, Cisco provides a layered email defense which can respond effectively to this threat. By combining different types of technologies, the success of snowshoe spam is greatly diminished. Cisco provides protection through Outbreak Filters, Spamtraps, and Intelligent Multi Scan. Additionally, by mapping out the attacker’s DNS infrastructure we proactively locate additional potential sources of “badness”. Clients can make use of Advanced Malware Protection (AMP) technology to detect malicious email attachments before they get a foothold inside the network. Together these detection technologies form a formidable combination.
+
+
+IOCs
+
+
+PDF Hash (SHA-256): 2562f92cc72a0217ab58f402d529098246a57267940dc53783ae9a71c8717425
+Sender IP Addresses
+
+
+Conclusion
+
+Invoice style PDF attacks are something we constantly see as threat to our users. The fact that this was such a short campaign in duration was possibly an attempt to avoid detection. Even though this particular spam campaign is very similar to an already well known one, the fact that we still saw it emerge means our users continue to be plagued by such attacks. Unfortunately, users who do not keep their systems up-to-date, do not utilize security technologies, or click on attachments from unknown senders will continue to be affected by these types of attacks. While other email protection devices heavily dependent on reputation may struggle to cover Snowshoe spam, Cisco's ESA has numerous detection techniques to freeze the attacks in their tracks.
+
+
+Protecting Users Against These Threats
+
+
+
+
+CWS or WSA web scanning will prevent the download of such threats.
+
+
+The Network Security protection of IPS and NGFW is ideal to detect and block attempts of malware to communicate with the command and control server.
+
+
+Advanced Malware Protection (AMP) is well suited to detect and block this type of complex threat.
+
+
+ESA detects and blocks this type of attack as it's distributed via email.
+
+
+
+
+
+
+
+
+
+
+
+
+

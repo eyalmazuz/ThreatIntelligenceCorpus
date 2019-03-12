@@ -1,0 +1,13 @@
+RoR Paperclip infested by content type spoofing bug
+Ruby on Rails developers using the Paperclip uploader to receive files need to update to a new version, after a developer turned up an XSS bug in the software that could possibly be extended to remote code execution.
+The new version, here, implements stricter incoming file typing to eliminate the bug.
+What Egor Homakov discovered, here, is that Paperclip had a bug that let him upload files with arbitrary extensions.
+In Paperclip, he explains, the developer is supposed to specify @content_type so that it agrees with the file that's being uploaded, but that isn't checked, so “I crafted a special URL http://www.sakurity.com/img.jpg.htm serving a JPEG file with content-type = image/jpg, but with .htm extension in the path”.
+“Paperclip thinks the file we "supplied" with URL is an image and saves it with original filename (file.jpg.htm). Furthermore, to make Paperclip download your remote file no configuration is required!” he writes. All the user needs do is remove type="file" from the input field.
+That allowed Homakov to put XSS code in the image's EXIF header. Homakov believes that this could be exploited for remote code execution, but he did not test that.
+In the patch, Paperclip's developers write that “Starting at version 4.0.0, all attachments are *required* to include a +content_type validation, a file_name validation, or to explicitly state that +they're not going to have either. *Paperclip will raise an error* if you do not +do this.
+“Also starting at version 4.0.0, Paperclip has another validation that +cannot be turned off. This validation will prevent content type spoofing.” ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

@@ -1,0 +1,151 @@
+
+Research Spotlight: FreeSentry Mitigating use-after-free Vulnerabilities
+
+
+This post was authored by Earl Carter & Yves Younan.
+
+Talos is constantly researching the ways in which threat actors take advantage of security weaknesses to exploit systems. Use-after-free vulnerabilities have become an important class of security problems due to the existence of mitigations that protect against other types of vulnerabilities, such as buffer overflows. Today, Talos is releasing FreeSentry, a mitigation for use-after-free vulnerabilities.
+
+FreeSentry works as a plugin for LLVM with an associated runtime library that tracks pointers when they are set to objects and invalidates them when the memory associated with that object is freed. Our initial approach was published at the 2015 Network and Distributed System Security (NDSS) Symposium in February. The paper can be downloaded here. At CanSecWest 2015, Yves Younan of Talos presented an enhanced version of FreeSentry which included further developments, such as porting the original mitigation from C Intermediate Language (CIL) to LLVM. The CanSecWest slides are available here. Note that the LLVM performance numbers in the CanSecWest presentation were preliminary numbers, and have been updated for this post.
+
+
+
+Installing FreeSentry
+
+The FreeSentry software mitigation can be downloaded here.
+
+After you’ve downloaded the software, please read the README file in the FreeSentry subdirectory for detailed deployment instructions.
+
+DISCLAIMER: this code is in alpha stage, we expect it to break. If there’s any issues, please let us know.
+ 
+
+
+Technical Overview
+
+A use-after-free occurs when memory is accessed after the associated memory has been released. This generally occurs when a dangling pointer is used. A pointer becomes dangling or stale when the associated memory has been released. If the associated memory is reused, the pointer is still considered dangling because the object that it originally referred to is no longer there, but the memory is now inhabited by a new object. Below is an example of a use-after free vulnerability that could be exploited by an attacker.
+
+
+
+
+
+Here is a graphical representation of what could occur when the program runs:
+
+
+
+If an attacker controls the value that’s written to p->integer1, then he can modify the function pointer in object B. When q->function_ptr1() is executed, the attacker’s code will be called instead of the intended function.
+
+FreeSentry protects against this type of attack by tracking pointer assignments and by invalidating dangling pointers when the associated memory is released. Here is what our code would look like if it was compiled with our mitigation and then turned back into readable code (bold values denote an added instruction or change in behavior for an existing one):
+
+
+
+The registerptr() function keeps track of the pointers and associates them with the memory they refer to. If a pointer is set to point to something else, the registerptr() function will update the association. When the free() function is called, it is dynamically intercepted by our mitigation. First the mitigation uses the original free() function to perform the requested deallocation and subsequently all pointers associated with that memory are invalidated. We invalidate pointers by setting their first two bits to one. When this occurs, the pointer will point into memory reserved for the kernel on both Linux and Windows systems. When the pointer is accessed from userland, a segmentation violation will occur which prevents an attacker from exploiting the vulnerability. FreeSentry has a signal handler that will then report that there was an attempted use of a dangling pointer and will subsequently terminate the application.
+
+That’s the basic approach, for this to work we needed to resolve the following issues.
+
+Supporting Data Structures
+Freeing Memory
+Reallocating Memory
+Pointer Arithmetic
+
+
+
+Supporting data structures
+
+We want use the existing pointer representation. There’s two reasons for not changing the current pointer representation. First, C programmers expect to be able to cast a pointer to an integer and back to a pointer. If we change the pointer representation this task becomes harder. Second, if we change the pointer representation, then we would no longer be compatible with existing code that has not been protected with the mitigation (e.g., libraries). If a pointer is twice its expected size then we won’t be able to pass these as parameters to existing functions. To support existing functions, we must store our information out-of-bounds and use lookup tables to associate the pointers and objects with the data we store for them.
+Here is a graphical representation of our data structures:
+
+
+
+Click or Larger Image
+
+
+
+
+
+The information that is registered about a pointer and where it refers to is called the pointer registration information. To link the pointers to objects, two lookup tables are used.
+
+
+object lookup table
+pointer lookup table
+
+
+The first table, which we call the object lookup table, is used to look up all the pointer registration information based on the address of an object. The second lookup table is used to look up that same pointer registration information but uses the address of a pointer and is called the pointer lookup table.
+
+The free() function uses first approach to look up the information: when an object is freed, the pointer registration information is found based on the object’s memory location using the object lookup table. The code that tracks the pointers uses the second approach: based on the address of a pointer, we can find the registration information.
+
+The object lookup table could be eliminated if we transformed the free() calls in programs to pass the address of the pointer to the object being freed instead of passing the address of the object by value. However, this approach would mean that any calls to free() in unprotected code would no longer be able to invalidate the pointers pointing to that memory.
+
+Eliminating the second table is also possible, since we can access the value of the pointer being passed into the registration and can thus look up the registration information based on the object. However this would significantly impact performance as we would need to examine the registration information of all pointers that refer to a specific object to locate the desired pointer’s registration information.
+
+We also need to know the start of the object that a pointer is referencing when adding that pointer to the object’s lookup table. To do this we use a technique based on the one described in “PAriCheck: An Efficient Pointer Arithmetic Checker for C Programs”. A unique value is stored for the memory area that an object inhabits when the object is allocated, called a label. When we register a pointer to an object, we look up the label of the object that the pointer references. That label is then used with the object lookup table to find the pointer registration information, to which we then add the new pointer. Objects are a minimum size and can inhabit multiple memory areas.
+
+To find an object's label we right-shift the address of the object by the minimum object size which gives us the index of the label in the label lookup table, that label is then used as an index into the object lookup table. To find the pointer registration information based on a pointer to the address, we right-shift the pointer by four bits and use that value as an index into the pointer table. Both hash tables are of a fixed size, so a modulo operation is performed to ensure the index points within the hash table.  All pointer registration elements contain references to the next and previous elements for both hash tables to deal with collisions. They also contain the label of the object that is being referenced as well as the address of the pointer being registered.
+
+When a pointer is set to a new object, its pointer registration information is looked up via the pointer lookup table. If present, the pointer is set to point to the new object and is removed from the object lookup table by unlinking it from the doubly linked list of object references. If the object already points to the current object then no actions are performed. If the pointer is not present, a new pointer registration information object is created, and added to the front of the respective hash bucket for both the pointer lookup table and the object lookup table.
+
+
+Freeing memory
+
+When memory is freed, we look up the label of the object in the label lookup table. We use this label as an index into the object lookup table, and retrieve the pointer registration information, which contains both the pointer's address and the object label it refers to. If the stored object label matches the label of the object being freed (we might have retrieved a pointer registration for an object that inhabits the location in the hash table due to bucketing), then we check if the pointer is still referring to the object. This is necessary because the pointer may have changed if it was modified in unprotected code. If it is still pointing to our object, then the pointer is invalidated and the pointer registration information is removed.
+
+This approach may introduce dangling pointers of its own: if the memory that a registered pointer lives on is freed, then accessing that pointer via the pointer registration information may cause an invalid pointer access. Because we check the value of the pointer and make sure it still points to our object before invalidating it, this is not an issue in cases where the memory is still accessible. However, invalid pointer access becomes a problem when the page on which the pointer is located becomes invalid. To ensure that the program does not crash as we access pointers, we keep a bit-array that stores the liveness of a page and check if the page is still alive before accessing any pointer stored on it. We keep this bit-array up to date by intercepting calls to mmap(), munmap() and mremap(), and update the bit-array depending on the removal or addition of pages.
+
+
+Reallocating memory
+
+The realloc() function changes the size of a memory block given two parameters: a ptr, and a size in bytes. When realloc() is called to increase or decrease the size of a memory region, the pointer that is returned could be different from the pointer that is passed in as argument. The only guarantee that realloc() gives is that the old data will remain intact up to the smallest size (i.e., min(oldsize, newsize)). Due to this lack of guarantee, any call to realloc() should invalidate all pointers to the old object. However, our goal is to remain as unintrusive as possible, if there's no potential for harm. As such, we will only invalidate pointers when the new pointer returned by realloc() is different from the old pointer passed into the function. If FreeSentry is used as a testing tool to detect as many use-after-frees as possible, then it is beneficial to turn on invalidating of all the old pointers to ensure the widest coverage possible.
+
+When realloc() allocates new memory, it copies the old data over to the new memory location and subsequently frees the old memory location. Any pointers to the old memory location are now stale.
+
+
+Pointer arithmetic
+
+If simple pointer arithmetic occurs, increasing or decreasing the value of a single pointer, then we do not consider this as a change in the target object and thus no tracking is added at compile time. This is due to the fact that if no buffer overflows exist, we can assume that an object will stay within the bounds of the object it refers to. Out-of-bounds pointers can be created this way, but they simply will be considered to still point within bounds by our implementation. However these pointers will not be invalidated when the object is freed as we expect the values to be in bounds at the time of deallocation.
+
+To provides maximum compatibility for FreeSentry: if a pointer is changed in unprotected code and now points to a new object, which might be immediately adjacent to the object being freed, then we can’t invalidate it if it no longer points within the bounds of the original object. If pointer arithmetic occurs where a value is assigned to a pointer based on arithmetic with a different pointer, then an out-of-bounds value can still occur which can cause incompatibility with our approach. If the out-of-bounds pointer points to a new memory location that is subsequently freed, then the pointer will be invalidated. Subsequently, if new pointer arithmetic occurs on this out-of-bounds pointer that would make it go in bounds again, then the result will still be invalid. This type of incompatibility only occurs with programs that generate illegal out-of-bounds values (i.e., not compatible with the C standard) and can be solved by combining our approach with a bounds checker that supports illegal out-of-bounds values.
+Another possibility that can exist is pointer arithmetic with freed values. For example, below is a piece of code that FreeSentry would break when used naively:
+
+
+
+Whether the code in listing above is valid, is arguable: it is valid in C to subtract two pointers that refer to the same object. One might argue that if the object no longer exists, then the pointers can no longer point to the same object and thus one might expect undefined behavior by the compiler. However, even if the memory has been reused, as long as the pointers are not dereferenced, then no exploitable use-after-free vulnerability has occurred. If our mitigation simply invalidated both pointers without taking this possibility into account, some programs might break.
+
+To achieve maximum compatibility, our mitigation will invalidate pointers by making them point to a reserved area of memory. In our implementation, we assume that the top 1GB of memory has permissions that our user-mode program cannot access. This is the case for both 32-bit and 64-bit versions of both Linux and Windows, where the top areas of memory in a user-mode process are reserved for the kernel. Any access to the kernel address space, will result in a segmentation fault. This allows our implementation to invalidate a pointer by simply setting the first two bits to one. This allows this type of arithmetic to keep working. In cases where an access to this memory area would not result in a segmentation fault, this issue can be resolved by simply mapping an area of memory manually. This will only use up address space and page table entries, but the reserved area will not be backed by physical memory because it is not used to store any data.
+
+
+Limitations
+
+One limitation in our approach is that it does not track pointers that are not copied as pointers, (i.e., if a pointer is copied as a different type, this will not be tracked by our approach). This can occur for example, when a programmer calls the memcpy() function to copy one area of memory to another. The memory is copied as a void type and not through pointer assignment which results in the copy not being tracked by our mitigation. While our approach cannot automatically detect the copying, it does allow for a programmer to register the pointers in the new memory area by manually calling the registerptr() function with the address of the newly copied pointer.
+
+
+Unprotected code
+
+Unmodified code that is linked to code that is protected by our mitigation will work without issues. Any pointer assignments and propagation in this unmodified code will not be tracked by our approach and any dangling pointers that result from this code will not be detected. However, calls to memory allocation functions will still be intercepted, allowing the correct labelling of newly allocated or reallocated memory and the correct invalidation of tracked pointers.
+
+We provide the ability for a programmer to manually opt out of tracking by setting a function attribute. This allows for flexibility when deploying the FreeSentry, allowing a programmer to improve performance by making sure particular often-called functions are safe. This can be particularly useful when the overhead of running our approach is too high for regular deployment. A security specialist can review specific functions where overhead is too high and once those functions are verified as safe, you can opt out mitigation specifically on those functions, thus improving performance.
+
+It is important to note, that when opting out mitigation, the pointers in that function will not be tracked, however, all memory allocations and deallocations are still tracked because the calls to malloc and free are still intercepted. What this means is that if we opt out of a memory allocation wrapping function, then dangling pointers in that wrapper function will not be invalidated, but all pointers in code that calls this function will still be correctly tracked and invalidated.
+
+
+Performance Evaluation
+
+To measure the overhead of our approach, we ran the SPEC CPU2000 benchmarks that would compile with LLVM without changes and we did the same for the SPEC CPU2006 benchmarks. The performance overhead of our approach can be seen in the following graph:
+
+
+
+The base value is always one and that is the base runtime for our slightly modified LLVM without our mitigation enabled. The second value is the runtime of FreeSentry relative to the base LLVM run. As can be seen, in some cases the overhead is unacceptably high, while in others it’s hardly noticeable. The geometric mean overhead of our approach for all these benchmarked programs is 53%.  While these numbers are significantly higher than our CIL implementation, we believe we can improve performance to rival the CIL implementation in future iterations.
+
+
+What’s next
+
+Our immediate priority is to improve performance of the LLVM version to bring it more in line with our CIL version. Our current implementation has also only been tested on 32-bit systems, so one of our next steps will be to port it to 64-bit. We also currently do not support protecting against use-after-frees that occur when a dangling pointer exists that refers to stack memory. While our approach can support this and is discussed in the paper (and was implemented in the CIL version), we didn’t port this approach to the LLVM version because we don’t consider the overhead worth it compared to the rarity of such a vulnerability being exploitable. We may port this in future versions of the mitigation.
+
+Finally one major addition that we would like to add in the future is to port the PAriCheck bounds checker to LLVM to allow it to be enabled together with FreeSentry. PAriCheck uses some of the same supporting data structures (object labeling) to perform bounds checks, so the overhead of combining the mitigations should be closer to the overhead of the worst performing mitigation.
+
+
+Conclusion
+
+Programming in C and C++ is error-prone, but they are still very popular languages. We hope to move into a direction that makes these languages as secure as possible, while relying on as little programmer intervention as possible. FreeSentry can run without any programmer intervention at all, besides enabling the correct compiler and linker flags. However, we do also think it’s important that mitigations provide programmers with the ability to control the mitigation if they so desire.
+
+Many mitigations are dismissed as impractical solely due to performance considerations. While performance is important, security can be equally important. Providing programmers simple to use robust controls enables mitigations like FreeSentry to be easily deployed in a selective fashion. Moving to an environment where we can enable mitigations selectively for significant pieces of code, rather than having to make the choice between completely enabling or disabling a mitigation, is important to enable widespread use of these mitigation techniques.
+
+

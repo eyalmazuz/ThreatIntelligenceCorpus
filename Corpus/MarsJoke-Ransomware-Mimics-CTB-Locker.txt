@@ -1,0 +1,67 @@
+MarsJoke Ransomware Mimics CTB-Locker
+Overview
+Ransomware in its various forms continues to make headlines as much for high-profile network disruptions as for the ubiquity of attacks among consumers. We recently noted the non-linear growth of ransomware variants and now a new type has emerged, dubbed MarsJoke.
+Proofpoint researchers originally spotted the MarsJoke ransomware in late August [1] by trawling through our repository of unknown malware. However, beginning on September 22, 2016, we detected the first large-scale email campaign distributing MarsJoke. This ongoing campaign appears to target primarily state and local government agencies and educational institutions in the United States.
+The targeting of state and local government agencies as well as the distribution methods are very similar to a CryptFile2 campaign we described in August [2]. Gary Warners’s blog also reported on this and similar campaigns, indicating that a well-known botnet, Kelihos, is responsible for distributing this spam [4][5][6].
+Email Campaign
+On September 22, Proofpoint detected a large MarsJoke ransomware email campaign. Emails contained URLs linking to an executable file named "file_6.exe" hosted on various sites with recently registered domains, apparently for the purpose of supporting this campaign. This is a departure from the much more frequent attached document campaigns we have observed recently with a range of malware, including the widely distributed Locky ransomware. The messages in this campaign used a convincing email body and had a variety of Subject lines referencing a major national air carrier, adding an air of legitimacy to the lures with stolen branding. Subjects included:
+
+Figure 1: Email using a convincing lure and fraudulent branding to deliver the malicious ransomware URLs
+This campaign is primarily aimed at state and local government agencies, followed by K-12 educational institutions. Messages came through in smaller numbers for healthcare, telecommunications, insurance, and several other verticals.
+
+Figure 2: Vertical targeting by indexed message volume
+Analysis
+We chose the name for this ransomware based on a string contained within the code: “HelloWorldItsJokeFromMars”. Visually, it mimics the style of CTB-Locker [3], including the helper application displayed to the user and the onion portal.
+To alert victims that they are infected and their files are encrypted, this ransomware creates “!!! For Decrypt !!!.bat”, “!!! Readme For Decrypt !!!.txt”, and “ReadMeFilesDecrypt!!!.txt” files sprinkled throughout the victim’s file system, similar to many other types of ransomware.
+
+Figure 3: Ransomware readme files
+Encrypted files keep their original extension. Temporary files with “.a19” and “.ap19” file extensions are used during the encryption process but are deleted when the process is finished.
+
+Figure 4: Temporary files used during encryption
+The readme file instructs infected users to either follow instructions in the locker window but also have an option to visit an onion portal after installing a Tor browser, where they can receive the same instructions.
+
+Figure 5: MarsJoke text file ransom note contents
+The victim’s Desktop background is changed and a dialog pops up presenting the ransom message. This dialog is available in several languages, including English (the default during testing), Russian, Italian, Spanish, and Ukrainian. Victims have 96 hours to submit the ransom of 0.7 BTC (currently 319.98 USD) before files are deleted.
+
+Figure 5: Victim’s Desktop background is changed
+The network communication protocol consists of checking in with the command and control (C&C) server to report a new infection, followed by a more verbose check-in reporting various fields such as signature, malware version, etc., transmitting URL-encoded, base64-encoded data.
+
+Figure 6: Malware initial C&C checkin
+
+Figure 7: Malware follow up C&C check-in
+Finally, the ransomware provides the user with an onion-hosted web panel with which to interact and get instructions on how to pay the ransom.
+
+Figure 8: Onion-hosted web panel that also provides instructions on how to pay the ransom.
+Conclusion
+Ransomware has become a billion dollar a year industry for cybercriminals. In the case of the MarsJoke campaign described here, K12 educational institutions and state and local governments are often seen as easy targets because they lack the infrastructure and funding to ensure robust backups and strong defensive resources are in place to prevent and mitigate infections. MarsJoke does not appear to be "just another ransomware," though. The message volume and targeting associated with this campaign bear further monitoring as attackers look to monetize new variants and old strains saturate potential victims.
+Indicators of Compromise (IOCs)
+IOC
+IOC Type
+Description
+[hxxp://traking[.]accountant/download/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]download/download/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]host/download/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]loan/download/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]pw/dw/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]space/download/file_6[.]exe]
+URL
+Hosted MarsJoke
+[hxxp://traking[.]webcam/dwnload/file_6[.]exe]
+URL
+Hosted MarsJoke
+[buxnfuoim27a3yvh[.]onion[.]link]
+URL
+Ransomware C&C
+7e60a0d9e9f6a8ad984439da7b3d7f2e2647b0a14581e642e926d5450fe5c4c6
+SHA256
+MarsJoke

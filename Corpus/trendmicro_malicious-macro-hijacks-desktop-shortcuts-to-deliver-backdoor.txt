@@ -1,0 +1,61 @@
+Malicious Macro Hijacks Desktop Shortcuts to Deliver Backdoor
+by Loseway Lu
+Despite being around for decades, cybercriminals are still using malicious macro to deliver malware, albeit in more creative ways to make them more effective. The threat actors behind a recent case used macro in a more roundabout way, with a macro that searches for specific shortcut files in the user’s system, which it replaces with one that points to its downloaded malware. The downloaded malware executes when the user clicks on the modified desktop shortcut.
+After the malware executes, it recovers the original shortcut file to open the correct application again. The malware then “assembles” its payloads. Instead of using its own created tools, it downloads common tools available on the internet like various Windows tools, WinRAR, and Ammyy Admin to gather information and send back via SMTP.
+While the macro and the downloaded malware are not sophisticated, this method is still interesting mostly because it has signs of continuing what seems to be unfinished development.
+
+Figure 1. Malware infection chain
+The document
+The infection chain for this particular attack begins with the malicious document, which is written in Russian, and comes with an image of a house. The content instructs the user to enable macros to open the full document.
+
+Figure 2. Snippet of the malicious document
+The user needs to enable the macro for it to work, since Microsoft disabled macros by default specifically to avoid potential security risks. Enabling macros, as Microsoft security notification will state, makes the user’s computer vulnerable to potentially malicious code.
+How the macro helps hijack shortcuts
+Once the user enables macros, it then tries to search for shortcut files on the user’s desktop to replace to its corresponding linked files. It targets mainly five shortcuts, that of Skype, Google Chrome, Mozilla Firefox, Opera, and Internet Explorer. Once it finds a match, it downloads the malware according to its name and environment from Google Drive and GitHub. Upon checking, the malware files seem to have been removed or are no longer present online.
+Going into more detail: If, for example, it finds the shortcut for Google Chrome on the user’s desktop it will go through the following steps.
+
+Figure 3. Screenshot of the macro indicating different paths to download payload
+
+Figure 4. New shortcut file pointing to the malware
+It will also change the link for the Quick Launch bar, with these remaining steps.
+These steps tweak the target so that the user executes the malware (instead of the program) when the user clicks on the shortcut from the desktop or the Quick Launch bar.
+How the malware runs a malicious service and covers its tracks
+Once executed, the malware first drops WpmPrvSE.exe (detected as TROJ_DLOADER.COGBA) in system32 or SysWoW64, depending on the Windows version, then starts a service called WPM Provider Host. Looking at this service’s properties shows that it has the description of “WPM Provider Host – System-mode WPM Provider Framework Host Process.”
+
+Figure 5. Screenshot of the service and its properties
+It also drops rar.exe and a registration key in System32 or SysWoW64 for later use. Finally, it recovers the previously replaced shortcut files in the desktop and quick launch to cover its tracks.
+How the malicious service works
+While the malware is working, the malicious service that the malware activated would already be downloading the final payloads. The service first sets a time interval of 1 hour (3,600,000 ms) for each time it downloads a RAR archive from Google Drive and GitHub. It uses the previously dropped WinRAR tool to open the archive, which contains an installer file, some config files, and some other tools that will be “assembled” together for use.
+
+Figure 6. Rar archive content
+The service runs installer.exe (detected as HKTL_RADMIN) from the RAR archive. Installer.exe uses the certutil command-line program, a part of Windows’ Certificate Services that can also decode and encode Base 64. The certutil will decode the wsvchost.key (also found in the archive) to wsvchost.exe. Wsvchost.exe is actually Ammyy Admin 3.5, a known remote admin tool. It creates a folder (under C:/ProgramData/Ammyy) that contains Ammy Admin settings and places the file setting3.bin in the folder, which changes the permissions settings of the Ammyy Admin. The settings will now allow a specific Ammyy Admin ID (most likely the malware actor’s) full access to the infected system.
+
+Figure 7. ID with full access
+It then runs the shell script stop_ammmyy.ps1, which forces whatever Ammyy processes that were already working before the attack to stop, if there were any. It is difficult to determine what this part of the attack chain is for, as this step was not seen in the analysis of an earlier version of this malware, and is counterproductive to the entire attack.
+Meanwhile, the installer file also starts another service called WSVCHost, which runs wsvchost.exe (Ammyy Admin 3.5), and continues to use procdump to dump WSVCHost related processes from memory. Two of them can be seen in our sample.
+
+Figure 8. Screenshot of the WSVCHost
+
+Figure 9. Two related processes procdump tries to dump
+After the step above, it will again use certutil to encode the dump files and then use WinRAR to compress the dump files into two files, (dump1.txt.img and dump2.txt.img in the sample) which it places in one “treasure” folder (C:\Windows\System32\send_treasure in the sample).
+
+Figure 10. Screenshot of the “treasure” folder
+The two files are sent back to the malware actor as attachments with some system information and execution logs via SMTP. It does so by connecting to the mail servers rambler.ru and meta.ua through port 465. Sending to two different mail servers may indicate that the malware author wants to ensure successful information delivery. The SMTP credentials are hardcoded but can be updated through the file in the downloaded archive, mails.ini.
+
+Figure 11. Screenshot of malware connecting to port 465
+Information in the dump files
+When we looked into the dump files, we managed to find the router IP addresses and an Ammyy Admin ID. Manually installing Ammyy Admin allowed us to view the settings window and confirm that the ID of the system matches the one found in the file dump. Knowing the Ammyy Admin ID of the targeted system, and having granted full access to the attacker’s ID via the malware, the attacker should be able to access the targeted system through Ammyy Admin.
+
+Figure 12. Router IP address and the Ammyy Admin ID
+
+Figure 13. Manually installed Ammyy Admin window
+Aside from the user’s Ammyy Admin ID, the dump file’s other contents seem to have no immediate use. It is possible that the attacker is simply gathering additional information. During our analysis, we also noticed how some downloaded files were changed and updated, which indicates that the author is still developing the malware. The malware might still be in the PoC stage and will have further versions.
+Solutions and mitigation
+This malware, from the use of its macro to its installation, exhibits very unusual behavior and is likely still under development. We believe that the malware is not widely spread and have had only a few victims so far. However, it is important to be aware of this malware and method of attack, as newer and improved versions may be in the works.
+Microsoft has macros disabled by default, as they are aware of how malware actors exploit the embedded codes. Gaining familiarity with the system’s macro settings can help users make the best use of macro while still filtering attacks using the code, but it’s generally recommended to avoid downloading and enabling macro for documents from new or unknown sources.
+As an added layer of defense, Trend Micro endpoint solutions such as Trend Micro™ Smart Protection Suites and Worry-Free™ Business Security can protect users and businesses from similar threats by detecting malicious files and spammed messages as well as blocking all related malicious URLs. Trend Micro Deep Discovery™ has an email inspection layer that can protect enterprises by detecting malicious attachment and URLs.
+Trend Micro™ Hosted Email Security is a no-maintenance cloud solution that delivers continuously updated protection to stop spam, malware, spear phishing, ransomware, and advanced targeted attacks before they reach the network. It protects Microsoft Exchange, Microsoft Office 365, Google Apps, and other hosted and on-premises email solutions.
+Trend Micro™ OfficeScan™ with XGen™ endpoint security infuses high-fidelity machine learning with other detection technologies and global threat intelligence for comprehensive protection against advanced malware.
+Indicators of compromise (IoCs):
+ 
+ 

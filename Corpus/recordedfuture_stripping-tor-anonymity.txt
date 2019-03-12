@@ -1,0 +1,58 @@
+Stripping Tor Anonymity: Database Dumps, Illegal Services, Malicious Actors, Oh My!
+By Nick Espinoza on April 22, 2015
+Our team recently discussed these findings during a live webinar. Watch now.
+Malicious actors using the Onion Router (Tor) value the anonymity the network provides – as it allows connections through a series of virtual tunnels, obfuscating who is accessing a site or service, what is being accessed, and what is being sent and received.
+Recorded Future engaged in analysis of our data, searching for references to Tor exit node IP addresses. We identified some unique data points referencing those exit nodes and began exploratory analysis of this information. Through link and network analysis of this open source threat intelligence, we’re able to tie the use of Tor exit nodes to the use of illegal services and specific malicious actors, as well as to identify conflict between competing hackers and services.
+
+We identified the following:
+As seen in the following sections, in some cases this analysis effectively strips away the anonymity and security of Tor through novel and open exploration of a wealth of data in Recorded Future.
+Analysis began by importing the list of known Tor exit nodes into Recorded Future as a list. This list will provide us with a single placeholder object (for the ~1,200 exit node IP addresses) that we can utilize in simple or complex search queries in Recorded Future.
+
+Reviewing our result set, we uncovered a range of interesting data points such as blocklists, yara rules referencing these IPs, random chatroom logs, and brute force attempts associated with these Tor exit node IPs .
+
+However, we continually came across what looked to be structured code containing references to the Tor exit nodes. After reviewing the references, it was a SQL statement writing information into tables – in this case, databases containing user registration information, access logs, and related data. We then decided to hone in on this information as it seemed to be for illegal services accessed through Tor.
+In this example, we see a database log for a user authenticating to a paid DDoS tool, cyberboot[.]eu. This user utilized Tor exit node 95.130.9.89 to access the illegal tool (see video of the service here).
+
+This database was dumped by a hacker, FALCKO, posting cyberbooter[.]eu’s content. We were able to reconstruct the original dump in Recorded Future without having to access Pastebin directly (this is due to security concerns or if the paste site operator had removed the content already).
+
+Looking at the cached paste site posting, we’re able to determine the following structure for the “iplogs” table:
+
+From this, we’ve determined userID 79 (that used Tor exit node 95.130.9.89 to access the tool as seen above) maps to the following malicious actor:
+
+This user’s online hacker handle is HeeroSecurity. In addition, the user’s personal email is sltbag@hotmal.fr, their hashed password XXXXXXXXXXXXX55cd4ec7407efa81ecb54867105. Any crafty malicious actor can crack this hashed password – which in this case uncovers a French phrase, “XXXXtamere” as HeeroSecurity’s plaintext password. Interestingly, the users email and password and the original DB dump are in French giving us an idea to the actor’s provenance as well.
+Looking closely at HeeroSecurity within Recorded Future, we note a few things:
+XTREMESQUAD is still active today, deploying against targets – while HeeroSecurity likely continues to buy DDoS services and deploying skiddie tools.
+But what about FALCKO, the malicious actor who hacked cyberboot[.]eu?
+A search in Recorded Future for FALCKO, the malicious actor that breached cyberboot[.]eu, surfaced great context on his online activity.
+The most recent reference from March 16, 2015 indicates FALCKO is the admin of network-stresser[.]net after his service was breached by MethodMan2 and he was enumerated as the first user, with hashed password XXXXXXXXXXef05d00a32e287edee9501e15e5f79 and assigned the role of “Admin.”
+
+
+In addition, Falcko makes an effort to breach other illegal services for self promotion. On April 11, 2015, he dumped the DB contents of DDoS service competitor, ddos-city[.]fr.
+
+Amongst others tools and services, he flagged that hackandmodz[.]net incorporated remote access trojans (RATs) into the tools they distributed, capturing incriminating chat logs.
+
+In a different posting, a malicious actor DVSUNK/DVZUNK was using Tor exit node 188.138.1.229 to access an online DDoS tool.
+
+While DVSUNK/DVZUNK is uninteresting and has minimized his online footprint, we can see some interesting information in the Pastebin dump (beyond mere users/hashed passwords and IPs). This breach is tied to a SQL database used by network-stresser[.]net. If you recall, this is the service FALCKO runs.
+
+In this case, we can see a malicious actor, OnlyPwnd, targeted FALCKO/network-stresser[.]net and dumped their DB in the same way FALCKO targeted cyberboot[.]eu. And just as FALCKO promoted his tools, OnlyPwned promotes his site powerapi[.]fr – a very funny circle of events and example of in-fighting in the booter community.
+Reviewing our initial dataset, we noted the dumped database of another DDoS tool, deathstresser[.]com. Connecting to this service via Tor was a malicious actor named suru.
+
+Interestingly, the database was breached and dumped by a Twitter user @lollsuru.
+
+We reviewed the deathstresser[.]com database further, finding him in the logs – registering under suru@riseup.net, with hashed password 7abdb68208a51afac014e35cfad421d52b6b3e41.
+
+Searching on that handle, we can see he’s an active malicious actor today. In addition, deathstresser[.]com is still compromised and defaced today and we can see ties to Team Carbonic and other crews there.
+Recorded Future analysts made note of a user, Harden, making use of Tor for accessing DDoS tool deathstresser[.]com.
+
+Reviewing the SQL table for login values, we note Harden is a user who utilized email address simmi.fords@gmail.com for registration.
+Pivoting off of that uniquely identifying email address, we searched for “Simmi.Fords” in Recorded Future. We founds links to that email being used in registration for the LizardSquad tool, LizardStresser with the username “Davie” and password associated with the login name.
+
+This is indicative of an increasingly small world of actors interested in these tools, and opens the possibility for intelligence professionals to further enumerate hacker handles, emails, and passwords from these dumps for further link and network analysis in Recorded Future and other platforms.
+This blog post is an exercise in network and link analysis in our product. We sought to investigate unique references to Tor exit nodes. This uncovers users who are seeking anonymity through their use of Tor and are referenced in open source data harvested in our over 650,000 sources today. We continually pivoted on unique information uncovered, identifying a fuller understanding of threat actors, services, tools, techniques, protocols used, and much more.
+
+Above: Example of network identified during analysis.
+It’s clear if malicious actors use Tor to access illegal sites and services, they’re only as secure as those services are. By using unique emails, legitimate passwords and handles on poorly secured Web applications that are breached, they open themselves for identification by interested parties with access to broad datasets and platforms such as Recorded Future.
+In this case, they’re mostly script kiddies involved in defacement and paid denial of service attacks. However, Recorded Future’s capabilities to surface atypical individuals like this can be easily replicated across datasets and unique use cases today. We’re continuing to monitor for unique activity related to Tor exit nodes across various media types such as forums, paste sites, social media, and more.
+—
+Recorded Future regularly works with the United States Government and private companies to identify emerging threats including cyber attacks. No privileged information was included in this analysis. This analysis was not conducted on behalf of any Recorded Future client.

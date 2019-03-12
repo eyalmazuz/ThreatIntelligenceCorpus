@@ -1,0 +1,141 @@
+
+Unreal Tournament 99 Server On Ubuntu 12.04 (AWS)
+
+
+By Brad Antoniewicz.
+
+
+We do a lot of "team building" at Foundstone - it comes in all varieties. This week's activity was an Unreal Tournament LAN Party, and I figured I'd share the setup in case anyone else wanted to do the same - not particularly security related but still fun :)
+Initially I created a dedicated Ubuntu VM however it didn't scale well over our internal VPN with various users, so instead I opt'ed for an Amazon Web Services based system.
+
+
+
+
+
+
+
+ Keep in mind this configuration is intended to use on a temporary, as needed, basis. Also this is a non-critical server on an open network. If your situation is different or you intend to host a game for not so trusted people, you might want to check out some UT99 Admin forums for additional anti-cheating and general security protections for dedicated UT servers. 
+Creating the Instance
+The EC2 instance configuration is pretty straightforward. Use the Classic Wizard:
+
+
+Select "Ubuntu Server 12.04.1 (LTS)", be sure to select 32-bit or you'll run into some problems later on.
+
+
+I selected "No preference" for the geographic region in which the instance resides since we'll be having users join globally.
+
+
+Also set any advanced preferences, which I left default.
+
+
+
+The storage configuration doesn't really matter since it's just a temporary use server.
+
+
+Set tags if you wish, since I dont have many AWS instances, I don't have much use for them so I left blank:
+
+
+Create your SSH keys so you can remotely connect or use existing ones. I created a special key pair for this server:
+
+Firewall Rules
+The next thing you'll need to do is set up firewall rules. The default requirement is UDP 7777, which may work for you. In the end, I used a different port to help us get around any outbound filtering that might be in place on the various networks our players would be originating from. You'll also need to allow TCP22 for management.
+
+Elastic IP
+Finally, reserve and associate an Elastic IP to the instance so that your users don't have to use a long hostname when defining your server (within "Open Location" in the game).
+
+Ubuntu Configuration
+
+For the most part will be following the configuration detailed on the Ubuntu help pages. With the instance created, you'll need to SSH into it to perform additional configuration. Using you SSH key (I named mine utt9.pem) connect the provided in the details of your newly created instance:
+ user@somehost:~$ mv ut99.pem ~/.ssh/
+ user@somehost:~$ chmod 400 ~/.ssh/ut99.pem
+ user@somehost:~$ ssh -i ~/.ssh/ut99.pem ubuntu@your.amazon.instance.host.com
+
+
+
+Once connected, you'll need to install some packages so that everything runs smoothly:
+ ubuntu@aws:~$ sudo apt-get update
+ ubuntu@aws:~$ sudo apt-get install unrar-free libsm-dev libxi6
+
+
+
+Also the installation requires libgtk-1.2 which is long outdated. You can use older binary packages to get things working:
+ ubuntu@aws:~$ wget https://launchpad.net/ubuntu/+source/glib1.2/1.2.10-19build1/+build/462715/+files/libglib1.2ldbl_1.2.10-19build1_i386.deb
+ ubuntu@aws:~$ wget https://launchpad.net/ubuntu/+source/gtk+1.2/1.2.10-18.1build2/+build/484191/+files/libgtk1.2_1.2.10-18.1build2_i386.deb
+ ubuntu@aws:~$ wget https://launchpad.net/ubuntu/+source/gtk+1.2/1.2.10-18.1build2/+build/484191/+files/libgtk1.2-common_1.2.10-18.1build2_all.deb
+ ubuntu@aws:~$ sudo dpkg -i libglib1.2ldbl_1.2.10-19build1_i386.deb
+ ubuntu@aws:~$ sudo dpkg -i libgtk1.2-common_1.2.10-18.1build2_all.deb
+ ubuntu@aws:~$ sudo dpkg -i libgtk1.2_1.2.10-18.1build2_i386.deb
+ ubuntu@aws:~$ sudo ldconfig
+
+
+Installation CDs
+If you don't have your original installation ISOs, life will be painful until you find them. However once you do, mount them both at the same time (the installation will automatically detect them or prompt you to mount):
+ ubuntu@aws:~$ mkdir m1 m2
+ ubuntu@aws:~$ sudo mount -o loop UT-GOTY-CD1.iso m1
+ ubuntu@aws:~$ sudo mount -o loop UT-GOTY-CD2.iso m2
+
+
+
+The Linux Installers for Linux Gamers project offers tons of ways to play older OpenGL based games on Linux. They have a specific page dedicated to UT99. Go there and download the multilanguage installer and the bonus pack. Even if you're using the GOTY (Game of the Year) edition, don't use the GOTY specific installer because it doesn't ever seem to work. Download the following:
+http://www.liflg.org/?what=dl&catid=6&gameid=51&filename=unreal.tournament_436-multilanguage.run
+http://www.liflg.org/?what=dl&catid=6&gameid=51&filename=unreal.tournament.official.bonus.pack.collection.run
+
+With your ISOs mounted and the installers downloaded, start the installation. You can take all of the default options and be fine:
+ ubuntu@aws:~$ chmod +x unreal.tournament_436-multilanguage.run
+ ubuntu@aws:~$ sudo ./unreal.tournament_436-multilanguage.run
+
+
+Also install the bonus pack and use its default options:
+ ubuntu@aws:~$ chmod +x unreal.tournament.official.bonus.pack.collection.run
+ ubuntu@aws:~$ sudo ./unreal.tournament.official.bonus.pack.collection.run
+
+
+
+For whatever reason the maps are all compressed and won't work until you decompress them. To do so just:
+
+ ubuntu@aws:~$ cd /usr/local/games/ut/System
+ ubuntu@aws:/usr/local/games/ut/System$ for i in ../Maps/*.uz ; do sudo ./ucc-bin decompress $i -nohomedir ; done
+ ubuntu@aws:/usr/local/games/ut/System$ sudo mv *.unr ../Maps
+
+
+
+You're Done! Now you can start the game:
+ ubuntu@aws:~$ cd /usr/local/games/ut/System
+ ubuntu@aws:/usr/local/games/ut/System$ ./ucc-bin server DM-Turbine
+
+
+
+Alternatively, you can use the ucc binary that gets installed as part of the Loki installer.
+ ubuntu@aws:~/$ ucc server
+
+
+UnrealTournament.ini
+
+The /usr/local/games/ut/System/UnrealTournament.ini file contains all of the server configuration. When you run it as a non-root user (preferred) it'll use the one within ~/.loki/ut/System/UnrealTournament.ini. The easy items you'll want to set are:
+ [Engine.GameReplicationInfo]
+ServerName=Foundstone Server
+ShortName=URMOM
+AdminName=Brad
+MOTDLine1=Your Mom is So Hawt!
+
+
+
+I've also set the following to hopefully speed up connections:
+ [IpDrv.TcpNetDriver]
+MaxClientRate=5000
+
+
+
+And finally, i set up some initial bots to keep the game interesting plus some frag/time limits:
+ [Botpack.DeathMatchPlus]
+MinPlayers=6
+FragLimit=15
+TimeLimit=10
+InitialBots=1
+
+
+
+Enjoy!
+What settings do you like to use in your UnrealTournament.ini? Let us know in the comments below!
+
+

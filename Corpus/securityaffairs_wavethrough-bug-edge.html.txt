@@ -1,0 +1,23 @@
+
+					Wavethrough CVE-2018-8235 flaw in Microsoft Edge leaks sensitive data					
+A bug in the Edge browser addressed by latest Microsoft Patch Tuesday for June 2018 could be exploited by attackers via malicious or compromised websites to read restricted data.
+The flaw was reported by Google developer Jake Archibald, it was tracked as CVE-2018-8235 and ties the way the browser handles requests of different origins.
+“A security feature bypass vulnerability exists when Microsoft Edge improperly handles requests of different origins.” reads the security advisory published by Microsoft. 
+“The vulnerability allows Microsoft Edge to bypass Same-Origin Policy (SOP) restrictions, and to allow requests that should otherwise be ignored. An attacker who successfully exploited the vulnerability could force the browser to send data that would otherwise be restricted.” 
+An attacker could exploit the vulnerability to force the browser to leak restricted data. The attack scenarios could involve maliciously crafted websites, compromised domains, or websites that accept or host content provided by the user or advertisements.
+The flaw was dubbed Wavethrough because the issue occurs when a site leverages service for the loading of multimedia content, and the < audio > web API, which leverages “range” requests.
+“Browsers use this for resuming downloads, but it’s also used by media elements if the user seeks the media, so it can go straight to that point without downloading everything before it, or to pick up metadata if it’s one of those annoying media formats that has important metadata at the end of the file.” wrote Archibald.
+“Unfortunately, via a service worker, that Range header was going missing (dun-dun-dunnnnnnnnn!). This is because media elements make what we call “no-cors” requests. Let’s push that onto the stack too”
+The problem is caused by the fact that  the Range header was missing via a service worker because media elements make “no-cors” requests.
+“If you fetch() something from another origin, that origin has to give you permission to view the response. By default the request is made without cookies, and if you want cookies to be involved, the origin has to give extra permission for that.” continues the researcher.
+“If you want to send fancy headers, the browser checks with the origin first, before making the request with the fancy headers. This is known as CORS.”
+
+The expert highlighted that using special headers, the browser might also check with the origin before making the request, but some APIs ignore the checks resulting in the leakage of sensitive data.
+The researcher observed that a “No-cors” request is sent with cookies and receive opaque responses, this implies that some APIs may access the data in these responses.
+“Take <img> for instance. If you include an <img> that points to another origin, it’ll make a no-cors request to that origin using that origin’s cookies. If valid image data is returned, it’ll display on your site. Although you can’t access the pixel data of that image, data is still leaked through the width and height of the image. You also know whether or not you received valid image data.” concluded the expert.
+“Let’s say there’s an image that’s only accessible if the user is logged into a particular site. An attacker can tell from the load/error event of the <img> whether that user is logged into that site. The user’s privacy has been compromised. Yaaaay.” 
+Archibald described an attack scenario based on a specially crafted website that allowed him to discover that the beta and nightly versions of Firefox could allow the redirect and eventually exposed the duration of the requested audio. The bug was already patched by Mozilla.
+The expert discovered that Edge was vulnerable, but the browser also allowed the resulting audio to pass through the web audio API. An attacker could exploit the flaw to monitor the samples being played. Expert noticed that the request is made with cookies, this means that the attack revealed content otherwise accessible only if the user is logged in.
+“It means you could visit my site in Edge, and I could read your emails, I could read your Facebook feed, all without you knowing,” concluded the expert.
+Pierluigi Paganini
+(Security Affairs – Wavethrough, CVE-2018-8235)

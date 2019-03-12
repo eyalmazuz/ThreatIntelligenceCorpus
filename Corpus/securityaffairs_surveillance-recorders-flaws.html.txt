@@ -1,0 +1,25 @@
+
+					Nuuo and Netgear video surveillance recorders affected by multiple flaws					
+The US-CERT has issued a security advisory related to the presence of multiple vulnerabilities in the Web interface of a Netgear ReadyNAS Surveillance video recorder  and various devices manufactured by the video recording company NUUO.
+The vulnerable devices produced by NUUO are NVRmini 2, NVRsolo, and Crystal. All the affected products are Network Video Recording (NVR) systems with Network Attached Storage (NAS) functionality for managing IP cameras.
+The flaws were discovered by Pedro Ribeiro from Agile Information Security.
+“NUUO NVRmini 2, NVRsolo, and Crystal, and Netgear ReadyNAS Surveillance products have web management interfaces containing multiple vulnerabilities that can be leveraged to gain complete control of affected devices.” states the security advisory issued by the CERT.
+The experts at the CERT warn about possible exploitation of the flaws that can give the attackers the complete control over the surveillance devices. The flaws  range from input validation issues to buffer overruns.
+The web management interface of affected devices contains a hidden page, __debugging_center_utils__.php, that doesn’t validate correctly the input. The page fails to validate the log parameter and passes it as input to the PHP system() function.
+An unauthenticated attacker may exploit the Improper Input Validation (CVE-2016-5674) by sending a specially crafted request to execute arbitrary code with root privileges.
+http://<IP>/__debugging_center_utils___.php?log=something%3b<payload>
+The CVE-2016-5674 affects the NUUO NVRmini 2 and NVRsolo, versions 1.7.5 to 3.0.0, and the ReadyNAS Surveillance versions 1.1.1 to 1.4.1.
+The web management interface is affected by another Improper Input Validation flaw (CVE-2016-5675) due to the presence of the handle_daylightsaving.php page that fails to sanitise the NTPServer parameter, which is passed to the PHPsystem() function.
+In this case, an authenticated attacker may exploit the issue to execute arbitrary code as root by sending a specially crafted request:
+The list of flaw reported by the CERT includes:
+Information Exposure – CVE-2016-5677 – The hiddel page __nvr_status___.php potentially exposes sensitive system information, it is accessible to all users via page-specific hard-coded credentials (nuuoeng:qwe23622260).
+Use of Hard-Coded Credentials – CVE-2016-5678 in the NUUO NVRmini 2 and NVRsolo versions 1.0.0 to 3.0.0.  An attacker can use these credentials to log into affected devices with root privileges.
+Improper Neutralization of Special Elements used in an OS Command (‘OS Command Injection’) –CVE-2016-5679
+The sn parameter of the transfer_license command in cgi_mai does not properly validate user-provided input. An authenticated attacker may exploit the issue by using a specially crafted request to execute arbitrary commands:
+http://<IP>/cgi-bin/cgi_main?cmd=transfer_license&method=offline&sn=";<command>;#
+Stack-based Buffer Overflow – CVE-2016-5680 – The advisory warns about the presence of a stack-based buffer overflow vulnerability in the sn parameter of the transfer_license command in cgi_main.
+An authenticated attacker may send a specially crafted request to trigger a buffer overflaw exception and execute arbitrary code:
+http://<IP>/cgi-bin/cgi_main?cmd=transfer_license&method=offline&sn=<payload>
+Ribeiro decided to disclose the issue due to the slowness of vendors in solving them.
+Pierluigi Paganini
+(Security Affairs – surveillance recorders flaws, hacking)

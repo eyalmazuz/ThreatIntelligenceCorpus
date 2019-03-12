@@ -1,0 +1,30 @@
+Scareware App Downloaded Over a Million Times from Google Play
+
+We have recently been investigating an antivirus app in the Google Play store that was displaying fake virus detection results to scare users into purchasing a premium service. According to the Google Play store statistics, users have downloaded “AntiVirus for Android™” more than one million times and the app was listed in Top 100 free apps in Tools category. Our Wildfire analysis cloud captured the initial app and identified it as Scareware.
+On January 20, we reported this issue to Google and two days later, they removed the app from Google Play. 
+“AntiVirus for Android™” was developed by a company named “CTG Network Ltd.”(Figure 1). According the (now removed) Google Play listing, the app was downloaded and installed between 1 million and 5 millions times. Before the removal it had also received 5,162 recommendations and 16,531 reviews that resulted in an average score of 4.0. According to AppBrain, the app was also listed in top 30 of Top Grossing Apps in Tools category in United States, Japan, France and South Korea.
+
+Figure 1 AntiVirus for Android™ in the Google Play Store
+When a user opens the app, it will always report that it has located two or three threats on the device (Figure 2), including the following:
+
+Android.Lotoor.C, a popular root exploit program,
+Android.Metasploit.C, a security penetration testing tool, and
+Android.Plankton.C, an old Android Trojan.
+
+
+Figure 2 The App Indicates Two Threats were Found
+If the user clicks the “Repair” button, the apps will indicate that one of the threats was eliminated and advise the user to upgrade to its full version to remove the remaining threat(s). If the user clicks the “Update to Full Protection” button they will be prompted to subscribe to a service that costs $4.99 (US) per month through In-App Purchase of Google Play (Figure 3).
+
+Figure 3 The app requests that the user pay 4.99$ per month for full protection.
+Through analyzing the app’s code we discovered a multiple indications that this program was not a legitimate Antivirus program, but actually Scareware. First, the initial “threats detection results” are hard-coded in the app (Figure 4), which means the app wasn’t actually detecting them on the phone. The developer even directly named these “infected packages” as “fake.virus” in the source code.
+Figure 4 Hard-coded fake threat detection results
+Since the detection result is fake, the subsequent cleaning is not real either – the elimination operation is just marking a flag of “initial_virus_cleared” to “1” in the app’s internal database. The code in Figure 5 shows that the “We have eliminated 1 of %d Threat(s)” message shown in Figure 3 is also hard coded.
+
+Figure 5 Code that generated the fake threat cleared page.
+One interesting difference between this program and other Fake AV apps is “AntiVirus for Android™” will actually provide real antivirus services to paid users. The app integrates a mobile antivirus engine provided by Bitdefender and if users upgrade to the premium version, it will scan apps and the device’s SD card with that engine. This is the main reason we classify the program as Scareware rather than just Fake AV.
+It is not clear whether the integrated BitDefender AV engine is actually licensed to the app’s developer. The engine retrieves code updated and new signatures updating from hxxp:// api.androidsantivirus .com /antivirus/android-arm, which is hosted on the app’s official website.
+
+Figure 6 The App Integrates the BitDefender AV Engine for Premium Users
+In March of 2014, a Fake AV app named “Virus Shield” was listed for sale at $3.99 and quickly rose to the top position of Google Play’s New Paid Apps list. Virus Shield was downloaded over 30,000 times, fare fewer than this latest piece of Scareware, although we do not know how many users actually paid for the $4.99 monthly service before Google removed the app from the store.  The fact that AntiVirus for Android™ contains an actual AV engine makes it more difficult for other programs to identify it as Scareware, as this makes the program appear legitimate. While Google has already removed this application from the Play store, we’ll keep monitoring the latest Android apps to make sure WildFire is providing the best protection for our customers.
+ 
+

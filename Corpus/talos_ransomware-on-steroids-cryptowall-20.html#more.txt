@@ -1,0 +1,163 @@
+
+Ransomware on Steroids: Cryptowall 2.0
+
+
+This post was authored by Andrea Allievi and Earl Carter.
+
+Ransomware holds a user’s data hostage. The latest ransomware variants encrypt the user’s data, thus making it unusable until a ransom is paid to retrieve the decryption key. The latest Cryptowall 2.0, utilizes TOR to obfuscate the command and control channel. The dropper utilizes multiple exploits to gain initial access and incorporates anti-vm and anti-emulation checks to hamper identification via sandboxes. The dropper and downloaded Cryptowall binary actually incorporate multiple levels of encryption. One of the most interesting aspects of this malware sample, however, is its capability to run 64 bit code directly from its 32 bit dropper. Under the Windows 32-bit on Windows 64-bit (WOW64) environment, it is indeed able to switch the processor execution context from 32 bit to 64 bit.
+
+
+
+
+
+
+
+Initial Compromise
+
+Cryptowall 2.0 can be delivered through multiple attack vectors, including email attachments, malicious pdf files and even various exploit kits. In the sample that we analyzed, the dropper utilized CVE-2013-3660, "Win32k.sys Elevation of Privilege Vulnerability" to achieve the initial privilege escalation on X86 based machines. This exploit works on 32 bit OSs starting beginning with Vista. The dropper even includes a 64-bit DLL that is able to trigger the exploit in all the vulnerable AMD64 Windows Systems.
+
+Provided the anti-VM and anti-emulation checks pass, the Cryptowall malware is decrypted and installed on the system. Once the system is infected, the user is presented a message similar to Figure 1.
+
+
+
+Figure 1. (Click to Enlarge)
+
+
+
+
+
+Constructing the Unencrypted Cryptowall Binary
+
+To construct the unencrypted Cryptowall 2.0 code, the dropper (with an md5 hash of F31B1C58E0110B407EF1F99F2C8A5A63 and a sha256 hash of 0483900fea2f27028ca0971729422b903c5e75542b93c9fa3377c5a201f7c31c) goes through multiple  stages of decryption. The main dropper is a C++ MFC application. The first-stage decryption code is located at “CMainFrame::OnCreate” in the MFC event handler. The handler builds the first-stage decryption code (at RVA +0xF3F0) and simple calls it.
+
+The first-stage decryption code opens the original dropper PE, reads from it, and decrypts a big chunk of code (second-stage). Finally it transfer the execution to the second-stage located in the external buffer.
+
+The Second stage is the last encryption layer code. It builds a simple Import Address Table (IAT), and implements multiple features. The most important one is the Anti-VM Check. The Anti-VM code is quite simple:
+
+
+
+Figure 2: The CryptoWall simple Anti-VM check code. (Click to Enlarge.)
+
+
+
+
+
+If no VM is detected, another “dropper“ process is spawned in a suspended state. The "ZwUnmapViewOfSection" API is used to unmap the original PE buffer. A new memory chunk is allocated and a new PE (extracted and decrypted from the “.data” section) is copied into its preferred base address. Then a new thread process is resumed with the following new context and the original process terminates:
+
+EAX register is set to the new PE entry point address;
+EBX register is set to a still unknown value: 7ffd8008
+
+
+
+Installing Cryptowall on System
+
+The “VirusExplorerMain” routine in the faked “explorer” process constructs the IAT and installs CryptoWall on the victim system. The first step is to create an executable with the name based on the computer’s MD5 hash. This executable is copied to the location specified by the “%APPDATA%” environment variable (“C:\Users\<Username>\AppData\Roaming”).
+
+To maintain persistence, an auto-start registry value is added in:
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+HKCU\Software\Microsoft\Windows\CurrentVersion\RunOnce
+
+
+Note: The RunOnce value is preceded by a (*) so that the process starts even in Safe Mode.
+
+The same random executable is copied to the “Startup” folder of the Start Menu. The last duty of the faked “explorer” process is to disable all system protections. The following shell commands are executed:
+
+vssadmin.exe Delete Shadows /All /Quiet
+bcdedit.exe /set {default} recoveryenabled No
+bcdedit.exe /set {default} bootstatuspolicy ignoreallfailures
+
+
+The following services are also disabled: Security Center, Windows Defender, Windows Update, Background Intelligent Transfer Service, ERSvc, Windows Error Reporting Service.
+
+Finally, the original dropper file is terminated and the file is deleted. The Cryptowall PE is now injected into a faked “Svchost” process in the same way as the fake “explorer” process was created initially. The infection now continues in the faked “svchost” process.
+
+The “VirusSvchostMain” function (RVA 0x418C70) is the main infection routine. It constructs the virus IAT (importing functions from the following modules: ntdll, kernel32, advapi32, user32, wininet, ole32, gdi32), checks whether the installation is done, and creates the main Cryptowall event. It then creates the main Cryptowall Thread and tries to download the TOR client used for communication from one of the following URLs:
+
+
+
+
+
+If it succeeds in downloading the update file, it executes directly. The downloaded binary is an executable that is encrypted 3 times with a simple algorithm. After decryption, a clean PE file is extracted and launched. This PE file is peculiar because it has all its normal headers (DOS header, NT header, IAT, EAT, ...) stripped. Its IAT and ".data" section reside in another big memory buffer. The decryption code deals with the correct linking and relocation.
+
+This clean PE is actually the Cryptowall TOR communication module. It implements a complete TOR Client that it utilizes for Command & Control communication. The TOR URLs used by the sample we analyzed were:
+
+crptarv4hcu24ijv.onion
+crptbfoi5i54ubez.onion
+crptcj7wd4oaafdl.onion
+
+
+Using hardcoded IP address in the PE, the malware connects to the TOR Server with an encrypted SSL connection on port 443 or 9090. After successfully connecting, it starts to generate the Cryptowall domain names using a customized Domain Generation Algorithm (DGA). The algorithm is located at offset + 0x2E9FC.
+
+
+
+Figure 3: The code of the DGA algorithm in the TOR client. (Click to enlarge.)
+
+
+
+
+If the encrypted connection goes well, the communication with the Cryptowall Command & Control server will take places; otherwise the main thread sleeps for a random number of seconds and then retries with a new generated server name.
+
+Each of the many SSL connections Cryptowall 2.0 establishes uses random server names in the certificates. However, the client certificates share commonalities that are unique enough to make it possible to detect these client connections outbound. Cryptowall 2.0 makes many, many requests once installed.
+
+Initially Cryptowall 2.0 attempts to idenitfy the outside address for the network the system is operating on using the “GetExternalIpAddr” function. It accomplishes this by communicating with one of the following addresses:
+
+http://wtfismyip.com/text
+http://ip-addr.es
+http://myexternalip.com/raw
+http://curlmyip.com
+
+
+It starts with wtfismyip.com and stops after the first successful reply is received. In most situations, this means that it will end up only going to wtfismyip.com (since it is the first entry in the list). Although this is a fairly generic request, this shouldn't be a very common occurrence in an enterprise network and can serve as a potential network indicator of this malware.
+
+Another interesting aspect of the sample that we analyzed is that includes some 64 bit code (and an exploit DLL) directly in its main 32-bit executable. Although the main module is running in 32-bit mode, it is capable of executing  all the 64-bit functions it needs. It accomplishes this by performing a direct Processor execution context switch. The code pushes two 32-bit values on the stack: the target offset (only the low part) of the 64-bit function offset and a 64-bit selector.
+push <32Bit Selector>
+push <32Bit Low DWORD address>
+retf
+
+It finally performs a FAR RET (opcode 0xCB). As the Intel manuals say, this kind of opcode executes a “Far return”: a return to a calling procedure located in a different segment than the current code segment. The target code segment is a 64-bit one, and as result the processor switches the execution context. To return to 32-bit mode the code reverses this process:
+call $+5                ; This will push the 64-bit return address on the stack
+mov dword ptr [esp+4], <32Bit Selector>     ; The same as PUSH <32bit value>, keep in mind
+mov dword ptr [esp], <32Bit Address>     ; that all values are 8 byte wide in AMD64 mode
+retf
+
+This mixing between 64-bit code and the 32-bit main executable is even difficult for IDA to disassemble. FIgure 2 shows a dump of a Windows 7/8 64 bit Global Descriptor Table (GDT):
+
+
+
+Figure 4: A dump of the Global Descriptor Table of a 64-bit System
+
+
+
+
+
+As the reader can see, the descriptor 0x20 and the descriptor 0x30 are the Ring 3 code segments that describe the entire user-mode address space, one for 32 bit and one for 64 bit. Cryptowall utilizes the proper selectors for these two segment descriptors and switches between these the two execution modes during its operation.
+
+We were able to reverse this process and reconstruct the assembly language code (shown in Figure 3) that performs this switching between 32 & 64 bit by pushing the correct value before executing the far return instruction.
+
+
+
+Figure 5: Switching Between 32 & 64 bit Modes. (Click to Enlarge)
+
+
+
+
+
+Summary
+
+Ransomware is a growing threat to computer users. Variants continue to evolve in functionality and evasive capability. Just getting these complex samples to run in a sandbox can be challenging, making analysis more complicated and involved. Constant research is necessary to develop updated signatures and rules to combat these constant attacks.
+
+Identifying and stopping these new complex variants requires a layered security approach. Breaking any step in the attack chain will successfully prevent this attack. Therefore, blocking the initial phishing emails, blocking network connections to known malicious content, as well as stopping malicious process activity are critical to combating ransomware and preventing it from holding your data hostage.
+
+
+Protecting Users Against These Threats
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites, including the downloading of the malware downloaded during these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors. ESA can block phishing emails sent by threat actors as part of this attack.
+
+
+

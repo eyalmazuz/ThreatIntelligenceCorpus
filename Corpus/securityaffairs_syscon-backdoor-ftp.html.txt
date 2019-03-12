@@ -1,0 +1,20 @@
+
+					Experts discovered a SYSCON Backdoor using FTP Server as C&C					
+The SYSCON backdoor is spreading through tainted documents that refer North Korea and target individuals connected to the Red Cross and the World Health Organization.
+
+The use of an FTP server as C&C is uncommon for a botnet because the associated traffic is not difficult to monitor.
+“Using an FTP server has some advantages. It is less common, and this fact may allow it to slip unnoticed by administrators and researchers. However, this also leaves the C&C traffic open for monitoring by others, including security researchers. In addition, thanks to a coding mistake by the attackers, this particular backdoor does not always run the right commands.” states the analysis published SYSCON.
+The experts noticed that the weaponized documents used to spread the threat contain two long strings, with Base64 encoding using a custom alphabet, a technique that was used to deliver the Sanny malware back in 2012.
+“Its similarities with the earlier Sanny attack are interesting. Both attacks used relatively unusual techniques for their C&C server, their structure is similar, and the encoding key is identical. Documents somehow tied to North Korea were also used. We cannot eliminate the possibility that both Sanny and this new malware family were the work of the same threat actor.” continues the analysis.
+The Base64 strings are cabinet files that contain the 32-bit and 64-bit versions of the malicious code. When the victims open the file, the appropriate cabinet file based on the OS version is being extracted into the %Temp% folder.
+The file determines the operating system version and either executes a BAT file or injects a DLL into the taskhost(ex) process to execute the BAT without triggering a UAC prompt.
+The Install.bat copies the main malware ipnet.dll and the configuration file ipnet.ini  into the %Windows%\System32, it configures new malicious COMSysApp service using the sc command line utility, adds the service parameters into the registry, starts the malicious service, and deletes all previously created files in the %Temp% directory.
+The SYSCON malware uses the computer name as an identifier, then logs into the FTP server using credentials stored in the configuration file.
+The researchers discovered a URL for the byethost free FTP service provider by decoding the configuration file.
+On the server side, the commands are stored in .txt files. Every time a bot processes a command, the malicious code lists all currently running processes, then sends zipped and encoded data to the server.
+The list of supported commands includes copy file to temp.ini, pack it to temp.zip, encode and upload; pack file to temp.zip, encode and upload; delete config file, write string to the new config file; put file to the given path on infected system; execute command but don’t report back; and execute downloaded file.
+Malware researcher noticed that the authors of the threat made a coding mistake that caused the backdoor sometimes executing the wrong commands.
+The researchers have found a typo error in the command processing loop, while the malware treats the commands as strings in wide character format, a parameter in one of the functions has an incorrect file name, thus preventing the process from executing.
+IT administrators should monitor any connection to external FTP servers, they can be used not just for data exfiltration, but also for C&C activity as well.
+Pierluigi Paganini
+(Security Affairs – SYSCON Backdoor, malware)

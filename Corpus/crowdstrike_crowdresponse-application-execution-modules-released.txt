@@ -1,0 +1,41 @@
+CrowdResponse Application Execution Modules Released
+As the user base of CrowdResponse multiplies, we see a steady stream of requests from active users. Many use the tool for its excellent YARA scanning capabilities and are starting to include additional data collection modules into their live response process. Predictably, the collection of Windows Prefetch data has been a common request. Tracking application execution is a cornerstone of incident response forensics. Knowing what an attacker or malicious insider has been running on a system is a common pivot point for revealing additional malicious activity. This can lead to evidence of malware and backdoor execution, credential dumping, data collection and exfiltration, and even files and folders accessed.
+While Prefetch is the most commonly used application execution artifact, it is by no means the only avenue to gather this information. In fact, some adversaries regularly remove Prefetch in an attempt to frustrate forensic analysis. Alternate application execution artifacts like Shimcache and SuperFetch can often fill whatever gaps are left when Prefetch is missing. Hence our tool dev guru Robin Keir bundled three modules into this month’s release of CrowdResponse. Together, they provide incident response collection capabilities that we have seen nowhere else.
+Prefetch
+Modern Windows workstations use the Prefetcher Service to identify frequently used applications and preemptively cache data used by the application to speed up load times. On XP and Win7, the last 128 applications run are recorded. Microsoft doubled down in Windows 8 and now records the last 1024 applications executed. Prefetch also records files accessed by the given application within the first ten seconds of execution. While commonly overlooked, this information can be a trove of data leading to additional malware like supporting DLLs and dropper files, accessed documents, output data like keylogs, and even files accessed from removable media.
+The Prefetch module for CrowdResponse collects the following information from XP, Windows 7 and Windows 8 systems:
+@Prefetch [-svx] [<dir>]
+-s Recursive listing
+-e Force treating pf files as if from Windows 8
+-v Force treating pf files as if from Vista or Windows 7
+-x Force treating pf files as if from XP
+<dir> Start directory. Default is %SystemRoot%\Prefetch
+To demonstrate Prefetch analysis, we thought it would be interesting to show data from a system compromised with the recent 0-day privilege execution attack CVE-2014-4113. As described by Dmitri Alperovitch in this post, the attack consisted of a file named win64.exe. This malware was designed to be run from the CLI and is regularly captured by Prefetch.
+
+In this example, we see the executable win64.exe (subsequently determined to be using CVE-2014-4113) present in the Windows Prefetch output with an execution count of two. This specific malware sample required the tool to elevate the privileges of another application. In this case the time proximity of a second Prefetch file for cmd.exe indicates it was almost certainly part of the command executed by Win64.exe.
+Shimcache
+Otherwise known as the Windows Application Compatibility Database, Shimcache was documented by Alex Ionescu in 2007, but didn’t find its way into the forensics vernacular until much later. The Application Compatibility Database contains records of applications that have been executed along with information on “shims” to assist with applications requiring backwards compatibility support. The database is stored in the Windows Registry making it difficult to collect through standard incident response scripts. The Shimcache module for CrowdResponse simplifies collection from live systems and provides the following information from XP, Windows 7 and Windows 8 systems:
+MD5 and SHA256 hashes of binary on disk (when still available)
+@Shim [-hm]
+-h Compute SHA256 hash of binary on disk
+-m Compute MD5 hash of binary on disk
+
+Even if the adversaries in this example were to have cleared Prefetch, the Shimcache nicely recorded win64.exe activity. The hash values provided by this module are extremely valuable as they allow a massive amount of data to be culled via known good and known bad databases. This is particularly valuable when run at scale as you can start to identify anomalies like sethc replacement or perhaps focus on executables in the output that we no longer found on disk (an Error value is returned). This last point is particularly useful – if the plugin does not return a hash it means it was unable to find the corresponding file on disk and hence you shouldn’t waste your time trying to find it in the allocated file system. In this case, the corresponding hash of win64.exe allowed us to quickly match it with an already analyzed sample, providing rapid validation.
+SuperFetch
+With attackers increasingly taking steps to hide activity, it is always nice to have a selection of artifacts to rely upon. SuperFetch is one of the least used application execution artifacts in Windows, largely because of the dearth of tools able to successfully parse the format. It tracks “performance scenarios” in Windows Vista and above and is specifically designed to anticipate frequently run applications after system activity like standby mode, hibernation, and fast-user switching. While the entire range of SuperFetch databases have not been fully mapped, this plugin provides the following information from the AgAppLaunch.db file:
+While timeframe information stored by SuperFetch has yet to be vetted for its reliability, it presumably could help identify application activity occurring at strange times. Is it normal to see your company database application accessed over the weekend?
+@Superfetch [-36s] [<dir>]
+-3 Force parsing files in <dir> as 32 bit versions
+-6 Force parsing files in <dir> as 64 bit versions
+-s Recurse from <dir>
+<dir> Optional directory of SuperFetch db files to process
+The directory parameter of this plugin provides the option to parse database files exported from a system or forensic image (live system data is extracted by default). It allows the tool to be used for traditional forensic work in addition to live response. Superfetch is very much on the cutting edge so please do your own testing before betting your life on the results!
+
+
+In this example, SuperFetch shows sethc.exe being executed four times. Since this is a common “StickyKeys” attack vector and is rarely executed on a normal system, it would be worth looking into.
+
+Plugin output showing the filter options for the various time periods tracked by SuperFetch.
+Final Remarks
+We hope you are as excited about these new additions as we are! CrowdResponse is a free community tool written by Robin Keir and CrowdStrike plans to continue to release new capabilities. In the download package you will find CrowdResponse.exe, a user guide, and the CRconvert.exe tool used to convert the native XML output to CSV or HTML reports. Please use our forums to provide feedback.
+ 
+ 

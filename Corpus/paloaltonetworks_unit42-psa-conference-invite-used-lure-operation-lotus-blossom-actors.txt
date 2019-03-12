@@ -1,0 +1,141 @@
+PSA: Conference Invite used as a Lure by Operation Lotus Blossom Actors
+
+Actors related to the Operation Lotus Blossom campaign continue their attack campaigns in the Asia Pacific region. It appears that these threat actors have begun using Palo Alto Networks upcoming Cyber Security Summit hosted on November 3, 2016 in Jakarta, Indonesia as a lure to compromise targeted individuals. The payload installed in attacks using this lure is a variant of the Emissary Trojan that we have analyzed in the past, which has direct links to threat actors associated with Operation Lotus Blossom.
+As our readers and customers in Indonesia are likely recipients of this phishing e-mail, we want to release some key facts to clarify the situation.
+
+The malicious email will have an attachment named “[FREE INVITATIONS] CyberSecurity Summit.doc” that if opened will exploit CVE-2012-0158. The legitimate invitation emails from Palo Alto Networks did not carry any attachments.
+In response to this incident, we have halted our email invitations, so please disregard all new emails related to invitations to this conference, as it may be malicious.
+Individuals wishing to attend the conference should register on our official CYBERSECURITY SUMMIT – JAKARTA website.
+
+Summit Invitation: Legitimate and Counterfeit
+Palo Alto Networks hosts cyber security summits all over the world, and in many cases we send invitations via email to individuals we believe would be interested in attending. Figure 1 shows a legitimate invitation email in our most recent batch of invitations that has an image for its message body.
+
+Figure 1 Legitimate invitation email sent out regarding our Cyber Security Summit in Jakarta, Indonesia
+We received a tip (thanks Marcus!) regarding a recent delivery document that we believe was attached to spear-phishing emails sent to individuals that would likely be interested in attending our conference. While we do not have detailed targeting information or access to the attack emails, we believe the malicious document was delivered as an email attachment with a filename of “[FREE INVITATIONS] CyberSecurity Summit.doc”. This file name contains the first portion of the subject of the legitimate invitation emails we sent out, suggesting the Operation Lotus Blossom actor had access to an inbox that received the invite email or received the email themselves.
+The delivery document (SHA256: 61de3df463f94f8583934edb227b174c7e4473b89bd110a6f6ba44fad8c41943) attempts to exploit CVE-2012-0158 to install a payload and open a decoy document on the compromised system. The decoy is a Word document that contains an image from a previous invitation email, as seen in Figure 2.
+
+Figure 2 Decoy document showing image of previous invitation to the Cyber Security Summit in Jakarta
+Emissary Payload
+The payload associated with this attack is installed in the background while the decoy document is displayed. The payload itself is a variant of the Emissary Trojan that we have discussed in our blogs titled “Attack on French Diplomat Linked to Operation Lotus Blossom” and “Emissary Trojan Changelog: Did Operation Lotus Blossom Cause It to Evolve?”. The payload runs each time the operating system starts up thanks to the following registry key:
+
+
+
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Dsdcmsoon: 
+"rundll32.exe "C:\Documents and Settings\Administrator\Application
+Data\Programs\Dsdcmsoon.dll",Setting"
+
+
+
+
+123
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Dsdcmsoon: "rundll32.exe "C:\Documents and Settings\Administrator\ApplicationData\Programs\Dsdcmsoon.dll",Setting"
+
+
+
+
+
+The Emissary payload is comprised of the following three files:
+
+
+
+Filename
+%APPDATA%\Programs\Dsdcmsoon.dll
+
+
+SHA256
+aefa519feab9c8741af98ae2ddc287c404117e208cecd6479ee427f682814286
+
+
+Description
+Loader Trojan responsible for injecting payload into Internet Explorer process
+
+
+
+ 
+
+
+
+Filename
+%APPDATA%\Programs\DCMOS3124.DAT
+
+
+SHA256
+c9d1daab044a4d4e21e3b1f2da0b732a9d48d82c27e723d221be499bcb7f1aa3 (trimmed)
+
+
+Description
+Emissary Trojan that runs within Internet Explorer process. This file is 500MB in size as it has a significant amount of junk data appended to the core DLL. The SHA256 is associated with the core DLL with the junk data trimmed.
+
+
+
+ 
+
+
+
+Filename
+%APPDATA%\Programs\CVNX044.DAT
+
+
+SHA256
+121e844022c04dbe2d152195fbfab297701c050fc6d8d08ddb8a4c27f2be138e
+
+
+Description
+Configuration file used by Emissary payload.
+
+
+
+We decrypted the CVNX044.DAT file and found the following configuration for this Emissary payload:
+
+
+
+
+Version: 6.4
+GUID: a1741acf-3d38-4c18-9ee9-e440f79f3bb9
+C2 Server 1: hxxp://103.249.31[.]49/default.aspx
+C2 Server 2: 
+C2 Server 3: 
+Campaign Code: 1019
+Sleep Delay: 10
+
+
+
+
+1234567
+
+Version: 6.4GUID: a1741acf-3d38-4c18-9ee9-e440f79f3bb9C2 Server 1: hxxp://103.249.31[.]49/default.aspxC2 Server 2: C2 Server 3: Campaign Code: 1019Sleep Delay: 10
+
+
+
+
+
+This version of Emissary attempts to obtain the external IP address of the compromised system using the website “b4secure[.]com”. Figure 3 shows this HTTP GET request issued by Emissary to obtain the systems IP.
+
+Figure 3 Emissary version 6.4 issues an HTTP GET request to b4secure[.]com to obtain an IP address for the compromised system
+The Emissary payload will communicate with the C2 server from its configuration file using HTTP GET requests. These requests will an added “MSG” field that contains the configuration values in encrypted and base64 encode form, along with the a custom “Cookie” field. Figure 4 shows an example C2 beacon from Emissary version 6.4, with the MSG field and the Cookie containing the GUID from the configuration, a field “fun” that specifies which function within Emissary issued the request and the system’s IP address.
+
+Figure 4 Emissary version 6.4 beacon to its C2 server
+Insight into Threat Actor
+During our analysis of the decoy document that used our Cyber Security Summit as a lure, we were able to determine how the threat actor created the decoy document. As shown in Figure 2 earlier in this blog, the decoy document was two pages that contained images that make up the legitimate invitation to the conference.
+We were able to determine that the threat actor used Microsoft Word to crop these images from larger images, specifically screenshots of that the actor took of the images opened in Foxit’s PDF reader. Figure 5 and 6 show the original screenshots of the invitation that were cropped using Word’s cropping tool. These screenshots are of the threat actor’s system, which allows us to glean some intelligence on the actor.
+
+Figure 5 Original screenshot that actor cropped to create the first image within the decoy document
+
+Figure 6 Original screenshot that the actor cropped to create the second image within decoy document
+As you can see from the screenshots above, the threat actor is running Windows localized for Chinese users, which suggests the actor’s primary language is Chinese. The “CH” icon in the Windows tray shows that the built-in Windows input method editor (IME) is currently set to Chinese. Also, the screenshot shows a popular application in China called Sogou Pinyin, which is an IME that allows a user to type Chinese characters using Pinyin. Pinyin is critical to be able to type Chinese characters using a standard Latin alphabet keyboard, further suggesting the threat actor speaks Chinese.
+Another interesting observation is the clock in the bottom right corner of the screenshots, which suggest that the threat actor took these screenshots at a local time of 8:35 and 8:36 AM on October 19, 2016. The decoy document was created on October 19, 2016 at 7:51 AM, but this timestamp is in UTC not local time. Obviously the screenshots could not have been taken in the future, suggesting that the actor is at least in UTC+1 or greater. We can speculate that if the actor’s clock was set to China Standard Time (UTC+8), then it would suggest that the final decoy document was created 7 hours and 15 minutes after the screenshots were taken.
+Conclusion
+Threat actors associated with Operation Lotus Blossom continue to carry out attack campaigns, which in this case involved a lure associated with a conference hosted by Palo Alto Networks. We have used emails to invite individuals to this conference; however, our legitimate invitation emails contained an image within the body of the email and did not contain any attachments. We have halted our invitation emails, but recipients of previous and future related emails should scrutinize them to determine if they were sent by these threat actors.
+We have published a lot of content on the threat group involved and Emissary payload used in this attack. The payload installed appears to be a relatively new version of Emissary, specifically version 6.4. The decoy document itself contained cropped images of a screenshot that allowed us to determine the threat actor speaks Chinese as their primary language.
+Lastly, if you received a malicious email that has an attachment named “[FREE INVITATIONS] CyberSecurity Summit.doc”, please check the system that accessed that file for the indicators of compromise listed at the bottom of this blog. For those individuals wishing to attend the conference, please register on our official CYBERSECURITY SUMMIT – JAKARTA website.
+Palo Alto Networks customers are protected from the delivery document and payload associated with this attack, as both have malicious verdicts within WildFire. Palo Alto Networks customers are also protected via our Traps product, as it does not allow the delivery document to exploit the CVE-2012-0158 vulnerability. AutoFocus customers can track this delivery document and payload using the Emissary tag.
+Indicators of Compromise
+Delivery Document
+61de3df463f94f8583934edb227b174c7e4473b89bd110a6f6ba44fad8c41943
+Emissary Loader
+aefa519feab9c8741af98ae2ddc287c404117e208cecd6479ee427f682814286
+C2 server
+103.249.31[.]49
+

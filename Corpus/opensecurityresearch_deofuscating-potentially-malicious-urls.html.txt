@@ -1,0 +1,243 @@
+
+Deobfuscating Potentially Malicious URLs - Part 1
+
+
+By Tony Lee.
+
+When investigating network security incidents, there are two artifacts of malicious activity that require a great deal of research:  Suspicious sites and suspicious files.  Obviously, the investigator should never directly navigate to potentially malicious sites or open suspicious files--just in case they turn out to be malicious.  Thus, one potential solution is to use third party investigative sites on the Internet.  But how many resources are there and which ones are the best?  We have compiled a list of our favorites and a little context around why we like them.  This article will begin the focus on investigating potentially malicious URLs and IP addresses—while the next series will focus on what to do with files and hashes.
+
+Part I of Investigating URLs and IP Addresses lays the groundwork by covering policy, unshortening and deobfuscation.  All of the techniques may not be new to you, but the sites to analyze them may be.  There is also a really fun challenge for the reader at the end that will require them to utilize many of the tools in this article to investigate a URL.
+Outline
+
+First Get Permission If Needed
+Unshortening
+Obfuscating
+
+URI Tricks
+IP Obfuscation
+URL Encoding
+
+
+Deobfuscating
+Conclusion
+Challenge!
+First Get Permission If Needed
+Before we cover deobfuscating URLs, we need to talk a little bit about permission and policy.  If you are like me, you are thinking "Shoot me now".  However, you must make sure that you have written permission stating that you are allowed to query or upload information to a third party site.  If done without permission it could cost you your job.  But why, what’s the big deal anyway?
+
+There are a number of potential problems when using third party sites for investigating potentially malicious activity, but here are two major issues:
+
+You don't always know if that data you are transmitting is sensitive
+There is no expectation of privacy when utilizing a third party site
+
+
+If you are the security team or security consultant for a large company—it may be impossible to know all of the intricate facets of your company’s business.  Thus, hostnames or IP addresses could be sensitive along with any parameters that may be passed.  Additionally, PDFs, word documents, binaries and other acquired suspicious files could contain company or partner sensitive information.  You do not want to accidentally leak any of this potentially proprietary or secret information to a third party organization outside the reach of your company’s NDA.  Take a moment to read some of the privacy statements on these sites.  Most of them state that they may publicly share the submitted data with the Internet or privately share the data with select security professionals.  See below for just one example of an honest disclaimer:
+
+Privacy Information
+
+Do not submit items of a confidential or classified nature to this site.
+The private option on submissions indicates that it will not be released to the public and will not be made generally available. However, it may be shared with security researchers and trusted individuals whose goal is to improve detection of threats. The privacy of submissions depends upon the user keeping the "Submission Permanent Link" a secret, therefore do not post the link publicly if you want to keep it private.
+
+If you need true privacy, you should run jsunpack-n, which is the engine behind jsunpack and it runs locally.
+
+Thanks for using jsunpack!
+
+
+Source:  http://jsunpack.jeek.org/privacy.html
+
+
+This site is very forthcoming about their privacy policy—so please be careful when submitting data to third party sites.  Ensure that both URL/IP addresses and files/hashes are not sensitive to your organization before submitting to Internet resources.  Ok, now on to the fun stuff!
+Unshortening
+I can’t tell you how many times I have seen a shortened URL in an email, instant message, or alert.  Even if they are benign, they should invoke a little bit of fear in the hearts of security practitioners.  What once started out as a convenient way to share links has over time become a dangerous way to spread malware and phish users.  To make matters worse, there is no shortage of URL shorteners (forgive the pun).  Here are just a small fraction of them:
+
+
+
+TinyURL
+Tiny
+Bitly
+Google Shortener
+
+
+Ow.ly
+Twitter Shortener
+is.gd
+McAfee Shortener
+
+
+
+
+
+Let’s take the following (potentially dangerous) example:
+http://goo.gl/Gmzqv
+
+Who in the world wants to click this thing?  No one should have volunteered—however, I am sure you have some users out there (inside your network) that would gladly click it.  Even worse… chances are that you know them by first name!  The attacker will probably claim that it is a link to some dancing cat or a cat playing the piano.   Bingo!  They have a click.  Anyway, as security professionals, what can we do to investigate this hyperlink?  Here are a few really great Internet resources below that can help you reverse this URL to figure out where this link goes:
+Unshorten.it
+Unshorten.it goes above and beyond by providing the unshortened URL, title of the page, a screenshot, and the web of trusts rating.  Outstanding!
+
+
+
+LongURL
+LongURL also provides a screenshot for their unshortened URLs (if they have it), resolves the links and provides a screenshot if it is available. They advertise a pretty large range of shortening services that they can process (340 in total!). 
+
+
+Unshort.me
+Unshort.me is more basic than the two mentioned above, however it does the job well.  They advertise the ability to unshorten “t.co (Twitter), bit.ly, TinyURL, Google goo.gl, Facebok fb.me, tr.im, Ow.ly and others”
+
+
+Unshorten.com
+
+Similar to Unshort.me, Unshorten.com is also pretty basic, but will unshorten URLs.  They advertise the ability to unshorten “TinyURL.com, SnipURL.com, NotLong.com, Metamark.net, zURL.ws and many others.”
+
+
+
+Whew!!!  All sites were able to unshorten the example URL and their answers were all the same.  We are fortunate that the link was only a link to the Wikipedia page on URL shortening.  However, it could have easily been malicious and thus, we cannot take a chance by directly navigating to the shortened URL.
+Obfuscating
+So, maybe you unshortened the URL and it still looks suspicious or scary.  This could be due to a number of reasons such as URI tricks or encoding/representation tricks.
+URI tricks
+The general URL format is:
+ protocol://username:password@host:port/resource
+
+
+Where username, password, and port are all optional.  Knowing that, now evaluate the following “simple” examples:
+
+http://www.example.com/a/page.html
+https://www.attacker.com:8443/attackscript.js
+https://www.bank.com:login.html@phisher.cn/
+
+** Spend a minute to figure out the URLs above before reading the spoiler below **
+
+URL one is something that you would typically see.  Nice, simple and easy to understand.
+
+URL two is not much different; it just changes the port and makes a request to a javascript file—still easy to understand as a security professional.
+
+URL three is not a new concept, but it is still used for deception.  It illustrates how the flexibility in URI components could be potentially misused in order to confuse unsuspecting users.  At first glance, it appears that we will be navigating to bank.com.  Whew!  No problem, we are a member of bank.com and that is normal.  However, upon closer inspection (remembering the URL format), the username is www.bank.com with a password of login.html.  The real request is going to phisher.cn!  The key take-away here is that anything between the http:// and the @ symbol may be irrelevant to navigation and can be used to trick the user.
+
+Let’s see how different browsers handle this third URL, but because we do not want to go to phisher.cn we will change it to go to Google instead: 
+http://www.bank.com:login.html@google.com/
+Chrome v23
+Chrome understood the URL and correctly sent us to Google per URI RFCs—but maybe a little too willing to do so.  Read on for other behaviors.
+
+
+Internet Explorer 8
+Internet explorer 8 throws an error message as seen below:
+
+
+
+But why?  Does IE not know how to handle authentication in the URL?  According to a Microsoft support article, this is expected behavior as this feature was available in IE v3.0 – v6.0, but has been disabled by default in all other versions due to the potential to trick a user with it—exactly what we are discussing here.
+Firefox 17.0.1
+In my opinion Firefox handled the situation the best.  It understood how to process the URL, however it warned the user that they are visiting google.com and that the URL might be a trick.  Then it prompted the user to confirm their intentions.
+
+
+
+If you understood all of the above URL scenarios without any help—you did great!  Especially since there don’t seem to be too many tools out there that will dissect the URL (more on this later).  To add to the issue, obfuscation gets even more challenging to reverse when combined with various forms of legitimate, but alternative representations.
+IP obfuscation
+First, note that the URL does not have to be a typical easy to remember name, think http://www.google.com.  It could be provided via IP address (known as dotted decimal), DWORD, Hex, or even Octal.  Let’s re-visit the third example that we provided above, but make some slight modifications:  
+Note: At the time of this writing, one of Google’s IP addresses is 74.125.131.105
+
+http://www.bank.com:login.html@74.125.131.105
+http://www.bank.com:login.html@1249739625/
+http://www.bank.com:login.html@0x4a.0x7d.0x83.0x69/
+http://www.bank.com:login.html@0112.0175.0203.0151/
+
+
+Does anyone want to volunteer to click any of those?  Probably not without investigating it first…
+
+So, we know the first part between the http:// and the @ is a trick and most likely irrelevant to navigation.  But what is the second part?  The first is an obvious IP address, however the last three are obfuscated IP addresses in DWORD, Hex, and Octal format respectively.  Let’s look at how we get these values using Google as an example:
+DWORD conversion
+Converting an IP address to a DWORD is not difficult and can be performed with a calculator.  Take an IP address and perform the following math on it:
+ (((((74*256) + 125) * 256) + 131) * 256) + 105
+
+
+
+This math yields:  1249739625 
+You can now use this in a URL, for example:  http://1249739625
+
+Another way to convert an IP  to a DWORD is to first convert each octect to hex (Microsoft calc in programmer mode), squash them together and use a calculator to convert that to decimal:
+ 74 = 0x4a     125 = 0x7d     131=0x83      105=0x69    =>     0x4a7d8369 = 1249739625
+
+
+
+Either one works just fine.
+Hex conversion
+Converting an IP address to hex is the same as the second DWORD method we used above.  Convert each octet to hex (Reminder:  Microsoft calc in programmer mode):
+ 74 = 0x4a     125 = 0x7d     131=0x83      105=0x69 
+
+
+
+Now put them all together with a dot in between and you have your hex address:  http://0x4a.0x7d.0x83.0x69
+Octal conversion
+IP to Octal conversion can be accomplished by converting each octet to octal (can still use Microsoft calc in programmer mode)
+ 74 = 0112    125 = 0175     131 = 0203    105 = 0151 
+
+
+
+Make sure you have a leading zero on the digits as this conveys octal format.  Any number of zeros can be used.  Separate the numbers with a dot.
+
+Result:  http://0112.0175.0203.0151
+
+For hex and octal conversions you will be able to easily reverse the math to get back to the IP address.  However, if you are wondering how to reverse the DWORD, here is a quick trick.  Take the DWORD address and copy and paste that value as a decimal in Microsoft’s calculator using programmer mode.  Then click the radio button to convert the value to hex, you will then get:  4A7D8369 which should look similar to your Hex conversion above.
+
+We will look at some tools that can automatically reverse these formats in a bit.  However, it is good to note that all three browsers above (Chrome, Firefox, and IE) all handled each of the formats above as expected and provided Google’s search page.  Firefox is shown below:
+
+
+
+URL Encoding
+Another common obfuscation technique used to confuse the victim is encoding the URL—this is legitimately used when transmitting non-ASCII reserved characters over the Internet.  URI’s have reserved characters which are used for more than just their literal meaning.  According to RFC 3986, these reserved characters are:
+
+
+
+!
+*
+`
+(
+)
+;
+:
+@
+&
+=
++
+$
+,
+/
+?
+#
+[
+]
+
+
+
+In order to avoid immediate interpretation, characters can be encoded so they can be included within a URL—each browser may handle this differently though.  Take a look at the following example:
+ftp://foo:foo%40example.com@ftp.example.com/pub/a.txt
+
+This example has a password that utilizes percent-encoding (aka URL/URI encoding) as part of the FTP password (an email address).  Characters can be encoded by using a percent sign followed by their equivalent hex value.  The ‘@’ character is represented by the hex value of 0x40—thus %40 in a URI will be converted by the application to the ‘@’ character.  This same technique can be used in URLs to confuse the user and hide intention.
+
+Now that you understand how IP obfuscation and character encoding works, feel free to use a character encoding and IP obfuscation calculator provided by RSnake to create your own links. 
+Real World Example
+So the examples above are intended to be easy for demonstration purposes—but how about something harder?
+http://225.116.453.0-bank-login.htm@00000112.00000175.00000203.00000151
+
+This example is using the same tricks outlined above, but we are combining them to make the URL look more interesting.  These can still be done by hand, but can be time consuming.  Luckily, there are some third-party sites that will help you figure out what the URL is doing.  Some are more advanced than others.
+Netdemon
+Netdemon definitely takes top honors in terms of decoding and breaking down a malicious URL.  You can see in the example below, it was able to pick out the username, path, and file, as well as reverse the IP address.  We have even seen it detect and report redirecting which is pretty impressive.  Most tools are limited to just percent decoding when this goes above and beyond.
+
+
+URL decoder 
+I like this encoder/decoder because it is simple and fast.  The only downside is that it does not do very complex evaluations.  It only encodes and decodes based on percent encoding/decoding. 
+
+Try to decode the following example: 
+%54%68%69%73%2B%69%73%2B%61%2B%73%65%63%72%65%74%2B%6D%65%73%73%61%67%65
+
+
+Conclusion
+In order to attribute a URL to an attacker, occasionally you must first understand how it is encoded and obfuscated.  Hopefully this quick refresher has helped you to brush up on your obfuscation knowledge so you are now more proficient at deobfuscation.  Additionally, we mentioned a handful of sites that can be very helpful when quickly processing a bunch of links.  We understand that this is not an all-encompassing list and would love to hear about your favorite sites.  Stay tuned for the rest of “Investigating URLs and IP Addresses” where we will cover the remaining topics including WHOIS, GeoIP, IP to URL, Reputation and evaluating content.  That said… we leave you with this challenge.
+Challenge
+
+Evaluate the following URL without visiting it.  Utilize on-line tools to figure out what the outcome of a click will be:
+
+http://tinyurl.com/TonysChallenge
+
+(Hint:  The URL is most “enjoyable” when visited within Chrome— but don’t just click it…  Reverse it first!)
+
+We will provide the answer, how we created the link, and how we would reverse the link in next week’s blog post.  Have fun. :)
+
+

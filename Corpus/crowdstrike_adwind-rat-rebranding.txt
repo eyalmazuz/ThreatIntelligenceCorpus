@@ -1,0 +1,17 @@
+Adwind RAT Rebranding
+In November, 2013, the popular and widely used Java RAT named Adwind began being sold under the new name UNRECOM (UNiversal REmote COntrol Multi-Platform) after a recent acquisition by a company named LustroSoft. This will be the apparent third revision of the Adwind family, which originates from the Frutas proof-of-concept. CrowdStrike Intelligence has observed an up-tick on activity tied to the AdWind family of malware especially in the Middle East region and there are indications that this malware is used in conjunction with NJRat.
+The latest imagery displayed on the UNRECOM website confirms the recent suspicions that Adwind was integrating Android support into its already extensive list of supported platforms. At the time of writing, UNRECOM can remotely command infected hosts running Windows, Linux, Mac OS X and now Android.
+
+Adwind gained popularity with its initial proof of concept called Frutas, which had a small fingerprint and a very low anti-virus detection rate. Since then, Adwind has grown its feature set to include (among others) remote desktop control and an extendible plugin system.
+Given the ability to be extended at run-time via plugins (in the form of Java class files), UNRECOM continues where Adwind left off; posing a threat to vulnerable systems on most mobile and desktop platforms.
+Detection
+The network traffic created by this RAT can be detected with the popular Intrusion Detection System, Snort. The rules below can be used to detect the presence of both the initial authentication handshake, as well as the periodic ping/pong over the wire:
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg: “[CrowdStrike] –RECOMM/Adwind Default Password Auth”; flow: to_server, established; 
+content: “|00||28|e3a8809017dd76bd26557a5b923ab2ae16c0cdb3”; 
+sid: 1981310201; rev: 20131115)
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg: “[CrowdStrike] –RECOMM/Adwind Ping/Pong”; 
+flow: to_server, established; dsize: 1024; 
+content: “|00 00 53 09 58 58 58 58|”; depth: 16; 
+content: “|58 58 58 58 58 58 58 58 58 58 58 58 58 58 58 58|”; offset: 1008; 
+sid: 1981310202; rev: 20131115)
+If you have any questions about these signatures or want to hear more about AdWind and the associated adversaries and their tradecraft, please contact: intelligence@crowdstrike.com and inquire about our intelligence-as-a-service solutions.

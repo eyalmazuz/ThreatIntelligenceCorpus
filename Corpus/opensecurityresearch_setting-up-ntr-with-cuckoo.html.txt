@@ -1,0 +1,57 @@
+
+Setting Up NTR with Cuckoo
+
+
+By Melissa Augustine.
+
+
+The guys over at Advanced Malware Protection (AMP) put out an awesome blog post about integrating Network Threat Response (NTR) with the Cuckoo Sandbox  a little while ago and I really liked the idea so I wanted to implement it for myself. 
+
+Background
+If you're unfamiliar with the two tools, here is a quick breakdown: 
+NTR - A network analysis tool which uses multiple vectors in determining potential maliciousness. It not only uses signatures and looks for shell code, but it also does IP/domain reputation analysis as well as AV scanning of files observed on the wire. You can get a copy of a free vmware image to try out here. The VM allows you to upload pcaps for analysis, while the pay-for version allow you to set up sensors which then feed into NTR. 
+Cuckoo - A sandbox for analyzing malware. Produces a lovely report with screenshots (if the right plugin is installed), network activity, some static analysis (if an exe), behavior analysis, and static tree. 
+
+When AMP posted that blog I thought: "How awesome would this be? -  'You are analyzing a PCAP with NTR, it flags a potentially malicious file -- now you can push to Cuckoo via shared folders and it will automatically be submitted for analysis... all while still analyzing the PCAP! Nice'" 
+
+Setup NotesBetween the AMP blog post and the Cuckoo documentation you should have most of the installation covered, but I did run into a handful of problems. Here's the process and some of what was left out:
+
+
+Download and set up the NTR Virtual Machine
+Create an Ubuntu VM using the installation ISO
+Within the Ubuntu VM, set up and install VirtualBox.
+The thing to remember with this is when you create a user and add them vboxuser group, you HAVE to log off and log back on for it to take affect. Restarting (apparently) does not fix it.
+Within the Ubuntu VM, install and set up a Windows VM (you'll need the installation media for this). 
+Install any supporting applications within the Windows VM (e.g. You may need a PDF viewer if you're using a malicious PDF)
+When creating the shared folders for file transfers, you'll first need to install Virtual Box's "Guest Additions" first.
+
+At this point, you're ready to go through AMP's blog post. Some notes:
+Samba Configuration: There was some disconnect on the AMP blog post in regards to setting samba up, so I took a simpler method and simply right-clicked the folders from within X Windows and used the sharing option. I did run across one tiny error, but the error itself contained the solution: 
+
+
+The watcher.rb script had a small type-o, change:
+IO.popen("./run-sample.sh /opt/ntr/samples/#{ev.name}")
+
+to
+
+IO.popen("./run-sample.sh /opt/ntr/samples/#{event.name}")
+
+run-sample.sh needs the the directory which contains cuckoo.py defined. If you do not have cuckoo.py in /opt/cuckoo you'll need to change the variable in the script or move it there 
+watcher.rb also needs executable rights on run-sample.sh. If you don't have it appropriately set, you'll get an error saying watcher.rb can't find run-sample.sh. To set:
+
+chmod +x run-sample.sh
+
+
+In NTR, I had to specify my workgroup as well to mount the cuckoo share, the mount command ended up being:
+
+sudo mount -t cifs -o username=RainbowBrite,password=Starl1ght,domain=WORKGROUP //192.168.1.96/samples /mnt/cuckoo
+
+
+After some blood, sweat, and coffee... this is the final result you hope to achieve (make sure you have all the scripts running and folders mounted!) 
+
+
+Exporting in ActionI made this quick video to demonstrate exporting to Cuckoo:
+
+
+
+

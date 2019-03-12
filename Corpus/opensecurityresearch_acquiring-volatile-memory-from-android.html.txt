@@ -1,0 +1,175 @@
+
+Acquiring volatile memory from Android based devices with LiME Forensics, Part I
+
+
+By Ismael Valenzuela.
+
+Up until now, most of the Android forensics research has been focused on areas like the acquisition and analysis of the internal flash NAND memory, SD Cards, understanding the YAFFS2 file system and scrutinizing APK files for malware analysis, among others.
+
+However, little has been written about memory acquisition and analysis of Android devices, one of the most active areas of research in the field of computer forensics. Volatile memory, also referred as RAM, is a critical piece of evidence for every forensic investigator since it contains a wealth of information that is gone as soon as the device is rebooted or turned off (at the end of the day that’s why it’s called volatile, huh).
+
+Several methods allow the extraction of information of running processes in Android.  In example, the analyst could use the Android Debug Bridge (adb) to access a shell on the device and run the following commands to dump information about running processes, network connections and other device logs:
+
+<WARNING>
+The following examples assume you have installed the Android SDK and other prerequisites as described later in this post. I also assume that you are familiar with the basic operation of these tools and that at least you know how to create and manage an Android Virtual Device and access it using adb.
+
+
+$ adb shell ps  
+$ adb shell netstat  
+$ adb shell logcat  
+
+
+Figure 1 – Listing running processes on the Android emulator via adb
+
+An alternative method for dumping the contents of memory of a running process involves using the Dalvik Debugging Monitor Server (ddms), a tool that comes with the Android SDK. All you need to do is to select a process and click on the “DUMP HPROF file” button to dump the contents of that process onto disk. 
+
+
+Figure 2 – Dumping the contents of the com.android.email process via ddms 
+However, none of the methods described above can dump the ‘full contents’ of memory. While they allow you to perform some “live analysis”, it wasn’t possible to obtain a full capture of the device’s RAM in the same fashion that it was possible in Linux with tools like fmem. At least, not until DMD came up.
+
+So it was certainly a glad surprise to read about DMD (now called LiME Forensics) when preparing for my talk at the 1st International Symposium for Android Security held in Malaga last week. If you read Spanish you can find the slides for my talk “Latest Advances in Android Forensics” here.
+
+This tool was first presented by his author, Joe Sylve, earlier this year at Shmoocon 2012 in Washington DC, and it’s the first tool that allows the analyst to capture full contents of RAM from Android devices. 
+
+While the tool was announced this week, it was effectively available from google code for almost a month, which allowed me to play with it and demo it for my audience last week. As I mentioned during my talk, the installation of the tool can get ‘tricky’ so I thought I’d better share with you the steps I took to compile it and how to use it. 
+
+The first and foremost thing to know before diving into the instructions is that LiME Forensics is a Loadable Kernel Module (LKM), and as such it has to be compiled for the specific kernel of your Android device.
+
+Therefore, in the rest of the post, I will show how you can build a kernel of your own, how to load it onto the emulator and how to cross-compile the LiME LKM so you can test it with your customized kernel.
+
+Though you can find the author’s original installation document here, I found that the instructions didn’t work with the latest versions of the SDK and NDK. Hence, the reason for this post. I hope the following instructions will save you some headaches, severe pain and some valuable time. And if they don’t work for you for some reason, leave a comment, so we can all learn ;)
+
+I have to say that I also exchanged a couple of emails with Joe Sylve trying to figure out what was wrong and I have to say he was very responsive (thanks!).
+
+GETTING READY TO ROCK
+The following instructions have been tested successfully on Ubuntu 11.10, with Java SE Development Kit 6 Update 31, the Android SDK r18, NDK r7c and with the emulator running an Android Viritual Device (avd) based on Android 4.0.3 (API 15).
+
+We will start downloading and unzipping the toolchain required to build the Android kernel. Download and untar the following:
+Android SDK: http://developer.android.com/sdk/index.html
+Android NDK: http://developer.android.com/sdk/ndk/index.html 
+You can place them anywhere, but take note of that since you will need to include those directories in your path, as shown later in this post.
+
+To follow the example, I placed mine in the following directories, hanging off  my home folder:
+
+~/android-sdk-linux
+~/android-ndk-r7c
+
+Next we will get the source code for the Android SDK and other tools to compile those. 
+
+There is no need to duplicate what is well documented in the Android Source website, so just follow the instructions of how to setup a Linux build environment that can be found here: http://source.android.com/source/initializing.html
+
+Once you’ve installed all the required packages, including the Java Development Kit, you should install the repo client, as described here: http://source.android.com/source/downloading.html 
+
+You must initialize the repo client now. To do so, create an empty directory to hold your files and run repo init from there:
+
+ $ repo init -u https://android.googlesource.com/platform/manifest
+This allows your client to access the android source repository, downloading the latest version of Repo with all its most recent bug fixes. 
+
+Now pull down the files to your working directory running:
+
+$ repo sync
+You must initialize the environment now:
+
+$ source build/envsetup.sh
+And choose a target to build with lunch. I selected the default one:
+
+ $ lunch full-eng
+BUILDING THE CUSTOM ANDROID KERNEL
+You will need to download and untar the kernel source for your device. If you are dealing with a real device go to the website of your device manufacturer. For our test we will use the “goldfish” source code only. Goldfish is the name of the kernel branch for the Android emulator.
+
+$ git clone https://android.googlesource.com/kernel/goldfish.git ~/source/kernel/goldfish/goldfish
+Now you have the emulator kernel source inside the ~/source/kernel/goldfish/ directory. Change to the goldfish directory and make sure all the tools and the cross-compilation toolchain is in your path. Below is an excerpt of my .bashrc file with the aliases I defined for this purpose:
+
+export USE_CCACHE=1
+
+export PATH=$PATH:~/android-sdk-linux/tools/
+export PATH=$PATH:~/android-sdk-linux/platform-tools/
+export ANDROID_SWT=~/android-sdk-linux/tools/lib/x86_64/
+export ANDROID_JAVA_HOME=/usr/lib/jvm/jdk1.6.0_31
+export JAVA_HOME=/usr/lib/jvm/jdk1.6.0_31
+export CCOMPILER=~/android-ndk-r7c/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin/arm-linux-androideabi-
+Note that the location of these tools (JDK, NDK, etc…) might vary depending on where you placed them in the previous steps.
+
+Before we try compiling the kernel for the emulator we need to get a .config file for the kernel. In order to do that you must retrieve and copy the kernel config from your device. While your device is running and accessible via the Android Debug Bridge, run:
+
+$ cd ~/android-sdk-linux/platform-tools    
+$ ./adb pull /proc/config.gz
+$ gunzip ./config.gz
+$ cp config ~/source/kernel/goldfish/.config
+
+An alternative to this last step would be to run make ARCH=arm goldfish_defconfig from the goldfish kernel source directory.
+
+
+The next two steps are critical for the success of this exercise, as we will be preparing the kernel source for our module.
+
+First, make sure that the following options are enabled in the kernel config. Check that the .config file contains:
+
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+CONFIG_MODULE_FORCE_UNLOAD=y
+Otherwise add those lines. These options have to be enabled for the kernel to be able to load and unload modules.
+
+Second, build the kernel using the following command:
+
+$ make ARCH=arm CROSS_COMPILE=$CCOMPILER EXTRA_CFLAGS=-fno-pic modules_prepare
+Note that we are using the cross-compilation toolchain provided by the Android NDK with the option CROSS_COMPILE. Obviously, the CCOMPILER variable must be correctly set (see the excerpt of my .bashrc file above).  Note that I also had to add the EXTRA_CFLAGS=-fno-pic for make to work with the latest NDK. This is not included in the LiME documentation, but it worked for me.
+
+Your new kernel is now located at arch/arm/boot/zImage
+
+You can now run your brand new  kernel using the emulator included with the Android SDK:
+
+$ emulator -avd Demo -kernel ~/source/kernel/goldfish/arch/arm/boot/zImage  -show-kernel –verbose
+
+In this case, Demo is my Android Virtual Device (AVD) which I previously created using the AVD manager. It’s running API 15 (Android 4.0.3).
+
+OBTAINING AND COMPILING LIME
+Grab a copy of LiME from here:
+http://code.google.com/p/lime-forensics 
+
+All you need is lime.c and a Makefile that will prepare the module for cross-compilation.
+
+A sample Makefile is shipped with the LiME source, but I will copy below the one that I created for this purpose:
+
+obj-m := lime.o
+
+KDIR_GOLD := ~/source/kernel/goldfish/
+
+KVER := $(shell uname -r)
+
+PWD := $(shell pwd)
+CCPATH := ~/android-ndk-r7c/toolchains/arm-linux-androideabi-4.4.3/prebuilt/linux-x86/bin
+
+default:
+ # cross-compile for Android emulator 
+ $(MAKE) ARCH=arm CROSS_COMPILE=$(CCPATH)/arm-linux-androideabi- EXTRA_CFLAGS=-fno-pic -C $(KDIR_GOLD) M=$(PWD) modules
+ mv lime.ko lime-goldfish.ko
+ 
+ # compile for local system
+ $(MAKE) -C /lib/modules/$(KVER)/build M=$(PWD) modules
+ mv lime.ko lime-$(KVER).ko
+ 
+ make tidy
+
+tidy:
+ rm -f *.o *.mod.c Module.symvers Module.markers modules.order \.*.o.cmd \.*.ko.cmd \.*.o.d
+ rm -rf \.tmp_versions
+
+clean:
+ make tidy
+ rm -f *.ko
+
+Save and place this Makefile in the directory where you’ve placed the source for LiME. Again, make sure the location of the directories included above corresponds with your install.
+
+Finally (at last!) you are ready to cross-compile the kernel module.
+
+From the directory where you’ve placed lime.c and the Makefile, run:
+
+$ make
+If everything went well, you should have a LKM file called lime-goldfish.ko and you deserve a short break with a good cup of  before moving on.
+
+In the second part of this post we will look at how to use this Loadable Kernel Module to dump the full contents of RAM of an Android device and what kind of information can be retrieved from this capture.
+
+About the Author
+Ismael Valenzuela (GCFA, GREM, GCIA, GCIH, GPEN, GWAPT, GCWN, GCUX, CISSP, CISM, 27001 Lead Auditor & ITIL Certified) works as a Principal Architect at McAfee Foundstone Services EMEA. Find him on twitter at @aboutsecurity or at http://blog.ismaelvalenzuela.com
+
+

@@ -1,0 +1,112 @@
+
+DOS Attack Penetration Testing (Part 1)
+
+Hello friends! Today we are going to describe DOS/DDos attack, here we will cover What is dos attack; How one can lunch Dos attack on any targeted network and What will its outcome and How victim can predict for Dos attack for his network.
+Requirement
+Attacker machine: kali Linux
+Victim machine: Ubuntu
+Optional: Wireshark (we have added it in our tutorial so that we can clearly confirm all incoming and outgoing packet of network)
+Form Wikipedia
+A denial-of-service attack (DoS attack) is a cyber-attack where the attacker looks for to make a machine or network resource unavailable to its deliberated users by temporarily or indefinitely services of disturbing a host connected to the Internet. Denial of service is usually accomplished by flooding the targeted machine or resource with excessive requests in an attempt to overload systems and prevent some or all legitimate requests from being fulfilled.
+In a distributed denial-of-service attack (DDoS attack), the incoming traffic flooding the victim originates from many different sources. A DoS or DDoS attack is analogous to a group of people crowding the entry door or gate to a shop or business, and not letting legitimate parties enter into the shop or business, disrupting normal operations.
+Basically attacker machine either himself sends infinite request packets on target machine without waiting for reply packet form target network, or uses bots (host machines) to send request packet on target machine. Let study more above it using given below image, here you can observe 3 Phases where Attacker machine is placed at the Top while Middle part holds Host machine which is control by attacker machine and at Bottom you can see Target machine.
+From given below image you can observe that the attacker machine want to send ICMP echo request packet on target machine with help of bots so this will increase the number of attacker and number of request packet on target network and cause traffic Flood. Now at that time the targeted network get overloaded and hence lead some service down then prevent some or all legitimate requests from being fulfilled.
+Volume Based Attack: The attack’s objective is to flood the bandwidth of the target networks by sending ICMP or UDP or TCP traffic in per bits per second.
+Protocol Based Attack: This kind of attack focus actual target server resources by sending packets such TCP SYN flood, Ping of death or Fragmented packets attack per second to demolish the target and make it unresponsive to other legitimate requests.
+Application Layer Attack: Rather than attempt to demolish the whole server, an attacker will focus their attack on running applications by sending request per second for example attacking on WordPress, Joomla web server by infinite request on apache to make it unresponsive to other legitimate requests.
+
+ 
+If you are aware of OSI 7 layers model then you may know that whenever we send request packet to server for accessing any particular service for example browsing Google.com then this process execute by passing through 7 layers of OSI model and at last we are able to access Google.com on browser.
+Now suppose port 80 is open in target’s network (192.168.1.107) for accessing its HTTP services so that you can open their website through your browser and get the information available in those web pages. So basically attacker plan to slow down HTTP service for other user who wants to interact with target machine through port 80 as result server will not able to reply the other legitimate requests and this will consider as Protocol Dos attack.
+Attacker can use any tool for DOS attack but we are using Hping3 for attacking to generate traffic flood for target’s network to slow down its HTTP service for other users.
+Above command will send endless request packet per second on port 80 of target’s network.
+
+What will Effect of Dos Attack?
+As we had described that any kind of Dos attack will affect the server services to their users and clients in establishing connection with it. Here also when we had sent infinite request packet on port 80 of target’s network then it should make HTTP service unable for legitimate users.
+So now if I will explore target IP on your browser for accessing their web site as a legitimate users then you can observe that the browser is unable to connect with server for HTTP services as shown in given below image.
+
+How to Predict DOS Attack in Our Network?
+Configure IDS in your network which will monitor the incoming network traffic on your network and generates the alert for suspicious traffic to system administrators. We had install Snort on system (ubuntu: 192.168.1.107) as NIDS (Network Intrusion Detection System) kindly read our previous both articles related to Snort Installation (Manually or using apt-respiratory)and its rule configuration to enable it as IDS for your network.
+Execute given below command in ubuntu’s terminal to open snort local rule file in text editor.
+sudo gedit /etc/snort/rules/local.rules
+Above rule will monitor incoming TCP-SYN packets on 192.168.1.107 by generating alert for it as “SYN Flood Dos”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Now test the above rule by sending infinite SYN packet using attacker’s machine. Open the terminal and enter msfconsole for metasploit framework and execute given below command to run the syn flood exploit.
+This exploit will send countless syn packets on target’s network to demolish its services.
+use auxiliary/dos/tcp/synflood
+msf auxiliary(synflood) > set rhost 192.168.1.107 (target IP)
+msf auxiliary(synflood) > set shost 192.168.1.105 (attacker’s IP )
+msf auxiliary(synflood) > exploit
+We have set shost for attacker’s IP only for tutorial else it was optional or you can address any random IP of your network, now can see SYN flood has been lunched on port 80 by default it is consider as Protocol Based Dos Attack as described above.
+
+As I had declaimed above why we are involving wireshark in this tutorial so that you can clearly see the packet sends from attacker network to targets network. Hence in given below image you can notice endless SYN packet has sent on target’s network on port 80.
+
+Come back to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic here your will observe that it is generating alerts for “SYN Flood Dos”.  Hence you can block attacker’s IP (192.168.1.105) to protect your network from discard all further coming packets toward your network.
+
+Now again open local rule files for generating alert for UDP flood Dos attack and enter given below rule and save the file.
+Above rule will monitor incoming UDP packets on 192.168.1.107 by generating alert for it as “UDP Flood Dos”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+We are using Hping3 for attacking to generate traffic flood for target’s network to slow down its UDP service for other users it is consider as Volume Based Dos Attack as described above.
+Above command will send endless bits packet per second on port 80 of target’s network.
+
+From given below image you can observe wireshark has captured UDP packets from 192.168.1.105 to 192.168.1.107
+
+Come back to over your target machine where snort is capturing all in coming traffic here your will observe that it is generating alert for UDP Flood Dos attack. Hence you can block attacker’s IP to protect your network from further scanning.
+
+By default snort capture SYN FIN Flood packets turn on IDS mode using given below command.
+Again we are using Hping3 for attacking to generate traffic flood for target’s network to slow down network services for other users.
+Above command will send endless bits packet per second on port 80 of target’s network.
+
+Hence in given below image you can notice endless SYN-FIN packet has sent from 192.168.1.105 to 192.168.1.107 on port 80.
+
+Come back to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic here your will observe that it is generating alerts for “SYN-FIN Flood Dos”.  Hence you can block attacker’s IP (192.168.1.105) to protect your network from discard all further coming packets toward your network.
+
+Now again open local rule files for generating alert for some combination of flags such as PSH-ACK packets and enter given below rule and save the file.
+Above rule will monitor incoming TCP-PSH/ACK packets on 192.168.1.107 by generating alert for it as “PUSH-ACK Flood Dos”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Again we are using Hping3 for attacking to generate traffic flood for target’s network to slow down network services for other users.
+Above command will send endless bits packet per second on port 80 of target’s network.
+
+Hence in given below image you can notice endless PSH-ACK packet has sent from 192.168.1.105 to 192.168.1.107 on port 80.
+
+Come back to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic here your will observe that it is generating alerts for “PUSH-ACK Flood Dos”.  Hence you can block attacker’s IP (192.168.1.105) to protect your network from discard all further coming packets toward your network.
+
+Now again open local rule files for generating alert for Reset flag packets and enter given below rule and save the file.
+Above rule will monitor incoming TCP-RST packets on 192.168.1.107 by generating alert for it as “Reset  Dos”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Again we are using Hping3 for attacking to generate traffic flood for target’s network to slow down network services for other users.
+Above command will send endless bits packet per second on port 80 of target’s network.
+
+Hence in given below image you can notice endless RST (Reset) packet has sent from 192.168.1.105 to 192.168.1.107 on port 80.
+
+Come back to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic here your will observe that it is generating alerts for “Reset Dos”.  Hence you can block attacker’s IP (192.168.1.105) to protect your network from discard all further coming packets toward your network.
+
+Now again open local rule files for generating alert for Fin flag packets and enter given below rule and save the file.
+Above rule will monitor incoming TCP-RST packets on 192.168.1.107 by generating alert for it as “FIN Dos”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Again we are using Hping3 for attacking to generate traffic flood for target’s network to slow down network services for other users.
+Above command will send endless bits packet per second on port 80 of target’s network.
+
+Hence in given below image you can notice endless FIN (Finished) packet has sent from 192.168.1.105 to 192.168.1.107 on port 80.
+
+Come back to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic here your will observe that it is generating alerts for “FIN Dos”.  Hence you can block attacker’s IP (192.168.1.105) to protect your network from discard all further coming packets toward your network.
+
+Smurf attack is DDOS attack in which large numbers of Internet Control Message Protocol packets are used to generate a fake Echo request (icmp type : 8) containing a spoofed source IP which is actually the target network address. This request packet is then is transmitted to all of the network hosts on the network and then each host sends an ICMP response to the spoofed source address (target IP).  The target’s computer will be flooded with traffic; this can slow down the target’s computer and make it unable for other users.
+Now again open local rule files for generating alert for ICMP packets and enter given below rule and save the file.
+Above rule will monitor ICMP packets on 192.168.1.103 by generating alert for it as “Smurf Dos Attack”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+ 
+Again we are using Hping3 for attacking to generate traffic ICMP flood for target’s network to slow down network services for other users.
+Above command will generate fake ICMP echo request packet containing a spoofed source IP: 192.168.1.103 which is basically our victim’s network and this request packet is then is transmitted to host’s network on 192.168.1.255 and then this host sends an ICMP response to the spoofed source address which our victim’s machine in IDS mode.
+
+From given below image you can observe it is showing source machine 192.168.1.103 sending  icmp echo request packet to 192.168.1.255 but as we know in actually attacker is main culprit behind this senario.
+
+Come back to over your target machine where you will notice that snort is capturing all the traffic flowing from 192.168.1.103 to 192.168.1.255 and generating alerts for “Smurf Dos Attack” which means is our machine (victim’s machine) is pinging other host machine of that network. Therefore the network administrator should be attentive with this kind of traffic and must check the system activity and legitimate ICMP request of packet of his network.
+
+Author: Rahul Virmani is a Certified Ethical Hacker and the researcher in the field of network Penetration Testing (CYBER SECURITY).    Contact Here

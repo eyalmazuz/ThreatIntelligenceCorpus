@@ -1,0 +1,21 @@
+
+					German researcher found remote code execution flaw on EBay subdomain					
+The German security researcher David Vieira-Kurz discovered a critical vulnerability in the official Ebay website in particular in its sub domain http://sea.ebay.com that allows an attacker a remote code execution.
+It’s not the first time that the researcher finds a vulnerability in the Ebay website, in particular the flaw discovered affecting the same subdomain where he found an exploitable SQL injection last year.
+“This time I found a controller which was prone to remote-code-execution due to a type-cast issue in combination with complex curly syntax.” writes the researcher in a blog post.  
+Vieira-Kurz published a POC video to demonstrate how to exploit the remote code execution on EBay website. In the video he accessed to the phpinfo() PHP function on the web page modifying the URL and injecting code in that.
+
+The hacker started from a legitimate URL
+and made some tests to verify the possibility to pass array values to the server.
+“One of the very first tests I perform against php web applications is to look for type-cast issues because php is known to cause problems when the value of a param is expected to be string but an array was supplied as user-input instead. So obviously my next step was to perform the above request with arrays this time.”
+https://sea.ebay.com/search/?q[0]=david&q[1]=sec{${phpinfo()}}&catidd=1
+
+The researcher made further test trying to submit another couple of requests that demonstrated the possibility to evaluate arbitrary php code in context of the ebay website.
+
+ “From my point of view that was enough to prove the existence of this vulnerabilty to ebay security team and I don’t wanted to cause any harm. What could an evil hacker have done? He could for example investigate further and also try things like {${`ls -al`}} or other OS commands and would have managed to compromise the whole webserver.”
+The flaw seems to affect the server side and the way it casts a static GET parameter that could be exploited to provide any array values, include functions and commands that could be executed by the application.
+It is possible that on server side a parser accepts the array values passed as a GET parameter and interprets each of them, also it is a malicious command or function.
+David Vieira-Kurz has already reported the flaw responsibly to the Ebay Security Team that fixed it this week, below the timeline of the remote code execution vulnerability.
+
+Pierluigi Paganini
+(Security Affairs –  Ebay, Remote Code Execution)

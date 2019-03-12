@@ -1,0 +1,18 @@
+
+					Security audit reveals critical flaws in VeraCrypt, promptly fixed with a new release					
+The security researcher Jean-Baptiste Bédrune from Quarkslab and the cryptographer Marion Videau  have discovered a number of security vulnerabilities in the popular encryption platform VeraCrypt. A new audit of the disk-encryption software revealed the existence of eight critical, three medium, and 15 low -severity vulnerabilities.
+VeraCrypt is a project based on TrueCrypt 7.1a and maintained by IDRIX, it was launched after the shocking shut down of the TrueCrypt project in 2014.
+The experts analyzed the VeraCrypt version 1.18 of the platform and the DCS EFI Bootloader 1.18 (UEFI), their analysis was focused on the new features introduced since the security audit of TrueCrypt conducted in April 2015.
+
+One of the most important features implemented by VeraCrypt 1.18 is the UEFI support, its code is in a separate repository, named VeraCrypt-DCS (Disk Cryptography Services). This new module is considered much less mature than the rest of the project, some parts are still incomplete or not implemented at all.
+“As explained in The Length of the Password Can Be Computed When Encryption Is Activated, on startup, keystrokes are stored in a specific buffer of the BIOS Data Area. A parallel can be drawn to UEFI: each driver has its own buffer containing the keystrokes. The address of this buffer is not known, and fully depends on the implementation. The password supplied by the user is read character per character with the GetKey function of the VeraCrypt bootloader.” “It is difficult to make sure the driver implementation will erase the buffer containing the keystrokes.”
+They discovered that boot passwords in UEFI mode could be retrieved by an attacker because the application fails to erase passwords when changed by users.
+“The data handled by the boot loader are rarely erased. The user password is properly cleared at startup. However, when a user changes his password, the Password structures containing the new password will not be erased (see the SecRegionChangePwd function in DcsInt / DcsInt.c). TrueCrypt’s developers and VeraCrypt’s have carefully checked if sensitive data was correctly cleared in memory. This level of care has not been taken into DCS yet.” reads the audit report published by the experts.
+Other critical issues are related to the implementation of the GOST 28147-89 symmetric block cipher which is known to be affected by implementation errors.
+“Remove GOST 28147-89 and more generally any 64-bit block cipher from the list of available block ciphers” states the report.
+Critical, medium and many low-risk severity vulnerabilities have been solved with the VeraCrypt release version 1.9. Anyway, a number of flaws remain unfixed due to the high complexity of patching activities.
+“All the vulnerabilities that have been taken into account have been correctly fixed (except a minor missing fix for one of them). In particular, the problem leading to a privilege escalation discovered by James Forshaw in the TrueCrypt driver just after the OCAP audit has been solved. Vulnerabilities which require substantial modifications of the code or the architecture of the project have not been fixed.” states the report.
+Such kind of audits is very important for the users’ security, they allow to speedup the process of finding and fixing the bugs.
+“VeraCrypt is much safer after this audit, and the fixes applied to the software mean that the world is safer when using this software,” the Open Source Technology Improvement Fund says of the audit.
+Pierluigi Paganini
+(Security Affairs – VeraCrypt, encryption)

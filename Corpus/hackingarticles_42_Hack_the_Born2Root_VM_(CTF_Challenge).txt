@@ -1,0 +1,49 @@
+
+Hack the Born2Root VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Born2Root. The credit for making this vm machine goes to “Hadi Mene” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.137 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap -sV 192.168.1.137
+
+Nmap scan shows us port 80 is open, so we open the ip address in our browser.
+
+We don’t find anything on the web page. So we use dirb to find the directories for more information.
+dirb http://192.168.1.104/
+
+Now the dirb scan shows us directories. We open the icons/ directory and find few files.
+
+Among the files there is a text file we open it and find a private key.
+
+We use this key to login through ssh to the target machine we use the names we find on the page we first opened. First we change the permissions of the private key. Then we use it to connect through ssh.
+chmod 600 id_rsa
+ssh -i id_rsa martin@192.168.1.137
+
+When we connect it will ask for password just press enter, it is there for trolling.
+Searching through the files we take a look at cron job.
+cat /etc/crontab
+
+We find that a file to called sekurity.py in the /tmp/ is to be executed every 5 minutes. But the file is missing from the folder. So we create a reverse shell of our own and save it as sekurity.py in the /tmp/ folder.
+
+Now we set up our listener using netcat and wait for the cronjob to execute our file. Once the file is executed we get our reverse shell as a different user.
+
+We couldn’t find anything that could help us root the machine. Now we use the third the user to root the machine. We know that the third user is hadi. So we create a dictionary using this name.
+We use cupp to create a dictionary.
+
+After we create a dictionary we use metasploit to bruteforce our way into ssh.
+msf > use auxiliary/scanner/ssh/ssh_login
+msf auxiliary(ssh_login) > set rhosts 192.168.1.137
+msf auxiliary(ssh_login) > set username hadi
+msf auxiliary(ssh_login) > set pass_file hadi.txt
+msf auxiliary(ssh_login) > run
+
+Now once we enter the shell we spawn the terminal and use hadi’s password (‘hadi123’) to enter the root shell.
+python -c “import pty; pty.spawn(‘/bin/bash’)”
+su – root
+
+Now that we are root we open the flag.txt and find a congratulatory message for completing the VM challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

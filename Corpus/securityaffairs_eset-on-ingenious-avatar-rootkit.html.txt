@@ -1,0 +1,36 @@
+
+					ESET on Avatar rootkit with API, SDK, and Yahoo Groups as C&C					
+Early this year ESET security firm detected the Avatar rootkit (Win32/Rootkit.Avatar), a mysterious malware advertised  as rootkit by Russian cybercrime on specific forums.
+“We present you here previously announced product. In connection with work on other projects, we moved the release date for the public from May to February 2013th 2012go.Now nuclear rootkit AVATAR is available for rental.”
+Security community discussed along on the Avatar rootkit that despite it was announced by ESET it was not found and published until now, as we will see the malware presents interesting features.
+In March ESET experts detected two droppers with different C&C servers and having different compilation time stamps as showed in the following pictures:
+
+
+ 
+The Avatar rootkit uses two different infection techniques, the first in the dropper so as to bypass detections by HIPS, and the second one in the rootkit driver to allow the malware to be alive after system reboot, the instance detected works only on x86 systems.
+Very interesting the two level dropper for Avatar rootkit, the first one implements LZMA decompression for the second level dropper.  The first level dropper generates random names  for mutexes/events and enforces modifications directly in the body of the modules, in this way driver module and second level dropper are unique in every instance of malware.
+The second level dropper uses two ways of escalating privilege:
+The following a diagram that shows the process implemented by dropper:
+
+Security experts believe that most interesting part of the exploit code of Avatar rootkit is the steps taken after exploitation, kernel-mode shellcode is in fact executed to load malicious driver.
+The Avatar rootkit driver is not stored on the hard drive and loads data only from a memory region, the technique for loading the Avatar rootkit driver by system driver infection is effective for bypassing defense, and allows the loads other kernel-mode modules exploiting the malicious system driver.
+Once loaded the Avatar rootkit driver, the malicious code executes an algorithm for infecting system drivers so as to survive after reboot, the post reports:
+“In order to perform its infection, Avatar randomly chooses a driver and checks its name against a blacklist that varies for every Windows versions.” “The Avatar rootkit driver is able to infect several system drivers without changing the original driver’s file size.”
+The Avatar rootkit driver is also able to detect the presence of a virtual machines environment thanks to a sophisticated technique, the driver module execute  the MmMapIoSpace() routine to read BIOS data at address 0xF0000 and check for some specific strings related to principal machine available on the market such as:
+The malware uses a hidden file system to store the user-mode payload module and also additional files, all the data are encrypted using a custom symmetric cipher.  The hidden file storage is also used by Avatar rootkit to store additional user-mode and kernel-mode modules that malware can  download and execute. Avatar rootkit doesn’t store malicious modules in any standard NTFS storage, except for infected system drivers.
+The principal functionalities of the malware are:
+The post highlight the flexibility of the malicious agent:
+“Of course, this means the initial infection can be the starting point of a variety of malicious activities based on the modules that deployed. In our case the payload component avcmd.dll was injected into svchost.exe system process which started communicating with C&C IP addresses stored in the configuration file. “
+This configuration file has the following structure:
+The surprises do not end here, communications with the command center are protected with a custom encryption algorithm which output is base64-encoded, Avatar rootkit has an additional way of communicating with the C&C server, it tries to search for messages in Yahoo groups using special parameters. The technique protects over sinkhole attempts of security firms, because information about C&C’s domains is encrypted using an RSA asymmetric algorithm, in this scheme security experts can only extract the public key to decrypt messages but cannot encrypt new messages to create bogus groups because they don’t have the private key of the botmaster.
+ 
+
+ 
+
+On the use of Yahoo Groups as C&C the report states:
+“The group description is encrypted with an RSA algorithm and a 1024-bit private key. It is possible to decrypt this data with the public key stored in the configuration file. We suppose this information is to be found in the encrypted message used for returning control for a botnet without an active C&C.”
+Last and attracting feature for Avatar rootkit is the availability of API for developing additional components, the development process is based on the Avatar Runtime Library, a special SDK for developing additional user-mode components which allow communication with the Avatar rootkit driver.
+Win32/Rootkit.Avatar is considerable a sophisticated rootkit family having many interesting features to avoid detection by security software, due this reason security experts believe that the agent has been developed for long term infection by the system executing the attack.
+Avatar rotkit may hold many surprises in the next future.
+Pierluigi Paganini
+(Security Affairs – Security)

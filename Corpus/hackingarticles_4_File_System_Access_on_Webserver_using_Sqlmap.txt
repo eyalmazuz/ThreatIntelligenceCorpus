@@ -1,0 +1,44 @@
+
+File System Access on Webserver using Sqlmap
+
+Hello everyone and welcome to the par two of our sqlmap series. In this article we’ll be exploiting an error based SQL injection to upload a shell on the web server and gain control over it! Now, how to do this, tools required, everything is discussed in as much detail as possible. So, let’s dive right in.
+Since, attacking a live website is a crime, we’ll be setting up a local host in a windows system using XAMPP server and we’ll use SQLi Dhakkan to create sql vulnerabilities in a database.
+You can download XAMPP and SQL dhakkan from here and here respectively.
+Step one is to fire up XAMPP control panel and put sql dhakkan in C: /xampp/htdocs directory which is the default directory for the webpages. The IP address on which sql dhakkan is hosted in my network is 192.168.1.124
+So, let’s start by checking the ports open on the server using nmap.
+
+As we can see that mysql is up and running on the host so we are good to apply SQLMAP.
+
+
+Hence, we can see numerous databases loaded, so our sqlmap attack was successful.
+Now, to read a file it is very much important to see whether the user has FILE privileges or not. If we have file privileges we will be able to read files on the server and moreover, write the files on the server!!
+
+As we can see that root@localhost has the FILE privilege.
+
+Let’s see who the current user of this server is.
+
+As we can see that the current use has the FILE privileges so we can apply – -file-read to read a file from the server and – -file-write to write a file on the server!
+
+Let’s try reading a file in the public directory, let’s say, index.php.
+ 
+We have read a file from a known directory successfully! We can apply directory buster to find other folders and files and read them too if we have the privileges!
+
+Now, let’s try and upload a file on the web server. To do this we are using the “- -file-write” command and “- -file-dest” to put it in the desired destination.
+For the sake of uploading a shell on the server, we’ll be choosing a simple command injection php shell that is already available in kali in the /usr/share/webshells directory and has the name simple-backdoor.php
+
+Now, we have moved the shell on the desktop. Let’s try to upload this on the web server.
+
+It has been uploaded successfully!!
+
+Let’s check whether it was uploaded or not!
+
+It indeed did get uploaded. Now, we’ll try and access the shell from browser.
+192.168.1.124/shell.php
+
+ 
+It is a command line shell, hence, we can execute any windows command on the browser itself remotely!
+The usage is: …..php?cmd=< windows command >
+Let’s try and run ipconfig on the browser
+
+Hence, we have successfully uploaded a shell and created a command injection vulnerability! Thanks for giving it a read!
+Author: Harshit Rajpal is an InfoSec researcher and a left and right brain thinker. contact here

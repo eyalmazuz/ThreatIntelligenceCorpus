@@ -1,0 +1,117 @@
+
+					Mamba: The new Full Disk Encryption Ransomware Family Member					
+Mamba, as they named it, uses a disk-level encryption strategy instead of the conventional file-based one. This may be just the beginning of a new era for the Ransomware.
+In this article, Renato Marinho (@renato_marinho), the researcher responsible for the finding, explains more about this new threat [1].
+“You are Hacked”. This message is all that remains of the victims of this new Ransomware. To get the decryption key, it’s necessary to contact somebody through the informed e-mail address, give the ID and pay 1 BTC per infected host. Without that, the system even starts. For the matter of this article, we will call this Ransomware “Mamba”, a snake with a paralyzing poison.
+It seems that the disk level Ransomware family is growing. A similar Ransomware, called Petya, got famous march this year because of the disk encryption strategy, although some analysis [2] says that the malware encrypts the master file table (MFT) and not the data itself. But Mamba Ransomware differs from Petya exactly at this point. It uses a full disk encryption open source tool called DiskCryptor [3] to strongly encrypt the data.
+We found Mamba last September 7, during an incident response procedure for a multinational company that had some servers compromised by this malware in Brazil, EUA and India subsidiaries.
+The goal of this article is to share some Mamba analysis results and to get some collaboration to better understand this threat and its intrusion vectors.
+As stated in the introduction of this article, the ransomware hinders the operating system to boot up. It overwrites the boot disk master boot record (MBR) by a custom one that shows the ransom message and asks for the password like you can see in the Figure 1 ransomware hinders the operating system to boot up.
+
+Figure 1: The ransom message at the beginning of the boot process
+It’s not clear, but this new MBR also prompts the user for the decryption password.
+As the whole data of the compromised servers HDD were encrypted, including the Ransomware itself, we started to look for more information about it somewhere else.
+The first strategy was looking for some parts of the ransom message on the Web. For our surprise, putting the text on the Web. For our surprise, putting the text “contact us for decryption key” YOURID,  we received just one result from Google. It pointed to an analysis made using Malwr [4] sandbox on Aug/29. This result gave us some important information, like the file name (141.exe) and the hashes.
+
+Figure 2: Google results for parts of the ransom message
+Searching the “141.exe” file hash at VirusTotal, we found some AV engines linking the sample to a Ransomware malware, like TrendMicro calling it a “Ransom_HDDCRYPTOR.A.”.
+
+Figure 3: TrendMicro’s analysis for the “141.exe” sample
+At the same time, we started to seek for the malware on other hosts of the company’s network. After some effort, using an anti-malware solution, we started to find out a malicious file in some different hosts. The file name was “152.exe”.
+Conducting some dynamic analysis of “152.exe” with the TIV and Hybrid-Analysis [5] sandboxes, we started to find some similarities between the Mamba’s memory dump strings and the ransom message. To say the truth, we found exactly the message “You are Hacked ! H.D.D Encrypted, Contact Us For Decryption Key (w889901665@yandex.com) YOURID: 123152” – even the “YOURID” was the same! !
+By the way, we found it very curious the fact that the “YOURID” information in the sandbox analysis be the same as the company’s compromised hosts. In other words, it seems like this is a static code.
+To better understand how Mamba works, we started to perform some tests with it in our lab. In a first test, we basically ran the sample in a Windows 8.1 VM, but, unfortunately, nothing happened unless a log file in the directory “C:\DC22” saying the password wasn’t informed.
+On a second try, we gave a password as a parameter and the result was different. Some other files were created in the “C:\DC22”, as can be seen in the image below.
+
+Figure 4: files created as the result of 152.exe execution with a password argument
+After a few seconds, the Windows restarted and, when returned, the operating system was apparently normal and these were the messages found in the “log_file.txt”:
+ 
+installing driver…
+installing driver successfully..
+getting share drive information…
+Trying to create service…
+creating service successfully. rebooting windows…
+From this messages we got some more information:
+– A new service was created – it doesn’t mention the name;
+– They are apparently using the tool DiskCryptor;
+– Maybe they intend to get some credentials from the machine using “netpass.exe”;
+– The “netuse.txt” lists the shared folders mapped by the user;
+So, we used Regshot to discover some more information about the changes caused by the malware in the SO, including the new service created by the malware. As the result, we discovered that one of the new services was called “DefragmentService”. We also discovered that the malware created a new user in the machine called “mythbusters” with the password “123456”.
+These are the new service information:
+
+Figure 5: Fake DefragmentService created by Mamba
+So, according to this service, after the machine reboot, “152.exe” was expected to be called with the same parameters we give in the first run. We follow watching the machine process, but no 152.exe was running.
+Then, we tried to reboot the machine again to check if the ransom message should appear, but the system booted up normally again.
+Performing some analysis on “dcrypt.exe” and “dccon.exe”, the DiskCryptor GUI and command like, respectively, we found that the password parameter is preceded by a “-p”. So, we tried to run “152.exe” with this parameter before diving into the reverse engineering job.
+For our surprise, this time, the encryption process worked and the ransom message was shown during the boot. The only thing to note here is that the password was the “-p” itself and not the password given by the following parameter as we expected. So, the thing is, Mamba was expecting a second argument to run properly.
+The process that encrypted the disk was the “dccon.exe”, called by the “152.exe”. During the process, it was possible to follow the encryption with the command “dccon -info pt0” and the result was like follows:
+
+Figure 6: Full disk encrypted by the Mamba Ransomware.
+After the reboot, that didn’t occur automatically, the ransom message was shown exactly the same as the company’s compromised machines.
+
+Figure 7: Lab machine compromised
+At this stage, the log file looks like that:
+installing driver…
+installing driver successfully..
+getting share drive information…
+Trying to create service…
+creating service successfully. rebooting windows…
+Checking resources existence. They are OK…
+driver installed before…
+starting serviceMain…
+ServiceMain: Entry
+ ServiceMain: Performing Service Start Operations
+ServiceMain: Waiting for Worker Thread to complete
+ServiceWorkerThread: Entry
+ServiceCtrlHandler: Entry
+ServiceCtrlHandler: Exit
+Starting Mount app…
+Checking resources existence. They are OK…
+driver installed before…
+mount:start…
+pass:
+123456
+mount:mounting share drive…
+mount:OS is win2003 or lower…
+mount:share drive not found …
+mount:exit Mount…
+start hard drive encryption…
+Checking resources existence. They are OK…
+driver installed before…
+Trying to create service…
+As we can see, at some moment, the password used to encrypt the disk was printed to the log file.
+We’ve found some good information about this threat until now, but we didn’t find the infection vector yet. We know that the password used to encrypt the disk is given as a parameter, so, there may exist some script or other binary that calls the “152.exe” code giving it the clear text password that will be used. We also think that the password is the same for all the victims or may be something related to the victims’ environment, like the hostname, or something like that.
+The actors in charge of this campaign seem to make some money. We contacted the e-mail address and they asked 1 BTC per infected machine.
+This is the reply message we received:
+ andy saolis<w889901665@yandex.com>
+Your HDD Encrypted By AES 2048Bit
+send 1BTC Per HOST  to My Bitcoin Wallet , then we give you Decryption key For Your Server HDD!!
+My Bitcoin Wallet Address :  1NLnMNMPbxWeMJVtGuobnzWU3WozYz86Bf
+We Only Accept Bitcoin , it’s So easy!
+you can use Brokers to exchange your money to BTC ASAP
+it’s Fast way!
+Here:
+https://localbitcoins.com/
+if You Don’t Have a Account in Bitcoin , Read it First :
+https://bitcoin.org/en/getting-started
+bitcoin Market :
+https://blockchain.info/
+https://www.okcoin.com/
+https://www.coinbase.com/
+https://bitcoinwallet.com
+One point that caught our attention was the mention to “server” in the message reply. Would their strategy be to compromise just servers? Corroborates to that hypothesis the fact that the other machines with the “152.exe” file weren’t compromised.
+The bitcoin wallet given by the cybercriminal received 4 BTC by the time of this writing.
+
+Figure 8: Cybercriminal bitcoin wallet balance
+ 
+As Renato Marinho has stated, Morphus Labs is open to collaborating with the information security community finding more information about this threat.  They have other samples of Mamba.
+References:
+[1] https://www.linkedin.com/pulse/mamba-new-full-disk-encryption-ransomware-family-member-marinho?trk=pulse_spock-articles
+[2] https://blog.malwarebytes.com/threat-analysis/2016/04/petya-ransomware/
+[3] https://diskcryptor.net/wiki/Main_Page
+[4] https://www.hybrid-analysis.com/sample/74336da7eb463092a5f1bca3071f96b005f52e6df5826f8b0351e10537ba0459?environmentId=100
+[5] https://malwr.com/analysis/YzI4ZTI3NjAxYjNmNDNjZDlmZjhiMjIxMDM3Nzg3NDE/
+About the Author:
+Renato Marinho
+Edited by Pierluigi Paganini
+(Security Affairs – Mamba ransomware, cybercrime)

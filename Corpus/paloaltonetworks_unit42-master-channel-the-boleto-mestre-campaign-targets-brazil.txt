@@ -1,0 +1,181 @@
+Master Channel: The Boleto Mestre Campaign Targets Brazil
+
+vlogMalicious spam (malspam) often uses malware attachments or links to malware disguised as legitimate documents. In Brazil-based malspam, such malware often impersonates a document called “boleto.” Boleto is an invoice document for Boleto Bancário, a Brazilian payment method commonly used in e-commerce.
+We occasionally run across malspam with fake boleto attachments, and these generally target Brazilian organizations. In one such campaign, we’ve seen over 260,000 emails since June 2017 as shown in figure 1.
+
+Figure 1. Results from an AutoFocus search for malspam from the Boleto Mestre campaign.
+ 
+Figure 2 shows an example. In this image, a link in the email will return malware disguised as a boleto document. The red text below is the imbedded URL.
+
+Figure 2. Screenshot of an email from this campaign.
+ 
+Like other malspam, this campaign is designed to infect Windows computers with an information stealing Trojan. But what makes this boleto-themed malspam campaign unique?
+Windows hosts infected by this campaign generate plain text Internet Relay Chat (IRC) traffic. All infected hosts join the #MESTRE channel. In Portuguese (the official language of Brazil), “mestre” roughly translates to “master” or “teacher” in English. This sort of IRC traffic is fairly unique for current Brazil-based malspam, so we are calling this the Boleto Mestre campaign.
+
+Infection Characteristics
+In a posting on my malware-traffic-analysis.net blog, I first documented characteristics of a Windows host infected from the Boleto Mestre campaign in the summer of 2016:
+
+PowerShell, PSexec, and other legitimate binaries (.exe and .dll files) utilized by malicious Visual Basic Script (VBS) files.
+Base64 encoded strings representing VBS saved in the Windows registry.
+A scheduled task for the infection to stay persistent.
+Post-infection activity that includes clear text IRC traffic over TCP port 443 to a domain with an “ssl.” Prefix. Infected hosts join the #MESTRE channel.
+
+What is the chain of events for an infection?
+Step 1: The victim clicks a link from the email or attached PDF file, which returns a VBS file.
+Step 2: The victim double-clicks on the VBS file.
+Step 3: This causes more files to be downloaded to the infected Windows host.
+Step 4: Initial check-in traffic with www.petr4[.]in.
+Step 5: The infected host starts communicating through IRC to its new controller.
+
+Figure 3. Chain of events for a Boleto Mestre malspam infection in November 2017.
+ 
+PDFs for Redundancy
+Prior to June 16th, 2017 Boleto Mestre malspam had links in the email message text to a VBS file posted elsewhere.  However, since June 16th, these malicious emails have also included PDF attachments as well as the links, providing redundancy to the attack.
+The PDF attachments have no exploits. These PDF files merely include a link as shown in Figure 4. Like the link in the email text, this URL returns a VBS file. URLs in the PDF attachments are different than URLs within the email’s message text.  However, both URLs redirect to a new URL that returns the same VBS file. This is likely a redundancy scheme to increase chances that a potential victim will download the initial VBS file.
+
+Figure 4. Opening the PDF file and viewing the link.
+ 
+PDF attachment names start with six digits that roughly align to the date the PDF file was last modified by the criminals behind this campaign. The only change appears to be the link in the PDF to download the initial VBS file. These PDF files have been renamed at least six times since June 2017, so we can infer the PDF files have been modified at least six times since then.
+
+Figure 5. PDF attachment file name breakdown.
+ 
+Brazil or Bust
+Clicking the link in the message text or clicking the link in the PDF attachment downloads the same VBS file. In this case, the email and PDF links both redirected to a URL on sendspace[.]com. Sendspace is legitimate service that allows people to share files over the web. Criminals behind Boleto Mestre have used other file-sharing services like Google Drive and 4shared[.]com, but they tend to stick with Sendspace.
+The URL from the email or PDF attachment is location-specific. Servers hosting the malware do not return anything unless the victim comes from a Brazil IP address. Once we viewed the URL from a Brazil IP address, it redirected to a Sendspace URL, and we got our VBS file.
+
+Figure 6. If we did not view the webpage from Brazil, we got a 404 not found error.
+
+Figure 7. Coming from a Brazil IP address, we got the initial VBS file.
+ 
+The VBS file was somewhat obfuscated, and it roughly followed the same naming scheme as the PDF attachment. The file name started with 06112017, which matched the date we downloaded the file on November 6, 2017.
+
+Figure 8. The downloaded VBS file.
+ 
+Infection Traffic
+On Monday, November 6th, 2017, we infected a computer running Windows 7 SP 1 (host name MONTICELLO-PC) with admin user account thomas.jefferson. Except for the Sendspace URLs, all infection traffic was unencrypted.
+
+Figure 9. Traffic from the infection filtered in Wireshark.
+ 
+After we downloaded the VBS file from Sendspace and double-clicked it, the script downloaded four items from 65.181.113[.]87. After the infection was finished, the Windows host checked in to an initial controller at www.petr4[.]in.  It reported its host name, user account name, and IRC identification data to be used by an IRC controller at ssl.cheddarmcmelt[.]top.
+The infected Windows host then switched to the IRC controller at ssl.cheddarmcmelt[.]top, where it was one of several hosts that appeared in command and control (C2) traffic through plain-text IRC.
+
+Figure 10: C2 traffic over IRC from the infected Windows host, MONTICELLO-PC.
+
+Forensics on an Infected Host
+What does an infected Windows host look like? We found several artifacts were on our infected Windows host in various directories. Many of these artifacts are not inherently malicious on their own. The downloaded executables and DLL files were all legitimate binaries. Figures 11 through 14 show some of the artifacts we found on an infected host running Windows 7 SP1.
+
+Figure 11. Artifacts found in an infected user’s AppData\Local\Temp\Java directory.
+
+Figure 12. Artifacts found in an infected host’s C:\Windows\System32\Java directory.
+
+Figure 13.  Artifacts found in an infected host’s C:\Windows\System32 directory.
+ 
+
+Figure 14. Downloaded DLL and EXE files are legitimate executables.
+ 
+The infection was kept persistent through a scheduled task. The task pointed to a VBS file. The VBS file read a Windows registry key value that executed SYSMONTICELLOPC60.exe which is actually a copy of PowerShell.exe, a legitimate system administrator tool used for this infection.
+
+Figure 15. Scheduled task to keep the infection persistent.
+
+Figure 16. Contents of the VBS script runs a value in the Windows Registry.
+
+Figure 17. Windows registry value points to a renamed PowerShell.exe file.
+Other entries in the Windows registry had VBSscript code, or they had Base64 strings representing VBSscript code that assisted in the infection.  In Figure 18, the HKCU\Software hive contains a key named SYSMONTICELLOPC with an entry named SYS that contains a Base64 string in the data.  That Base64 string decodes to VBScript used for the infection.  Figure 19 shows another registry key with an entry containing more base64 text that decodes to VBScript.
+
+Figure 18.  Windows registry entry for HKCU\Software\SYSMONTICELLOPC.
+
+Figure 19. Windows registry entry for HKCU\Software\SYSMONTICELLOPC60.
+Conclusion
+This campaign’s combination of Windows registry values, VBS files, and legitimate binaries provides an effective evasion technique. Prior to publishing this blog post, we were able to infect a default-configured Windows 10 host with up-to-date virus definitions in Windows Defender just by clicking a link in one of the PDF attachments and double-clicking the downloaded VBS file.
+But, Palo Alto Networks customers are protected from this threat. All identified samples have been flagged as malicious within the Palo Alto Networks next-generation security platform. C2 domains used by the attackers are blocked via Threat Prevention. And AutoFocus users can track the PDF attachments described in this report using the BoletoMestre tag.
+See the section below for domains, URLs, file names, hashes, and other related information from our November 2017 lab infection.
+ 
+Indicators
+Email senders used by the Boleto Mestre campaign since June 2017:
+
+sender@globalcobranca[.]ltda
+sender@grupoaria[.]ltda
+sender@grupoaxecapital[.]pw
+sender@grupofreitas[.]ltda
+sender@gruporecovery[.]ltda
+sender@gruporecovery[.]xyz
+sender@gruposafe[.]ltda
+sender@grupounique[.]ltda
+
+ 
+Subject lines used by the Boleto Mestre campaign since June 2017:
+
+Envio de Boleto – URGENTE – AXECAPITAL
+Envio de Boleto – URGENTE – GLOBAL
+Envio de Boleto – URGENTE – GRUPO ARIA
+Envio de Boleto – URGENTE – GRUPO FREITAS
+Envio de Boleto – URGENTE – GRUPO SAFE
+Envio de Boleto – URGENTE – GRUPO UNIQUE
+Envio de Boleto – URGENTE – RECOVERY
+
+ 
+Attachment names used by the Boleto Mestre campaign since June 2017:
+
+16062017329800998812303133716062017.pdf
+190620170009812311122239383108481110.pdf
+20072017008184910142830132981348292017.pdf
+010820170003375296186050723708.pdf
+1508201700016067882247230289631.pdf
+250920170000006734569912369086500998.pdf **
+0111201700000234567817737100891933281001.pdf  **
+1311201700000456789029983300094266915060.pdf **
+
+** File names seen from this campaign as in November 2017.
+ 
+IP addresses, domains, and URLs seen in November 2017:
+
+65.181.127[.]152 port 80 – unique.bx2dscvppabfcpssiewlvwnknp8ppnnp[.]top – Domain in link from one of the PDF attachments to download VBS file
+port 443 – www.sendspace[.]com – GET /pro/dl/5qcesn – Sendspace URL for VBS file
+65.181.113[.]87 port 80 – 65.181.113[.]87 – GET /sshd/aw7.tiff
+65.181.113[.]87 port 80 – 65.181.113[.]87 – GET /sshd/W7.zip
+65.181.113[.]87 port 80 – 65.181.113[.]87 – GET /sshd/dll.dll
+65.181.113[.]87 port 80 – 65.181.113[.]87 – GET /sshd/dll.dll.exe
+65.181.113[.]87 port 80 – www.petr4[.]in – GET /avs/logs/index.php?[info about infected host]
+65.181.113[.]87 port 80 – www.petr4[.]in – GET /lol/index.php?[IRC info for infected host]
+65.181.113[.]87 port 443 – ssl.cheddarmcmelt[.]top – clear text IRC traffic
+
+
+Locations of artifacts found on the infected host:
+
+C:\Users\[username]\AppData\Local\Temp\ps.exe
+C:\Users\[username]\AppData\Local\Temp\Java\[random numbers]\[random characters].vbs
+C:\Users\[username]\AppData\Local\Temp\Java\[hostname].aes
+C:\Users\[username]\AppData\Local\Temp\Java\[hostname].zip
+C:\Users\[username]\AppData\Local\Temp\Java\dll.dll.exe
+C:\Users\[username]\AppData\Local\Temp\Java\Ionic.Zip.Reduced.dll
+C:\Windows\System32\c.cer
+C:\Windows\System32\crov.exe
+C:\Windows\System32\[random characters].vbs
+C:\Windows\System32\[hostname]ocx
+C:\Windows\system32\SYS[hostname]exe
+C:\Windows\System32\Java\[hostname].aes
+C:\Windows\System32\Java\[hostname].zip
+C:\Windows\System32\Java\Ionic.Zip.Reduced.dll
+C:\Windows\System32\Tasks\SYS[hostname]60
+
+ 
+Windows registry entries on the infected Windows host:
+
+HKCU\Software\SYS[hostname]\SYS
+HKCU\Software\SYS[hostname]\SYS[hostname]
+HKCU\Software\SYS[hostname]60\PSYS[hostname]60
+HKCU\System\SYS[hostname]60\SYS[hostname]60\cache
+HKCU\System\SYS[hostname]60\SYS[hostname]60\control
+HKCU\System\SYS[hostname]60\SYS[hostname]60\SYS[hostname]60
+
+ 
+File hashes associated with the November 2017 infection:
+SHA256 hash: 3b9944bbb3d1e088c03882d2d5cde19bcd2ac4059aa5d002d9165674a1617fea
+
+File name: 250920170000006734569912369086500998.pdf
+
+SHA256 hash: 589215c1ed39d3104cf40dc344441cfa1b5bbbe4c28c89780d8f824fb61a2e00
+
+File name: 0611201700000234567817737100891933281001.vbs
+
+

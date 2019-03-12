@@ -1,0 +1,60 @@
+Threat Brief: Petya Ransomware
+
+Situation Summary
+This Unit 42 blog provides an update on the threat situation surrounding attacks using the Petya Ransomware which are impacting organizations in Ukraine, Russia and to a lesser extent around the world.
+On June 27th, 2017 we became aware of a new variant of the Petya malware which is spreading through multiple lateral movement techniques. One technique includes  the ETERNALBLUE exploit tool. This is the same exploit the WanaCrypt0r/WannaCry malware exploited to spread globally in May, 2017. At least 50 organizations have reported impacts from the malware, including government and critical infrastructure operators. Most impacted organizations are located in Ukraine, but global organizations with offices in Ukraine have seen the malware spread within their network across national borders.
+Palo Alto Networks is documenting our prevention capabilities with regard to this threat in the Palo Alto Networks Protections for Petya Ransomware blog post. Windows users should take the following general steps to protect themselves:
+
+Apply security updates in MS17-010
+Block inbound connections on TCP Port 445
+Create and maintain good back-ups so that if an infection occurs, you can restore your data.
+
+This is a developing situation, we will update this blog as new information becomes available. AutoFocus users view samples using the Petya tag.
+Attack Overview
+Petya is a ransomware family that works by modifying the Window’s system’s Master Boot Record (MBR), causing the system to crash. When the user reboots their PC, the modified MBR prevents Windows from loading and displays a fake “chkdisk” screen which indicates the computer’s hard drive is being repaired, but the malware is actually encrypting the user’s files.  When this process completes, the malware displays an ASCII Ransom note demanding payment from the victim (Figure 1).
+
+Figure 1: Latest Petya Ransom note displayed on a compromised system.
+The latest version of the Petya ransomware is spreading over Windows SMB and is reportedly using the ETERNALBLUE exploit tool, which exploits CVE-2017-0144 and was originally released by the Shadow Brokers group in April 2017.
+After the system is compromised the victim is asked to send US $300 in Bitcoin to a specific Bitcoin address and then send an e-mail with the victim’s bitcoin wallet ID to wowsmith123456@posteo[.]net to retrieve their individual decryption key.  Posteo (a free e-mail provider) has already shut down this e-mail address, and as such victims should not even attempt to pay the ransom. As of 13:00 UTC on June 28thth, approximately 4 Bitcoin have been transferred to the attacker’s wallet.
+Unit 42 is unaware of ANY successful recovery after paying the ransom. Additionally, ongoing research by the industry is showing that specific actions this malware takes makes it technically infeasible, if not impossible, for recovery to occur.
+This means that even though this malware is functionally ransomware, for threat assessment purposes, it should be functionally considered a “wiper”.
+Attack Lifecycle
+We are aware of the following information about how the Petya attack lifecycle works.
+Delivery/Exploitation
+We have not yet confirmed the initial infection vector for this new Petya variant. Previous variants were spread through e-mail, but we have not identified this latest sample carried in any e-mail related attacks.
+While we have not been able to directly confirm the source, we have seen evidence that a Ukrainian software application called MEDoc was used by attackers to deliver the Petya DLL. The software is heavily used in Ukraine it appears the company’s systems may have been compromised and used to issue a malicious update to systems running the program on the morning of Jun 27th. This infection vector helps explain the high concentration of infections in Ukraine.
+Installation
+This variant of Petya is spread as a DLL file, which must be executed by another process before it takes action on the system. Once executed, it overwrites the Master Boot Record and creates a scheduled task to reboot the system. Once the system reboots, the malware displays a fake “chkdisk” scan which tricks the victim into believing the program is repairing their hard drive. In reality, the malware is encrypting the NTFS Master File Table in the background. Once the fake chkdisk completes, the malware displays a ransom note which demands a payment of $300 in bitcoin.
+Command and Control
+Petya contains no Command and Control mechanisms that we know of. After a host is infected, there is no communication from the malware back to the attacker.
+Lateral Movement
+Petya uses three mechanisms to spread to additional hosts.
+
+Petya scans the local /24 to discover enumerate ADMIN$ shares on other systems, then copies itself to those hosts and executes the malware using PSEXEC. This is only possible if the infected user has the rights to write files and execute them on system hosting the share.
+Petya uses the Windows Management Instrumentation Command-line (WMIC) tool to connect to hosts on the local subnet and attempts to execute itself remotely on those hosts. It can use Mimikatz to extract credentials from the infected system and use them to execute itself on the targeted host.
+Petya finally attempts to use the ETERNALBLUE exploit tool against hosts on the local subnet. This will only be successful if the targeted host does not have the MS17-010 patches deployed.
+
+Conclusion
+Ransomware attacks are very common, but they are rarely coupled with an exploit that allows the malware to spread as a network worm. The WannaCry attacks in May, 2017 demonstrated that many Windows systems had not been patched for this vulnerability. The spread of Petya using this vulnerability indicates that many organizations may still be vulnerable, despite the attention WannaCry received.
+As always if you have any questions, please come to the Threat & Vulnerability Discussions on our Live Community.
+Version Summary
+June 27, 2017:
+
+Initial Publication
+
+June 27, 2017 – 1:08 PM PT
+
+Updated Delivery/Exploitation section to include speculation about delivery through a compromised Ukrainian Tax software package.
+Updated Lateral Movement section to describe additional mechanisms used to spread Petya.
+
+June 28, 2017 – 8:40 AM PT
+
+Updated summary to note the expansion beyond Ukraine and Europe
+Added more detail to malware encryption process.
+Updated Infection mechanism to specify the MEDoc software update delivery vector.
+
+June 29, 2017 – 5:00 PM PT
+
+Added more detail around recovery and “wiper” characteristics.
+
+

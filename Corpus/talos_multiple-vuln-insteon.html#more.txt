@@ -1,0 +1,199 @@
+
+Vulnerability Spotlight: Multiple Remote Vulnerabilities In Insteon Hub PubNub
+
+
+
+
+Vulnerabilities discovered by Claudio Bozzato of Cisco Talos
+
+
+Talos is disclosing twelve new vulnerabilities in Insteon Hub, ranging from remote code execution, to denial of service. The majority of the vulnerabilities have their root cause in the unsafe usage of the strcpy() function, leading either to stack overflow or global overflow. 
+
+
+Overview
+
+
+Insteon Hub is a central controller, which allows an end user to use a smartphone to connect to  and manage devices in their home remotely. To enable remote interaction via the internet, Insteon Hub uses an online service called PubNub.
+
+End users install the "Insteon for Hub" application on their smartphone. Both the smartphone application and Insteon Hub include the PubNub software development kit, which allows for bidirectional communication using PubNub's REST API.
+
+Unless stated otherwise, the vulnerabilities were found in Insteon Hub 2245-222 running firmware version 1012. As of firmware version 1016, these vulnerabilities are fixed, versions previous to this may be vulnerable.
+
+
+
+
+TALOS-2017-0483 - Message Handler Multiple Stack Overflow Remote Code Execution Vulnerabilities
+
+An exploitable buffer overflow vulnerability exists in the way the device handles commands sent through the PubNub service. Specially crafted commands can cause a stack-based buffer overflow, which overwrites arbitrary data due to the use of the strcpy() function while handling the JSON request. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+Note. CVE rules require that we assign a separate CVE to each instance of a vulnerability that can be fixed independently.
+
+CVE: CVE-2017-16252 through CVE-2017-16337
+
+Full technical advisory is available.
+
+
+TALOS-2017-0484 - Message Handler Multiple Global Overflow Remote Code Execution Vulnerabilities
+
+An exploitable buffer overflow vulnerability exists in the way the device handles commands sent through the PubNub service. Specially crafted commands can cause a buffer overflow on a global section overwriting arbitrary data, due to the use of the strcpy() function while handling the JSON request. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+CVE: CVE-2017-16338, CVE-2017-16339, CVE-2017-16340, CVE-2017-16341, CVE-2017-16342, CVE-2017-16343, CVE-2017-16344, CVE-2017-16345, CVE-2017-16346, CVE-2017-16347
+
+Full technical advisory is available.
+
+
+TALOS-2017-0485 - Reboot Task Denial Of Service Vulnerability
+
+An exploitable DoS vulnerability exists in the device firmware, which allows an attacker to arbitrarily reboot the device without authentication. An attacker can send an UDP packet to trigger this vulnerability.
+
+CVE: CVE-2017-16348
+
+Full technical advisory is available.
+
+
+TALOS-2017-0492 - HTTPExecuteGet Firmware Update Information Leak Vulnerability
+
+The HTTP server implementation incorrectly checks the number of GET parameters supplied, leading to an arbitrarily controlled information leak on the device's memory. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+CVE: CVE-2017-14443
+
+Full technical advisory is available.
+
+
+TALOS-2017-0493 - HTTPExecuteGet Firmware Update URL Parameter Code Execution Vulnerability
+
+The HTTP server implementation incorrectly handles the URL parameter during a firmware update request, leading to a buffer overflow on a global section. The library used by the vendor does provide some level of protection against buffer overflows, however. By using vulnerability TALOS-2017-0492, it is possible to bypass this protection and achieve code execution. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+CVE: CVE-2017-14444
+
+Full technical advisory is available.
+
+
+TALOS-2017-0494 - HTTPExecuteGet Firmware Update host Parameter Buffer Overflow Vulnerability
+
+The HTTP server implementation incorrectly handles the host parameter during a firmware update request, leading to a buffer overflow on a global section. The library used by the vendor does provide some level of protection against buffer overflows, which in this case, cannot be circumvented. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+
+
+CVE: CVE-2017-14445
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2017-0495 - HTTPExecuteGet Parameters Extraction Code Execution Vulnerability
+
+The HTTP server implementation unsafely extracts parameters from the query string, leading to a buffer overflow on the stack. The vulnerability exists because the extraction of the arguments is made without ensuring size constraints. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+
+
+CVE: CVE-2017-14446
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2017-0496 - Insteon Hub PubNub "ad" Channel Message Handler Code Execution Vulnerability
+
+An exploitable buffer overflow vulnerability exists in the PubNub message handler for the "ad" channel. A specially crafted command sent through the PubNub service can cause a stack-based buffer overflow, overwriting arbitrary data. In order to be able to send such commands, the attacker needs to be authenticated in the PubNub service.
+
+
+
+CVE: CVE-2017-14447
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2017-0502 - Insteon Hub PubNub control Channel Message Handler Code Execution Vulnerabilities
+
+An exploitable buffer overflow vulnerability exists in the way the Hub handles the replies from PubNub, leading to the overwriting of arbitrary data in a global section. The attacker would need to impersonate PubNub and answer an HTTPS GET request to trigger this vulnerability.
+
+
+
+CVE: CVE-2017-14452, CVE-2017-14453, CVE-2017-14454, CVE-2017-14455
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2018-0511 - Insteon Hub PubNub MPFS Upload Firmware Update Vulnerability
+
+The HTTP server allows for uploading arbitrary MPFS binaries that could be modified to enable access to hidden resources which allow for uploading unsigned firmware images to the device.  To trigger this vulnerability, an attacker needs to have credentials that will be used to upload an MPFS binary via the "/mpfsupload" HTTP form and, later, upload the firmware via a POST request to "firmware.htm."
+
+
+
+This vulnerability was found on firmware version 1013.
+
+
+
+CVE: CVE-2018-3832
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2018-0512 - Insteon Hub PubNub Firmware Downgrade Vulnerability
+
+An exploitable firmware downgrade vulnerability exists in Insteon Hub running firmware version 1013. The firmware upgrade functionality, triggered via PubNub, retrieves signed firmware binaries using plain HTTP requests. The device doesn't check the firmware version that is going to be installed, and thus allows for flashing older firmware images. To trigger this vulnerability, an attacker needs to impersonate the remote server "cache.insteon.com" and serve any signed firmware image.
+
+
+
+CVE: CVE-2018-3833
+
+
+
+Full technical advisory is available.
+
+
+
+TALOS-2018-0513 - Insteon Hub PubNub Firmware Upgrade Confusion Permanent Denial Of Service Vulnerability
+
+An exploitable permanent DoS vulnerability exists in Insteon Hub running firmware version 1013. The firmware upgrade functionality, triggered via PubNub, retrieves signed firmware binaries using plain HTTP requests. The device doesn't check the kind of firmware image that is going to be installed, and thus allows for flashing any signed firmware into any MCU. Since the device contains different and incompatible MCUs, flashing one firmware to the wrong MCU will result in a permanent unusable condition. To trigger this vulnerability, an attacker needs to impersonate the remote server "cache.insteon.com" and serve a signed firmware image.
+
+
+
+CVE: CVE-2018-3834
+
+
+
+Full technical advisory is available.
+
+
+
+Discussion
+
+
+
+Our previous vulnerability research on IoT devices (Foscam C1 Vulnerabilities, Circle with Disney) has shown that these kinds of devices are often vulnerable. 
+
+
+
+Although several vulnerabilities were also found on Insteon Hub PubNub, some leading to remote code execution, it is worth mentioning that in order to exploit such vulnerabilities, the attacker needs to be in a privileged position. Some vulnerabilities require authentication into the PubNub portal. For others, the attacker needs to be in a position to perform a man-in-the-middle attack. Finally, the device itself also partially mitigates the vulnerability by limiting the size of the HTTP requests, which was proven effective in one of the vulnerabilities.
+
+
+
+Coverage
+
+
+The following Snort rules will detect exploitation attempts. Note that additional rules may be released at a future date, and current rules are subject to change, pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org
+
+
+
+Snort Rules: 45441, 45422, 44863, 45049, 45086, 45087, 44863, 45088  
+
+
+
+
+
+

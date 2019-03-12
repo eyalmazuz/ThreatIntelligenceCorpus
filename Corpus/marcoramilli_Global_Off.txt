@@ -1,0 +1,78 @@
+
+Global Offset Table Injection Procedure
+
+
+
+Have you ever thought about how a program can call external functions ? Lets say we have a classic printf() which is imported from "libc" how does the program know where exactly printf() is located into the memory ? Well the answer in the Global Offset Table. The following sketch sows how the calls between external function work:
+
+
+
+
+
+
+In other words the Global Offset Table redirects a position independent address calculations to an absolute location and is
+located in the .got section of an ELF executable or shared object. It stores the final (absolute) location
+of a function calls symbol, used in dynamically linked code. When a program requests to use printf() for
+instance, after the rtld locates the symbol, the location is then relocated in the GOT and allows for the
+executable via the Procedure Linkage Table, to directly access the symbols location. For a complete resource about ELF and its sections I suggest to take a look here, you want find many useful references such as: blog posts, articles,  books and papers. But this post is not about describing ELF, GOT or PLT it's about describing a procedure to redirect control flow by injection code into the GOT table.
+
+
+
+Lets assume to have the following function (click on the image to make it bigger) in a give program. The program copies one input parameter to a support buffer following a given offset. The execution string looks like: program.o 4 30 AAAA. Basically 4 is the number of bytes to be copied into the destination buffer (size [256]) 30 is the offset from the beginning of the destination buffer and AAAA  is the data to copy on it.
+
+
+
+
+
+
+
+The external function that we want to follow is the "puts()" function. The  GOT table will be "filled" dynamically during the execution so lets see what happens by running the system. Breaking on main():
+
+
+
+
+
+
+
+
+
+Disassembly the "main()".
+
+
+
+
+
+
+
+
+
+
+
+The puts() function is reached by the "callq  0x100000e8a ".  Following 0x100000e8a address we see the PLT pointing to the GOT table. Lets see the dynamic pointer *0x1b2(%rip) . PLT table is on 100000ea8.
+
+
+
+
+
+
+
+
+
+The program itself prints out to the buffer address in which the data should be copied. (0x66f37a60). A little bit of hexadecimal math: just remember we got the memory address in which we want to inject our data (AAAA) placed into 0x100000e8a and we have the buffer address in 0x66f37a60. And here we go !  A nice and easy segmentation fault ;D !!
+
+
+
+
+
+
+
+
+
+This post shows a quick'n dirty procedure on how attackers could manipulate programs control flows by injecting address/code into the GOT table. Don't take it as a tutorial or a guide but as simple and fast way to sum up the entire procedure. 
+
+
+
+
+
+
+

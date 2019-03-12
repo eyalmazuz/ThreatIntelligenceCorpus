@@ -1,0 +1,187 @@
+
+How to acquire "locked" files from a running Windows system
+
+
+By Pär Österberg Medina.
+
+Windows systems offer a variety of special files that contain important pieces of information that are useful in a forensic investigation. Some obvious examples include the pagefile.sys, event log, registry hives, and NTFS-specific files such as the Master File Table ($MFT). It is a common misconception of many forensic investigators and incident responders that collecting these special files from a live system is cumbersome and impossible to do via the command line. In this blog post I will show a couple different ways to bypass the protection mechanism that Windows holds on these files. Without this hold, it then becomes possible to acquire these files from a running system. 
+
+
+You have most likely found yourself in the situation were you wanted to copy a file from a running Windows system, only to be greeted with the infamous “File in Use” dialog box.
+
+
+This is Windows’ way of ensuring that the file is not changed by another process while we are copying it so that we’re not left with a distorted version. For us to succeed with the copy operation we need to communicate directly with the hard drive of the system. This may be accomplished by referring to the volume that the file resides on using Win32 device namespaces, also called "DOS Devices". 
+
+Win32 Device NamespaceBy using the "\\.\" prefix we will access the Win32 device namespace (or NamedPipe) instead of the Win32 file namespace to give us direct access to physical disks and volumes without enforcing Windows file protections. In order to illustrate how the process is carried out I will use a tool from Microsoft called ‘nfi’ (NTFS File Sector Information Utility). 
+
+Identifying Sector AddressesThis particular tool is included in the OEM Support Tools for NT 4.0 and Windows 2000 and was originally released June 23, 2000. ‘nfi’ will query the NTFS file system for information regarding a file or a specific sector address in the file system. A sector is the smallest building block on a hard drive and is set by the manufactures of hard drives. One important piece of information that ‘nfi’ gives us is the addresses to the sectors of the file we want to acquire. In the following example, using a 64bit version of Windows 7, we will first create a file (foundstone.txt) and then view its NTFS properties using ‘nfi’:
+
+
+C:\>ver
+
+Microsoft Windows [Version 6.1.7601]
+
+C:\>FOR /L %i IN (1,1,20) DO @echo data data data data data data >> c:\foundstone.txt
+
+C:\>nfi.exe c:\foundstone.txt
+NTFS File Sector Information Utility.
+Copyright (C) Microsoft Corporation 1999. All rights reserved.
+
+\foundstone.txt
+$STANDARD_INFORMATION (resident)
+$FILE_NAME (resident)
+$FILE_NAME (resident)
+$DATA (nonresident)
+logical sectors 7357616-7357623 (0x7044b0-0x7044b7)
+
+
+Notice the last line, this tells us that foundstone.txt is located on logical sectors 7357616-7357623. With this information we can continue to carve out the file from the file system. This is a technique that is commonly referred to as “disk carving” and is used quite extensively in computer forensics.
+
+Disk CarvingThe tool of choice for disk carving is ‘dd’, the “Swiss army knife” of disk based forensics. In this example I will be using the version of ‘dd’ that is included in the Forensic Acquisition Utilities (FAU) written by George M. Garner Jr. First we need specify the Win32 device namespace of our volume as the input file (“if”) and the size of our sectors as the block size (“bs”). We also need to specify where on the volume we want to start carving (“skip”) and how many sectors we want to process (“count”). The option ‘conv=noerror’ tells the program no to stop its operation if it encounter any errors. Below we’ve also piped the output into hexdump so it’s a little easier to read.
+
+
+C:\>dd.exe if=\\.\c: skip=7357616 bs=512 count=8 conv=noerror |hexdump 
+0000000: 6461 7461 2064 6174 6120 6461 7461 2064  data data data d
+0000010: 6174 6120 6461 7461 2064 6174 6120 0a64  ata data data .d
+0000020: 6174 6120 6461 7461 2064 6174 6120 6461  ata data data da
+0000030: 7461 2064 6174 6120 6461 7461 200a 6461  ta data data .da
+0000040: 7461 2064 6174 6120 6461 7461 2064 6174  ta data data dat
+0000050: 6120 6461 7461 2064 6174 6120 0a64 6174  a data data .dat
+0000060: 6120 6461 7461 2064 6174 6120 6461 7461  a data data data
+0000070: 2064 6174 6120 6461 7461 200a 6461 7461   data data .data
+0000080: 2064 6174 6120 6461 7461 2064 6174 6120   data data data
+0000090: 6461 7461 2064 6174 6120 0a64 6174 6120  data data .data
+00000a0: 6461 7461 2064 6174 6120 6461 7461 2064  data data data d
+00000b0: 6174 6120 6461 7461 200a 6461 7461 2064  ata data .data d
+00000c0: 6174 6120 6461 7461 2064 6174 6120 6461  ata data data da
+00000d0: 7461 2064 6174 6120 0a64 6174 6120 6461  ta data .data da
+00000e0: 7461 2064 6174 6120 6461 7461 2064 6174  ta data data dat
+00000f0: 6120 6461 7461 200a 6461 7461 2064 6174  a data .data dat
+0000100: 6120 6461 7461 2064 6174 6120 6461 7461  a data data data
+0000110: 2064 6174 6120 0a64 6174 6120 6461 7461   data .data data
+0000120: 2064 6174 6120 6461 7461 2064 6174 6120   data data data
+0000130: 6461 7461 200a 6461 7461 2064 6174 6120  data .data data
+0000140: 6461 7461 2064 6174 6120 6461 7461 2064  data data data d
+0000150: 6174 6120 0a64 6174 6120 6461 7461 2064  ata .data data d
+0000160: 6174 6120 6461 7461 2064 6174 6120 6461  ata data data da
+0000170: 7461 200a 6461 7461 2064 6174 6120 6461  ta .data data da
+0000180: 7461 2064 6174 6120 6461 7461 2064 6174  ta data data dat
+0000190: 6120 0a64 6174 6120 6461 7461 2064 6174  a .data data dat
+00001a0: 6120 6461 7461 2064 6174 6120 6461 7461  a data data data
+00001b0: 200a 6461 7461 2064 6174 6120 6461 7461   .data data data
+00001c0: 2064 6174 6120 6461 7461 2064 6174 6120   data data data
+00001d0: 0a64 6174 6120 6461 7461 2064 6174 6120  .data data data
+00001e0: 6461 7461 2064 6174 6120 6461 7461 200a  data data data .
+00001f0: 6461 7461 2064 6174 6120 6461 7461 2064  data data data d
+0000200: 6174 6120 6461 7461 2064 6174 6120 0a64  ata data data .d
+0000210: 6174 6120 6461 7461 2064 6174 6120 6461  ata data data da
+0000220: 7461 2064 6174 6120 6461 7461 200a 6461  ta data data .da
+0000230: 7461 2064 6174 6120 6461 7461 2064 6174  ta data data dat
+0000240: 6120 6461 7461 2064 6174 6120 0a64 6174  a data data .dat
+0000250: 6120 6461 7461 2064 6174 6120 6461 7461  a data data data
+0000260: 2064 6174 6120 6461 7461 200a 0000 0000   data data .....
+0000270: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000280: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000290: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002a0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002b0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002c0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002d0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002e0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00002f0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000300: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000310: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000320: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000330: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000340: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000350: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000360: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000370: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000380: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+0000390: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00003a0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00003b0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00003c0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00003d0: 0000 0000 0000 0000 0000 0000 0000 0000  ................
+00003e0: 0000 0000 0000 0000 0000 0000 7275 653b  ............rue;
+00003f0: 7d3b 7362 5f67 683d 6675 6e63 7469 6f6e  };sb_gh=function
+0000400: 2829 7b72 6574 7572 6e20 6c6f 6361 7469  (){return locati
+0000410: 6f6e 2e68 6173 687d 3b73 625f 7368 3d66  on.hash};sb_sh=f
+0000420: 756e 6374 696f 6e28 6129 7b6c 6f63 6174  unction(a){locat
+0000430: 696f 6e2e 6861 7368 3d61 7d3b 5f77 3d77  ion.hash=a};_w=w
+0000440: 696e 646f 773b 5f64 3d64 6f63 756d 656e  indow;_d=documen
+0000450: 743b 7362 5f64 653d 5f64 2e64 6f63 756d  t;sb_de=_d.docum
+0000460: 656e 7445 6c65 6d65 6e74 3b73 625f 6965  entElement;sb_ie
+0000470: 3d21 215f 772e 4163 7469 7665 584f 626a  =!!_w.ActiveXObj
+
+
+As you can see, there is data being printed to stdout even after the data in our file has ended. The reason for this is because a file occupies sectors grouped together on an even boundary. This grouping of sectors is called a cluster and the data that we see after the end of the file is referred to as slack space, remnants of old files that used to occupy the same sectors that now are part of the clusters for our file. 
+
+As a side note and interesting detail from a forensics stand point is that no time stamps are modified.
+
+Using icat and ifindNow that we know the basics of what is needed to acquire a file using the Win32 device namespace, let’s take a look at using a more automated method for doing so. Another way to get files of the system (not worrying about slack space at the end of the file and with no need for manual calculation of where the clusters start and end) is to use the utilities ‘ifind’ and ‘icat’ from Brian Carriers’ the Sleuthkit.The Sleuthkit, in my opinion, is the best and most flexible forensic toolkit available – and it’s open source.
+
+By specifying the drive letter and the path to the file, ‘icat’ will return the entry number the file has in the $MFT.  While this number is referred to as an $MFT entry on NTFS, it’s called an inode in UNIX based file systems. In order for ‘ifind’ to work properly the full path to must be given using UNIX style path (forward slash instead of back slash and with no drive letter in the beginning of the path). In this example we will acquire the security registry hive from the running system, a file that is normally not accessible.
+
+
+C:\>ifind.exe -V
+The Sleuth Kit ver 3.2.3
+C:\>ifind.exe -n /windows/system32/config/security \\.\c:
+27392
+
+
+By using the files number in the $MFT as an argument to ‘icat’ we can easily carve out the file from the file system. The ‘icat’ program will take care of terminating the output where the file ends but we need to redirect the output from stdout to wherever we want to store the file.
+
+
+C:\>icat.exe \\.\c: 27392 > c:\security.bin
+C:\> file.exe security.bin
+security.bin; MS Windows registry file, NT/2000 or above
+
+
+Now that we know how to bypass Windows file protection the only thing that remains is to automate the procedure so that we can include the “locked” files in our live data acquisition phase. I was going to post my wrapper script to ‘ifind’ and ‘icat’ but when I did some researching on the Internet I found a much better tool called ‘ntfscopy’. 
+
+ntfscopyThe tool is written by Jonathan Tomczak from TZWorks LLC and does exactly what we have discussed above plus more. You can download it from http://tzworks.net. Here are the options that ‘ntfscopy’ supports;
+
+
+usage: copying by filename
+ntfscopy.exe     = live system
+ntfscopy.exe   -image  [-offset ]
+
+other options that can be used w/ the above
+-raw                   = output raw clusters including slack space
+-meta                  = pull out metadata into separate file [.meta.txt]
+-skip_sparse_clusters  = don't include sparse clusters in the output
+-md5                   = prepends last mod time to filename and appends md5 hash
+
+experimental options
+
+a. copying by logical cluster number (LCN)
+ntfscopy.exe -partition  -cluster   
+ntfscopy.exe -image  [-offset ] -cluster   
+
+b. copying from a VMWare virtual NTFS drive (limited)
+ntfscopy.exe   -vmdk  [-vmdk ]
+
+c. piping in which files to copy
+dir \* /b /s | ntfscopy.exe  -pipe -md5
+
+Here is an example of using ‘ntfscopy’ to acquire a copy of the $MFT from a live Windows system.
+
+
+C:\>ntfscopy.exe c:\$MFT c:\copy_of_MFT
+ntfscopy ver: 0.65, Copyright (c) TZWorks LLC
+copy successful
+
+
+Forensic Get Another tool that will get the job done is FGET or Forensic Get from HBGary, Inc. The program can not only acquire “locked” files from a local file system, but does also support over the network operations. FGET and other free tools from HBGary can be downloaded from http://hbgary.com/free-tools.  Below is an example of me using FGET to acquire a copy of the $Mft.
+
+C:\>FGET.exe -extract c:\$Mft c:\copy_of_Mft2.bin
+-= FGET v1.0 - Forensic Data Acquisition Utility - (c)HBGary, Inc 2010 =-
+[+] Extracting File From Volume ...SUCCESS!
+
+
+By including ‘ntfscopy’ or any of the other methods described above, forensic examiners and incident responders can now acquire protected files through a command line interface. Examples of how we can put everything together and automate it will be explained in part II of this blog post. 
+
+BioPär Österberg Medina has worked with computer security for over 15 years, with a background in both system administration and penetration testing. Prior to joining Foundstone, Pär spent the last 8 years working as an Incident Handler for the Swedish GovCERT, investigating computer intrusions and coordinating security related incidents. He specializes in Malware Analysis and Memory Forensics, finding Rootkits that tries to stay hidden in the Operating System. He has conducted training and lectured on this subject all over the world at conferences such as FIRST and The GOVCERT.NL Symposium.
+
+

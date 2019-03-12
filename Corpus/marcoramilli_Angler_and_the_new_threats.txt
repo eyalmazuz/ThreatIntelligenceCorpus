@@ -1,0 +1,81 @@
+
+Angler and the new threats
+
+
+
+
+What I am writing is not a "news" anymore, but it is like a "consciousness raising" about the incredible job the guys behind Angler Exploit kit did.
+
+
+
+But, let me start from the beginning. For everybody out there do not know what an Exploit Kit is I found out a clear and nice description from McAfee Labs:
+
+
+An exploit kit is an off-the-shelf software package containing easy-to-use
+packaged attacks on known and unknown (zero-day) vulnerabilities. These
+toolkits exploit client-side vulnerabilities, typically targeting the web browser
+and applications that can be accessed by the web browser. Exploit kits can
+also track infection metrics and have robust control capabilities
+
+
+
+Angler is one of several Exploit Kits available for attackers. Actually  Angler Exploit Kit has become the most advanced, much more powerful and the best exploit kit available in the market so far, beating the infamous BlackHole exploit kit, with a host of exploits including zero-days and new techniques added to it. 
+
+
+
+What makes Angler so great are the following two characteristics: Domain Shadowing (”DSH“) and Filess Infection "Filess".
+
+
+
+One of the newest techniques bheind Angnler Exploit Kit is the so called “Domain Shadowing”. Domain Shadowing, first appeared in 2011, is the process of using "users domain registration logins" to create subdomains used to spread the malware content. Nik Biasini from the Cisco Talos Group did a great job in describing the differences between the classic Fast Flux DNS Techniques and the Domain Shadowing technique implemented in Angler Exploit Kit. The following image (taken from Talos Description) shows the difference between the most common Fast Flux Versus the recent Domain Shadowing.
+
+
+
+Fast Flux VS Domain Shadogin (from Talos Description)
+
+
+
+While fast flux is continuously changing the DNS record value (well there are plenty variants of it, so please forgive my generalization) in order to confuse analysis, domain shadowing makes use af many real dns stolen account to make them redirect to malicious content. This techniques is "a way more complex" to be realized since the bot maker needs to compromise DNS records and/or DNS credentials.
+
+
+
+Filess Infection is another great new feature introduced into the Angler ExploitKit. The obvious difference between Filess injection and File injection is in the way the Exploitkit drops and loads the new payloads. The following image clearly shows the difference between the two techniques. On the left side a file injection in which the Exploit kit saves the malicious .ddl into a temp directory and later on it loads the malicious .dll from the disk (This approach preserves easy persistance but it mostly subjected to AV discovery).
+
+
+
+
+File injection VS Filess injection
+
+
+On the right side of the image the process directly loads into memory the downloaded stream running it through a new thread. This method makes it harder the persistence and makes it easier the network detection but it makes almost impossible the host detection by AV engines.  The following screenshot shows a piece of code that makes this happen by (I did follow the steps in here):
+
+
+ Read first page of the file which includes DOS header, PE header, section headers etc. 
+Fetch Image Base address from PE header and determine if that address is available else allocate another area.  (Case of relocation) 
+Map the sections into the allocated area 
+Read information from import table and load the DLLs 
+Resolve the function addresses and create Import Address Table (IAT). 
+Create initial heap and stack using values from PE header.
+Create main thread and start the process.
+
+
+
+
+
+
+Filess Execution Example. Code goes from left to right (it's the sam file)
+
+
+
+Nowadays we are even experiences Powelinks (CVE-2012-0158, which makes storing payloads into registry) and Filess Combo, which makes Angler even more undetectable.
+
+Following a McAfee graph showing the variance of several Exploit kits during 2014. Angler got 14 variances in few months,  Amusing !
+
+
+
+Exploit Kits in 2014 (McAfee)
+
+
+
+
+

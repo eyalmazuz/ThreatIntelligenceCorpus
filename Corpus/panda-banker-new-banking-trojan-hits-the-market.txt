@@ -1,0 +1,79 @@
+Panda Banker: New Banking Trojan Hits the Market
+Overview
+The Zeus banking Trojan has made the rounds in various incarnations since 2007, allowing threat actors to steal hundreds of millions of dollars and install a variety of additional malware on vulnerable PCs. Now Proofpoint researchers have been tracking a new banking Trojan with roots in Zeus. We have observed the malware, dubbed "Panda Banker", being used for targeted attacks via email attachments. We are also tracking its use in broad attacks via at least 3 different exploit kits (EKs). The configuration of the banker also contains injects for Australian and UK banks.
+Thanks to Fox IT InTELL [3], which discovered this malware in February and allowed us to properly name it in our signatures. The analysis below is a result of our ongoing observations of Panda Banker campaigns.
+Analysis
+“Gert.exe” Email Campaign
+On March 10, we detected a targeted email with a Microsoft Word attachment (SHA: bdc912caf9b9e078bc7bd331deacae9c460c8e8893442048b9474790c52e1ab9). It exploits the vulnerabilities CVE-2014-1761 and CVE-2012-0158. This email was sent to individuals working at mass media and manufacturing corporations. Upon successful exploitation, the document downloaded Panda Banker from 78.128.92[.]31/gert.exe, a subnet previously used for other targeted attacks [1].
+Figure 1: Exploit document that downloads gert.exe
+“Panda.dat” Email Campaign
+On March 19, we detected a targeted email with a Microsoft Word attachment (SHA: 6dc0bd77e51eb9af143c749539bd638020d557083479bcd4c4b9639fe61eb0f8) that used an Xbagging (aka Bartallex) downloader macro [2]. This email was sent to only a few individuals working at financial organizations. The attachment downloaded an intermediary “GODZILLA” loader [3] which in turn downloaded Panda Banker.
+​Figure 2: Macro-laden attachment that downloads an intermediary loader which downloads Panda Banker
+Exploit Kits Delivering Panda
+We observed at least three different exploit kits delivering Panda Banker since March. These include Angler Exploit Kit, Nuclear Exploit Kit, and Neutrino Exploit Kit. Our observations show that geo-filtering was used to deliver the Panda Banker payload in Australia and UK.
+Figure 3: Nuclear EK dropping Panda Banker (C&C alwaysonline[.]pw) on March 15, 2016, in the UK
+ 
+Figure 4: Angler EK dropping Panda (C&C secpressnetwork[.]com) on April 19, 2016, in Australia
+ 
+Figure 5: Nuclear EK dropping Panda on April 19, 2016, in Australia
+Configuration
+The banker launches two instances of the svchost process, the first of which sends and receives commands from the C&C server. The bot submits a variety of information to the server, including system uptime, the process in which the malware is running, the current user name, a unique id for the infection, the botnet name, the botnet version (currently 2.1.3), OS version information, latency, local time, computer name, the name of antivirus software installed, installed anti-spyware, and the installed firewall.
+The bot submits a variety of information to the server, including:
+The server responds with obfuscated JSON data. This data includes URLs from which to download further modules/configs and configuration commands for the modules and the malware overall. The modules include a VNC server (64-bit and 32-bit) module and SOCKS. The various configuration commands available are listed in the screenshot below.
+Figure 6: Part of Panda Banker configuration returned from the C&C server
+Parts of the configuration are base64 encoded. We observed the following “webfilters” used:
+!*localhost* !*.microsoft.com/* !http://* !hxxp://*myspace.com*
+!*facebook.com/ajax/* !*plus.googleapis.com* !*apps.facebook.com*
+!*twitter.com/i/jot* !*google.com/chat/* !*googleusercontent.com*
+!*pipe.skype.com* 
+We also observed the following “webinjects” being used, targeting Australian and UK banks.
+“vnc” bonet:
+[hxxp*://*boq.com.au*]
+[hxxps://online.tsb.co.uk/personal/logon/login.jsp]
+“kan” botnet:
+[hxxps://*online.tsb.co.uk/personal/*]
+[hxxps://*santander.co.uk*]
+[hxxps://*online.lloydsbank.co.uk/personal/*]
+[hxxps://*secure.lloydsbank.co.uk/personal/*]
+[hxxps://www.halifax-online.co.uk/personal/*]
+[hxxps://*secure.halifax-online.co.uk/personal/*]
+[hxxps://www.bankofscotland.co.uk/personal/*]
+[hxxps://*bankofscotland.co.uk/personal/*]
+[hxxps://*secure.tsb.co.uk/personal/*]
+Note that the configuration file may also include commands such as “webinject1data”, “webinject2data”, “webinject3data” and so on, one per targeted bank. The value of this parameter (after base64 decoding) is a JavaScript that contains static code and pulls down additional dynamic code from the malware ATS panel.
+Technical Details
+Through dynamic analysis we found similarities to Zeus banker. For example, Panda Banker creates typical Zeus mutexes, files, folders and registry keys. Hence, we suspect that this malware is borrowing code from Zeus.
+Figure 7: Mutexes created are similar to those created by Zeus; the sandbox identifies them as such
+ 
+Figure 8: The registry keys created are similar to Zeus
+ 
+Figure 9: Sandbox detection of malware hooking network APIs, again, similar to behavior seen with Zeus
+For persistence across reboot, the malware creates a registry key in the existing JavaScripts folder (part of the Adobe installation already present on the user’s machine).
+Figure 10: Persistence mechanism
+The malware performs a connectivity check to the Russian search engine yandex[.]com. Following that, POSTs to the actual C&C server are observed.
+Figure 11: C&C communication, example POST
+Several examples of URL patterns used to communicate with the C&C are shown below:
+[hxxp://gettort1[.]net/ZrBYsL/496A20B/3/C8D72F43/5/6/C54353D/29/4/4/C80]
+[hxxp://gettort1[.]net/P3zfw/4/32B/188C/CC/CB464B/72EB602/CF280798/9/]
+[hxxp://denoted-chioces[.]com/uXC/5A805F448DE/3F5C048/7/185/49/0689FE1A]
+[hxxp://denoted-chioces[.]com/jnE8/45B65/90/9BFCEC/5A0616A/98/3219/BFF8/5/7]
+[hxxp://denoted-chioces[.]com/6URi/198D4E58/E/3F5D2F13D518F/6345/84EF06]
+[hxxp://denoted-chioces[.]com/yyrqM3kquh/5/6A16E40989/3/EBE97E6CA4/7301A/0F05C]
+[hxxp://denoted-chioces[.]com/Ya/76B945508CC1/D9F/952/6584/6B/2AB0E40E]
+[hxxp://denoted-chioces[.]com/vuV2W/5/9A/D4A0382D6F5CE3953AB7F/25E/3EA1/9]
+[hxxp://eajaxe1995[.]top/G5Eix9r/5/1C8/1BCE/8650D/2D7/5/0425715/6D7055/4/3]
+[hxxp://eajaxe1995[.]top/oepnda7gtr/7/9982EC99A0897F7117/551082/46C76/17]
+[hxxp://eajaxe1995[.]top/PFE/4/6BB1BF7B8/2/CF0D62/05/778280444/57/26/]
+Some of the Panda Banker C&C servers use Fast flux DNS, and have numerous IP addresses associated with a single malicious domain, making the malware more resistant to counter-measures.
+Figure 12: Fast flux DNS used with secpressnetwork[.]com C&C server (screenshot from PassiveTotal)
+ATS and Control Panel
+The Automatic Transfer System (ATS) is a type of banking web inject that automates online bank portal actions, such as money transfer, and Panda Banker uses such an injects system. An example Panda Banker ATS/injects panel is shown below. It shows the status of grabber modules, ATS, Intercepts, and known infected machines.
+Figure 13: Web injects panel showcasing the Grabbers (stealers), Intercepts, and ATS options
+ 
+Figure 14: Web injects panel showcasing the Jabber notification settings
+Panda Banker uses a separate page for its control panel:
+Figure 15: C&C Panel showing “Panda” in the title bar
+Conclusion
+Banking Trojans like Zeus, Dyre, Tinba, and Dridex have netted cybercriminals billions of dollars by stealing banking credentials and, in many cases, generating fraudulent transactions. Many of these Trojans have also been observed installing additional malware like ransomware, while some have been modified to steal credentials from industrial control systems and launch attacks outside the banking industry.
+It's no surprise, then, that a new banker - in this case, Panda Banker - has come on the scene, complete with a variety of information stealing mechanisms. Like many modern banking Trojans, Panda Banker appears to have roots in Zeus with sophisticated means of establishing persistence and uses in both targeted and widespread attacks.
+Proofpoint will continue to monitor this new banker and provide additional updates as details emerge.

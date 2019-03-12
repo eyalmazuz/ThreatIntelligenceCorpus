@@ -1,0 +1,59 @@
+
+Validating Custom Sanitization in Web Applications with Saner
+
+
+By Gursev Singh Kalra.
+
+I recently read a paper in which the authors combined static and dynamic source code review techniques to evaluate the effectiveness of custom build data sanitization routines in PHP based web applications. The paper was very interesting and I thought to summarize it for quick consumption.
+
+The authors suggest that static analysis systems are not able to analyze custom sanitization routines and often report security vulnerabilities even when custom routines are able to effectively neutralize malicious characters. The reported vulnerabilities are then subjected to manual analysis which is error prone and often results in inaccurate results with false positives or negatives. 
+
+
+As a part of their research, the authors wrote Saner with the objective to analyze custom sanitization routines to identify XSS and SQL injection vulnerabilities in web applications. Saner works by combining Static and Dynamic analysis techniques which resulted in low false positive rates and it had the ability to identify the exact attack vectors that could bypass the custom sanitization code. It is based on Pixy; an open source web vulnerability scanner for PHP. 
+
+Let us look at the two phases employed by Saner.
+
+
+Static Analysis
+
+There are two types of static analysis models, sound and unsound. The sound model flags custom sanitization routines as ineffective and the unsound model assumes that string manipulation operations on tainted input results in untainted output. The sound model can result in large number of false positives and the unsound model may lead to false negatives.
+
+Pixy provides the data flow analysis between sources and sensitive sinks, identifies if any built in sanitization routines are applied to the identified data flow paths. Pixy follows sound analysis model and it flags custom sanitization routines as ineffective and that results in high false positive rates. Additionally, program variables in Pixy can be either tainted or untainted and Pixy cannot capture the set of values each variable can hold. 
+
+To address these shortcomings, Pixy was extended to derive an over-approximation of the values that program variables can hold for every point in the program. It was based on finite state automata to describe an arbitrary set of strings and associating taint qualifiers to the automata transitions.  This provided Saner with an ability to track the taint status of different parts of the string.
+
+Saner performs postorder traversal on Pixy’s dependency graphs to derive the automata that describe the possible string values a program node can contain. The node can be a) a string, b) a variable or c) an operation. When a node represents a string literal, it is decorated with an automaton that describes the exact string. The automaton for program variables is calculated based on the successor nodes from the dependency graph. 
+
+Saner categorizes operations in two types of groups. The first group has the functions that are precisely modeled, i.e. Saner is uses finite state transducers to compute an automaton to describer all possible output strings from this category of functions. The Saner team developed a number of finite state transducers for custom string manipulation functions and also the functions that are commonly used for input sanitization. This is required to precisely capture the effect of the sanitization routines. The second group is of un-modeled functions where Saner depends on the values passed to the parameters of these functions and computes the automaton based on least upper bound of the taint status of the supplied parameters.
+
+Saner uses Mohri and Sporat’s algorithm to model the functions. The automata used in the Mohri and Sporat’s algorithm are not taint aware. In order to get around the limitation, the algorithm was left unmodified and a clever workaround was used to leverage the existing algorithm to propagate taint information. The workaround replaced static strings with empty ones to ensure that static, untainted strings that contain dangerous meta-characters do not lead to false positives. To compensate for the loss of information from static string removal, an over approximation of possible string values was derived based on various modeled functions and the parameters they accept. This approach allowed removal of false negatives.
+
+Finally, in order to determine if a potentially malicious input makes it to a sensitive sink, an intersection is calculated between the automaton that represents the sink’s input and the automaton that contains the set of undesired characters. For every non-empty intersection, the source-sink pair is flagged as a potential true positive and the information is passed to the dynamic analysis phase.
+
+The following image summarizes the static analysis phase:
+
+
+Dynamic Analysis
+
+The static phase is conservative and may generate false positives and that requires developers to manually inspect the code to weed out the reported false positives. The dynamic analysis component attempts to automate this analysis by directly executing the custom sanitization routines on a set of malicious inputs and then analyzing the output to determine if the malicious characters were sanitized or not.
+
+After receiving the source-sink pairs from the static analysis component, the dynamic analysis extracts all the nodes pertinent to the custom data sanitization and abstracts out all the other application details. It then calculates sanitization graph for each source-sink pair and uses that information to construct all possible paths from source to sink. 
+
+Based on the type of the sink, a test suite (XSS or SQL injection) is selected for evaluation. For example, if the sink forms a portion of a SQL query, SQL injection test suite will be run on the corresponding data flow paths. The final step of the process invokes the PHP interpreter to evaluate the result of executing each block of code using the corresponding test suite. 
+
+The results of each test were then analyzed by an oracle function to check for occurrence of particular substrings and the result was categorized as a true positive or a false positive.
+
+The following image summarizes the dynamic analysis phase:
+
+Results
+
+Saner identified 13 novel vulnerabilities across five open source PHP applications. The time required to perform analysis was in the order of a few minutes for almost all applications.
+
+Observations
+
+Saner’s dynamic analysis effectiveness is primarily driven by its input test suite which is limited. The whitepaper does not discuss the mutation engines, if any, used for the attack vectors.  An intelligent mutation engine can potentially make the tool more effective. Additionally, the tool was written to identify XSS vectors that rely on < symbol. Including other XSS injection techniques can also increase the detection rate.
+The interesting custom validation bypass attacks that Saner identified and discussed in the paper were Cross Site Scripting attacks and the authors did not discuss any identified SQL injection vulnerability.
+The dynamic analysis component can also be leveraged to write unit test cases for PHP web applications. I could not find Saner source code and plan to reach out to the authors to check its availability.
+
+
+

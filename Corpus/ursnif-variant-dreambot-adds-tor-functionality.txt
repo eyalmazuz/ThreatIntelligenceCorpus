@@ -1,0 +1,59 @@
+Nightmare on Tor Street: Ursnif variant Dreambot adds Tor functionality
+Introduction
+One of the most active banking Trojans that we have observed recently in email and exploit kits is one often referred to as Ursnif or Gozi ISFB [6]. Thanks to Frank Ruiz from FoxIT InTELL, we know that the actor developing one of its variants since 2014 has named this variant Dreambot. The Dreambot malware is actively evolving, and recent samples in particular caught our attention for their addition of Tor communication capability, as well as peer-to-peer (P2P) functionality. Dreambot is currently spreading via numerous exploit kits as well as through email attachments and links.
+It should be noted that while Dreambot is one of the most active and prevalent Ursnif variants, there are other active forks including “IAP” [5]. The Gozi ISFB source has been leaked, making way for additional development efforts.
+Analysis
+The Dreambot malware is still in active development and over the last few months we have seen multiple versions of it spreading in the wild. The Tor-enabled version of Dreambot has been active since at least July 2016, when we first observed the malware successfully download the Tor client and connect to the Tor network. Today, many Dreambot samples include this functionality, but few use it as their primary mode of communication with their command and control (C&C) infrastructure. However, in the future this feature may be utilized much more frequently, creating additional problems for defenders.
+For this analysis, we looked at version 2.14.845, which has a configuration that differs from the others Dreambot versions in that the domain generation algorithm (DGA) is not used: therefore, the DGA variables and parameters are missing. The following is an example of decrypted configuration data with sections of interest highlighted in red.
+
+Figure 1: Decrypted configuration data used by Dreambot
+There are three types of URLs present in the decrypted configuration. The first type of URL listed in the configuration data is used for the plain HTTP (that is, non-Tor) communication with C&C servers. The bot reports to the C&C server using the typical request pattern: for example, the initial checkin to the C&C server is in the form of: cfg_url + “/images/” + encoded_data + (.jpeg|.gif|.bmp).
+The second type of URL that appears in the configuration data (highlighted in red box in Fig. 1) are the .onion C&C addresses. They are the default choice for the bot and work in the same way the plain HTTP C&C’s do, except that all communication is encrypted and tunneled over Tor.
+The third set of URLs is used to download the Tor client. We believe the client is decrypted using the configuration serpent key [7]. When the Tor client is retrieved, the bot creates a registry key named “TorClient” in the registry subfolder to store its data. This subfolder is located in HKCU\\Software\AppDataLow\Software\Microsoft\{random guid}. This key contains the path to the client, which is dropped in the %TMP% folder, with a filename using the pattern [A-F0-9]{4}.bin.
+
+Figure 2: TorClient registry key
+The registry key value is easy to decrypt, as the XOR-based algorithm [8] is reused in much of the code (e.g., for decryption of the strings in the .bss section). The 4-byte key is generated at runtime based on the TOKEN_USER value XORed with 0xE8FA7DD7.
+For the two types of POST HTTP requests (Tor and non-Tor), the configuration includes a check of the Tor flag (here at eax+10). If this flag is set, Dreambot sends both the C&C checkins and the data upload requests using Tor.
+
+Figure 3: Configuration flags for communicating via Tor
+In addition to the Dreambot with Tor functionality, we have observed a P2P-enabled versions (e.g. version 2.15.798) that has been around considerably longer. Spread alongside the other variants this version utilizes the usual DGA or hard-coded addresses as well as what appears to be a peer-to-peer protocol to communicate. This functionality needs an additional IP in the configuration that delivers the nodes list. This protocol operates over TCP and UDP and uses a custom packet format. Due to the addition of this functionality, the client code surface is almost twice as big as that of the Tor version. We are still investigating the functionality and will not go into deeper detail at this time.
+Exploit Kit Campaigns
+One early interesting example of Dreambot delivery came from an instance of the Niteris exploit kit. Several months after that, we spotted the same redirection chain but instead to an undocumented 2-step flash Nuclear Pack. This particular Nuclear Pack behaved similarly to Spartan EK from the same coder in which an initial flash payload acted as a filter before sending the exploit and payload to end users. GooNky and AdGholas actors also commonly used Angler EK to deliver Dreambot while Angler was still highly active. Figures 4-7 show these infection chains.
+Figure 4: 09-11-2015 - Compromised AdAgency with high volume traffic chain to Niteris [4] 
+Figure 5: 02-03-2016 - Same redirection chain but instead redirecting to an undocumented 2-step Flash Nuclear Pack [6]
+
+Figure 6: 04-11-2016 - Malvertising run by GooNky in Switzerland 
+Figure 7: 05-10-2016 - Malvertising run by AdGholas in Switzerland
+Figure 8 shows Dreambot delivery in a Japan-focused malvertising campaign using Neutrino EK while Figure 9 shows a recent sample of Dreambot as a secondary payload via the ElTest and the Smokebot Trojan. In the latter example, we can see this instance of Dreambot is using Tor to connect to C&C infrastructure.
+
+Figure 8: 07-09-2016 - Japan-focused malvertising based on the redirector’s domain
+
+Figure 9: 08-15-2016 - EITest infection chain into Smokebot loading an instance of Dreambot using Tor to connect to C&C
+Email Campaigns
+Dreambot has been actively distributed via email in 2016. We have noted campaigns targeting various regions including Australia, Italy, Switzerland, United Kingdom, United States, Poland, and Canada. These campaigns have ranged from thousands to hundreds of thousands of malicious email messages. We show few examples of these campaigns using links or document attachments leading to the installation of Dreambot.
+In the first example, the actor used a lure claiming the recipient had been subpoenaed by the Federal Court of Australia. If the user were to follow the link they would be greeted by a web page purporting to be the official court site. If the user then followed the instructions, they would be led to a download of a zipped JavaScript file that, when executed, led to a Dreambot download.
+
+Figure 10: 07-08-2016 - Message used to distribute Dreambot in Australia
+
+Figure 11: 07-08-2016 - Fake court website leading to the download of Dreambot
+In the next example, users in Australia were targeted with an email pretending be associated with Microsoft and Office365. The link in the email led directly to a zipped JavaScript downloader hosted on Microsoft Sharepoint; opening the file would install DreamBot. (Proofpoint researchers notified Microsoft about the hosted malware).
+
+Figure 12: 08-11-2016 - Message used to distribute Dreambot in Australia via Microsoft SharePoint
+In the following example, users in the United States received messages with attachments purporting to contain a record of a payment. The Microsoft Word document attachment contained malicious macros that, if enabled, downloaded Dreambot.
+
+Figure 13: 06-08-2016 - Message used to distribute Dreambot in the United States
+
+Figure 14: 07-08-2016 - Microsoft Word attachment with malicious macros used to deliver Dreambot in the United States
+In the next campaign, users in Switzerland received personalized messages in German containing their name and company name, claiming to attach an invoice for an order. The Microsoft Word attachment contained macros that, if enabled, would download Dreambot.
+
+Figure 15: 08-10-2016 - Message distributing Dreambot in Switzerland
+
+Figure 16: 08-10-2016 - Microsoft Word attachment used to deliver Dreambot in Switzerland
+In another example, users in Poland were sent a personalized message using their name with a fake invoice document attachment for one of their purchases. The Microsoft Word attachments contained macros that, if enabled, would download Dreambot.
+
+Figure 17: 06-22-2016 - Message used to distribute Dreambot in Poland
+
+Figure 18: 06-22-2016 - Microsoft Word attachment used to distribute Dreambot in Poland
+Conclusion
+Dreambot is one of the most active banking Trojans we have seen recently, with distribution vectors across a variety of exploit kits and both malicious document attachment and URL-based email campaigns. Often referred to as Ursnif and Gozi ISFB, Dreambot is being distributed in countries around the world and is under active development. In particular, we have observed samples with C&C communications enabled over both Tor and P2P. For Tor-enabled versions in particular, Dreambot activity on infected machines can be especially hard to detect at the network level, creating new challenges for defenders and IT organizations alike.
+We will continue to monitor Dreambot and its growing list of capabilities as the banking Trojan landscape evolves.

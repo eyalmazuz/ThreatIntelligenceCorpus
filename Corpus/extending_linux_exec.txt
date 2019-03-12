@@ -1,0 +1,67 @@
+Extending Linux Executable Logging With The Integrity Measurement Architecture
+November 09, 2016 | by Alek Rollyson | Exploits
+Gaining insight into the files being executed on your system is a great first step towards improved visibility on your endpoints. Taking this a step further, centrally storing logs of file execution data so they can be used for detection and hunting provides an excellent opportunity to find evil on your network.
+
+A SIEM, and to some degree your entire security monitoring program, is only as good as the data you are collecting. Process execution data is incredibly valuable for enabling a multitude of detection and hunting scenarios, which means it’s something you should consider collecting and storing. Customers of our Threat Analytics Platform (TAP) cloud-based SIEM solution frequently ask us about tools that can help them collect this type of file execution data. For Windows systems, our detection team typically recommends the Sysinternals Sysmon tool since it provides excellent visibility into the type of files that are being executed on your Windows machines and both integrates and scales well when properly deployed.
+
+In this post, I’m going to talk about a lesser-known feature of the Linux architecture called the Integrity Measurement Architecture (IMA). When coupled with auditd, IMA will allow you to achieve on Linux hosts a similar executable logging capability as the Sysmon tool for Windows.
+
+The Integrity Measurement Architecture is a component of the Linux kernel’s integrity subsystem. For this post, we’re going to focus on a minimum baseline configuration and policy in order to get file execution logs into a format that can be ingested by your SIEM. File execution logs are available in various forms and locations in Linux, but the logs we will be generating contain a wealth of data in one location that would otherwise need to be gathered from several disparate sources or may have not have been available at all.
+
+First, you should familiarize yourself with documentation for your Linux distribution to verify whether the IMA kernel compilation options are enabled by default. The IMA subsystem has been part of the mainline kernel since version 2.6.30, but not every distribution compiles their kernel with these options enabled. All of the examples in this post were tested on Ubuntu 16.04.1 LTS, as the IMA kernel options are enabled by default in this distribution.
+
+Instructions for compiling a kernel with these options enabled are listed in this Integrity Measurement Architecture documentation. Documentation for auditd can be found here. The reason we need the auditd daemon is because it is the userspace component for Linux’s auditing platform and it is responsible for writing all the resulting audit records to disk. Without auditd, the logs for the events we will be generating would never get written out to disk.
+
+The stated goals of the IMA subsystem are “to detect if files have been accidentally or maliciously altered, both remotely and locally, appraise a file’s measurement against a ‘good’ value stored as an extended attribute, and enforce local file integrity.” To achieve these goals, IMA provides several functions, including:
+
+Collect – “measure” a file before it is accessed. The term measurement in this context means to grab a hash of the file data, the hash of some file metadata and the file path, and then store this data in a runtime measurement list.
+Store – add the measurement to a kernel resident list and, if a hardware Trusted Platform Module (TPM) is present, extend the IMA Platform Configuration Register (PCR). TPM and PCR are part of an international standard for dedicated microcontrollers intended to secure hardware.
+Attest – if present, use the TPM to sign the IMA PCR value to allow a remote validation of the measurement list.
+Appraise – enforce local validation of a measurement against a “good” value stored in an extended attribute of the file.
+Protect – protect a file’s security extended attributes (including appraisal hash) against off-line attack.
+Collect & Store
+Part of the way the appraisal function validates a file is to calculate a hash value, which just determines how mathematically unique the file is, and compare this value against a stored “good” hash value. The specific hash function that IMA uses is a configurable option.
+
+Attest
+This is effective for locally ensuring integrity of an environment, but what if we also wanted to compare these measured hash values against a list of known bad file hashes through an external or internal blacklist? It could also be the case that runtime integrity checking on every machine isn’t suitable for your environment. Generating and storing these logs opens up the possibility for future investigation as well as centralized detection capabilities if your organization is ingesting these logs into a single repository.
+
+Appraise
+We can utilize the auditing function of IMA to generate a log every time IMA measures an executable. When an IMA policy is set to audit any executable and auditd is running, a log will be written containing metadata for each executable.
+
+The simplest IMA policy we can write to log all executables looks like this:
+
+audit func=BPRM_CHECK mask=MAY_EXEC
+
+There are several ways to apply this policy to IMA that are detailed in the IMA documentation. Later versions of systemd will apply a custom policy located in “/etc/ima/ima-policy”. Placing the single line policy set forth above in this file will cause systemd to apply this IMA policy to the system. This version of systemd was included in Ubuntu 16.04.1.
+
+It should be noted that the example policy is extremely broad and will result in a high volume of logs being generated, primarily by daemons – equivalent to a Windows service - performing routine tasks, such as systemd. The policy can be further restricted by file magic values, UID, filesystem mask values and several others, as specified by the policy documentation.
+
+This policy will produce audit INTEGRITY_RULE logs that look like this:
+
+
+
+This gives us several great pieces of information for searching and correlation in a SIEM: the path of the file that was executed (kaiten.bin) and the path of its parent (/bin/bash), the PID(8205) and parent PID(1943) of the executable, the SHA-1 hash value(48a3171d8f04c09f6d06362d4c4b995eaa97d489) of this file (or whatever hash value you configured IMA to use), and the UID, GID, etc., of the user that owned the process. A quick check in VirusTotal of the hash supplied to us by IMA in this example shows that this is a variant of the Kaiten IoT bot.
+
+Once you are generating logs with IMA and auditd, you can send them to your SIEM using your normal log ingestion process via something like syslog.
+
+Now that you’re ingesting these logs into your SIEM, there are all sorts of detection and hunting scenarios available:
+
+Using rules and ingestion decoration services (services that add additional metadata to a log at ingestion time) to check hashes against internal and or external blacklists. For example:
+            o   VirusTotal
+            o   Lists of hashes seen in public Linux honeypots
+            o   Lists of samples seen in previous incidents
+
+Inspecting the path of the executable for abnormalities. For example:
+            o   Binaries named as system utilities executing from unusual locations (/opt/app/sudo, /home/foo/su)
+            o   Paths you wouldn’t expect to see with executable files (Executables in your web app’s image upload directory
+            o   Binaries executing from hidden directories (/opt/.hidden/foo, /home/user/.hidden/bar)
+
+Checking specific UIDs and GIDs for unusual execution. For example:
+            o   Web app user account attempting to use unusual utilities (top, netstat, su, etc.)
+            o   An account under an archive service group attempting to execute something out of /tmp
+
+Checking specific parent executables and processes for unusual execution. For example:
+            o   Communication broker executing directory traversal commands
+            o   Apache process executing netcat
+
+Configuration options for both IMA and auditd are extensive so, if this post is of interest to your organization, I highly recommend reading the documentation for both IMA and auditd so they can be further customized to your needs. This post isn’t meant to be an all-inclusive guide to IMA, but our hope is that it introduces you to this capability so that you can dive in and make it useful for improving your visibility into Linux process execution and aid you in finding more evil in your network.

@@ -1,0 +1,230 @@
+
+Threat Spotlight: Dyre/Dyreza: An Analysis to Discover the DGA
+
+
+This post was authored by Alex Chiu & Angel Villegas.
+
+
+Overview
+
+Banking and sensitive financial information is a highly coveted target for attackers because of the high value and obvious financial implications.  In the past year, a large amount of attention has been centered on Point of Sale (PoS) malware due to its major role in the compromise of several retailers.  While PoS malware is a major concern, attackers have also realized that targeting individual end users is an effective method of harvesting other types of financial data.  As a result, banking malware has become a prevalent category of malware that poses a major threat to users and organizations of all sizes.  One of the more well known examples of banking malware is Zeus.
+
+Table of Contents
+
+Overview
+Technical Analysis
+Domain Generation Algorithm
+Other Thoughts
+Conclusion
+Appendix
+
+Banking malware typically operates by redirecting users to malicious phishing sites where victim’s input their banking credentials thinking they are logging into their bank’s website.  Banking malware can also operate more stealthily by hooking into a browser’s functionality, capturing the victim’s credentials as they are typed in, and exfiltrating them.  Once an attacker has a victim’s banking credentials, attackers can then sell it or use it to perform illicit transactions (such as transferring funds to another account on behalf of the victim).
+
+
+Dyre is an example of banking malware exercising this same behavior by hooking itself into the victim’s browser to steal bank credentials.  Talos has seen Dyre propagate through spam and phishing emails sent to users. Attackers use social engineering tactics to craft these messages to appear as if there’s a fax (or some other sort of message) attached that is intended for the user.  This entices victims to click on the attachments and open them.  In the event that a user downloads and opens the attachment, an Upatre trojan variant will begin downloading Dyre and execute it. Below is an example one of the phishing messages Talos has observed targeting users.
+
+
+
+Talos has also seen attackers send out phishing messages with links to pages that will serve malicious content that ultimately also installs Dyre onto the victim’s computer.  Once Dyre has installed itself onto the system, it will capture bank credentials and exfiltrate them to command and control servers under the attacker’s control.
+
+Previously, versions of Dyre used hardcoded URLs to communicate with the command and control servers. However, the latest versions employ a domain generation algorithm to allow attackers to better anonymize their infrastructure and evade detection.  A domain generation algorithm, or DGA, is an algorithm used to compute a random looking domain name for any given time based on a predefined variables.  Attackers employ DGAs to give malware the ability to compute where the command and control servers will be at any given time.  Dyre incorporates this practice in order to remain operational since the attackers change the domain name daily.  In the event that a victim becomes compromised, blocking associated Dyre traffic using blacklists becomes difficult because it’s not obvious what domain name Dyre will use to phone home.
+
+Talos has reverse engineered Dyre to fully understand how the DGA is written.  Our findings are detailed further on and are highly technical in the nature given the complexity of the subject.  Replicating the DGA allows analysts and researchers to enumerate the dynamically generated domain names and add them to URL blacklists.  This means that, in the event a user winds up compromised by Dyre, URL blacklisting will be able to prevent Dyre from communicating with the command and control servers.
+
+Talos’ goal is protecting customer networks, and our research into Dyre’s DGA allows us to achieve this goal by providing multiple means of detecting and blocking associated traffic.  As attackers evolve, defenders will also need to evolve and understand how attackers are moving to evade defenses.  Reverse engineering Dyre’s DGA enables Talos to enumerate the dynamically generated domain names for blacklisting purposes.  In doing so, we are able to provide another layer of protection that works in conjunction with the rest of the products Talos supports to protect users across the entire attack continuum.
+
+
+Technical Analysis
+
+The outer layer of Dyre is a graphical user interface (GUI) based program, created using Microsoft's Foundation Class libraries (also known as MFC libraries). MFC libraries aid developers in creating GUIs, but also makes reversing more difficult due to class objects, vtables, and layers of indirection. This means that malicious behavior can be tucked away in many places inside the application (i.e. initializing the application, creating a toolbar, destroying a window, etc.). Opening Dyre in IDA Pro shows a minimalistic WinMain function.
+
+
+
+
+
+Dyre utilizes the MFC libraries and implements a large amount of the GUI,  such as constructors/destructors of several GUI objects and event handlers for various GUI events.  However, Dyre quickly raises an exception, causing the exception handler to invoke the function of interest. The core functionality can be found in a custom destructor for the CWinApp object (the basis of a Windows application object). The custom destructor will extract and execute the first stage of shellcode. The first stage shellcode (S1) is derived from existing bytes within Dyre’s .text section. S1 is small and performs a couple of tasks to set up the next stage. Before it can be used, the page permissions of the .text section are changed to read, write, and execute. S1 is obfuscated with a simple XOR scheme. To complicate the reverse engineering process, the code to de-obfuscate S1 is spread across four small functions.
+
+
+
+S1 dynamically loads additional APIs in order to extract, de-obfuscate and execute the second stage shellcode (S2). S2 will reassemble a fragmented and obfuscated executable from different regions in the original sample. Once de-obfuscated, S2 will overwrite the original sample in memory with the new executable and jump to its entry point. The replacement Dyre executable (which we’ll refer to as rDyre) is a regular console application that does not use the MFC libraries and does not utilize obfuscation on character strings.
+
+
+
+The purpose of rDyre is to establish Dyre as a Windows Service. Establishing Dyre as a service provides persistence across reboots as well as access to a System Security token.  rDyre will check to see if it's been already installed as a service by using using the Windows Service APIs.  If the API calls fail, then rDyre will attempt to install Dyre as a service.  In either case whether installation succeeds or fails, rDyre will also establish itself in the current Windows session by injecting a DLL into either explorer.exe or svchost.exe. This DLL is the third stage (S3) in the Dyre chain of execution.  In order to ensure a copy of the Dyre DLL is running at all times, Dyre uses the "Global\bdm2wosh32" mutex as a signal to indicate it has injected itself and executing for any other Dyre processes.
+
+The process by which Dyre installs itself as a service follows a complex execution flow.  Dyre always determines where it’s executing from in order to determine what to do next.  In this sample, Dyre checks to see if it’s executing from the Windows directory or from the user’s Temp directory before attempting to establish itself within the Windows session and on the system.
+
+Initially when Dyre begins executing, it will likely be outside of the user’s Temp directory and Windows directory.  Dyre will first copy itself to the user’s Temp directory under a randomly generated 15 character string (which we will refer to as "Name1"), execute the new copy of itself, inject itself into the explorer.exe process, and create the "Global\bdm2wosh32" mutex.  The new copy (Name1) of Dyre will then perform the same check to determine where it’s executing from and then attempt to copy itself into the Windows directory under another randomly generated 15 character string (referred to as “Name2”), and execute the second copy.
+
+The second copy (Name2) of Dyre will attempt delete the first copy (Name1) from the previous location, and then check for the presence of the "Global\bdm2wosh32" mutex before injecting itself into the svchost.exe process.  If Dyre detects it’s being executed from within the Windows directory, it will check and install itself as the “googleupdate” service before proceeding to check if the "Global\bdm2wosh32" mutex is present and injecting itself into the svchost.exe process.  If Dyre is executing as service already from within the Windows directory, Dyre will then spawn a non-service process of itself.
+
+The following flow chart explains the process Dyre follows in relocating itself and establishing persistence:
+
+
+
+As we mentioned before, S3 is the DLL that gets injected into one of two Windows processes. S3 is retrieved from rDyre’s resource section before it is injected into explorer.exe or svchost.exe. rDyre has three resources (xfevepwmw, be2e393ne and vdfd1f6ed). Resources be2e393ne and vdfd1f6ed are S3 for x86 and x64 architectures, respectively. Both resources are obfuscated using a 256 byte substitution cipher, the substitution table is resource xfevepwmw.
+
+
+
+xfevepwmw - substitution cipher table
+
+
+
+
+be2e393ne - x86 shellcode (top: ciphertext, bottom: plaintext)
+
+
+
+
+
+vdfd1f6ed - x64 shellcode (top: ciphertext, bottom: plaintext)
+
+
+Deobfuscating the shellcode can be accomplished concisely in Python.
+
+
+
+rDyre has a slightly different way of injecting into a running explorer.exe or svchost.exe than most malware. Most malware will inject code in a couple of different ways:
+
+Create suspended process, hollow it out, write injected code, redirect main thread to or create thread starting at injected code, and resume process
+
+Open running process, write injected code, create thread starting at injected code
+
+Create a mapped view of data into a remote process, start a thread in the remote process
+
+
+rDyre maps S3 into svchost's virtual memory via NtMapViewOfSection. At this point most malware will either hijack the thread already running in the process (making use of GetThreadContext and SetThreadContext, and ResumeThread) or create a new one (making use of CreateRemoteThread). Not rDyre. Instead it uses ZwQueueApcThread to specify the start address of the shellcode injected into the process.
+
+
+
+Asynchronous Procedure Calls (APCs) are functions that executes asynchronously in the context of a particular thread. When an APC is queued to a target thread, the system issues a software interrupt to preempt a thread. Think of it as saving off the execution context of a thread in order to start executing some different code. Once the code returns, the original thread context is restored and executed. Dyre locates a suspended thread in the remote process and prempts it with S3. ZwQueueApcThread allows for the caller to specify three arguments that will be passed to the thread. rDyre sends the APC thread the start address of the shellcode injected as the first argument. S3 contains an embedded PE file.
+
+Domain Generation Algorithm (DGA)
+
+The embedded file is not obfuscated and is loaded into memory by S3. The embedded PE file is a DLL, the core functionality of Dyre. The DLL has no exported functions and five resources (4et5dphf7, 7qvndbku0, ty2h4if34, 4et5dphf7, and 5r3ywoac6). A quick look at the strings in the DLL provides a good start for locating networking functionality. Below is a list of some strings within the DLL:
+
+
+
+This is a small sampling of the strings contained within the DLL. For 
+the full list of strings found within the DLL, please see Appendix A.
+
+
+The string "%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%s:443" sticks out since newer versions of Dyre use SSL to secure their network traffic and port 443 is generally used for HTTPS traffic. The only reference to the string is a function (located at 0x100082C3) using the string as the format string argument for wsprintfA. The format string prints out byte values as two lowercase ASCII values except the string before the port number. Analyzing the function, %s is tied to a top level domain (TLD) lookup table Dyre uses. The TLD used is dependent on a number passed in as the second argument to the function. The rest of the string is created from data generated from a call to an unknown routine at virtual address 0x10006D88. This routine immediately calls another function that sets up an initialization vector known for the SHA256 algorithm (IV: [0x6A09E667, 0xBB67AE85, 0x3C6EF372, 0xA54FF53A, 0x510E527F, 0x9B05688C, 0x1F83D9AB, 0x5BE0CD19]). Instead of using the Win32 APIs available for creating hashes, Dyre either has statically compiled in a SHA256 implementation or included their own implementation. Backtracking to discover the input for the hashing function we find it is a concatenation of the UNICODE string and integer argument passed to the function via a call to wsprintfA with the format string “%s%d”. The only question now is what is the string and number value passed to the routine at 0x100082C3 (renamed dga_create_domain). Luckily dga_create_domain is only referenced from one place and inside a small loop.
+
+
+
+
+Within the small loop it becomes clear the number value passed to create_domain is a value in a hardcoded range, [0, 333). Before the loop routine 0x10008291 (renamed get_system_time_year_month_day) is called with the same buffer passed to dga_create_domain. Inside get_system_time_year_month_day, the system time is obtained and formatted as a year-month-day string. Now that the dga_create_domain arguments are known the DGA can be understood.
+
+
+
+
+
+The above diagram visually shows Dyre’s DGA for the date July 4, 2015 and the input number 16. This is only one of 333 possible domains generate each day by the algorithm. Below is a Python implementation for generating Dyre’s DGA for a single day.
+
+
+
+
+
+Other Thoughts
+
+As a malware researcher, specific behavior (expected or witnessed) can be traced back to certain APIs used by the malware developers. For example, finding a DGA results in looking for places where domains will be resolved to IP addresses. The initial technique was to locate domain name to IP address conversion (functions similar to gethostbyname). However, Dyre creates several short lived processes, injects into other processes, and doesn't resolve generated domains shortly after creation. This technique led to analyzing an injected payload that could be the phishing worm downloaded by Dyre or some other section of Dyre. Either way, it didn't yield the DGA. At that point it became better suited to start from the beginning of the sample and work through the layers. This can be difficult depending on any anti- analysis/debugging/virtualization techniques employed through the layers. It became necessary to use several different tools and techniques to get from one layer to another. Since Dyre keeps core functionality only in memory, tools like Volatility, WinDbg (remote kernel debugging), and userland debuggers were essential to dumping memory for static analysis. This process allows unimportant functionality to be skipped and ensure anti-analysis techniques are bypassed. Since shellcode takes more effort to develop, it’s generally given small tasks, such as loading the next stage, providing anti-analysis functionality, or extracting and loading other executables. In this analysis of Dyre, the shellcode was analyzed just long enough to find where it was transferring to the next stage and if there were any tricks to prevent analysis.
+
+
+Conclusion
+
+Talos’ goal is protecting our customers from malware, including banking malware such as Dyre.  As attackers evolve their tactics to maintain a low profile and evade detection, defenders also need to evolve and understand how attackers are trying to evade detection.  In order to accomplish this, reverse engineering malware samples becomes necessary to gain a better understanding and to develop protections that can block malware at various points in a defense-in-depth approach.
+
+Reverse engineering Dyre to understand the DGA allows Talos to enumerate the generated domain names used to host the command and control servers.  Talos can take these generated domain names and feed them into our URL and domain blacklists. By doing this, we can ensure that customers are protected across the entire attack continuum using a defense-in-depth approach should the attacker bypass other defenses.  In the event that a user winds up compromised by Dyre, they are still protected from leaking sensitive information because URL blacklisting will prevent communication to the malicious domains.
+
+SHA256 of Reversed Sample:
+7e54dceecd3d3a23a896e971ae4bb9e71a64a5c1c3b77ac1c64241c55c1b95bb
+
+
+Protecting Users Against These Threats
+
+
+
+We encourage organizations to consider security best practices, starting with a threat-centric approach that implements protections across the extended network and across the full attack continuum.
+
+ESA can block phishing emails sent by threat actors and prevent exposure.
+
+CWS/WSA web scanning prevents access to websites hosting malicious content.
+
+Advanced Malware Protection (AMP) is designed to prevent the execution of the malware used by these threat actors.
+
+Network Security appliances, such as NGIPS and NGFW, have signatures to detect and block malicious network activity by threat actors.
+
+
+Appendix A
+
+The follow is a list of strings found within the S3 DLL file.
+
+Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.71 Safari/537.36
+ \r\n--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n
+ Content-Type: multipart/form-data; boundary=
+ \r\nAccept: text/html\r\nConnection: Keep-Alive\r\n\r\n
+ %02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X%02X
+ %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%02x%s:443
+ %s:%d .b32.i2p:443 
+ :443 %d.%d.%d.%d 
+ success resolved b32-address %s/%s/0 
+ %d/%s/%s /%s/%s/0/%s/%d/%s/ 
+ /%s/%s/%d/%s/ /%s/%s/%d/%s/%s/ 
+ /%s/%s/5/%s/%s/ cfg_bc 
+ /%s/%s/23/%d/%s/%s/ RtlTimeToSecondsSince1970 
+ text/plain; charset=UTF-8 text/plain; charset=UTF-16 
+ image/jpeg application/octet-stream 
+ text/plain %sbound-%d 
+ 2.08 '8!\x1B. 
+ \r8STs\ne Content-Type: 
+ \r\n\r\n \r\n--%s-- 
+ Content-Length: POST 
+ 4tcumogn5 %s_W%d%d%d.%s 
+ botid btid 
+ ccsr dpsr 
+ btnt slip 
+ success netDB 
+ 0.0.0.0:0 no\r\n\r\n\r\n 
+ \\\\.\\pipe\\mvnwihe2w \\\\.\\pipe\\2f1e5f214354r 
+ dpsrv datapost 
+ modsrv modules 
+ csrv commands 
+ %d-%d-%d %s%d 
+ f5e83w4ef.dat config 
+ SHA384 ECDSA_P384 
+ ECCPUBLICBLOB ObjectLength 
+ HashDigestLength google.com 
+ microsoft.com stun1.voiceeclipse.net 
+ stun.callwithus.com stun.sipgate.net 
+ stun.ekiga.net stun.ideasip.com 
+ stun.internetcalls.com stun.noc.ams-ix.net 
+ stun.phonepower.com stun.voip.aebc.com 
+ stun.voipbuster.com stun.voxgratia.org 
+ stun.ipshka.com stun.faktortel.com.au 
+ stun.iptel.org stun.voipstunt.com 
+ stunserver.org 203.183.172.196:3478 
+ s1.taraba.net s2.taraba.net 
+ stun.l.google.com:19302 stun1.l.google.com:19302 
+ stun2.l.google.com:19302 stun3.l.google.com:19302 
+ stun4.l.google.com:19302 stun.schlund.de 
+ stun.rixtelecom.se stun.voiparound.com 
+ numb.viagenie.ca stun.stunprotocol.org 
+ stun.2talk.co.nz http://icanhazip.com 
+ No NAT Full Cone NAT 
+ UDP Firewall Port restricted NAT 
+ Address restricted NAT Symmetric NAT 
+ unknown NAT wg32 
+ ==General==\r\n ==Users==\r\n 
+ ==Programs==\r\n \r\n==Services==\r\n 
+ m_i2p32 start fail 
+ backconn cannot get config 
+ AUTOBACKCONN browsnapshot 
+ send browsnapshot failed vnc32 
+ tv32 send browser snapshot failed\r\n 
+ send system info failed bcsrv 
+ Global\\bdm2wosh32 chrome.exe 
+ firefox.exe iexplore.exe
+
+
+

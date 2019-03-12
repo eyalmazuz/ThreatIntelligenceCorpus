@@ -1,0 +1,48 @@
+
+Hack the SickOS 1.2 VM (CTF Challenge)
+
+In this walk through I will explain how to solve the SickOs 1.2 challenge. This OS is second in following series from SickOs and is independent of the prior releases, scope of challenge is to gain highest privileges on the system. This CTF gives a clear analogy of how hacking strategies can be performed on a network to compromise it in a safe environment.
+First Download Sick OS from Here
+Breaching Methodology:
+Let’s start!!
+So, first let us find our target by using :
+netdiscover
+
+Our target is 192.168.1.109 Further we will apply nmap scan:
+
+As you can see that port 80 is open that means we can open this IP in the browser. Why not do that?
+
+Opening the IP in the browser will show us the above image which is of no use. You can try and look into the page source but unfortunately you will find nothing there. That is why we will use dirb and to find the directories. And for that type:
+dirb http://192.168.1.109
+
+As a result you can see we have found our directory i.e. test Open it in the browser as well.
+192.168.1.109/test/
+
+It will show you the list of directories. So let us try and explore test directory via curl.
+This exploring will show you that PUT is allowed that means you can upload any file through it.
+
+So, prepare the malicious file that you would upload with msfvenom:
+On other hand run multi/handler inside Metasploit framework.
+Copy the code from <?php to die(); and paste it to a text file with the extension .php for example shell.php and ready to upload the said file.
+
+Now to upload your .php file we will use the add-on poster. Click on the tools from the menu bar. And then click on Poster from the drop down menu. A following dialog box will open. Here, browse the file that you will upload and click on PUT option.
+
+It will show you that the file is uploaded
+
+And you can see the same on your browser that you file will be uploaded (as in our case the file is shell.php) now run the file you just uploaded.
+
+Meanwhile, return to the Metasploit terminal and wait for the metepreter session by exploiting multi handler.
+From given below image you can observe Meterpreter session 1. But task is not finished yet, still we need to penetrate more for privilege escalation.
+Then I check for cron jobs from inside /etc/crontab and here found some schedule jobs.
+
+Moving further type the following to explore more and find something to be exploitable:
+The above command will give you the list of the files. On observing you can see that there is chkrootkit. Some of its version are exploitable therefore we will check its version and for that type:
+It will show you the version which is 0.49
+
+With help of Google we came know that metasploit contains an exploit for chkrootkit exploitation. After enter following command as shown in given image to load exploit/unix/local/chkrootkit module then set session 1 and arbitrary lport such as 8080 and run the module.
+This will give another session, as you can see we have spawned command shell of target’s machine. Now if you will check uid by typing id it will show uid=0 as root.
+And to see the list of files in /root type :
+ls -lsa
+In the list you will see that there is a text file and to read that file type :
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

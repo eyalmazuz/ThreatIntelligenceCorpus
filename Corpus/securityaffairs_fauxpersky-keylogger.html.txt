@@ -1,0 +1,23 @@
+
+					Fauxpersky Keylogger masqueraded as Kaspersky Antivirus and spreads via USB drives					
+ 
+Fauxpersky was written in AutoIT or AutoHotKey, which respectively are a freeware BASIC-like scripting language designed for automating the Windows GUI and general scripting and a free keyboard macro program to send keystrokes to other applications.
+The analysis of infected systems revealed the existence of four dropped files, attackers named them as Windows system files: Explorers.exe, Spoolsvc.exe, Svhost.exe, and Taskhosts.exe.
+After initial execution, the Fauxpersky keylogger gathers the listed drives on the machine and starts replicating itself to them.
+“This AHK keylogger utilizes a fairly straightforward method of self propagation to spread. After the initial execution, the keylogger gathers the listed drives on the machine and begins to replicate itself to them. Let’s examine the process:” reads the analysis.
+“This allows the keylogger to spread from a host machine to any connected external drives. If the keylogger is propagating to an external drive, it will rename the drive to match it’s naming scheme.”
+The malware renames the external drives to match its naming scheme, the new name is composed of the following convention:
+original name:size:”Secured by Kaspersky Internet Security 2017”
+it also creates an autorun.inf file to point to a batch script.
+One of the dropper files, Explorers.exe, includes a function called CheckRPath() designed creates the files if they are not already present on the drive.
+The keylogger created the files with attributes System and Hidden and also creates the necessary directories, with parameters of Read-Only, System, and Hidden.
+“When starting the process of creating the component files (HideRFiles()) we begin by starting a loop. This loop allows the keylogger to iterate over the various output files it needs to write to disk in a structured way.” continues the analysis. “We can see that the link (a .lnk shourtcut file), text, and batch files will all be created for each disk to start. Then the value passed to the function gets incremented to allow the created directory to be moved as a whole once the files have been placed there. “
+The files are stored in the source directory named Kaspersky Internet Security 2017 when it is copied to the new destination. The folder included a Kaspersky image named Logo.png and a text file containing instructions for users to disable their antivirus if execution fails. The instructions also include a list of security tools “incompatible with Kaspersky Internet Security 2017” (Kaspersky Internet Security included).
+Fauxpersky monitors the currently active window using the AHK functions WinGetActiveTitle() and input(), Keystrokes are appended to the file Log.txt that is stored in %APPDATA%\Kaspersky Internet Security 2017.
+The malware gains persistence by changing the working directory of the malware to %APPDATA% and creating the Kaspersky Internet Security 2017 folder. It checks that all the necessary files are created in %APPDATA% and copies them there if they aren’t.
+The files Spoolsvc.exe is used to change the values of registry keys to prevent the system from displaying hidden files and to hide system files, then it verifies if explorers.exe is running and launches it if not.
+
+Fauxpersky exfiltrates the keylogged data using a Google form.
+“Exfiltrating data to a Google form is a very simple and clever way to overcome a lot of the “logistics” involved in data exfiltration. Using this technique means there’s no need to maintain an anonymized command and control server plus data transmissions to docs.google.com is encrypted and doesn’t look suspicious in various traffic monitoring solutions.” Cybereason concluded.
+Pierluigi Paganini
+(Security Affairs – Fauxpersky keylogger, malware)

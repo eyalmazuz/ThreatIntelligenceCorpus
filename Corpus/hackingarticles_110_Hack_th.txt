@@ -1,0 +1,84 @@
+
+Hack the Kioptrix Level-1.2 (Boot2Root Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Kioptrix: Level1.2 (#3) and it is another boot2root challenge provided for practice and its security level is for the beginners. So let’s try to break through it. But before please note that you can download it from here https://download.vulnhub.com/kioptrix/KVM3.rar
+Penetrating Methodologies (Method 1)
+Penetrating Methodologies (Method 2)
+Lets Breach !
+Start off with finding the target using :
+netdiscover
+
+Our target is 192.168.1.101 Now scan the target with nmap:
+With the nmap scan result, you can see that HTTP services are running on 2 ports i.e ports 22,80
+
+As we have HTTP service running we opened it in our browser with the IP http://192.168.1.101 . There is nothing significant on this webpage.
+
+Click on the Blog option and below page will appear. Here we will get a clue to check out the page http://kioptrix3.com/gallery 
+
+Before navigating to the website , lets map the host entries for the URL kioptrix3.com to IP 192.168.1.101 in the hosts file as follows :
+For Windows C:\windows\system32\drivers\etc\hosts
+For Linux: /etc/hosts
+ 
+ Browse to the website  http://kioptrix3.com/gallery  and navigate on few items
+ 
+After navigating through the site, I found that by clicking on sorting options and photo id, the URL had a parameter of “id” which could signify a vulnerability to SQL injection. After putting ‘ after php?id=1 , i.e (by trying with http://kioptrix3.com/gallery/gallery.php?id=1’ ) the  SQL error prompt appears. Hence this means that URL is prone to SQL injection.
+ 
+Lets’ enumerate the databases with SQLMAP command to get more details
+ 
+Upon successful completion of the SQLMAP scan, we came to know that the following databases listed are available in the website.
+Upon further scan for the gallery database and specific table dev_accounts, we happen to find out 2 usernames as listed below
+ 
+ Perform SSH with the user loneferret as follows:
+Let’s do the directory listing to find out more details
+ls
+Upon listing we find that we have 2 files checksec.sh and CompanyPolicy.README . I didn’t find checksec.h file of much help and proceeded to extract the contents of CompanyPolicy.README
+cat CompanyPolicy.README
+The output of the CompanyPolicy.README file reveals (refer screenshot below) , that we may need to perform a sudo for the ht (editor).This may be a clue going forward
+ 
+At this moment , lets also check the contents of the sudo file
+As per the output , the user loneferret is allowed to run HT Editor as sudo and that there is no password (NOPASSWD) set for this user , while executing the command /usr/local/bin/ht
+Run the HT Editor as sudo
+Note : sudo ht will allow to edit any file on the system. Hence we will edit the /etc/sudoers file. Before editing the sudoers file make sure to export TERM so we can use graphical component of our command
+
+Once done, the HT editor will open up
+
+Press F3 to open the file
+
+Below is snippet of /etc/sudoers file . Edit the file so that we can use sudo without limitations.
+Refer the below entry in the file
+
+Now change the entry for the user loneferret as follows
+
+Upon changing the contents of the file , lets run  sudo su command from the users’ terminal
+sudo su
+Hurrah ! we have got the ROOT access !! 
+cd /root
+On performing the directory listing  , we will get the congrats.txt file !
+ls
+
+Lets explore another method of performing the same task 
+curl –v http://kioptrix3.com/
+The curl command will provide the details of website . With this we also came to know that it is a CMS website as highlighted below in yellow (LotusCMS)
+
+Now we will try to search for some exploit available in the Metasploit and fortunately we happen to found the exploit for LotusCMS
+searchsploit LotusCMS
+To use this exploit simply type the following in Metasploit:
+ Perform the directory listing and we will observe the gallery folder
+ls 
+Now navigate to the gallery folder and perform the directory listing . Here we can see many files .I browsed through many of these files ; of which the file gconfig.php seems to be interesting .
+
+Now lets see if we can get some good information from gconfig.php file
+cat gconfig.php
+The output of the file shows the credentials for the gallery database
+
+Lets perform dirb for the URL http://192.168.1.101/
+With this we will get information of many directories as shown in output below .However the directory phpmyadmin seems to be quite interesting , as it may have some important information to display  
+
+Browse the URL http://192.168.1.101/phpmyadmin and enter the credentials (received from above)
+
+Navigate to the gallery database, click on dev_accounts. Then click on the SQL tab and enter the SQL query below. We now have the usernames and password hashes !
+
+For cracking the password hashes , we used the http://www.hashkiller.co.uk/ site
+
+Hurray ! We got the passwords as starwars and Mast3r!
+Author: Ankur Sachdev is Information Security consultant and researcher in the field of Network & WebApp Penetration Testing

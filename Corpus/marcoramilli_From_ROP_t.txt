@@ -1,0 +1,36 @@
+
+From ROP to JOP
+
+
+
+
+Researchers from North Carolina State University and National University of Singapore presented an interesting paper to ASIACCS11 titled: "Jump-Oriented Programming: A New Class of Code-Reuse Attack".
+
+
+
+
+
+
+
+The previous image (click on it to make bigger), taken from the original paper, shows the differences between the well known Return Oriented Programming and the new Jump Oriented Programming. As in ROP, a jump-oriented program consists of a set of gadget ad- dresses and data values loaded into memory, with the gadget addresses being analogous to opcodes within a new jump- oriented machine. In ROP, this data is stored in the stack, so the stack pointer esp serves as the “program counter” in a return-oriented program. JOP is not limited to using esp to reference its gadget addresses, and control flow is not driven by the ret instruction. Instead, JOP uses a dispatch table to hold gadget addresses and data. The “program counter” is any register that points into the dispatch table. Control flow is driven by a special dispatcher gadget that executes the sequence of gadgets. At each invocation, the dispatcher advances the virtual program counter, and launches the as- sociated gadget.
+
+
+
+This new way to see reusable code exploitation makes the use of  three main actors: (1) the dispatcher, which has to hijack the control flow by jumping to different entries on the dispatch table, (2) the dispatch table which has to wrap out gadgets addresses and data/padding, and finally (3) the gadget catalog, which contains the effective code to be executed. Gadgets are not terminating with RET as we were accustomed, but with JMP to the dispatcher. A dispatcher example could be:
+
+
+
+add %ecx, 4
+
+jmp %[ecx]
+
+
+
+Each time it is executed it jumps to the next gadget  (+4 bytes) through the dispatch table (base address on %ecx).  Each time an addressed gadget is executed it ends with a jump to the dispatcher, in this way a jumping chain is built.  The paper follows on describing a MOC example and providing algorithms to find JOP gadgets. 
+
+
+
+I did like this reading and I do suggest it to all the interested security guys that are reading my post,  but I have some issues on believing the real implementation of the dispatcher. As you might see the dispatcher increases the jump offset by a fixed step, this assumes that the respective gadgets don't use data or  at least use a fixed number of data (variables). This is highly impractical in a real exploitation scenario in which the attacker needs many different gadgets which use respectively different quantity of data. I have made here a simple explanation to what I mean.
+
+
+

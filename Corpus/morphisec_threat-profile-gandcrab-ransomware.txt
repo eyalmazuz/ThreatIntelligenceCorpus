@@ -1,0 +1,55 @@
+
+Threat Profile: GandCrab Ransomware
+
+Posted by
+Roy Moshailov on February 23, 2018 at 4:08 PM
+                           
+
+Find me on:
+
+Twitter 
+
+
+
+
+These days, most malware employs long chain attack and anti-analysis techniques to make it more difficult to detect the payload and harder to analyze by security researchers. Such is the case with GandCrab, a new ransomware strain that entered the scene late last month and is currently active.
+GandCrab is being distributed as Ransomware-as-a-service by a Russian cybercrime groupthrough a profit-sharing “partner program.” Interestingly, according to Australian firm LMNTRIX Labs, the “partner program” prohibits the targeting of Russia and countries in the Commonwealth of Independent States including Azerbaijan, Armenia, Belarus, Kazakhstan, Kyrgyzstan, Moldova, Tajikistan, Turkmenistan, Uzbekistan and Ukraine. GandCrab is delivered primarily via the RIG and GrandSoft exploit kit. Other distribution mechanisms include the EiTest Hoefler Text Pop-up campaign (compromised websites), and a Necurs botnet-powered malspam campaign.
+Gandcrab ransomware is packed by a custom packer and uses multiple techniques to make it difficult for security researchers to analyze. Packer-based malware is malware which is modified in the runtime memory using various sophisticated compression techniques. It is an easy method for hackers to create new signatures for the same malware on the fly, simply by changing the encryption/packing method.
+RIG exploit kit leading to GandCrab ransomware:
+Image credit: Malwarebytes Lab
+ EiTest campaign leading to GandCrab ransomware via Hoefler Text Pop-up:
+Image credit: Broad Analysis
+The GandCrab ransomware sample is a packed Windows executable. GandCrab is not identified as packed by standard tools, i.e., it uses a custom packer (for more about custom packers, see this analysis of  another custom packer). We start by noticing an interesting, relatively high entropy in one of the sections (e.g. entropy of .rsrc is 7.79), which gives us the first indication that it is a packer.
+As shown in the image below, GlobalAlloc and VirutalProctect API are used to allocate memory and then modify the protection to RWE (read write execute) access rights. These are some of the indicators for the unpacked executable shellcode (the code will write and execute from the same location).
+
+As part of the evasive techniques, GandCrab iterates over the PEB to find useful functions (locate GetProcAddress and LoadLibrary), build the IAT (Import Address Table) and jump to the unpacked sample:
+
+Find Kernel32.dll and then get the GetProcAddress and LoadLibrary from EAT(Export Address Table):
+
+Build IAT (VirtualAlloc,VirtualProtect,VirtualFree,GerVersionExA,TerminateProcess):
+
+Allocation of the new memory region:
+
+Copy the Image:
+ 
+Use VirtualProtect to change the protection of the Imagebase and then map new sections and build the IAT for unpacked PE (while zeroing the original memory):
+
+It is worthwhile to examine and analyze the new mapped executable Import functions:
+(CrypteImportkey, CryptGenKey, ShellExecuteW, Process32FirstW, OpenProcess, CreateMutexW, RegCreatekeyExW)
+
+Jump to unpacked PE – Now we can dump the unpacked sample and analyze it:
+ 
+ 
+The unpacked GandCrab uses several techniques designed to avoid detection, including identifying tools used by analysts or sandbox environments (read more on this unpacked sample):
+
+
+ 
+GandCrab uses the standard Microsoft crypto API from Advapi32.dll. It calls CryptGenKey with the RSA algorithm. 
+ 
+The encrypted files use .GDCB as the file extension.Additionally, victims receive a GDCB-DECRYPT.txt file which serves as the ransom note.
+ 
+Surprisingly, the developers are asking for DASH cryptocurrency (lesser-known but more anonymous than Bitcoin) for a decryption key and to get back the original files.
+The “customer” support service is similar to Spora ransomware in that it provides a public communication to all its victims, with a 24/7 support chat service.
+Morphisec stops GandCrab ransomware across its attack chain, both during the exploit delivery stage (exploit kits), and the ransomware payload stage (if downloaded directly).  Morphisec customers are and have always been protected from GandCrab out of the box, no updates needed, back to the very first production version of Morphisec Endpoint Threat Prevention released 2 years ago.
+  hbspt.cta.load(1534169, 'd2bd484f-10a5-4b85-a30d-20e42ae3637b', {}); 
+ 

@@ -1,0 +1,73 @@
+Hook, line, and sinker - A closer look at a sophisticated phishing kit
+Overview
+While many financial phishing schemes require development of bank- and region-specific phishing pages, PayPal's international reach and widespread popularity mean that attackers can develop phishing pages once and attack in multiple regions. Proofpoint researchers recently encountered a phishing email message that led to what appeared to be a benign PayPal login page. Analysis quickly determined that the login page was in reality a very well-crafted phishing page, but the real innovations of this campaign were revealed in the clever workings of the landing and the campaign’s sophisticated administrative backend.
+Analysis
+Lure messages used embedded URLs to take recipients to the fake PayPal login page shown in Figure 1:
+
+Figure 1: Fake PayPal login page accessed via an emailed malicious URL
+Attempting to login using a random account name returned a vaguely worded error message.
+
+Figure 2: Attempting to log in with a fake, invalid account
+This message was noteworthy because phishing landing pages will often accept any credentials thrown at them. This case is different, however: as shown below, deeper examination of the page revealed that the backend code makes a request to PayPal to verify that the account exists on PayPal using a decommissioned service in PayPal that allows one to purchase a gift card from a user. If the queried email account does not exist, the login supplied to the phishing landing page is discarded, helping to ensure that the phisher gets a higher percentage of valid credentials. The code does not check the password, only that the email account exists on PayPal.
+
+Figure 3: Backend code that checks for a valid PayPal login
+Scammers will often run credentials they have stolen through a PayPal account checker program after they have acquired a number of potential logins; this approach of validating the credentials during the phishing process thus eliminates the post-collection validation step with the added benefit of thwarting automated analysis tools.
+Logging into the phishing landing page with a valid PayPal email address, we are able to proceed into the rest of the phishing kit, which starts with a reassuring welcome page.
+
+Figure 4: Phishing kit welcome page
+The welcome page is followed by the first phishing page on which users are asked to confirm credit card information associated with their PayPal account.
+
+Figure 5: Credit card phishing page
+This phishing kit also includes support for multiple languages, enabling it to appear legitimate to users from many locations.
+
+Figure 6: Code for displaying phishing pages in multiple languages
+The kit also verifies the credit card number that the victim supplies, ensuring that it passes the Luhn algorithm. The kit then performs a lookup against the card number to retrieve additional information (Figure 7).
+
+Figure 7: Credit card lookup code
+Once the credit card is validated, the kit prompts the victim to enter security information about their card.
+
+Figure 8: Phishing page for obtaining additional credit card information
+The user is also asked to link their bank account to their "PayPal account," with a wide variety of well-known retail banks from which to choose. The bank logos are obscured in Figure 9 but the page uses stolen branding to increase the sense of legitimacy for the bank account phishing.
+
+Figure 9: Bank account phishing page
+The next page prompts the victim to enter login credentials for their bank. Like the rest of the phishing pages, the claim that "We don't save this information" is, of course, a fraud.
+
+Figure 10: Online banking credential phishing page
+The user is then prompted for routing information for the bank account.
+
+Figure 11: Bank account routing number phishing page
+Finally, the phishing kit prompts the user for identity information such as a driver's license number or other identifying document that can be uploaded directly to the phishing kit. If the victim clicks the "Don't have your ID now?" button, they simply skip this screen.
+
+Figure 12: Identity phishing page
+Having provided a very complete set of personal and financial information, the victim arrives at the end of the scam, after which they are redirected to the legitimate PayPal website.
+
+Figure 13: Confirmation page
+As interesting and inventive as the phishing page may be, what makes this kit and its variants so attractive to phishers and scammers is an administrative backend similar to what we generally see in remote access Trojans (RATs).
+
+Figure 14: Phishing kit administrative dashboard
+The administration panel provides several views including visitor information:
+
+Figure 15: Visitor information view
+Purchasers can access stolen credentials via the panel:
+
+Figure 16: Victim credential information
+Figure 17 shows the victim's bank account information:
+
+Figure 17: Stolen bank account information
+The panel also provides a simple interface for the administrator of the phishing kit to modify settings. Note the ability to enable a "selfie page" that uses Flash to interact with the victim's webcam. Presumably the phisher could retain the selfie for later use.
+
+Figure 18: Settings page for the instance of the phishing kit
+There is even a page for Trojans, although this features appears to still be under development.
+
+Figure 19: Trojan administration page
+Conclusion
+As attackers continue to turn away from the use of exploits and other means of compromising victim PCs and stealing information via malware, they are developing increasingly sophisticated means of collecting credentials and other data directly through phishing schemes. The use of phishing kits like the one detailed here provides threat actors with ready access to turnkey templates and administrative backends that make harvesting data from unsuspecting victims all too easy. These phishing pages look legitimate and users are already accustomed to "restoring account access" through various verification procedures, many of which are included in this example.
+This particular kit also illustrates the advanced state of "crimeware as a service", an inexpensive and straightforward means of conducting phishing scams with low barriers to entry and future possibilities for combining malware distribution with phishing. The presence of an admin panel like that described here is currently quite rare among credential phishing kits, although we have observed such panels associated with APT activities and "white hat" phishing frameworks. However, as tools and approaches in phishing continue to evolve, we expect this to become more common and, understandably, popular with phishing actors.
+Proofpoint has notified Paypal regarding this campaign and our findings.
+ET and ETPRO Suricata/Snort Coverage
+2023712                      ET CURRENT_EVENTS PayPal Phishing Landing Jan 09 2017
+2824284                      ETPRO CURRENT_EVENTS Phishing Landing Checking Browser/OS/Platform Phish Jan 09 2017
+2824217                      ETPRO CURRENT_EVENTS Successful PayPal Phish M1 Jan 05 2017
+2824247                      ETPRO CURRENT_EVENTS Successful PayPal Phish Jan 06 2017
+2824218                      ETPRO CURRENT_EVENTS Successful PayPal Phish M2 Jan 05 2017
+2824601                      ETPRO CURRENT_EVENTS Successful PayPal Phish Jan 24 M8 2017

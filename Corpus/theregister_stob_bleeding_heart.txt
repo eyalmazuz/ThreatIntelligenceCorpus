@@ -1,0 +1,88 @@
+Today's bugs have BRANDS? Be still my bleeding heart [logo]
+Stob In view of the ongoing security-holed far-too-open source situation, I have decided to convene an emergency meeting of ERCOCC, the El Reg Committee Of Competent Coders, to review what has occurred and how we should go forward.
+No time for chitter-chattering. Settle down everybody, and juice up the PowerPoint projector please Eric.
+The last time I spotted a goto in the wild was about 15 years ago. It was embedded in a C++ date-time class I had lazily poached from a certain code-sharing site, where the file had been made available under the controversial WYGIWYD licence (What You Get Is What You Deserve).
+That use of goto was quite gratuitous. It shone in the source out like the bright colourings adopted by certain venomous insects to warn birds not to eat them. And, like the stupidest, freshly-fledged squab, I inhaled the wasp and endured the consequences. Needless to say, it would have been quicker and more fun to copy out Letts 2002 Diary for the Dimmer Bulb by hand.
+Because nobody uses goto in real code, right? Sure, back in the day, Donald Knuth - not an obvious Nigel Farage-stylee hero of reactionary principles - bashed out a quick paper in its defence. But that was in 1974, when digital watches were still a pretty neat idea, smoking fags was both funny and clever and certain Top of the Pops presenters blah-di-blah ugh.
+So - and I'm sure you got here before me - when the Goto Fail SSL kerfuffle occurred, you could have smacked my gob into last Tuesday with a bent feather. Naturally I clicked through the links to the C file in question: go here and scroll down to SSLVerifySignedServerKeyExchange to see for yourself, or here for a grown up analysis.
+Or, to save time and excess clickage, take a gander at this dramatic reconstruction. See if you can spot that problematic line:
+OSStatus SSLVerifySignedServerKeyExchange(/*loadsa params*/)
+
+{
+
+    /* Declare some local variables, including: */
+
+    SSLBuffer       signedHashes;
+
+    /* More mucking about with local variables, eg */
+
+    signedHashes.data = 0;
+
+    /* Then the main rhythm of the function: */
+
+    if ((err = SSLImportantManInTheMiddleDefence(hashCtx, otherStuff)) != 0)
+
+        goto fail;
+
+    if ((err = SSLBitTwiddlingBogeymanBaffling(whatever)) != 0)
+
+        goto fail;
+
+    if ((err = SSLTumTittyTumTum(tum)) != 0)
+
+        goto fail;
+
+    if ((err = SSLNotForYourTinyBrainYouEarthling(params)) != 0)
+
+        goto fail;
+
+    if ((err = SSLAnotherFunctionYouDontUnderstand(hohoHo)) != 0)
+
+        goto fail;
+
+    /* ... */
+
+    /* After many more lines of the same ilk: */
+
+    if ((err = SSLYadaYadaYada(stuff)) != 0)
+
+        goto fail;
+
+        goto fail;
+
+    if ((err = SSLDoTheActualImportantCheck(stuff)) != 0)
+
+        goto fail;
+
+fail:
+
+    SSLFreeBuffer(&signedHashes);
+
+    SSLFreeBuffer(&hashCtx);
+
+    return err;
+
+}
+With its repeated goto fail refrain, the code's structure seems familiar. Ah yes, I know: the bawdy song Three German Officers crossed the Rhine. Substitute 'goto fail' for 'parlez-vous' and you can practically whistle it:
+
+if err equals ess ess ell tum-tee-tum
+
+  goto fail,
+
+if err equals ess ess ell tum-tee-dum
+
+  goto fail...
+
+The repeated goto is like the phrase "Simon says" in a game of "Simon says": it exists only to trip you up. It makes for a bored, twitchy style.
+Programmers shouldn't be inflicting boring, repetitive tasks on themselves. That's why they make friends with computers.
+And this goto just isn't necessary. Despite the non-comittal line taken by this page, there are better ways to do it.
+For example, the code maintainer could simply drop the gotos and code the whole lot with nested ifs. Sure, he would likely want to refactor the function into smaller pieces, to avoid ending up with his logic uncomfortably cramped up against the right hand margin, like the face of a hungry child squished against a restaurant window in a heart-warming movie. But so what? This program could use a little extra reorganisation.
+Or - and this is Baby's favoured solution - he could just turn on the C++ switch of that great big compiler he has there, and protect his resources with a bit of RAII. With that in place, his ghastly gotos become happy returns.
+Reader: Is there any other feature to which you would wish to draw my attention?
+Stob: To the curious incident of the signedHashes variable in the body of the function.
+Reader, gamely playing along: But the signedHashes variable does nothing in the body of the function.
+Stob, triumphantly: That is the curious incident.
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

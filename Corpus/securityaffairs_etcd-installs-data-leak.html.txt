@@ -1,0 +1,19 @@
+
+					Thousands of etcd installs leak 750MB worth of passwords and keys					
+Thousands of servers belonging to private businesses and organizations are leaking credentials and potentially sensitive data.
+It is quite easy for hackers to use the credentials to access the servers and steal sensitive data or use the machines to power cyber attacks.
+According to the researcher Giovanni Collazo, querying the popular Shodan search engine he found almost 2,300 servers exposed online that were running etcd, which is a distributed key value store that provides a reliable way to store data across a cluster of machines.
+This kind of database is usually used to store and distribute passwords and configuration settings among various servers and applications.
+etcd implements a programming interface that could be queried and that by default return administrative login credentials without authentication.
+
+Collazo wrote a simple script that ran through the 2,284 etcd servers he found open online by querying Shodan search engine and obtained all credentials stored on the servers.
+“I did a simple search on shodan and came up with 2,284 etcd servers on the open internet. So I clicked a few and on the third try I saw what I was hoping not to see. CREDENTIALS, a lot of CREDENTIALS. Credentials for things like cms_admin, mysql_root, postgres, etc.” reads the post published by Collazo.
+“In order to try to get a sense of the issue I downloaded the full shodan report and wrote a very simple script that basically called the etcd API and requested all keys. That’s basically equivalent to doing a database dump but over their very nice REST API.
+GET http://<ip address>:2379/v2/keys/?recursive=true
+This will return all the keys stored on the servers in JSON format.”
+The expert stopped the script after it collected about 750 megabytes of data from 1,485 IPs. In the following table are reported the data retrieved by the researchers:
+Collazo did not test the credentials but it is likely that many of them work and could be used to hack into the systems.
+“Anyone with just a few minutes to spare could end up with a list of hundreds of database credentials which can be used to steal data, or perform ransomware attacks.”  Collazo wrote. 
+In order to keep etcd installs secure it is necessary to enable authentication and get them offline if not required. Another mitigation consists of setting a firewall rule to avoid unauthorized people querying etcd server.
+Pierluigi Paganini
+(Security Affairs – etcd, hacking)

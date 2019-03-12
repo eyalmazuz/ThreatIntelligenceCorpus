@@ -1,0 +1,82 @@
+
+Attributing Potentially Malicious URLs - Part 2
+
+
+by Tony Lee.
+
+This is the second part of a three part series covering how to handle potentially malicious URLs and IP addresses without getting burned by directly communicating with them. We'll cover various online resources and let you know which ones are our favorites and a little context around why we like them.  In Part 1, Deobfuscating Potentially Malicious URLs, we laid the groundwork by covering policy, unshortening and deobfuscation.  In Part 2 (Attributing Potentially Malicious URLs) we'll continue with WHOIS, GeoIP, and IP to URL. 
+Outline
+
+WHOIS
+Automatic Safe Deconstruction
+GeoIP
+IP to URL
+Conclusion
+
+First Get Permission If Needed
+I won't force you to re-read this section but take this seriously and see the section of the same title in the First Article.
+WHOIS
+The WHOIS protocol is used to query databases that contain registration information for domains and IP addresses.  WHOIS can often be used to provide attribution to a suspected malicious site—especially when the reverse DNS record is not populated or not very helpful.  Even though there are WHOIS privacy companies that shield this information for a fee, it is still worth the few seconds to look up the data.  It is also important to note that legitimate/large companies will not hide their registration information, so it will be easy to eliminate them from a list of IP addresses.
+
+For the *Nix geeks out there, the command line whois works great.  However, for some, a *Nix box is not always immediately available while these sites are always available if you have Internet access.
+
+We observed over time, that when a particular WHOIS service becomes very popular, the hosting company attempts to monetize it by limiting queries to a few per day unless you pay a subscription.  Additionally, the service may be abused by people scripting lookups which causes the WHOIS service provider to add a captcha to the site.  Our favorite third party WHOIS services listed below are free and do not require CAPTCHAs:
+DomainTools
+
+The WHOIS functionality is free on DomainTools, however just about every other feature is a paid report or subscription. This site is still good at performing WHOIS queries because it accepts both IP and domain names in the same box as well as provides a screenshot of the site.
+
+
+WHOis.net
+Whois.net does a great job and accepts both IPs and domain names in the search box.  This service also provides the registrar chain needed to obtain the authoritative answer.
+
+
+GeoIP
+GeoIP (also called geolocation) is the mapping of a physical geographic location to other identifiers—in this case an IP address.  It is useful to combine this data with WHOIS information in order to gain more context around a suspicious host.  Keep in mind though that all of the sites have a disclaimer pertaining to the accuracy of their data because the sites will not always be exactly correct.  Take a look at whatismyipaddress’ disclaimer:
+Geolocation technology can never be 100% accurate in providing the location of an IP address. When the IP address is a proxy server and it does not expose the user's IP address it is virtually impossible to locate the user. The country accuracy is estimated at about 99%. For IP addresses in the United States, it is 90% accurate on the state level, and 81% accurate within a 25 mile radius. Our world-wide users indicate 55% accurate within 25km.
+Source: http://whatismyipaddress.com/ip-lookup
+
+You will even find instances where multiple GeoIP data services will not coincide with one another.  The reason for this appears to be that some services may fall back on WHOIS registration information if no other intelligence is available to them.  Other, less reliable services seem to solely use the WHOIS information.  We have outlined our favorite GeoIP Location services below with our reasons why they earned top picks:
+IPLocation
+The reason why we like IPLocation the best is because it sources data from three different GeoIP databases:  IP2Location, IPligence, and MaxMind.  Ironically, if you navigate directly to MaxMind, they cap your queries to only 25 per day.  IPlocation does not seem to limit daily queries. From experience, it appears that MaxMind is more accurate than IP2Location and IPligence.  For the example IP below, MaxMind’s results are only 5.1 miles away from the actual address.
+
+
+whatsmyipaddress
+We like whatsmyipaddress because it appears to be accurate and often coincides with or is very similar to MaxMind’s results.  They also include a map of the area for convenience. In a real-world test, Whatsmyipaddress was only 5.5 miles away from the actual address (we used http://itouchmap.com/latlong.html to convert the lat/long coordinates into an address on Google maps).
+
+
+Geobytes
+Geobytes is another excellent service that provides a map and even a certainty rating along with longitude and latitude coordinates.  When these coordinates are plugged into http://itouchmap.com/latlong.html, it shows that geobytes is only 2.4 miles off target.  That is incredibly impressive.
+
+
+IP to URL
+The HTTP 1.1 protocol allows multiple websites to be hosted on a single IP address.  Our goal in this process is to go from IP address back to the URL (domain), but notice that we did not call this section reverse DNS lookup...  You will most commonly see this service called reverse IP lookup, however it is also called shared hosting lookup and a few other names as well.  There are a handful of sites that provide this service, but why do these services even exist?  Why can’t we just utilize DNS?
+
+The problem is reverse DNS lookups will usually just result to a one to one, IP to hostname result.
+For example:  A reverse DNS lookup on a GoDaddy shared hosting server at 184.168.193.112 yields p3nw8sh246.shr.prod.phx3.secureserver.net.  That is great, however there are probably close to 500 domains being hosted on this one server.  There may times when you have an IP, but may be lacking a domain name—to make matters worse a reverse DNS record either doesn’t exist or is unhelpful as shown above.  At this point of desperation, use one of the sites we have listed below to go from IP to hopefully a small amount of domains/URLs:
+
+Using 161.69.13.43 (foundstone.com) as an example, we notice that there is no reverse DNS record—thus we must use reverse IP.
+DomainTools Reverse IP
+DomainTools does it again with a very useful and free service.  They will provide up to 2000 virtual addresses on a single host.  They also accept either an IP address or domain name.
+
+
+Bing Search engine "ip:" 
+One under publicized feature of Bing is their ability to go from IP address to URL.  Be warned though, if it is a hosting provider such as GoDaddy, you may have hundreds of sites hosted at a single URL.  If the IP is a medium or large site, a reverse IP lookup will result in only a couple of hits.
+
+
+Robtex
+Robtex is an excellent multi-purpose online research tool.  Just enter the IP address in the top left hand corner and click the “Lucky” button you will often be presented with lots of context around that IP address or hostname—including shared virtual addresses.  Larger sites work better within Robtex and other tools—see the foundstone.com example below:
+
+
+
+
+Using Robtex on the GoDaddy address above, shows that it will handle up to 100 share virtual addresses (a far cry from the 2000 from DomainTools—but still useful on larger domains):
+
+
+
+Having multiple resources is always beneficial just in case one disappears or becomes a paid service.
+Conclusion
+In this article we examined a number of free sites to perform WHOIS, GeoIP location, and reverse IP queries.  All of these services can be very useful in eliminating or determining attribution of suspicious URLs and IP addresses.  Many of the sites expose an API for automated queries.  The list that we provided here is not intended to be all encompassing.  However, Googling for these sites does not always provide the best option either.  Thus, if you have a favorite gem that was not included in this article please feel free to share it below—we are interested in your experiences as well.  :)
+Acknowledgements
+Thanks goes out to Vimal Navis of McAfee and Drew Thompson of Foundstone for recommending some of these great third party resources.
+
+

@@ -1,0 +1,155 @@
+RIG Exploit Kit Delivering Monero Miner Via PROPagate Injection Technique
+June 28, 2018 | by Sudhanshu Dubey, Dileep Kumar Jallepalli
+Introduction
+Through FireEye Dynamic Threat Intelligence (DTI), we observed RIG Exploit Kit (EK) delivering a dropper that leverages the PROPagate injection technique to inject code that downloads and executes a Monero miner (similar activity has been reported by Trend Micro). Apart from leveraging a relatively lesser known injection technique, the attack chain has some other interesting properties that we will touch on in this blog post.
+
+Attack Chain
+The attack chain starts when the user visits a compromised website that loads the RIG EK landing page in an iframe. The RIG EK uses various techniques to deliver the NSIS (Nullsoft Scriptable Install System) loader, which leverages the PROPagate injection technique to inject shellcode into explorer.exe. This shellcode executes the next payload, which downloads and executes the Monero miner. The flow chart for the attack chain is shown in Figure 1.
+
+
+Figure 1: Attack chain flow chart
+
+Exploit Kit Analysis
+When the user visits a compromised site that is injected with an iframe, the iframe loads the landing page. The iframe injected into a compromised website is shown in Figure 2.
+
+
+Figure 2: Injected iframe
+
+The landing page contains three different JavaScripts snippets, each of which uses a different technique to deliver the payload. Each of these are not new techniques, so we will only be giving a brief overview of each one in this post.
+
+JavaScript 1
+The first JavaScript has a function, fa, which returns a VBScript that will be executed using the execScript function, as shown by the code in Figure 3.
+
+
+Figure 3: JavaScript 1 code snippet
+
+The VBScript exploits CVE-2016-0189 which allows it to download the payload and execute it using the code snippet seen in Figure 4.
+
+
+Figure 4: VBScript code snippet
+
+JavaScript 2
+The second JavaScript contains a function that will retrieve additional JavaScript code and append this script code to the HTML page using the code snippet seen in Figure 5.
+
+
+Figure 5: JavaScript 2 code snippet
+
+This newly appended JavaScript exploits CVE-2015-2419 which utilizes a vulnerability in JSON.stringify. This script obfuscates the call to JSON.stringify by storing pieces of the exploit in the variables shown in Figure 6.
+
+
+Figure 6: Obfuscation using variables
+
+Using these variables, the JavaScript calls JSON.stringify with malformed parameters in order to trigger CVE-2015-2419 which in turn will cause native code execution, as shown in Figure 7.
+
+
+Figure 7: Call to JSON.Stringify
+
+JavaScript 3
+The third JavaScript has code that adds additional JavaScript, similar to the second JavaScript. This additional JavaScript adds a flash object that exploits CVE-2018-4878, as shown in Figure 8.
+
+
+Figure 8: JavaScript 3 code snippet
+
+Once the exploitation is successful, the shellcode invokes a command line to create a JavaScript file with filename u32.tmp, as shown in Figure 9.
+
+
+Figure 9: WScript command line
+
+This JavaScript file is launched using WScript, which downloads the next-stage payload and executes it using the command line in Figure 10.
+
+
+Figure 10: Malicious command line
+
+Payload Analysis
+For this attack, the actor has used multiple payloads and anti-analysis techniques to bypass the analysis environment. Figure 11 shows the complete malware activity flow chart.
+
+
+Figure 11: Malware activity flow chart
+
+Analysis of NSIS Loader (SmokeLoader)
+The first payload dropped by the RIG EK is a compiled NSIS executable famously known as SmokeLoader. Apart from NSIS files, the payload has two components: a DLL, and a data file (named ‘kumar.dll’ and ‘abaram.dat’ in our analysis case). The DLL has an export function that is invoked by the NSIS executable. This export function has code to read and decrypt the data file, which yields the second stage payload (a portable executable file).
+
+The DLL then spawns itself (dropper) in SUSPENDED_MODE and injects the decrypted PE using process hollowing.
+
+Analysis of Injected Code (Second Stage Payload)
+The second stage payload is a highly obfuscated executable. It consists of a routine that decrypts a chunk of code, executes it, and re-encrypts it.
+
+At the entry point, the executable contains code that checks the OS major version, which it extracts from the Process Environment Block (PEB). If the OS version value is less than 6 (prior to Windows Vista), the executable terminates itself. It also contains code that checks whether the executable is in debugged mode, which it extracts from offset 0x2 of the PEB. If the BeingDebugged flag is set, the executable terminates itself.
+
+The malware also implements an Anti-VM check by opening the registry key HKLM\SYSTEM\ControlSet001\Services\Disk\Enum with value 0.
+
+It checks whether the registry value data contains any of the strings: vmware, virtual, qemu, or xen.  Each of these strings is indictative of virtual machines
+
+After running the anti-analysis and environment check, the malware starts executing the core code to perform the malicious activity.
+
+The malware uses the PROPagate injection method to inject and execute the code in a targeted process. The PROPagate method is similar to the SetWindowLong injection technique. In this method, the malware uses the SetPropA function to modify the callback for UxSubclassInfo and cause the remote process to execute the malicious code.
+
+This code injection technique only works for a process with lesser or equal integrity level. The malware first checks whether the integrity of the current running process is medium integrity level (2000, SECURITY_MANDATORY_MEDIUM_RID). Figure 12 shows the code snippet.
+
+
+Figure 12: Checking integrity level of current process
+
+If the process is higher than medium integrity level, then the malware proceeds further. If the process is lower than medium integrity level, the malware respawns itself with medium integrity.
+
+The malware creates a file mapping object and writes the dropper file path to it and the same mapping object is accessed by injected code, to read the dropper file path and delete the dropper file. The name of the mapping object is derived from the volume serial number of the system drive and a XOR operation with the hardcoded value (Figure 13).
+
+File Mapping Object Name = “Volume Serial Number” + “Volume Serial Number” XOR 0x7E766791
+
+
+Figure 13: Creating file mapping object name
+
+The malware then decrypts the third stage payload using XOR and decompresses it with RTLDecompressBuffer. The third stage payload is also a PE executable, but the author has modified the header of the file to avoid it being detected as a PE file in memory scanning. After modifying several header fields at the start of decrypted data, we can get the proper executable header (Figure 14).
+
+
+Figure 14: Injected executable without header (left), and with header (right)
+
+After decrypting the payload, the malware targets the shell process, explorer.exe, for malicious code injection. It uses GetShellWindow and GetWindowThreadProcessId APIs to get the shell window’s thread ID (Figure 15).
+
+
+Figure 15: Getting shell window thread ID
+
+The malware injects and maps the decrypted PE in a remote process (explorer.exe). It also injects shellcode that is configured as a callback function in SetPropA.
+
+After injecting the payload into the target process, it uses EnumChild and EnumProps functions to enumerate all entries in the property list of the shell window and compares it with UxSubclassInfo
+
+After finding the UxSubclassInfo property of the shell window, it saves the handle info and uses it to set the callback function through SetPropA.
+
+SetPropA has three arguments, the third of which is data. The callback procedure address is stored at the offset 0x14 from the beginning of data. Malware modifies the callback address with the injected shellcode address (Figure 16).
+
+
+Figure 16: Modifying callback function
+
+The malware then sends a specific message to the window to execute the callback procedure corresponding to the UxSubclassInfo property, which leads to the execution of the shellcode.
+
+The shellcode contains code to execute the address of the entry point of the injected third stage payload using CreateThread. It then resets the callback for SetPropA, which was modified by malware during PROPagate injection. Figure 17 shows the code snippet of the injected shellcode.
+
+
+Figure 17: Assembly view of injected shellcode
+
+Analysis of Third Stage Payload
+Before executing the malicious code, the malware performs anti-analysis checks to make sure no analysis tool is running in the system. It creates two infinitely running threads that contain code to implement anti-analysis checks.
+
+The first thread enumerates the processes using CreateToolhelp32Snapshot and checks for the process names generally used in analysis. It generates a DWORD hash value from the process name using a custom operation and compares it with the array of hardcoded DWORD values. If the generated value matches any value in the array, it terminates the corresponding process.
+
+The second thread enumerates the windows using EnumWindows. It uses GetClassNameA function to extract the class name associated with the corresponding window. Like the first thread, it generates a DWORD hash value from the class name using a custom operation and compares it with the array of hardcoded DWORD values. If the generated value matches any value in the array, it terminates the process related to the corresponding window.
+
+Other than these two anti-analysis techniques, it also has code to check the internet connectivity by trying to reach the URL: www.msftncsi[.]com/ncsi.txt.
+
+To remain persistent in the system, the malware installs a scheduled task and a shortcut file in %startup% folder. The scheduled task is named “Opera Scheduled Autoupdate {Decimal Value of GetTickCount()}”.
+
+The malware then communicates with the malicious URL to download the final payload, which is a Monero miner. It creates a MD5 hash value using Microsoft CryptoAPIs from the computer name and the volume information and sends the hash to the server in a POST request. Figure 18 shows the network communication.
+
+
+Figure 18: Network communication
+
+The malware then downloads the final payload, the Monero miner, from the server and installs it in the system.
+
+Conclusion
+Although we have been observing a decline in Exploit Kit activity, attackers are not abandoning them altogether. In this blog post, we explored how RIG EK is being used with various exploits to compromise endpoints. We have also shown how the NSIS Loader leverages the lesser known PROPagate process injection technique, possibly in an attempt to evade security products.
+
+FireEye MVX and the FireEye Endpoint Security (HX) platform detect this attack at several stages of the attack chain.
+
+Acknowledgement
+We would like to thank Sudeep Singh and Alex Berry for their contributions to this blog post.
+
+This entry was posted on Thu Jun 28 12:00 EDT 2018 and filed under Sudhanshu Dubey, Dileep Kumar Jallepalli, cryptocurrency, cryptocurrency mining, and Exploit Kits.

@@ -1,0 +1,85 @@
+Home Routers Under Attack via Malvertising on Windows, Android Devices
+[Updated December 19, 2016 to reflect additional data received from one of the affected traffic brokers and detected by our own infrastructure. Thanks to Fogzy for providing data on this malicious activity and their prompt action to shut down the activity affecting their network.]
+Overview
+Proofpoint researchers have reported frequently this year on the decline in exploit kit (EK) activity. EKs, though, are still vital components of malvertising operations, exposing large numbers of users to malware via malicious ads. Since the end of October, we have seen an improved version of the “DNSChanger EK” [1] used in ongoing malvertising campaigns. DNSChanger attacks internet routers via potential victims’ web browsers; the EK does not rely on browser or device vulnerabilities but rather vulnerabilities in the victims' home or small office (SOHO) routers. Most often, DNSChanger works through the Chrome browser on Windows desktops and Android devices. However, once routers are compromised, all users connecting to the router, regardless of their operating system or browser, are vulnerable to attack and further malvertising.
+The router attacks appear to happen in waves that are likely associated with ongoing malvertising campaigns lasting several days. Attack pattern and infection chain similarities led us to conclude that the actor behind these campaigns was also responsible for the “CSRF (Cross-Site Request Forgery) Soho Pharming” operations in the first half of 2015 [1].
+However, we uncovered several improvements in the implementation of these attacks, including:
+Attack chain:
+The attack chain ensnares victim networks though legitimate web sites hosting malicious advertisements unknowingly distributed via legitimate ad agencies. The complete attack chain is shown in Figure 1.
+
+Figure 1: Illustration of the complete attack chain
+Figure 2 shows an example of captured traffic associated with this attack:
+
+Figure 2: Traffic associated with the DNSChanger EK attack on a SOHO (Small Office/Home Office) router.
+Attack Analysis:
+Malvertising encountered on both desktop and mobile devices sends traffic to the DNSChanger EK. We were able to confirm that the attack is carried out properly on Google Chrome for Windows as well as for Android.
+DNSChanger will use webRTC to request a STUN server via stun.services.mozilla[.]com and determine the victim's local IP address. If the victim's public IP is already known or their local IP is not in the targeted ranges, they will be directed to a decoy path where a legitimate advertisement from a third party ad agency is displayed.
+If the client passes this check then a fake advertisement will be displayed to the victim. JavaScript extracts HTML code from the comment field on the PNG file, redirecting victims to the landing of the DNSChanger EK. Note that the image listed in (1) in Figure 3 is a fake and not actually a .jpg; rather it is a PNG file.
+
+Figure 3: Fake advertisement containing code which extracted allow redirection to the DNSChanger EK (November 2016)
+The DNSChanger EK will once again check the victim's local IP address via STUN requests. It then loads multiple functions and an AES key concealed with steganography in a small image.
+
+Figure 4: Function extracting the AES key and using it to decode the fingerprints and associated commands
+This key will be used to decrypt the list of fingerprints which can be deduplicated to 129 items (see appendix for the complete list).
+
+Figure 5: Functions used to determine available routers in victims' homes/offices 
+The victim’s browser will then try to locate and identify the router used in the network (Fig. 5).
+Once it performs the reconnaissance functions, the browser will report back to the DNSChanger EK which returns the proper instructions to perform an attack on the router.
+
+Figure 6: Attack layout once extracted from the image and AES-decoded
+
+Figure 7: Example attack command
+This attack is determined by the particular router model that is detected during the reconnaissance phase. If there is no known exploit, the attack will attempt to use default credentials; otherwise, it will use known exploits to modify the DNS entries in the router and, when possible (observed for 36 fingerprints out of the 129 available), it will try to make administration ports available from external addresses. In this way, it will expose the router to additional attacks like those performed by the Mirai [2] botnets.
+
+Figure 8: Example of port mapping instructions once decoded
+
+Figure 9: DNSChanger EK attempting to map the telnet administration port to external TCP 8780 as captured in the traffic
+Post Infection:
+While the goals of such an attack - changing DNS records on a router - are not always clear, in this case we were able to determine at least one motivating factor. We studied discrepancies in DNS resolution results between a public, reliable DNS server and some rogue servers identified in these campaigns and found that the attackers were primarily interested in stealing traffic from some large web ad agencies including:
+Agency
+Via
+Alexa Rank
+Propellerads
+onclickads.net
+32
+Popcash
+popcash.net
+170
+Taboola
+cdn.taboola.com
+278
+OutBrain
+widgets.outbrain.com
+146
+AdSuppy
+cdn.engine.4dsply.com
+cdn.engine.phn.doublepimp.com
+362
+245
+The attackers force resolution of the corresponding domain to 193.238.153[.]10 or 46.166.160[.]187. Depending on the domains, they might use it to change advertising behavior and target website (for instance, any click on the page might trigger a popup) or perform ad Substitution.
+
+Figure 10: Advertisement calls modified by attackers
+At the time of our examination, they were redirecting the traffic to Fogzy (a.rfgsi[.]com) and TrafficBroker. We contacted both of these agencies to get additional information and let them know about the stolen traffic on their networks.
+Affected Routers and Mitigation Steps
+It is not possible to provide a definitive list of affected routers as there is no longer an obvious victim-side relationship between the fingerprint data and the associated routers; this clear association was removed from DNSChanger EK in mid-2015 and a deeper investigation was outside the scope of this analysis. However, the most secure approach for end users is to consider that all known exploits are integrated in this kind of exploit kit, and thus all routers should be updated to the last known firmware.
+We were able to identify several newly added vulnerable routers:
+A zero-day exploit for the Netgear R7000, R6400 [4] and others [6] was recently documented by other researchers. We checked for fingerprints associated with these models in DNSChanger but did not find any as of December 12, 2016. Nevertheless we strongly advise users to follow the instructions from US-CERT [5] to disable the web server on affected Netgear routers [7] as we can expect this exploit to be added quite soon in this EK. Netgear has also made beta versions of firmware available to users that may address these vulnerabilities [9].
+In many cases, simply disabling remote administration on SOHO routers can improve their security. In this case, though, attackers use either a wired or wireless connection from a device on the network. As a result, the attackers do not need the remote administration to be turned on to successfully change the router settings.
+Unfortunately, there is no simple way to protect against these attacks. Applying the latest router updates remains the best way to avoid exploits. Changing the default local IP range, in this specific case, may also provide some protection. Neither of these solutions, though, is a typical action performed by average users of SOHO routers. As a result, it is also incumbent upon router manufacturers to develop mechanisms for simple, user-friendly updates to their hardware.
+Moreover, while we understand that advertising is an important component of the web publishing ecosystem, in some cases, ad-blocking browser add-ons might prevent these kinds of attacks when they originate through malvertising.
+Conclusion:
+When attackers control the DNS server on a network, they open up the possibility of carrying out a wide range of malicious actions on devices connecting to the network. These can include banking fraud, man-in-the-middle attacks, phishing [8], ad fraud, and more. In this case, the DNSChanger exploit kit allows attackers to leverage what is often the only DNS server on a SOHO network - the internet router itself. In general, avoiding these attacks requires router manufacturers to regularly patch their firmware and users to regularly apply these patches. Router vulnerabilities affect not only users on the network but potentially others outside the network if the routers are compromised and used in a botnet. While users must take responsibility for firmware updates, device manufacturers must also make security straightforward and baked in from the outset, especially on equipment designed for the SOHO market.
+[Update, December 19, 2016]
+As of December 16, it appears that the malvertising campaigns driving distribution of DNSChanger EK have ceased and DNSChanger EK appears to be offline. However, all routers that have previously been compromised are potentially still under attacker control. At this time, a minimum of 56,000 routers have been compromised, but we expect that number is considerably higher. Based on data provided by one of the affected traffic brokers that the attackers were using to steal advertising streams, we can see that the campaigns were, in fact, widely distributed internationally (Figure A). Note that the percentages in each of the charts below reflect the distribution of traffic from routers that have been compromised by DNSChanger EK. Also note that only one of the two affected traffic brokers made their data available to us at the time of publication so the aggregate data from all compromised routers may lead to different distributions.
+
+Figure A: Geographic distribution of traffic from routers compromised by DNSChanger EK
+Figure B shows the distribution of traffic by type of device accessing the local network behind compromised routers:
+
+Figure B: Traffic by hardware platform
+It is worth noting that almost 74% of the traffic from compromised routers originated from the Google Chrome web browser. However, this may simply reflect broader adoption trends for Google Chrome instead of particular targeting; Chrome has a majority market share on both mobile and desktop platforms, both of which are included in this chart.
+
+Figure C: Traffic by web browser
+Finally, among mobile devices hitting the traffic broker from compromised routers, we see considerable spread across mobile operating systems.
+
+Figure D: Traffic by mobile OS
+We will continue to monitor this actor group and exploit kit for further activity.

@@ -1,0 +1,53 @@
+
+How to Configure Suricata IDS in Ubuntu
+
+Suricata is developed by the Open Information Security Foundation. Suricata is a high performance Network IDS, IPS and Network Security Monitoring engine. Open Source and owned by a community run non-profit foundation, the Open Information Security Foundation (OISF). Suricata is developed by the OISF and its supporting vendors.
+Features
+IDS / IPS
+Suricata implements a complete signature language to match on known threats, policy violations and malicious behaviour. Suricata will also detect many anomalies in the traffic it inspects. Suricata is capable of using the specialized Emerging Threats Suricata ruleset and the VRT ruleset.
+High Performance
+A single Suricata instance is capable of inspecting multi-gigabit traffic. The engine is built around a multi threaded, modern, clean and highly scalable code base. There is native support for hardware acceleration from several vendors and through PF_RING and AF_PACKET.
+Automatic protocol detection
+Suricata will automatically detect protocols such as HTTP on any port and apply the proper detection and logging logic. This greatly helps with finding malware and CnC channels.
+NSM: More than an IDS
+Suricata can log HTTP requests, log and store TLS certificates, extract files from flows and store them to disk. The full pcap capture support allows easy analysis. All this makes Suricata a powerful engine for your Network Security Monitoring (NSM) ecosystem.
+From: https://suricata-ids.org/
+Lets Begin!!
+We had chosen ubuntu operating system for installation and configuration of suricata. Earlier than installing suricata in your machine, you should need to install necessary dependencies of ubuntu. Therefore open the terminal and type given below command to install pre-requisites by a making update.
+apt-get update
+
+It is an easiest way to install and configure the suricata in your system because it’s entire requirement whether it is suricata rules directory or logging directory every packages is are stored by apt repository. Enter given below command to begin the suricata installations.  
+apt-get install suricata -y 
+
+Now we need to create an empty text document file for our local rules inside rule folder of suricata
+touch /etc/suricata/rules/local.rules
+
+After then open the configuration file using gedit for making some changes inside.
+gedit /etc/suricata/suricata-debian.yaml
+
+The two most important steps we need to perform here:
+ 
+Now add the network CIDR for which IDS will filter the incoming and outgoing traffic as shown in given below image.
+Here we had set HOME_NET 192.168.1.0/24
+
+Now open the local rule file to add your own network filtering rules in side it
+gedit /etc/suricata/rules/local.rules
+
+Now if you are not much aware about its rule configuration then you need not to be worry about it because implementing rule in suricata is as similar as in snort. For help open this Link to get details of IDS rule implementation.
+alert icmp any any -> 192.168.1.111 any (msg: “ICMP detected”; sid:10000001;)
+The above rule will generate an alert when found any network IP sending ICMP packets in our network by pinging IP 192.168.1.111.
+
+Now execute following command to make GRO (Generic receive offload) disable on specific interfaces with help of Ethtool.
+ethtool -K ens33 gro off
+
+Then again turn On NIDS mode of surictata using given below command.
+suricata -c /etc/suricata/suricata-debian.yaml -i ens33
+
+Now let’s ping the IP: 192.168.1.111 from another system to test whether our NIDS will generate alert for ICMP packet or not. From given image you can read the command: ping 192.168.1.111 where you can observe it has sent 3 ICMP request packets.  
+
+Basically suricata alert logs are generated under var/log and you can use given below command to read the captured logs.
+tail -f /var/log/suricata/
+As result suricata with NIDS mode had capture only 3 ICMP packets from IP 192.168.1.102 which you can observe from given below image that generated alert for “ICMP Detected”, this happens because in above rule we had applied “->”one-directional operators which mean it will only capture traffic coming from source IP to destination IP.
+Here you can perceive that both two packets of ICMP is coming from 192.168.1.102 to 192.168.1.111 which means it has only captured ICMP Echo-request packets form source IP. 
+
+Author: Mohit Chauhan is a technical writer at hacking articles and cyber security enthusiast. Contact Here

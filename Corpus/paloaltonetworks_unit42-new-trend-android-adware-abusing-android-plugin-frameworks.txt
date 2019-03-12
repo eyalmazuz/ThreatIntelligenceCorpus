@@ -1,0 +1,207 @@
+A New Trend in Android Adware: Abusing Android Plugin Frameworks
+
+It is common for legitimate mobile apps to embed advertising SDKs or promote other apps. Showing ads or promoting other apps can generate revenue for legitimate app developers. However, we have recently observed an alarming trend in mobile ads communities where some adware programs in the Google Play store have become more aggressive by abusing the third-party DroidPlugin framework on Android.
+In this posting we will outline how Unit 42 researchers have found aggressive adware that abuses the third-party DroidPlugin framework on Android. Our researchers have worked with Google to share our findings and have all apps that were found to violate Google’s terms of service removed from the Google Play store.
+The “Good” and “Bad” of Android Plugin Technology
+Plugin technology was initially introduced by third parties to add additional enhancements and capabilities to Android. For instance, there are apps that use this capability to enable a user to run two Twitter apps on one phone. Plugin technology can also improve the speed of hot patching. Unfortunately, the enhancements and capabilities that plugin technology offers can be used for malicious ends. Malware authors have been abusing legitimate Plugin technology to achieve ends like bypassing antimalware technology on devices, especially the static scanners. We’ve discussed this already in our research on PluginPhantom. Other researchers have discussed how this technology can be abused for phishing attacks.
+Previously research has found malware have abusing the most popular open source plugin frameworks, “DroidPlugin” and “VirtualApp”. Both frameworks can launch arbitrary Android apps, theoretically without them being installed on the phone. Technically, the Android plugin technology is an application-level virtualization environment.
+Unit 42 researchers have recently found how Android plugin functionality has become an innovative way to promote apps through adware. A plugin-enabled app has the ability to automatically launch different apps without installing them. This provides a shortcut for adware to make revenue from ad networks as the promoted app can be launched on without any user interaction.
+This type of app promotion can post security risks because of the comparatively weak security mechanisms used in current plugin frameworks. These plugin frameworks lack the ability to separate permissions and isolate data amongst different plugin instances. Thus, when a promoted app is executed through the plugin framework, it has the same permissions as the host app (typically all Android permissions) and can access the data of the host app or other plugin apps. This violates an important aspect of Android Application Sandbox:
+“The Android Application Sandbox, which isolates your app data and code execution from other apps.”
+Legitimate apps that assume they will always be running in their own application sandbox are now at risk because they cannot predict if their app will be launched in a plugin environment.
+For example, in Google Play, we have observed that 32 apps use the DroidPlugin framework, and 21 apps use the VirtualApp framework. Most of them are PUPs (potentially unwanted programs) or adware, which have been removed from Google Play (listed below in the appendix).
+In the following examples, we will demonstrate how two adware families abuse plugin technology in the new app promotion style.
+Example 1: Automated and Aggressive App Promotion
+In September 2016, the developers of an app named “Clean Doctor” (package name: “com.nianclub.cleandoctor”) made it more aggressive in version 1.2.0. This adware abuses the VirtualApp framework. Its evolution timeline in Google Play is showed in Figure 1.
+
+Figure 1 Evolution timeline of “Clean Doctor”
+Clean Doctor vs other Adware:
+To promote apps, adware commonly downloads apps and then frequently displays the app installation GUI to the user. After users have installed the app, the adware creator receives a payment for “promoting” the new app. Clean Doctor (CD) took a different tactic to accomplish the same goal.
+CD fetches task information from its C2 server “familysdk[.]com” and stealthily downloads many promoted apps from a cloud storage service. It does not request users install these downloaded apps but instead launches the apps one of two different ways:
+1. Launch by clicking the shortcut:
+CD creates shortcuts on the devices’ home screen for each downloaded app (Figure 2). When the user clicks the shortcut, it launches the corresponding app as a plugin app in the “Clean Doctor” sandbox. For most Android users, it is very difficult to notice the difference between this kind of launch and the default launch mode when clicking a shortcut. For example, when a user clicks the shortcut of the game “Evony: Battle On”, this game will be directly and immediately displayed but the game is actually launched as a plugin app and is running in the plugin virtual environment.
+Figure 2 Created shortcuts of promoted apps
+2. Automatically launch:
+As all plugin apps are under the full control by the host app, the host app can control the lifecycle of each plugin app. CD can automatically launch the promoted app as a plugin app when receiving system events.
+Figure 3 A promoted game app is launched as a plugin
+Example 2: Multiple Apps Promotion
+At the end of January 2017, we observed that developers of an adware app in Google Play called “bloodpressure” (package name: “com.blood.pressure.bost”) had also made it more aggressively promote apps by abusing the Android plugin technology. This adware automatically launches a separate app to display ads and recommends multiple apps in a single screen.
+The adware started using the embedded VirtualApp framework with version 2.5, but it was removed Google Play at the start of February 2017. At the time of its removal it’s installation count was between 10,000 and 50,000 installs. The lifecycle of this adware in Google Play is shown in Figure 4.
+
+Figure 4 Timeline of evolution to plugin adware for “bloodpressure” app
+Compared to Other Adware
+Most advertising SDKs use the webview component to display ads such as banner ads and full screen ads. Apps built using these SKDs can only display one ad at a time. The bloodpressure adware sample we found is different and can display advertisements for many apps to the user on a single screen. To achieve this, the adware automatically launches a plugin app, in which many ads are displayed together (Figure 5).  This technique is not as harmful as simply launching promoted apps without the user’s interaction, but does allow the adware author more opportunities to have a promoted app installed.
+Figure 5 The plugin app displays multiple ads
+Technical Analysis
+The workflow of this adware is depicted in Figure 6, and is explained as follows.
+1. Get configuration from the remote server:
+Once the host app launched, it connects to the remote server via the URL http[:]//qwe.ortpale[.]com/conf/bloodinfo.txt to get a configuration file. It is interesting to note that the User-Agent property in the HTTP request header is set to “Ray-Downer.”
+2. Decode and save plugin app
+The host app includes a raw resource named “protect.data”. This resource file is actually an encoded plugin APK file. The host app decodes this file and saves it.
+3. Install plugin app
+The host app takes advantage of VirtualApp framework to install the plugin app within the host app’s own sandbox.
+4. Launch plugin app
+After installing the plugin app successfully, the host app can launch the plugin via invoking VirutalApp’s API. Once the plugin app starts, it begins displaying adds to the user.
+Figure 6 Plugin Adware Operation
+Conclusion
+The Android plugin technology makes it possible for adware authors to make a profit in a new way. This kind of abuse is harmful to ad networks as well as Android users. We hope that the mobile development community and the security community will work together to solve security problems in the Android Plugin technology.  Android users should learn that the private data of their plugin apps and their devices are at great risk when operating in an Android Plugin environment.
+Customers of Palo Alto Networks are protected by our WildFire and URL filtering services. WildFire has successfully detected adware samples, which abuse the Android plugin technology. The related C2 URLs used by above two adware families have been marked as malicious.
+Acknowledgement
+We greatly appreciate the help from Ryan Olson and Kirill Zemnucha from Palo Alto Networks in working on this the blog publication and the original discovery of adware samples.
+Other Removed Plugin Apps in Google Play
+
+
+
+App Name
+Package name
+Developer name
+
+
+Whale Camera
+com.bird.sky.whale.camera
+yu tongshi
+
+
+Deep Cleaner
+com.blue.deep.cleaner
+yang songxi
+
+
+Ice Camera
+com.cool.ice.camera
+mo tengbao
+
+
+Sweet Camera
+com.filter.sweet.camera
+hou hanying
+
+
+Orange Camera
+com.fishing.when.orangecamera
+chen shunya
+
+
+穿越VPN
+com.fvcorp.ffclient.cs
+林曦
+
+
+Funny Camera
+com.g360.funny.camera
+qiu shixiu
+
+
+Hot Camera
+com.group.hotcamera
+group
+
+
+Insta Save for Instagram
+com.inslab.instasaver
+Li Game Studio Ltd.
+
+
+Top Instagram Followers
+com.itop.top100insfollowers
+Dongli Level Studio
+
+
+礼物说-礼物和全球好货指南
+com.liwushuo.gifttalk
+TieTie Technology
+
+
+Dual whazaap-alike ogwhastapp
+com.mob.dualwha
+qumobile
+
+
+Wallpaper -recomended by 9apps
+com.mobile.ninewallpaper1
+JiangHeng0255ss
+
+
+Blinking Camera
+com.op.blinking.camera
+com.op.blinkingcamera
+yan huixin
+
+
+File master-pro
+com.tec.file.master
+yan linqin
+
+
+file explorer
+global.fm.filesexplorer
+tian xiexin
+
+
+X Camera
+com.g360.zcamera
+steve zhao
+
+
+Dual whats’app: Multi Account
+com.multi.account.parallel.dual
+Dev Tools Studio
+
+
+Multi Messenger for WhatsWeb
+com.multi.whatweb
+What Multi APP
+
+
+Clean Doctor: Safe & Clean
+com.nianclub.cleandoctor
+li lusong
+
+
+AppLock
+com.security.multiple.account.applock
+ScreenLock Apps, Password to Secure Privacy
+
+
+2Lines for WhatsApp
+com.tenappsmultiwhat
+KTeam
+
+
+Downtuber : video downloader
+com.yiyue.wuhao
+li qinkui
+
+
+Multi Space | Dual App
+dotapps.multispace
+Dot Apps Studio
+
+
+2 Whazzap NoRoot
+dotapps.multiwhats
+Dot application
+
+
+Game Talent –  Booster & Tuner
+opt.game.talent
+Game Talent
+
+
+
+Sample SHA256 Hashes:
+5e5bea52b1f9fcbd78c990cd09057780ebda669a5b632a8dd46ecfcfbfaf6369
+24d308a8f2bcabd97b0e7acba8e22821914e464cdb7d0ed61a26400456870edd
+6c2a23c0ca361fabc95e2eac3a13641cafe53803c8a4fc32b8a182374ac32ee1
+dec71f2464bdfcc7a8fae02e2c103a31b746aa798aeebe1721ccd037156106f4
+748dae1604fb0b747bcdeb476aea7d1f6bbec7d7a260613241a9fc3ef1243c66
+ee7b82ef97928e0e4d100eb82c37bac6d87ee275cc89ec67c3f8a64fd13561be
+5467ebe255bd59912c61aa1b801ea93972672885bfa29c3ee9756342ceb65228
+49a9767d1775dd45545ea8fff1250e89fa6fd0c1a694b6583f4e79cd1b14c162
+95d12555b71adf13eb40cb78c2f8cfa17aeaaf6f063bcd209a6037463e8fca66
+d1916eb07c0a8494df21f8453511df6655fe1bc07efb37b526eae8724665ab91
+4e25245dc9c0c8b6cf98e9fcdd6f94dd8e0dad7ad526248999f913682df28531
+
+Ignite ’17 Security Conference: Vancouver, BC June 12–15, 2017
+Ignite ’17 Security Conference is a live, four-day conference designed for today’s security professionals. Hear from innovators and experts, gain real-world skills through hands-on sessions and interactive workshops, and find out how breach prevention is changing the security industry. Visit the Ignite website for more information on tracks, workshops and marquee sessions.
+

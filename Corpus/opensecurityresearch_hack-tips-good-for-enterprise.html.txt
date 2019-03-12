@@ -1,0 +1,99 @@
+
+Hack Tips: Good for Enterprise Exploitation
+
+
+By Tony Lee.
+
+Good’s website best describes their excellent product capabilities:
+
+“Good for Enterprise™ is a suite of powerful mobile device management tools that bring military-grade security, end-to-end data loss prevention, and collaboration features to today's most popular smartphones and tablets — without compromising IT security and control.”
+Source:  http://www.good.com/products/good-for-enterprise.php
+
+What we are discussing here is not an 0day against Good for Enterprise, but it is a methodology that can be used to inspect the security of the Good for Enterprise environment.
+
+OverviewOverall, the process involves the following steps:
+
+Identifying the Good Enterprise Server 
+Determine the Good Administrator
+Obtaining Good Administrator Credentials 
+Accessing the Management Interface (Good Mobile Control)
+Provisioning devices and reading other’s email (Note:  We are not lawyers--this might be a bad idea)
+
+Identifying "Good for Enterprise" ServersHow to find or determine if you are sitting on a “Good for Enterprise” server (we found it based on DNS name and confirmed it with the following methods):
+
+Host naming scheme examples\\GOOD\\GOODMAIL
+Application directoryC:\Program Files (x86)\Good Technology\
+User accounts - Although there a no specific names for the service, the documentation uses "GoodAdmin", so perhaps some possible names would be: GoodgmcGoodAdmin
+Services - net start should contain: Good Mobile Control serverGoodLink Server
+Identifying "Good for Enterprise" AdministratorsTry to determine the Good Administrators (We found a Good related file and viewed the properties to see who had rights on the file)
+
+Check for user accounts - Net commands - net userCheck "Users" directory - C:\>dir c:\users
+Volume in drive C is OS
+Volume Serial Number is 
+
+Directory of c:\users
+
+11/10/2011  08:10 AM    <DIR>          .
+11/10/2011  08:10 AM    <DIR>          ..
+12/02/2010  09:02 AM    <DIR>          <username>
+09/01/2011  10:08 AM    <DIR>          <username>
+07/13/2009  11:57 PM    <DIR>          Public
+05/19/2011  01:43 PM    <DIR>          Administrator
+11/07/2011  03:26 PM    <DIR>          Goodadmin
+09/21/2011  04:02 AM    <DIR>          GoodGMC
+               0 File(s)              0 bytes
+              8 Dir(s)  23,495,675,904 bytes free
+
+
+File permissions of Application FilesRight click file -> Properities -> Security Tab
+Identifying "Good for Enterprise" Account CredentialsWe used Windows Credential Editor to grab hashes from memory for a Good Administrator and cracked them
+
+With the Good Administrator account identified, dump password hashseshashdumpgsecdumpfgdumpOther favorites
+Find files that may contain credentialsfindstr /I /S /M pass c:\*dir /a /s /b c:\*pass*
+Windows Credential Editor to target Domain accounts- : C:\> wce.exe
+WCE v1.2 (X64) (Windows Credentials Editor) - (c) 2010,2011 Amplia Security – by  Hernan Ochoa (hernan@ampliasecurity.com)
+Use -h for help.
+
+User: Domain:00000000000000000000000000000000:B9BLAHBLAHBLAHBLAHBLAHBLAHBAC
+GoodGMC: Domain:00000000000000000000000000000000:7D3BLAHBLAHBLAHBLAHBLAHBLAHFA3
+User:Domain:AC5BLAHBLAHBLAHBLAHBLAHBLAHDA2:34537B9BLAHBLAHBLAHBLAHBLAHBLAH708A BINGO!  LM Hash (has rights on the Good file)
+GoodAdmin:Domain:00000000000000000000000000000000:585BLAHBLAHBLAHBLAHBLAHBLAH3A  Account called GoodAdmin, would have to replay this hash - a possibility
+
+
+Accessing The Management Interface (Good Mobile Control)To identify if the HTTP interface is running
+
+Via the command line:
+C:\ >netstat -ano | findstr 8443
+  TCP    0.0.0.0:8443           0.0.0.0:0              LISTENING       3804
+  TCP    [::]:8443              [::]:0                 LISTENING       3804
+
+
+Via the Browser:
+http://<GoodServer> redirects to secure login over 8443 at the URL belowhttps://<GoodServer>:8443/login.do
+
+Sample of the Good Mobile Control Interface - Source: http://www.c-cure.dk/Images/Producenter/Good/GoodMobileControl.PNG
+Covertly Reading EmailsOnce logged into the Good Mobile Control interface, you have full power to lock, remotely wipe, and configure new handhelds.
+
+You are not able to generate a new Over-The-Air (OTA) code for a current account as you should receive the following error when trying to do so:
+
+“This email address has already been set up on another handheld.  Contact your IT administrator” -I hate those error messages—especially if we are the IT administrator.  Doh!
+
+However, you can add a handheld to an already existing user to read their email.
+
+Reading email without the user's knowledgeCheck the policy that that you are about to create your user under to ensure that a welcome email does not get emailed to the user:
+
+Log into Good Mobile Control web interface -> Policies tab -> Provisioning link ->  Welcome Email and verify that “Send welcome email after OTA Provisioning PIN is created” is unchecked.
+
+If it is checked, create a copy of the policy and uncheck that welcome email setting:
+
+Log into Good Mobile Control web interface -> Policies tab -> Check the policy you want to copy and click the button that says “Make Copy”. Now, click on the policy hyperlink -> Provisioning link -> Welcome Email and verify that “Send welcome email after OTA Provisioning PIN is created” is unchecked.
+
+Provisioning a new handheld to read user email
+Handhelds tab ->  “Add Handhelds” button -> Search for a User -> Click “Look Now” -> Select the Policy and Messaging server then Click “Add”
+Under the handhelds tab you will have a blank entry with just a name.  Click the hyperlink for the person
+Click on the OTA link on the left and the OTA pin displayed is valid
+Download the Good application from the market the enter the email address of the victim and the OTA pin displayed on the Good Mobile Control page.
+Read and “mark as unread” to your heart’s content.  You can even send emails as this person, however be sure to delete the email from the sent folder—you may want to have them reply to you on your “personal” email address at victimsname@gmail.com for further correspondence  :0 ;)
+Are you sure you are the only one reading your email?
+
+

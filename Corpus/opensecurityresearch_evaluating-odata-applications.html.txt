@@ -1,0 +1,80 @@
+
+Evaluating OData Applications
+
+
+By Gursev Kalra.
+I was recently evaluating a SaaS provider's OData application, evaluating how its endpoint client application communicated via OData to its backed servers. The client application allowed SaaS consumers to schedule critical computation functions, download the results, and perform additional actions using OData’s RESTful operations. 
+
+This blog post aims provide an overview of the OData assessment methodology and also discusses a few interesting findings identified with respect to the specific OData implementation tested.
+Understanding Our Target
+The first step of any assessment is gain an understanding of how the application functions. Particularly with OData applications, you’ll want to explore all available functionality, monitor its communication using Fiddler, then map out the RESTful operations and the URIs accessed for all the available functionality. Once this is done, you should have an understanding of the application as well as its OData requests and responses. The specific application we were targeting only had one user role so we could test only for horizontal privilege escalation if the Service Metadata Document review did not reveal additional functionality or features.
+
+Looking at the RESTful operations you should be able to determine the Service Root URI and the Service Metadata Document URI. For the application we were targeting, we leveraged these new URIs to perform the following:
+
+We accessed the Service Root URI and it showed several Feeds that were never referred by the thick client. A win? Not until we are able to really access real data.
+Next we used Oyedata to perform automated analysis of the OData service (Service Metadata Document) and then exported the fuzzing templates to a text file to be used with the Burp suite for testing. The target OData service did not support JSON format and Oyedata’s ability to generate fuzzing templates in both JSON and XML formats came in as a life saver.
+We also downloaded the Service Metadata Document locally for manual analysis.
+
+As a result of all of these steps we discovered several additional Feeds and functionalities that the thick client did not use. Interesting, huh? Let’s move on to the assessment phase. 
+OyeData
+OyeData is a tool I wrote to help with OData assessments and is pretty much required. If you're unfamiliar with the tool, check out the video:
+
+
+
+Assessment
+
+Now that you fully understand the application and have a good idea of what on the server side is available, you can being to think about available attack vectors.  Given what was available for our application, we proceeded to the attack phase with the following:
+Check for Horizontal Privilege Escalation.
+Identify what data/functionality was available through the additional Feeds discovered.
+Attempt RESTful operations that were not utilized by the thick client and shown to exist via automated Oyedata analysis. Oyedata’s data generator also helped by generating random sample data, especially for cryptic data types like Edm.DateTime and Edm.DateTimeOffset.
+A Few Interesting Findings
+After exhausting our attack vectors (plus a few extra from our methodology) we found some interesting findings. Here are some of them. We modified/obfuscated the output a bit as we’re still awaiting remediation confirmation from the vendor. 
+Passwords were Stored in Clear and exposed via Feeds
+
+The OData web service exposed username and passwords of all users via its Users feed. This finding highlights two important concerns:
+
+The affected feed had mis-configured access control that allowed access to the Users table.
+The database had user passwords in clear.
+
+
+Privilege Escalation
+The thick client did not offer any functionality to add, update or remove new users. The user role we had did not offer it either. However, it was possible to add new logins with privileges of our user account by sending the following RESTful (POST request generated using Oyedata) to the OData service. It was also possible to update or delete other users with the test user account we had.
+ POST /XXXXXService.svc/RemoteLogins HTTP/1.1
+ Host: www.vulnerablehost.com:8011
+ Accept: application/atom+xml,application/atomsvc+xml,application/xml
+ Content-Type: application/atom+xml
+ Authorization: Basic UmVhbGx5PzpOb3RoaW5nSGVyZTop
+
+
+ <?xml version="1.0" encoding="utf-8"?>
+ <entry xmlns="http://www.w3.org/2005/Atom" xmlns:m="http://schemas.microsoft.com/ado/2007/08/dataservices/metadata" xmlns:d="http://schemas.microsoft.com/ado/2007/08/dataservices">
+   <content type="application/xml">
+    <m:properties>
+      <d:GroupId>4</d:GroupId>
+      <d:RemoteServerId>1</d:RemoteServerId>
+      <d:Login>newuser</d:Login>
+      <d:Password>newpassword </d:Password>
+    </m:properties>
+  </content>
+ </entry>
+
+
+
+
+
+The application also allowed us to download results for other user’s submission’s and was found to be vulnerable to several instances of both Horizontal and Vertical Privilege attacks.
+Application Logic Bypass
+
+The client application did not provide any functionality to overwrite or delete past computation submissions however we were able to by abusing the OData web service since it was insecurely configured and allowed updates via PUT method. The previous submissions could also be deleted by issuing the following request. Here the value ‘100’ indicates the submission ID.
+ DELETE /XXXXService.svc/Submissions(100) HTTP/1.1
+ Host: www.vulnerablehost.com:8011
+ Accept: application/atom+xml,application/atomsvc+xml,application/xml
+ Content-Type: application/atom+xml
+ Authorization: Basic UmVhbGx5PzpOb3RoaW5nSGVyZTop
+
+
+
+Conclusion
+OData is a new protocol that attempts to be the JDBC/ODBC for the internet and provide a new dimension to data access. Organizations that plan to implement OData should strive to learn more about this wonderful new protocol, the security risks involved and secure it as part of the deployment process. 
+
+

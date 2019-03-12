@@ -1,0 +1,149 @@
+
+Domain Shadowing Goes Nuclear: A Story in Failed Sophistication
+
+
+This post was authored by Nick Biasini
+
+Exploit Kits are constantly altering their techniques to compromise additional users while also evading detection. Talos sees various campaigns start and stop for different exploit kits all the time. Lately a lot of focus has been put on Angler, and rightly so since it has been innovating continually. Nuclear is another sophisticated exploit kit that is constantly active. However, over the last several weeks the activity had ramped down considerably to a small trickle. Starting several days ago that activity began ramping up again and Talos has uncovered some interesting findings during its analysis.
+
+There are several large scale concurrent campaigns going on with Nuclear right now, but one in particular stood out. This campaign is using some familiar techniques borrowed from other exploit kits as well as a new layer of sophistication being added with mixed success. Attackers are always trying to work the balance of evasion and effectiveness trying to evade detection while still being effective in compromising systems. This is especially evident in those hacking for monetary gain in non-targeted attacks. Talos has found a Nuclear campaign using both Domain Shadowing and HTTP 302 cushioning prevalent in Angler. The biggest change is that it appears to be so sophisticated that it's not working properly.
+
+
+Nuclear Changes
+
+Talos has discussed domain shadowing before at a high level. It’s a technique where threat actors use compromised registrant accounts to create large amounts of malicious subdomains. This is what Talos has found Nuclear using in this most recent campaign. It has been effectively rotating IP addresses, subdomains, and parent domains at a relatively quick rate. The basic infection chain for Nuclear usually looks like the following. User gets redirected to a landing page via malvertising or compromised website. The landing page will look something like:
+
+/EAtCRAEfVVtAC1xUFVsHV10TUlkEUAEJDUwFX1JNF1FAWVYWCBZcXUA.html
+
+This will then direct the user to the exploit and eventual compromise. The exploit page will look something like:
+
+/Vx4UT1dVXQIYAk9UTgcMR0YCQgMHW1YLWQdKR1gZA1RKCh1UClBKAU9UBlVXCgVUAFJRT1UJAw
+
+The referrer for this exploit page, commonly a Flash exploit, is the landing page URL shown above. Additionally, the campaigns are usually using the threat actors own domains that are registered. The current campaigns Talos is observing are using uncommon TLD’s pretty heavily (i.e. .gq, .xyz, .tk, .ga, etc). It was during the analysis of one of these standard campaigns that the new behavior was uncovered.
+
+This new campaign added some additional tiers to the process and made use of domain shadowing heavily. Instead of gdejebablo.gq Talos starting seeing domains like mdfct6lfx8hccp56knyxlxj.sirabul.org being utilized. Talos also noticed some new and interesting URL structure. Index.php was being used as an initial tier of redirection so the chain changed to start with:
+
+9o4axaj9js0g8gyullv25mg.sirabul.org/index.php?a=Ym9rdm53ZD1tZnFsJnRpbWU9MTUwNjExMTUwNzI0MDk1MTEyODAmc3JjPTIyNyZzdXJsPXBvbmdza
+GlydHN0b3JlLmNvbSZzcG9ydD04MCZrZXk9RDJFMDVBRkYmc3VyaT0v
+
+Which redirected to:
+9o4axaj9js0g8gyullv25mg.sirabul.org/watch.php?qrsbe=MTIyNzU5YzU3MDE0MzMzZTQ2Y2FiODBhZWVmZTdiMDcx
+
+This watch.php is a HTTP 302 cushion pushing to a different subdomain hosted on the same server that contains:
+okwvky9tf9e68r7c6dk02tf.sirabul.org/UwVaSU4CTF9cR0RcSQlDVgtSBghFB1EBVFsHAkZRHkNeQlNVRVwZX0BQ.html
+
+The page here should look familiar as it is the Nuclear landing page discussed above. Back to the initial index.php page. Talos started analyzing the parameters that are attached to the requests and noticed that they are actually base64 encoded strings. Here are the encoded and decoded strings for the example above:
+
+Encoded:
+Ym9rdm53ZD1tZnFsJnRpbWU9MTUwNjExMTUwNzI0MDk1MTEyODAmc3JjPTIyNyZzdXJsPXBvbmdzaGly
+dHN0b3JlLmNvbSZzcG9ydD04MCZrZXk9RDJFMDVBRkYmc3VyaT0v
+
+Decoded:
+bokvnwd=mfql&time=15061115072409511280&src=227&surl=pongshirtstore.com&sport=80&key=D2E05AFF
+&suri=/
+
+It appears to contain a series of parameters that are tied to the site that is referring to the malicious site. Initially it appeared that this was surprisingly ineffective. During the analysis the overwhelming majority of users that made it to the initial index.php files ended up being served blank files that contained no data, HTTP 404, or HTTP 302 cushioning. Those users that did manage to make it to the landing page were rarely ever served an exploit or compromised. Talos ran down this campaign aggressively and was able to find three different paths being used.
+
+Failure is an Option
+
+This particular example was found on a Eastern European construction companies webpage that appears to have been compromised. During the page load there is a specific javascript file that is being called, menu_Packed.js. An analysis of the network traffic shows some HTTP 302 cushioning taking place, something that Angler Exploit Kit is well known to leverage.
+
+
+
+This javascript is actually a HTTP/302 moved temporarily that points to the domain shadowed site containing the encoded string related to the referrer. This results in another GET request:
+
+
+
+The domain shadowed site points back to the original site and the original javascript file with one small change menu_packed.js vs. menu_Packed.js. When the new javascript file is attempted to be loaded the following happens:
+
+
+
+This page is not found and the activity stops. There is no way to know what the intention of the threat actors was, but Talos found this type of behavior consistently. This is a major change and update for Nuclear not only utilizing domain shadowing but also 302 cushioning. This is the type of sophistication that was previously exclusively available in the Angler Exploit Kit and appears to have now started to spread.
+
+Wait... That’s Not an Exploit Kit
+
+Talos continued to analyze this campaign chasing down compromised sites, when we uncovered something different. It appears that this framework using HTTP 302 redirection is not being exclusively used for Nuclear Exploit Kit activity. The process started much the same with a compromised site pushing the user to a domain shadowed index.php file with a base64 encoded string.
+
+
+
+As you can see this index.php file is a HTTP 302 redirect to another host, which leads to yet another HTTP 302 cushion.
+
+
+
+Now it gets a little more interesting this webpage contains a javascript with an iframe redirecting to another site.
+
+
+
+To this point we have found three different tiers of redirection using both 302 cushioning and javascript which finally leads to another tier of redirection using another javascript.
+
+
+
+
+
+This is the fourth and final layer of redirection which finally presents the user with:
+
+
+
+Thats right it ends up delivering a browser lock that is directing users to a toll free number to get support. If one is to call this number you would find a fairly sophisticated setup with automated messages asking callers to be patient with the next available representative speaking to you. Once I was able to get a representative on the phone they tried to direct me to my support department for my actual brand of PC before eventually requesting me to allow them remote access in to the system. At this point the machine I was working with crashed and I was unable to discover the final payload the representative was planning on delivering. However, this helps illustrate how threat actors are using every possible avenue to get to the users. This is a more sophisticated attempt at the tech support scams that have been well covered. Potential payloads could be credentials to systems or accounts, malicious software, or direct monetary payment for unlocking the system.
+
+Success….Almost
+
+Talos began analyzing another IP address further along in the campaign with more success. This campaign will look familiar since it starts the same way an index.php with base64 encoded string as a parameter.
+
+
+
+This time instead of a 302 cushion the user is presented with a script that is redirecting the user to watch.php as discussed above.
+
+
+
+The watch.php is where the 302 redirection is occurring. The interesting part is that the actor is redirecting to a different subdomain that is hosted on the same server, which is in fact the Nuclear exploit kit. At this point the user is served a flash exploit. The exploit was served three times and failed all three. This time the user actually made it through the entire process, but was not exploited.
+
+[caption id="attachment_171952" align="aligncenter" width="550"] Nuclear Infection Chain[/caption]
+
+Interesting Referrer
+
+There is another interesting behavior that Talos observed associated with referrers. It appears that this campaign is leveraging Google to use as an initial referrer. Talos saw referrers similar to the one below for some of the campaigns:
+
+www.google.co.uk/url?sa=t&rct=j&q=&esrc=s&frm=1&source=web&cd=1&sqi=2&ved=0CCEQFjAAahUK
+Ewiks5Pp9YfGAhXDoNsKHW1GAII&url=http%3A%2F%2Fpongshirtstore.com%2F&ei=bKR5VaTND8PB7g
+btjIGQCA&usg=AFQjCNGszcxDLaaV_LumGqxyL36vKqS64g&bvm=bv.95277229,d.ZGU
+
+This is actually just a redirection that takes the user to the site that has been compromised.
+
+
+
+This is not the only method observed as there were also referrers referencing the more traditional compromised site and malvertising. During our initial analysis Talos was unable to identify the source of the specific google URL. It appears the user is clicking it directly, this could be from an email or click-fraud related. However, there wasn’t anything unique in User-Agent or other details that could help identify the true source.
+
+IOC
+
+IP Addresses:
+159.8.203.105
+96.127.159.150
+146.120.89.50
+41.77.114.188
+198.20.86.78
+67.212.169.38
+103.14.97.201
+108.178.62.148
+
+Subdomains
+
+Conclusion
+
+Exploit kits, like any threat, are constantly evolving and changing. Sometimes these changes are driven by the innovation of your competitors and it looks like Nuclear Exploit Kit has responded to the advances Angler has made over the last several months. This new attack chain has actually led to an infrastructure that could allow various different payloads to be served. It’s possible that this is the true purpose behind the base64 encoded referrer being attached to the index.php request as a parameter. The miscreants could direct victims to various different payloads based on these referrers.
+
+The interesting part is that this appears to be a work in progress. Initially it was directing to broken links. Then it directed some of the victims to a browser lock that tied in to a tech support scam. Finally, users started hitting the Nuclear Exploit Kit and were served malicious flash files that failed to compromise the systems. Once this gets completed it will be a threat worth watching. The use of a combination of 302 cushioning, domain shadowing, and script based redirection allows this group to push large amounts of users to various payloads through many layers of obfuscation.
+
+Coverage
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails including phishing and malicious attachments sent by threat actors as part of their campaign
+
+

@@ -1,0 +1,266 @@
+
+Mallory MITM + FIX SSL Decryption
+
+
+by Paul Ambrosini.
+
+Recently, I was faced with testing a Java-based thick
+client that communicates using the “Financial Information eXchange”protocol, also known as “FIX”. (The protocol is documented here: http://fixprotocol.org/). FIX is “a messaging standard developed specifically for the real-time electronic exchange of securities transactions”. Most thick clients these days use Web-based services and in doing so use some variant of HTTP (or, if
+not that, plaintext XML interchange), but FIX is different.
+
+In this post I’ll cover how I approached testing this protocol and the tools I used to test it. I won’t be discussing the FIX protocol in much detail beyond what can be found on the FIX site or various FIX wikis on the net. This post will focus primarily on how to set
+up and configure Mallory to decrypt the SSL stream from a FIX-speaking thick client. 
+
+To start my testing I was given a thick client (the app itself out-of-scope- it’s a developer testing harness). The client was written in Java and had lots of configuration options that later proved useful for testing. This thick client quickly introduced certain limitations to testing, however:
+
+The client itself is out-of-scope, so only findings that apply to the API can be reported;
+The thick client is using the FIX protocol over TCP; and
+The TCP Stream is SSL encrypted.
+
+
+I quickly realized that a normal proxy (Fiddler or Burp, for example) was going to be of very limited help. The first suggestion I got was Charles Proxy, which can handle generic TCP/SSL connections. After doing some reading on the FIX API, though, I decided to go with Mallory, since I can write python code to tie in with Mallory and assist my testing.
+
+Information on Mallory can be found here: https://bitbucket.org/IntrepidusGroup/mallory/wiki/Home
+
+The install guide can be found here: https://bitbucket.org/IntrepidusGroup/mallory/wiki/Installation
+
+Note: I originally used the Mallory VM from the torrent; however, at the time of writing, no one was seeding the torrent. For that reason, I based this guide off of a fresh Ubuntu install.
+
+Mallory Initial Setup
+
+I installed Ubuntu 11.04 (Natty Narwhal) Desktop onto a VM with:
+
+3 Network Interface Cards with each set to Bridged
+1024 MB of RAM
+10 GB of hard disk space
+A user named “mallory”
+
+Note: These specifications were for the way I was going to setup my network, make sure to decide how you will route traffic in your case.
+
+The first step is getting Mallory installed. We’ll need a shell (for example, xterm,konsole, or gnome-terminal) and internet access to the VM. The network setup for this VM will use one interface as a gateway interface (eth0), one interface as an outgoing interface (eth1) and one interface as a DNS listener (eth2). Upon first boot all three NICs have DHCP and they need to be disabled for internet connectivity. 
+
+Commands:
+ $ sudo ifconfig eth0 down  
+ $ sudo ifconfig eth2 down  
+ $ ping 8.8.8.8                     #test the connection  
+
+
+ Figure 1: Turning off two interfaces and testing the connection with ping.
+
+
+Now that the internet connection works we download the Mallory install script and run it.
+ $ wget https://bitbucket.org/IntrepidusGroup/mallory/downloads/mallory_install.sh
+ $ chmod +x mallory_install.sh
+ $ sudo ./mallory_install.sh
+ $ sudo ./mallory_install.sh
+ **a lot of text later (go grab some tea/coffee)**
+ /home/mallory/mallory  #folder to place mallory in
+ *hit enter for yes*
+ $ cd /home/mallory/mallory/current/src/
+
+
+Figure 2: Downloading and running the Mallory install script.
+
+
+Figure 3: Finishing the install script and changing into the new directory.
+
+
+Once installation is complete and we’re in the Mallory directory, we need to get our network set up correctly.
+Routing Traffic
+
+How you use Mallory will be determined by how you route traffic. Mallory can handle all sorts of situations, but for my purposes, setup is fairly simple. I’m going to use my Mallory VM as a network gateway and route traffic from my testing VM through Mallory. Because I am completely controlling my test environment, I don’t need to do any extra ARP poisoning or PPTP setup. This setup has the additional benefit that, once the VM is properly configured, it can easily be “turned on” or “turned off” just by changing a host’s routing tables.
+
+My network setup will use eth0 as the MITM interface and eth2 as the DNS listener interface, so each of these interfaces will need to be up and
+configured with static IP addresses. eth1 will be the Mallory VM’s connection to the Internet and get a DHCP address. Because we are using Ubuntu we can edit the file /etc/network/interfaces which will persist the settings across reboots.
+# First
+allow manual interface configuration
+$ sudo service network-manager stop
+$ sudo killall –w dhclient
+
+
+Figure 4: Stopping the network manager service and any dhclient processes.
+
+Now open /etc/network/interfaces with your favorite editor. Static IPs on eth0 (MITM) and eth2 (DNS listener) then DHCP on eth1:
+$ sudo vi /etc/network/interfaces
+
+Figure 5: Configuration settings for
+/etc/network/interfaces.
+$ sudo ifup eth0
+$ sudo ifup eth0
+$ sudo ifup eth2
+$ ifconfig   # Check the configuration
+
+
+
+Figure 6: Turning on the interfaces with "ifup" and checking their settings with "ifconfig".
+
+Install and start dnsmasq on eth2 to act as a DNS request forwarder:
+$ sudo apt-get install dnsmasq
+$ sudo /etc/init.d/dnsmasq stop
+$ sudo /etc/init.d/dnsmasq start -i eth2
+
+Figure 7: Install dnsmasq with apt-get then stop and start the daemon on eth2.
+Note: Because we are using Ubuntu, we need to stop the Network Manager service and kill all the dhclient processes. Otherwise, our static addresses will get mysteriously wiped out every few minutes. On a system used for other purposes, this might have adverse consequences.
+
+To make sure everything is working fine, ping 8.8.8.8 and check for connectivity. If you can’t ping out for some reason just do:
+$ sudo ifdown eth1
+$ sudo killall -w dhclient
+$ sudo ifup eth1
+
+
+…then try to ping again.
+
+Now, because we are controlling the environment, we need to configure our testing VM to route through the gateway. On Windows, configure the IP
+addressing like so:
+
+Figure 8: Windows network configuration for testing VM
+
+On a Linux system, the following commands produce the same configuration state (commands to kill dhclient and/or network-manager not included):
+ $ sudo ifconfig eth0 inet 10.0.0.2 netmask 255.255.255.0
+$ sudo route add default gw 10.0.0.1
+$ echo “nameserver 10.0.0.3” | sudo tee /etc/resolv.conf
+
+Intercepting Traffic
+
+The next step is to actually start Mallory and confirm that we can capture encrypted traffic. Open two command prompts on the Mallory VM,
+change to the Mallory directory in each of them, and start Mallory; one in the GUI mode, one in worker mode.
+Terminal 1, Worker Mode:
+$ cd /home/mallory/mallory/current/src
+$sudo python mallory.py
+
+
+
+Figure 9: Starting mallory.py for the first time.
+Terminal 2, GUI Mode:
+$ cd /home/mallory/mallory/current/src
+$ sudo python launchgui.py
+
+
+
+Figure 10: Executing the launchgui.py script and the GUI started.
+
+
+After launching the GUI from the command line, the GUI itself should be displayed. Using this interface, configure the interfaces used by Mallory by clicking the checkbox for “Perform MiTM” on the eth0 interface and “Outbound Interface” for the eth1 interface, then click Apply Configuration at the bottom. Terminal 2 – where we launched the GUI – will show some iptables rules get applied.
+
+
+Figure 11: Start the MiTM and outbound interfaces settings.
+
+
+In the Protocols tab on the GUI, find the line in Protocol Configuration that looks like: 
+;http_1:http.HTTP:80
+
+
+Mallory uses the semi-colon as the comment character. Since we want to enable capture on this protocol, remove the leading ‘;’ so that the
+line looks like:
+http_1:http.HTTP:80
+
+Each line consists of three fields, colon-separated. The first field (“http_1”) is a user-friendly name for the traffic type; we can set this to anything we want. The second field (“http.HTTP”) instructs Mallory how to decode the traffic and correlates to the python code. The third field (“80”) tells Mallory which TCP port it should intercept. Click ‘apply’ to save the changes. You will also see a debug message in Terminal
+1 to show HTTP is enabled.
+
+Figure 12: Apply the HTTP protocol
+MiTM.
+
+
+For initial testing, only the Interface and Protocol tabs need to be edited. The other tabs will come into play a little later.
+
+To make sure that we’re properly intercepting traffic, switch to the testing VM and open a web browser. Browse to a website normally (such
+as http://www.google.com) and, if traffic is routing correctly, you should see the images flipped and inverted like in the image below.
+
+Figure 13: www.google.com, with the doodle flipped and inverted by Mallory.
+
+Additionally, every request intercepted by Mallory should generate a DEBUG message in Terminal 1. Look for messages beginning with ‘DEBUG:HTTP’.
+Decrypting SSL Traffic
+
+Mallory’s interception of different protocol types is configured by changing the configuration lines in the Protocols tab. First, turn HTTP capture back off by commenting out the line in the protocol configuration tab:
+;http_1:http.HTTP:80
+
+Then configure Mallory to perform SSL Man-in-the-Middle, which is what we need for this application. Uncomment (or add) a line instructing Mallory to intercept SSL communications on port 443:
+ssl:sslproto.SSLProtocol:443
+
+Click Apply at the bottom. The mallory.py window will print out a debug message reporting that the SSLProtocol module is starting:
+
+Figure 14: Starting SSL MiTM in Mallory.
+
+At the time of writing, the ‘Configured Protocols’ section of the Protocols tab states that SSL Base is not debuggable; this is actually a bug in Mallory. A fix is available, but for our purposes, this is mainly an aesthetic issue. (https://groups.google.com/forum/#!topic/mallory-proxy/PF2MwXOpcEg)
+
+Next, visit Rules tab and locate the “DebugAll”rule. The Rules tab allows the user to choose which messages to show in the Streams tab. Some of the
+options are server-to-client, client-to-server, both, port etc. Inspect the options that are set in the “Debug All” rule. No changes from the defaults are needed, so ensure that the rule matches the screenshot below, and hit Save Rule. 
+
+
+Figure 15: Starting the "Debug All" rule.
+
+
+Switch over to the Streams tab and, to start intercepting traffic, click the ‘Intercept’ and ‘Auto Send’ button. Later on, if we need to do  interactive manipulation, we’ll turn Auto Send off; but keep it on right now for testing purposes.
+
+Once everything is configured, switch back to the testing VM and browse to an SSL site (such as https://www.google.com). The browser will report an SSL certificate error-Mallory is generating a fake SSL certificate and then re-encrypting the communications to the target server. Confirm the security exception, and the
+target page should load. Switch back to the Mallory VM, and we can see the request in the intercepting tab.
+
+
+Figure 16: Mallory has captured an HTTP request sent via SSL to 74.125.224.82 – google.com – on port 443.
+
+
+FIX over SSL
+
+So Mallory can successfully intercept SSL traffic (albeit with some more or less unavoidable certificate errors), but our thick client is
+sending SSL-encrypted-FIX, not HTTP. First, we need to identify which port (or ports) the thick client is using to send data. I was given this information (port 32001, in my case), but if you don’t know which port you need to intercept, use Wireshark to monitor outgoing traffic and isolate your target traffic. Add a line to the Protocols tab for the identified port:
+fixssl:sslproto.SSLProtocol:32001
+
+Click Apply to save changes. For testing purposes, keep the “DebugAll” rule enabled, and make sure Intercept and Auto Send are both enabled.
+
+We’re not quite done yet. If you fire up your client immediately, we’ll end up with errors like this one:
+
+
+Figure 17: Client refusing the SSL handshake.
+
+
+The client refused to handshake to Mallory, since Java was (correctly!) flagging Mallory’s generated SSL certificate as unknown. In a nutshell, we need to import Mallory’s CA certificate into the Java trust store for our application. In this case, there are two options:
+
+The thick client had a configuration file with an application-specific trust store called “client_truststore”:
+<ssl dir="config"
+trustStoreFile="client_truststore">However, this trust store is password-protected, so adding a certificate is non-trivial.
+The Java Runtime Engine installed on most systems has a system-wide trust store file. On my system, this file lived in:
+C:\Program Files\Java\jre6\lib\security\cacerts
+This trust store is also password protected, but the password is ‘changeit’. Obviously, nobody changed it.
+
+
+Once we know where our trust store is, adding a certificate is pretty straightforward. We need three things:
+
+Mallory’s CA certificate, named “ca.cer”(from /home/mallory/mallory/current/src/ca/ca.cer)
+The system trust store file, named “cacerts” (from C:\Program Files\Java\jre6\lib\security\cacerts)
+The Java ‘Keytool’ application (from C:\Program Files\Java\jre6\bin)
+
+
+
+Copy ca.cer and cacerts to the thick client’s working directory. We don’t want to import this certificate into our system-wide trust store, because that could put traffic other than our thick client traffic at risk. Putting these together is a snap. Just run the following command, which will import the Mallory CA certificate into the cacerts trust store:
+“C:\Program Files\Java\jre6\bin\keytool.exe” –import –alias malloryca –file ca.cer –keystore cacerts –storepass changeit
+
+
+
+Keytool will prompt you to trust the certificate; tell it “yes:”
+Trust this certificate? [no]: yes
+
+
+Figure 18: Adding certificate to keystore
+
+
+Finally, we need to reconfigure the thick client to use our new vulnerable cacerts trust store instead of the old, secure, vendor-provided trust store. Going back to the application configuration where we originally saw that “client_truststore” change the “<ssl” line to read as follows:
+<ssl dir=”config” trustStoreFile=”cacerts”>
+
+Now that the Java thick client is using the trust store file containing the Mallory certificate, let’s see if Mallory can intercept and decrypt the FIX protocol messages:
+
+
+Figure 19: Mallory performing a MiTM on SSL encrypted FIX traffic.
+
+
+Awesome!
+Recap
+
+What we’ve done:
+
+Setup and configured Mallory;
+Routed traffic through Mallory, both HTTP and HTTPS;
+Added a custom certificate to a keystore and successfully MiTM’ed a java thick client; and
+Successfully decoded and intercepted the FIX protocol.
+
+
+

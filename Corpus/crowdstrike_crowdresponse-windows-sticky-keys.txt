@@ -1,0 +1,33 @@
+RSA 2015 Hacking Exposed: CrowdResponse Update Released
+George Kurtz, Dmitri Alperovitch and Elia Zaitsev have just finished up the Hacking Exposed: Beyond the Malware session at the RSA 2015 Conference. In the session, they demonstrated how to conduct an end-to-end attack against an enterprise without use of any malware binaries. The attack included real adversary tradecraft that CrowdStrike’s Falcon Host next-generation endpoint technology detected and stopped in our customer networks. The session also highlighted the need to leverage an Indicator of Attack (IOA) approach to detecting these threats, since Indicators of Compromise (IOCs) will not pick up non-malware based attacks. Click here  to download the presentation slides from the talk.
+The talk also demonstrated the use of a so-called Kerberos Golden Ticket attack, the use of which is becoming increasingly more common amongst advanced adversaries. CERT-EU has published an excellent paper explaining the attack and describing some detection and mitigation strategies for it.
+In our continuing advancement of the community CrowdResponse tool, today we also released another new module @mal that was demonstrated in the session.
+This new module will eventually become a repository for a selection of common malware/hacking detection capabilities. These detections may already be possible with the tool through the use of other modules such as examination of a number of registry keys or files, but having a quick and easy one-stop solution for common tactics and procedures is very useful.
+Our first addition to the @mal module is detection for a well known but still very widely used exploit utilizing Windows accessibility options often referred to under the umbrella term of the Sticky Keys exploit. Our Services team regularly encounters this on their engagements even today, many years after thisfeature was first seen to be abused.
+Sticky Keys is an accessibility feature in Windows aiding handicapped users, allowing them to press a key, such as Shift, 5 times, to activate the feature. Once activated the user no longer needs to keep the Shift key simultaneously depressed when wanting to capitalize letters or use other key characters normally obtained by holding down a regular modifier key.
+Use of this CrowdResponse module is simple. On the command line use syntax similar to this:
+The -s option specifies the “Sticky Keys” feature in the @mal module.
+This will show the XML in the console window which is not terribly useful, so usually you’d send the results to a file for later examination or conversion by specifying the main -o option as in:
+Conversion to another file format using the accompanying CRConvert utility would then be done using a command such as this.
+You should then see CSV (-c), HTML (-h) and Text (-x) versions of the results in the Results directory.
+In the case of Sticky Keys, the executable launched upon instantiation of the feature is usually located at %SystemRoot%\System32\sethc.exe.
+However, despite increased protection for these “system” binaries in later versions of Windows, the operating system does not check the integrity of this specific binary and thus a malicious user with sufficient privileges (admin level) can replace this with one of their choosing. Typically this is the command shell executable “cmd.exe” which would result in the malicious user being able to launch an instance of the command console with full SYSTEM rights directly from a login prompt simply by pressing the Shift key 5 times. This completely bypasses all authentication that would normally be required to access the system.
+So you may be thinking that if you need elevated privileges to replace this binary, why would need to go to the trouble of placing this backdoor access when you already have total control over the affected system? There are several reasons.
+It’s not just the Sticky Keys accessibility feature that can be hijacked. There are other features for different kinds of accessibility that can also be similarly utilized in a malicious manner by replacing their associated handler executable. These include:
+In CrowdResponse parlance you will see in the XML output (or CSV, HTML or Text if you convert the XML with the companion utility CRConvert) details of the “integrity” of the above mentioned files including a column saying whether the system appears to have been hijacked through misuse of the “integrity” of these files (“integrity/vulnerable: TRUE/FALSE“).
+The process for determining vulnerability is:
+Full details of the utilized substitute file (if present) will be seen in the CrowdResponse output.
+Another way of hijacking accessibility features on Windows involves editing the Registry to tell the system that there is a debugger that should be used when referencing the respective files. A debugger for an application can be specified by creating a “Debugger” name entry at
+with the value given to the Debugger entry being the binary that should be used to launch the associated supposed “accessibility” application.
+Here is an example of implanting this backdoor from a command prompt using built-in Windows tools.
+
+Once the backdoor has been implanted you can access it at the logon prompt using the Windows accessibility features. In this case the on-screen keyboard.
+
+You will now find yourself prresented with SYSTEM level command prompt access!
+
+Once more, you will see in the CrowdResponse output references to the “debugger” state of the mentioned files together with a column saying whether the system appears to have been hijacked through misuse of the “debugger” feature for these files.
+The process for determining vulnerability is:
+Full details of the utilized file, if present, are also presented in the output along with a column representing determined vulnerability (“debugger/vulnerable: TRUE/FALSE“)
+That’s all for today. Stay tuned for new CrowdResponse features coming soon!
+Download CrowdResponse 1.0.5.0 here.
+For more information on CrowdStrike Falcon Next-Generation Endpoint Protection, please visit https://www.crowdstrike.com/products/ or request a demo https://www.crowdstrike.com/request-a-demo/.

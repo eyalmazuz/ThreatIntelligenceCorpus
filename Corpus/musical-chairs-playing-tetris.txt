@@ -1,0 +1,186 @@
+Under Attack? Call (844) END.DDoS
+Attack Map
+Archives
+About
+Research
+DDoS Protection
+
+Attack Map
+Archives
+About
+Research
+DDoS Protection
+BLOG HOME
+CORPORATE SITE
+RSS
+
+BLOG HOME
+CORPORATE SITE
+RSS
+× 
+×
+powered by
+Musical Chairs Playing Tetris
+February 20, 2018: This blog has been amended since it was originally published on February 15, 2018. This version removes the association with the APT group responsible for the Night Dragon campaign that we had incorrectly made. We thank the research team at Palo Alto Networks for graciously bringing this to our attention.
+Introduction
+ASERT has discovered new command-and-control infrastructure controlled by the actors behind the Musical Chairs campaign.  The actors are known for the longevity of their C2 domains, reusing them long after they have been identified, and for making use of a popular opened sourced RAT called Gh0st.   Uniquely in our observation, they have even embedded a fully-functional version of the game Tetris that will launch only when a special condition is meet.
+Key Findings
+
+ASERT has discovered a new domain associated with the actors behind the Musical Chairs campaign.
+This long-standing actor is known for maintaining static command-and-control infrastructure such as domains for long periods of time, even when they have been discovered and widely publicized in the community.
+With moderate confidence, ASERT expects this domain to be used in new intrusions.
+
+ASERT has discovered a new domain associated with the actors behind the Musical Chairs campaign.
+This long-standing actor is known for maintaining static command-and-control infrastructure such as domains for long periods of time, even when they have been discovered and widely publicized in the community.
+With moderate confidence, ASERT expects this domain to be used in new intrusions.
+Multiple articles have been written about Gh0st over the years, including this one discussing the Musical Chairs campaign‘s use of this RAT.  Using details from that report, ASERT has identified a new sample and more interestingly, a new domain that we have associated with the corresponding actor.
+
+The sample appears to be delivered via an email according to artifacts provided by malware-traffic-analysis, which is consistent with documented tactics for this group.
+Gh0st variants are prolific as they can be found in a popular open-source source code repository – this blog provides the basis for our association with the actor.
+Analysis
+Malware
+Example of this Gh0st’s init/login packet (notice ‘aaaaabbbbb’ which can be used to identify this variant):
+
+Some other behavior of interest  observed while reviewing this actor’s specimen is they appear to be moving away from BAT and JS files as part of the infection process[i] to using DLL side loading.  This is just one sample though, so take this for what it is.   As part of the DLL side-loading, they make use of a signed executable to load a DLL which in turn is used to launch the actual Gh0st DLL. They are not the only malware authors who use this trick.
+The observed functionality in this sample maps directly to public documentation for Gh0st, so this blog will not rehash that.
+Association No. 1
+Starting with the known C2 servers for this group, we can check to see if the new domain has any ties to them.  Two of their C2s were registered back in 2013 and the campaign has been around even longer than that per
+Known Domains
+
+yourbroiler[.]com
+meitanjiaoyiwang[.]com
+
+yourbroiler[.]com
+meitanjiaoyiwang[.]com
+New Domain
+
+etybh[.]com
+
+etybh[.]com
+Looking at DomainTools, we learn that all three share the same IP, 45.34.148.126, and the same registrar, Jiangsu Bangning  Science & Technology Co. LTD.
+
+The newest domain, etybh[.]com, was registered in December of 2017.  Looking at PassiveTotal, all three domains appeared to have switched from 98.126.223.218 to 45.34.148.146 sometime in the middle of January 2018.  This is our first clue that they are related.
+Association No. 2
+This one comes from looking at behavior when the file is attached to a debugger.
+First, let us back up a step.  Observing behaviors of our suspected Musical Chairs Gh0st sample via a sandbox, we see that it creates a folder called “Win32Tetris”.  Let’s see if there are any other Gh0st samples that do this as well.  Taking a look through ASERT’s malware corpus we find this sample, 11fe12bbb479b4562c1f21a74e09b233ed41c41b7c4c0cad73692ff4672fb86a, which also creates that folder.  Using clues left by another researcher[ii], we can confirm that this more recent sample is from the Musical Chairs group due to the C2 and some other characteristics we’ll go over.  The most promising correlation is that this sample’s C2 is www.yourbroiler[.]com which is a known C2 for this actor.  Next, we find similarities from a different dropped file called C:\microsoft\lib\ki\vv.js whose content reads as such:
+
+The content is similar to samples identified back in 2015[iii], which also used rundll32 to call a mystart method.  And, finally, this sample makes use of the same mutex tied to this actor’s Gh0st variant:  dafewewrw.
+To summarize the pivot sample
+
+
+
+Property
+Value
+
+
+Load the dll via a script file called
+C:\microsoft\lib\ki\vv.js
+
+
+Domain
+www.yourbroiler[.]com
+
+
+Mutex
+dafewewrw
+
+
+
+ 
+Now that we have confirmed that this sample appears to be a Musical Chairs actor Gh0st variant, let’s work the pivot (going to refer to this sample as the “pivot” sample).
+The pivot sample, when attached to a debugger, will launch what appears to be a fully functional Tetris game (very friendly of them to provide us reverse engineers with a short break):
+
+The latest sample (the one tied to the new domain, etybh[.]com) also exhibits this same behavior when attached to the debugger.  To play the game make sure to not hide the PEB.  For what it is worth, after checking out one of the prior samples from 2015[iv], it exhibited similar behavior; just not a Tetris game.
+
+Association No. 3
+The final observation is the fact that the payload dropped on the file system as RasTls.dat is in fact an obfuscated DLL file.  When looking at the DLL properties the mystart function is exported.  Again, mystart is the exported DLL function which the samples back in 2015 called.
+
+ 
+Conclusion
+While it should not surprise us when a long-standing actor switches things up, this specific actor is known for not really changing much.  The use of a different Gh0st variant in addition to the new domain may be indicative of additional changes coming or the actor may be just keeping up with the times. Given previously observed behavior, it is likely that this indicator will be used in the campaign for the foreseeable future and ASERT is making it available to enable visibility for the broader security research community.
+[i] https://researchcenter.paloaltonetworks.com/2015/09/musical-chairs-multi-year-campaign-involving-new-variant-of-gh0st-malware/
+[ii] https://researchcenter.paloaltonetworks.com/2015/09/musical-chairs-multi-year-campaign-involving-new-variant-of-gh0st-malware/
+[iii] https://researchcenter.paloaltonetworks.com/2015/09/musical-chairs-multi-year-campaign-involving-new-variant-of-gh0st-malware/
+[iv] Hash: 50f08f0b23fe1123b298cb5158c1ad5a8244ce272ea463a1e4858d12719b337f
+Share this:
+inShareSaveShare on Tumblr
+inShare
+
+
+
+Save
+Share on Tumblr
+
+Related
+
+Posted in analysis, Malware
+Comments Off on Musical Chairs Playing Tetris
+
+Posted in analysis, Malware
+Comments Off on Musical Chairs Playing Tetris
+Comments are closed.
+Subscribe to this blog
+First Name*Last Name*Company*Email*
+
+PhoneThis field is for validation purposes and should be left unchanged.
+
+First Name*
+Last Name*
+Company*
+Email*
+
+
+
+
+PhoneThis field is for validation purposes and should be left unchanged.
+Asert
+Arbor’s Security Engineering & Response Team (ASERT) delivers world-class network security research and analysis for the benefit of today’s enterprise and network operators. ASERT engineers and researchers are part of an elite group of institutions that are referred to as ‘super remediators’ and represent the best in information security. ASERT has both visibility and remediation capabilities at nearly every tier one operator and a majority of service provider networks globally.
+ASERT shares operationally viable intelligence with hundreds of international Computer Emergency Response Teams (CERTs) and with thousands of network operators via in-band security content feeds. ASERT also operates the world’s largest distributed honeynet, actively monitoring Internet threats around the clock and around the globe.
+Arbor Networks has collaborated with Jigsaw (formerly Google Ideas) to create a data visualization that shows how Distributed Denial of Service (DDoS) attacks have become a global problem. The data is updated daily from Arbor’s global network of sensors and can be viewed at www.digitalattackmap.com
+Tag Cloud
+INSIGHT BLOG
+RESEARCH
+NEWS
+EVENTS
+
+INSIGHT BLOG
+RESEARCH
+NEWS
+EVENTS
+DDoS PROTECTION
+DDoS RESOURCES
+ADVANCED THREATS
+NETWORK VISIBILITY
+
+DDoS PROTECTION
+DDoS RESOURCES
+ADVANCED THREATS
+NETWORK VISIBILITY
+SERVICES
+CORPORATE
+PARTNERS
+LEGAL NOTICE
+PRIVACY POLICY
+
+SERVICES
+CORPORATE
+PARTNERS
+LEGAL NOTICE
+PRIVACY POLICY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

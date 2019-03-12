@@ -1,0 +1,25 @@
+New KillDisk Variant Hits Latin American Financial Organizations Again
+In January, we saw a variant of the disk-wiping KillDisk malware hitting several financial institutions in Latin America. One of these attacks was related to a foiled heist on the organization’s system connected to the Society for Worldwide Interbank Financial Telecommunication’s (SWIFT) network.
+Last May, we uncovered a master boot record (MBR)-wiping malware in the same region. One of the affected organizations was a bank whose systems were rendered inoperable for several days, thereby disrupting operations for almost a week and limiting services to customers. Our analysis indicates that the attack was used only as a distraction — the end goal was to access the systems connected to the bank’s local SWIFT network.
+The telltale sign was a problem related to the affected machine’s boot sector. Based on the error message it displayed after our tests, we were able to ascertain that this was another — possibly new — variant of KillDisk. This kind of notification is common in systems affected by MBR-wiping threats and not in other malware types such as ransomware, which some people initially believed to be the culprit. Trend Micro products detect this threat as TROJ_KILLMBR.EE and TROJ_KILLDISK.IUE.
+The nature of this payload alone makes it difficult to determine if the attack was motivated by an opportunistic cybercriminal campaign or part of a coordinated attack like the previous attacks we observed last January.
+
+Figure 1. Error screen after the boot sector is overwritten
+Initial analysis
+We were able to source a sample that may be the malware involved in the May 2018 attacks. We ran it, and it broke the boot sector as expected (see Figure 1). An initial analysis of the file revealed it was created using Nullsoft Scriptable Install System (NSIS), an open-source application used to create setup programs. The actor behind this threat used the application and purposely named it “MBR Killer.” Although the sample was protected by VMProtect (a virtualization protector used to defend against reverse engineering), we were still able to verify that it has a routine that wipes the first sector of the machine’s physical disk, as shown in Figure 2.
+We haven’t found any other new or notable routines in the sample we have. There is no evident command-and-control (C&C) infrastructure or communication, or ransomware-like routines coded into the sample. There are no indications of network-related behavior in this malware.
+
+
+Figure 2. The malware named “MBR Killer” (highlighted, top) and a code snippet showing its routine of wiping the disk’s first sector (bottom)
+
+Figure 3. How the malware carries out its MBR-wiping routine
+How the malware wipes the affected machine’s disk
+The malware was designed to wipe all the physical hard disks it can find in the infected system. Here’s a summary of how it performs its MBR-wiping routine:
+When calling the APIs, the main executable will drop the component file %User Temp%/ns{5 random characters}.tmp/System.dll. The main executable will then load the dynamic-link library (DLL) file, which has the export function “Call” used to call for the APIs.
+Mitigation and best practices
+The destructive capabilities of this malware, which can render the affected machine inoperable, underscore the significance of defense in depth: arraying security to cover each layer of the organization’s IT infrastructure, from gateways and endpoints to networks and servers. Here are some best practices that organizations can adopt to defend against this kind of threat:
+Trend Micro Solutions
+Trend Micro™ XGen™ security provides a cross-generational blend of threat defense techniques against a full range of threats for data centers, cloud environments, networks, and endpoints. It features high-fidelity machine learning to secure the gateway and endpoint data and applications and protects physical, virtual, and cloud workloads. With capabilities like web/URL filtering, behavioral analysis, and custom sandboxing, XGen protects against today’s purpose-built threats that bypass traditional controls and exploit known, unknown, or undisclosed vulnerabilities. Smart, optimized, and connected, XGen powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+Indicators of Compromise (IoCs):
+Related Hashes (SHA-256):
+With additional insights and analysis by Byron Galera and Martin Co

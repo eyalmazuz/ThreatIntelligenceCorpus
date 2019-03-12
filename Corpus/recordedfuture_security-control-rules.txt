@@ -1,0 +1,71 @@
+Whiteboard Workflow Series: Security Control Rules
+By Filip Reesalu on May 11, 2016
+In last week’s whiteboard session we shared a workflow for hunting active threats using Recorded Future, Splunk, and company website (or content management system) logs.
+This week we reveal how to turn Recorded Future’s risk scores into defensive control rules for two popular network traffic controllers: DNS Response Policy Zones (RPZ) and Bro — the Network Security Monitor.
+Here’s our video for creating security control rules with Recorded Future:
+
+For those of you who’d prefer to read, here’s the transcript:
+You can already use Recorded Future for gathering real-time threat intelligence from the web or to enrich threat data that’s already in your SIEM.
+We can move a step beyond this by making that intelligence truly operational, here we’ll demonstrate how our data has the power to drive alerting on suspicious traffic in your network using some open source technologies. Let’s take two such tools.
+First, Bro. This is a highly flexible network analysis framework. Using Bro an administrator can create scripts that collect threat intelligence from Recorded Future — and set the tool to monitor and alert on any suspicious traffic we’ve identified. Adding an extra layer to your network security.
+DNS Response Policy Zones give you a way to decide where specific DNS requests should be routed — and allows you to use what you know about malicious parts of the internet to protect your network and users. 
+In this example, when a client requests access to a location on the web Recorded Future can add extra intelligence — here we’re identifying that this domain resolves to a known command and control server.
+Once the rule is triggered, the user can be redirected to a site that explains why they can’t get access to this address.
+As you alert on this kind of suspicious traffic you can also easily provide your analysts with direct links to our entity cards, for a quick summary of how an indicator is being discussed across the entire web, quickly enabling them to make informed decisions in response to security incidents.
+Recorded Future generates a risk score for certain indicators of compromise by aggregating and analyzing open source intelligence gathered from structured and unstructured text from all over the web. These sources not only include public threat lists and feeds, but also original technical threat data.
+When network analysts need context around an observable s/he can quickly glean actionable insights in the form of risk rules and drill down to the evidence from the original source if necessary. By exposing the evidence for our risk scores, analysts can confidently support fast and informed decisions. When it comes to generating defensive control rules, analysts using Recorded Future risk scores have a higher fidelity of control to adapt their defensive posture to a continually evolving threat environment.
+Bro, the Network Security Monitor, is a framework for analyzing network events which enables system administrators to write scripts that detect certain traffic patterns that require further attention either through generating logs or taking specific actions.
+DNS Response Policy Zones is a system for altering the results of DNS lookups that resolve to a known bad hostname, range of IP addresses, or hosts in a specific Autonomous System Number (ASN). One example use case is to sinkhole requests to known command and control servers, disabling the ability of a malware operator to issue commands to the infected clients.
+A shared requirement for generating the appropriate files for both the following sections on Bro and DNS RPZ is to download a CSV file of our current risk scores for IP addresses that are scored above 24. This is accomplished by running the script available here.
+0:~/ ./download_risk_scores.sh MYTOKEN
+MYTOKEN is the Recorded Future API token and after execution a file named highrisk.csv will be created in the current working directory.
+We’re generating rules for a specific section of Bro, the Bro Intelligence Framework, which enables Bro scripts to make use of external intelligence sources and take action on any traffic matching the loaded signatures.
+Bro intelligence data is kept in a tab-separated format where each row specifies which indicator to monitor for, where to search for that indicator (for example, we might only want to alert on communication originating from the network concerned), what to do when a match is discovered, and additional context around why the indicator was included in the first place.
+You can find the code for generating the Bro rules here and usage is quite straight-forward:
+0:~/ python generate_bro_intel.py --token MYTOKEN --ip_risk_file highrisk.csv --ip_risk_floor 80 --hash_risk_floor 80 > recordedfuture.intel
+Generated intel for 1740 indicators.
+Above we supply our API token, the risk file we downloaded earlier, as well as the lower bounds for the risk scores for both IP addresses and hashes. The resulting intelligence in recordedfuture.intel is ready to use in the Bro Intelligence Framework:
+#fields	indicator	indicator_type	meta.source	meta.url	meta.do_notice	meta.if_in
+5.135.76.18	Intel::ADDR	recordedfuture	https://www.recordedfuture.com/live/sc/entity/ip:5.135.76.18	T	-
+5.231.220.154	Intel::ADDR	recordedfuture	https://www.recordedfuture.com/live/sc/entity/ip:5.231.220.154	T	-
+In order to easily test our setup we begin by creating a Bro script (that we name test.bro) that contains the bare minimum required to use the Intelligence Framework, in which we add the generated intelligence file:
+@load policy/frameworks/intel/seen
+@load policy/frameworks/intel/do_notice
+redef Intel::read_files += {
+	@DIR+"/recordedfuture.intel"
+};
+We can now test our rules by running Bro against a pcap file containing a known malicious host:
+0:~/ bro -r network.pcap test.bro
+0:~/ ls
+conn.log             files.log            intel.log            notice.log           pe.log               test.bro
+dns.log              http.log             network.pcap         packet_filter.log    recordedfuture.intel weird.log
+After execution, a file named intel.log should have appeared in the current working directory highlighting intelligence matches:
+#separator \x09
+#set_separator	,
+#empty_field	(empty)
+#unset_field	-
+#path	intel
+#open	2016-05-11-10-27-34
+#fields	ts	uid	id.orig_h	id.orig_p	id.resp_h	id.resp_p	fuid	file_mime_type	file_desc	seen.indicator	seen.indicator_type	seen.where	seen.node	sources
+#types	time	string	addr	port	addr	port	string	string	string	string	enum	enum	string	set[string]
+1458104248.077782	CSbHvL3CXEGMqNEE4a	192.168.56.12	49161	188.127.231.116	80	-	-	-	188.127.231.116	Intel::ADDR	Conn::IN_RESP	bro	recordedfuture
+1458104248.094916	CSbHvL3CXEGMqNEE4a	192.168.56.12	49161	188.127.231.116	80	-	-	-	188.127.231.116	Intel::ADDR	HTTP::IN_HOST_HEADER	bro	recordedfuture
+1458104248.523380	CSbHvL3CXEGMqNEE4a	192.168.56.12	49161	188.127.231.116	80	-	-	-	188.127.231.116	Intel::ADDR	HTTP::IN_HOST_HEADER	bro	recordedfuture
+#close	2016-05-11-10-27-34
+If we pivot to the Intel Card associated with the triggered event, we see evidence that this external IP address currently belongs to a Locky command and control server.
+
+Applying filtering or monitoring at the DNS level with RPZ is both powerful as well as relatively easy to implement. There are numerous RPZ feed providers, both commercial and noncommercial. Examples are available at https://dnsrpz.info/.
+As a DNS request is made to a nameserver utilizing RPZ, the request is compared against a zone file containing the known malicious observables together with the action that should be taken in case of a match. In general there are two strategies available, either sending the client to a black-hole (non-existent domain, NXDOMAIN) or sending the client to a walled garden to log client data and display a warning.
+You can find the code for generating a zone file here and the usage is as follows:
+0:~/ python generate_rpz.py --ip_risk_file highrisk.csv --ip_risk_floor 80 > recordedfuture.inc
+Generated 1272 rules.
+The resulting file will contain entries like the following:
+; Risk: 89 Triggered Rules: 3/18
+;; Linked to Intrusion Method : 3 sightings on 2 sources: PasteBin, malware-traffic-analysis.net. Recent link: http://pastebin.com/CBCcgmVx
+;; Threat Researcher : 1 sighting on 1 source: Palo Alto Networks Blog. Recent link: http://researchcenter.paloaltonetworks.com/2016/04/afraidgate-major-exploit-kit-campaign-swaps-locky-ransomware-for-cryptxxx/
+;; Positive Malware Verdict : 6 sightings on 3 sources: Sophos Virus and Spyware Threats, MalwareTrafficAnalysisnet  Blog Entries, Malware-Traffic-Analysis.net - Blog Entries. Recent link: https://www.sophos.com/en-us/threat-center/threat-analyses/viruses-and-spyware/Troj~Ransom-CZO/detailed-analysis.aspx
+32.40.6.23.217.rpz-ip CNAME.
+In this case we have opted for the black-hole approach, where the “CNAME .” keywords indicate that the client should be told that the requested host doesn’t exist. In addition to the rule itself, you can find some additional evidence, enabling a system administrator to decide whether a rule is valid or not.
+When starting out it’s highly recommended to use the generated zone file in a log-only fashion, in order to first evaluate the results and tweak risk score limits as necessary.
+It’s very important to keep any and all dumps of indicators updated in order to avoid erroneous alerts or filtering. Updating frequently is highly recommended as periodicity is a critical concept whenever dealing with indicators of compromise.
+In summary, it’s easy to turn the risk scores generated by Recorded Future into operational rules, providing unique intelligence for your network controls and enabling your analysts to rapidly assess alerts.

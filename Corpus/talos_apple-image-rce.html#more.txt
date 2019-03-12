@@ -1,0 +1,147 @@
+
+Vulnerability Spotlight: Apple Remote Code Execution With Image Files
+
+
+
+
+
+Vulnerabilities discovered by Tyler Bohan of Cisco Talos.
+
+
+
+Many of the wide variety of file formats are designed for specialized uses within specific industries. Apple offers APIs as interfaces to provide a definitive way to access image data for multiple image formats on the Apple OS X platform. Talos is disclosing the presence of five remote code execution vulnerabilities in Apple OS X related to processing image formats: TALOS-2016-0171, TALOS-2016-0180,TALOS-2016-0181, TALOS-2016-0183, TALOS-2016-186.
+
+
+
+
+
+TALOS-2016-0171 
+
+Tagged Image File Format (TIFF) (CVE-2016-4631)
+
+
+
+The Tagged Image File Format (TIFF) is a file format that is popular with graphic artists, photographers and the publishing industry because of its ability to store images in a lossless format. TIFF was created to try to establish a common scanned image file format in the mid 1980s. Cisco Talos has discovered a vulnerability in the way in which the Image I/O API parses and handles tiled TIFF image files. When rendered by applications that use the Image I/O API, a specially crafted TIFF image file can be used to create a heap based buffer overflow and ultimately achieve remote code execution on vulnerable systems and devices.
+
+
+
+This vulnerability is especially concerning as it can be triggered in any application that makes use of the Apple Image I/O API when rendering tiled TIFF images. This means that an attacker could deliver a payload that successfully exploits this vulnerability using a wide range of potential attack vectors including iMessages, malicious web pages, MMS messages, or other malicious file attachments opened by any application that makes use of the Apple Image I/O API for rendering these types of files.
+
+
+
+Furthermore, depending on the delivery method chosen by an attacker, this vulnerability is potentially exploitable through methods that do not require explicit user interaction since many applications (i.e. iMessage) automatically attempt to render images when they are received in their default configurations. As this vulnerability affects both OS X 10.11.5 and iOS 9.3.2 and is believed to be present in all previous versions, the number of affected devices is significant.
+
+
+
+TALOS-2016-0180 & TALOS-2016-0181 
+
+OpenEXR File Format (CVE-2016-4629, CVE-2016-4630)
+
+
+
+OpenEXR, a high dynamic range image file format. The format was developed by Industrial Light and Magic for use in the visual effects industry and is widely used for professional computer graphics. The format allows for a lot of flexibility in the bit depth of information held in pixels. However, a malicious OpenEXR file can be created that abuses this flexibility to cause Apple Image I/O to write the information contained within the image to memory outside of the intended destination buffer.
+
+
+
+Additionally, Image I/O contains a vulnerability in the handling of B44 compressed data within OpenEXR files. The size of the compressed data is specified within the EXR file. If this value is greater than can be stored in an int value, the excess user data is written into memory outside of the intended space.
+
+
+
+By manipulating the contents of memory to establish the necessary setup, both of these vulnerabilities can be used to cause remote code execution on the device.
+
+
+
+TALOS-2016-0183 
+
+Digital Asset Exchange File Format (CVE-2016-1850)
+
+
+
+The Digital Asset Exchange file format, also known as Collaborative Design Activity files is an XML file format used for exchanging files between digital content creation tools that may otherwise use incompatible file formats. Apple Scene Kit is one such 3D modelling framework that supports Digital Asset Exchange files.
+
+
+
+It is possible to pass a specially created Digital Asset Exchange file to Scene Kit so that the framework accesses an object of one type, believing it to be of another type. In these circumstances  it is possible to perform operations on the incorrectly typed object that access out of bounds memory. This vulnerability can be exploited to then cause remote code execution on the device.
+
+
+
+
+Note: TALOS-2016-0183 was patched in OSX 10.11.5
+
+
+
+TALOS-2016-0186 
+
+BMP File Format (CVE-2016-4637)
+
+
+
+The BMP file format is both long standing, and has a fairly straightforward structure.  The BMP file header contains information about the size, layout, and type of the image. A vulnerability exists within the way that the height property of an image is handled.  This can be exploited when a specially crafted BMP image file is saved, then opened and part of the size information is manipulated.  The exploit leads to an out of bounds write resulting in remote code execution when opened in any application using the Apple Core Graphics API.
+
+Known Vulnerable Versions
+
+
+
+TALOS-2016-0171
+
+
+
+   OS X Mavericks v10.9.5, OS X Yosemite v10.10.5 OSX El Capitan - 10.11.5, 
+
+   iOS 9.3.2, watchOS 2.2.1 & tvOS 9.2.1
+
+
+
+TALOS-2016-0180 & TALOS-2016-0181
+
+
+
+   OS X Mavericks v10.9.5, OS X Yosemite v10.10.5 & OSX El Capitan - 10.11.5
+
+
+
+TALOS-2016-0183
+
+
+
+   OSX El Capitan - 10.11.4
+
+
+
+TALOS-2016-0186
+
+
+
+   OS X Mavericks v10.9.5, OS X Yosemite v10.10.5, OSX El Capitan - 10.11.5, 
+
+   iOS 9.3.2, watchOS 2.2.1 & tvOS 9.2.1
+
+
+
+Conclusion
+
+
+
+Image files are an excellent vector for attacks since they can be easily distributed over web or email traffic without raising the suspicion of the recipient. These vulnerabilities are all the more dangerous because Apple Core Graphics API, Scene Kit and Image I/O are used widely by software on the Apple OS X platform.
+
+
+
+Organizations should patch software to the latest release in order to resolve these vulnerabilities. To protect our customers, Talos has released Snort rules to detect attempts at exploiting these vulnerabilities. Additionally, organizations may wish to consider blocking files at network gateways if the file is of a type that is never, or very rarely, going to be encountered within the legitimate business of the organization.
+
+
+
+Please note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your Defense Center, FireSIGHT Management Center or Snort.org.
+
+
+
+Snort Rules: 16222,39634-39635,39597-39632
+
+
+
+For further zero day or vulnerability reports and information visit:
+
+http://talosintelligence.com/vulnerability-reports/
+
+
+
+

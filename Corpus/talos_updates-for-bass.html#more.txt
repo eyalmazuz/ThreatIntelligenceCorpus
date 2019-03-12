@@ -1,0 +1,54 @@
+
+Updates for BASS
+
+
+This blog post was authored by Jonas Zaddach and Mariano Graziano.
+
+Cisco Talos has rolled out a series of improvements to the BASS open-source framework aimed at speeding up its ability to provide coverage for new malware families. Talos released BASS, (pronounced "bæs") an open-source framework designed to automatically generate antivirus signatures from samples belonging to previously generated malware clusters, last June. It is meant to reduce the amount of resources required to run ClamAV by producing more pattern-based signatures, as opposed to hash-based signatures, and to alleviate the workload of analysts who write pattern-based signatures. The framework is easily scalable, thanks to Docker, an open platform for developers and sysadmins to build, ship, and run distributed applications, whether on laptops, data center VMs, or the cloud.
+
+
+
+
+
+
+
+We have received excellent feedback from the community on this project, which inspired us to make several improvements to the BASS framework. It's clear that there is an interest in automatic signature generation: during the past 10 months, BASS has been forked by 22 researchers from all over the world. The principal motivation is the overwhelming number of samples collected every day, a large percentage of which are composed of portable executable (PE) files, many of which are malicious. There is a constant race to provide quick and effective coverage for these new malware families. 
+
+The first release of BASS was very experimental and, like all alpha software, had room to improve. We have worked on the framework, and below, we will walk through the committed changes and new features of BASS. For a more in-depth analysis of BASS, please review the video of our talk and this presentation from the REcon security conference, as well as the Talos blog.
+
+The first set of modifications for BASS ensure that the programs involved in the detection process are properly updated. BASS is based on the interactive disassembler IDA Pro. Periodically, Hex-Rays, the company behind IDA Pro, releases a new version of their disassembler. In September 2017, IDA 7.0 was released, which was significant because IDA is now a native 64-bit application. The first public release of BASS was based on IDA 6.95, the new release officially supports IDA 7.0, which is successfully installed in a Docker container. Binexport is another key component of BASS. Binexport is an IDA Pro plugin that is fundamental to the exportation of information necessary to BinDiff and BinNavi from IDA. Given the massive change in IDA 7.0, binexport's authors released binexport 10, which supports that update. BASS has integrated binexport10 into a working docker environment with IDA Pro 7.0. This container is under the ida7 directory.
+
+Regarding the analysis and the automatic signature generation, the following changes have been pushed:
+
+
+
+Filtering out functions with less than 10 basic blocks. 
+
+Filtering out functions that are automatically recognized by IDA (e.g., FLIRT)
+
+Function whitelisting support 
+
+Improved code in charge of the function weight computation
+
+
+
+More weight to functions containing anti-debug and interesting APIs
+
+Less weight to functions containing msvcrt functions
+
+
+
+Client able to find the optimal signature for a given cluster
+
+Experimental ELF support for x86_64 binaries
+
+
+
+All these improvements have been extensively tested internally, where BASS is used on a regular basis, which has also lead to many other minor bug fixes.
+
+BASS will continue to be updated to support any changes from dependent software updates. Enhanced framework performance to handle clusters with a significant number of samples, which will continue to be improved upon. We will also continue to research an optimal solution to filter out library functions. For the moment, you can investigate and test our current solutions implemented in the funcdb container.
+
+The code is available on Github: https://github.com/Cisco-Talos/BASS
+
+
+

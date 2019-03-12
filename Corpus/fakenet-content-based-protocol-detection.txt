@@ -1,0 +1,39 @@
+New FakeNet-NG Feature: Content-Based Protocol Detection
+October 23, 2017 | by Matthew Haigh, Michael Bailey , Peter Kacherginsky
+I (Matthew Haigh) recently contributed to FLARE’s FakeNet-NG network simulator by adding content-based protocol detection and configuration. This feature is useful for analyzing malware that uses a protocol over a non-standard port; for example, HTTP over port 81. The new feature also detects and adapts to SSL so that any protocol can be used with SSL and handled appropriately by FakeNet-NG. We were motivated to add this feature since it was a feature of the original FakeNet and it was needed for real world malware.
+
+What is FakeNet-NG
+FakeNet-NG simulates a network so malware analysts can run samples with network functionality without the risks of an Internet connection. Analysts can examine network-based indicators via FakeNet-NG’s textual and pcap output. It is plug-and-play, configurable, and works on both Windows and Linux. FakeNet-NG simulates common protocols to trick malware into thinking it is connected to the Internet. FakeNet-NG supports the following protocols: DNS, HTTP, FTP, POP, SMTP, IRC, SSL, and TFTP.
+
+Previous Design
+Previously FakeNet-NG employed Listener modules, which were bound to configurable ports for each protocol. Any traffic on those ports was received by the socket and processed by the Listener.
+
+In the previous architecture, packets were redirected using a Diverter module that utilized WinDivert for Windows and netfilter for Linux. Each incoming and outgoing packet was examined by the Diverter, which kept a running list of connections. Packets destined for outbound ports were redirected to a default Listener, which would respond to any packet with an echo of the same data. The Diverter also redirected packets based on whether FakeNet-NG was run in Single-Host or Multi-Host mode, and if any applications were blacklisted or whitelisted according to the configuration. It would simply release the packet on the appropriate port and the intended Listener would receive it on the socket.
+
+New Design
+My challenge was to eliminate this port/protocol dependency. In order to disassociate the Listeners from the corresponding ports, a new architecture was needed. The first challenge was to maintain Listener functionality. The original architecture relied on Python libraries that interact with the socket. Therefore, we needed to maintain “socket autonomy” in the Listener, so we added a “taste()” function for each Listener. The routine returns a confidence score based on the likelihood that the packet is associated with the protocol. Figure 1 demonstrates the taste() routine for HTTP, which looks for the request method string at the beginning of the packet data. It gives an additional point if the packet is on a common HTTP port. There were several choices for how these scores were to be tabulated. It could not happen in the Diverter because of the TCP handshake. The Diverter could not sample data from data-less handshake packets, and if the Diverter completed the handshake, the connection could not easily be passed to a different socket at the Listener without disrupting the connection.
+
+
+Figure 1: HTTP taste() example
+
+Proxy
+We ultimately decided to add a proxy Listener that maintains full-duplex connections with the client and the Listener, with both sides unaware of the other. This solves the handshake problem and maintains socket autonomy at the Listener. The proxy is also easily configurable and enables new functionality. We substituted the proxy for the echo-server default Listener, which would receive traffic destined for unbound ports. The proxy peeks at the data on the socket, polls the Listeners, and creates a new connection with the Listener that returns the highest score. The echo-server always returns a score of one, so it will be chosen if no better option is detected. The analyst controls which Listeners are bound to ports and which Listeners are polled by the proxy. This means that the listeners do not have to be exposed at all; everything can be decided by the proxy. The user can set the Hidden option in the configuration file to False to ensure the Listener will be bound to the port indicated in the configuration file. Setting Hidden to True will force any packets to go through the proxy before accessing the Listener. For example, if the analyst suspects that malware is using FTP on port 80, she can ‘hide’ HTTP from catching the traffic, and let the proxy detect FTP and forward the packet to the FTP Listener. Additional configuration options exist for choosing which protocols are polled by the proxy. See Figure 2 and Figure 3 for configuration examples. Figure 2 is a basic configuration for a Listener, and Figure 3 demonstrates how the proxy is configurable for TCP and UDP.
+
+
+Figure 2: Listener Configuration Options
+
+
+Figure3: Proxy Configuration Options
+
+The proxy also handles SSL detection. Before polling the Listeners, the proxy examines the packet. If SSL is detected, the proxy “wraps” the socket in SSL using Python’s OpenSSL library. With the combination of protocol and SSL detection, each independent of the other, FakeNet-NG can now handle just about any protocol combination.
+
+The proxied SSL implementation also allows for improved packet analysis. The connection between the proxy and the Listener is not encrypted, which allows FakeNet to dump un-encrypted packets to the pcap output. This makes it easier for the analyst to examine the packet data. FakeNet continues to produce pcap output that includes packet data before and after modification by FakeNet. While this results in repetitive data, it is often useful to see the original packet along with the modification.
+
+Example
+Figure 4 shows verbose (-v) output from FakeNet on Windows responding to an HTTP request on port 81 from a clowncar malware variant (SHA-256 8d2dfd609bcbc94ff28116a80cf680660188ae162fc46821e65c10382a0b44dc). Malware such as clowncar use traditional protocols over non-standard ports for many reasons. FakeNet gives the malware analyst the flexibility to detect and respond to these cases automatically.
+
+
+Figure 4: clowncar malware using HTTP on port 81
+
+Conclusion
+FLARE’s FakeNet-NG tool is a powerful network-simulation tool available for Windows and Linux. The new content-based protocol detection and SSL detection features ensure that FakeNet-NG remains the most useful tool for malware analysts. Configuration options give programmers the flexibility necessary to respond to malware using most protocols on any port.

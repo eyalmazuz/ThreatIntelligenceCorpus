@@ -1,0 +1,22 @@
+
+					A new flaw in Electron poses a risk to apps based on the framework					
+Popular desktop applications, including Skype, Slack, GitHub Desktop, Twitch, WordPress.com, and others, are potentially affected.
+Electron is a node.js, V8, and Chromium open-source framework that allows developers to use web technologies such as JavaScript, HTML, and CSS to build desktop apps.
+When building apps based on the Electron framework, developers can choose Electron API or the Node.js APIs and its modules.
+Node.js APIs and built-in modules provide developers a wider integration with the OS and allow to access to more OS features.
+In order to prevent the abuse of OS features, Electron team created a mechanism that prevents attacks on apps based on their framework.
+“Electron applications are essentially web apps, which means they’re susceptible to cross-site scripting attacks through failure to correctly sanitize user-supplied input. A default Electron application includes access to not only its own APIs, but also includes access to all of Node.js’ built in modules.” reads the analysis published by Trustwave. “This makes XSS particularly dangerous, as an attacker’s payload can allow do some nasty things such as require in the child_process module and execute system commands on the client-side.”
+Apps that run HTML and JS code on the desktop have the “nodeIntegration: false” option enabled by default, this implies that the access to the Node.js APIs and modules is disabled by default.
+The WebView tag feature allows developers to embed content, such as web pages, into an Electron application and run it as a separate process.
+“When using a WebView tag you are also able to pass in a number of attributes, including nodeIntegration. WebView containers do not have nodeIntegration enabled by default.” continues the analysis.
+When webviewTag is set to false in a webPreferences config file the nodeIngration is also set to false, however, if developers don’t declare webviewTag, then the Electron app considers nodeIntegration set to false.
+Trustwave researcher Brendan Scarvell discovered that is possible to turn the nodeIntegration option to “true” and allows a malicious application to access Node.js APIs and modules and abuse more OS features.
+Scarvell explained that if the developers of an Electron-based app have not specifically set the “webviewTag: false” option inside webPreferences config file, an attacker can exploit a cross-site scripting (XSS) vulnerability inside an app to create a new WebView component window to change the settings and to set the nodeIngrationflag to “true.”
+
+The expert published proof-of-concept code that could be used by an attacker to exploit any XSS flaw and gain access to the underlying OS.
+“If you find an Electron application with the nodeIntegration option disabled and it contains either an XSS vulnerability through poor sanitization of user input or a vulnerability in another dependency of the application, the above proof-of-concept can allow for remote code execution provided that the application is using a vulnerable version of Electron (version < 1.7.13, < 1.8.4, or < 2.0.0-beta.3), and hasn’t manually opted into one of the following:
+Scarvell reported the vulnerability to Electron team that addressed it in March.
+Pierluigi Paganini
+(Security Affairs – XSS, hacking)
+
+

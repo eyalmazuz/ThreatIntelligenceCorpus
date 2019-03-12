@@ -1,0 +1,152 @@
+
+Threat Spotlight: Mighty Morphin Malware Purveyors: Locky Returns Via Necurs
+
+
+This post was authored by Nick Biasini
+
+Throughout the majority of 2016, Locky was the dominant ransomware in the threat landscape.  It was an early pioneer when it came to using scripting formats Windows hosts would natively handle, like .js, .wsf, and .hta. These scripting formats acted as a vehicle to deliver the payload via email campaigns.  However, late in 2016 Locky distribution declined dramatically largely due to the slowdown of Necurs that occurred at the same time.  
+
+On April 21st, Talos observed the first large scale Locky campaign in months from Necurs.  This campaign leveraged techniques associated with a recent Dridex campaign and is currently being distributed in very high volumes. Talos has seen in excess of 35K emails in the last several hours associated with this newest wave of Locky. This large wave of distribution has been attributed to the Necurs botnet which, until recently, had been focused on more traditional spam such as pump-and-dump spam, Russian dating spam, and work-from-home spam. 
+
+
+
+
+Campaign Details
+
+The campaign itself is similar to most spam campaigns Talos observes.  There were several different emails associated with the campaign designed around payments/receipts or scanned images. Below are some examples of the emails that were observed.
+
+
+Sample of Receipt/Payment spam campaign
+
+As shown, there is no body in the email and the subject has several variants usually starting with "Payment" or "Receipt" and including several numbers. Some examples can be found in the IOC section of this blog. The filename itself also changes slightly but uses the naming convention beginning with the letter "P", followed by between 3 and 5 digits. One interesting aspect of this campaign is that the subject lines are only seen a couple of times before changing. The second portion of this campaign did not follow the same methodology.
+
+
+
+This campaign used the same subject line for tens of thousands of messages. The attachment name was customized based on the email address used to distribute locky.  These emails do have a typical body that would be associated with scanned image or document. This too included a malicious PDF.
+
+Malicious Document
+The technique used by the adversaries to deliver locky was just recently used to deliver Dridex and made use of PDF document with embedded word documents.  These word documents then use macros to pull down the locky sample and encrypt files. There are a couple of interesting aspects of using this technique one of which is requiring user interaction to get the sample to run, defeating many sandboxing technologies.  This is a sample of the PDF document.
+
+
+
+As shown the document itself only has text referencing another file that is a series of numbers. Also notice the pop-up box requiring the user to click 'ok' in order for the file to be opened. In this case it was a .docm file that has the same filename that is referenced in the PDF.
+
+
+
+The word document itself contains an XOR'd Macro that downloaded the Locky sample from what is likely a compromised website. After infection the Locky sample used the /checkupdate C2 structure that has been previously used by Locky.
+
+
+Below is a graphic showing how the Locky campaign has led to a spike in DNS requests associated with the domain serving the malware. It's difficult to determine if these requests are from victims or the many security practitioners that are investigating this widespread campaign. Regardless it is obvious that this is the most traffic that particular domain has seen.
+
+
+
+Infection Video
+Below is a video showing the full infection chain from email to PDF and finally to Word Document leading to a successful Locky infection.
+
+
+
+
+IOC
+Hashes (PDFs)
+ffebb94676c767fb2cbd86453e3127f7abf459c428f2d80228f2cd7e1b55fff3
+ca5c4d2bb3c6c035bb0137504b17ccec31deb366757440feb832b7e0d270b487
+44687edc7169d919ef0891e41487ddefa30d93744d6a9e3ecabb5d6f8d88c039
+d6aa22aee572dd90161ba793b8afba27dbf50df4d23b2921d131626671e8d966
+8476cf9307933499771186dfe4c397905ea2a320c488b357ba0148f862b9532e
+1705d38d2ea80177963d67fd18e836326d70a239378d6b9c74d445c5e0b423d6
+3ccef773a5527c7128987bb8d359726f0b3d4d84dd6526c1b3aa76fd98b68539
+6eaeb3aa26dcce83342eb2ed055c623ae43c629eccd7f1d31c0380029ed9741d
+65e5a0956b7e83e484b0fce962e08f1d75aefb0232d1521c97e186a746aabd2f
+9008ee571b139496190f4e54d155300a1c875a8fb9096cfa27809e4e71955176
+1b15c90d67e4b7522ca61e21133b155eb7f1cf32328a030784dc2d95ee7d10ad
+32324fe312aba53c25a512eb81f7fe6ab7b2a44417a0cd0983c6f19cd29d5b26
+1b025b5f24d42eed4eabaff15cee80fff3484d4205be2611f8dce5d4dce9020c
+7e69993bfe292a72f8377d47059741f2b9ef2df1c93b2a0457ed8c1acf986e70
+69ac4202505b603b490e5f2ca4e310af57a16c6c3f9a2efa928ab0d0faf7ae6b
+1fc5a5831c2d880fc5e32db55adef8ad1e0f68b8e245ccaf1a3ee78f83a7da27
+e4426738a8ed366f2773aa3ac9374dae6f3ad41759dd3227a8d025fac2af9b49
+a0b01d5f3f41b49e07be198408910084912cc5db030aa4d0449a8bd2677596b3
+06d42acee69178a161b7317c87515e4bdab647976985a1d172411b799ffbac32
+eb9c6616204c358aa06ebb181cfcf8220216a9531b05006e8ed5dd714f3574da
+7e73b086c5d0d693483a57847aa738e8c3b65b45f8603b5980721795af4534dd
+7a6052881573bb7d976a5bbf39e1a9221dea68193f27c142bb77534a5049e5b9
+f08ab6e0fc6dbff270b2d42f4412375cef3d543b311923960ab432d35754a56e
+63fc82ce40ea946749e7312517b103fad96e8da6a01c63e44be93cd196aae692
+2592d4bf18d83d1b9f98176ce389d6ad5dcaa399f3a549fab15cad520cd24470
+5e9f7cae76f9888c732a77345326e442f56d94e8ed253eabb812fc2ba95e01ca
+ff92433ae4ee90b3c6dd3cd5655302be345addd2a57bf143ee982e692ca7ca33
+2881600b108ece9a1df3e7659370e3ee79cf233e9723a9acd7985452c5915eb3
+f1326f8c348b6a4eb0fe0c3fcdc27e8375fd0ea7ecca54d392de790f31a9d037
+cd0a031a65a10e8c549c29c1b5db87ad730c84ef9ba48041b3c4a723e56ee71f
+8e2cb05dbf3375e66488f387aaebe31c51c95fea135eadace186362629988a4c
+0559d32f6a20cdfa380eb1eb17fbc4aea9e39f3203f4b7818281e0fb117a6977
+32325761402e0b55dd9fe8b2718bc213491eea6f57bc354e358a6edcbe584dd1
+
+Hashes (Word Docs):
+026fa1191fcf895ce375ad8f8f2bda47aa8b1cb27e6be490399a1ad47d452b68
+a20ebaf8b9c14a2738795f0c38b48a712f3e9fd293a51c5475b15c959856139d
+04ea10db95049ec292e712803dc87c236cc3e3e7c2dd018e84d841f9060a15ef
+aa09f65734b2b6972b47b8845aa8f59737ab5a6b5469d7a6e6fdbcf12629b287
+0af35bd7ffe0af328cff2cf39585b4b1b69d550c94f0b407e348085dda0b4284
+ad022ea9c0bbc852806e87f8b1a2d4ffd683116876304613160e975f430bd992
+10ce87f33381989373c519e2ff539f86c2a0a2a4cab0b791e82d4afece0367e6
+b0ad3d8fade247b219d7a3c8fee781e26742c1733de8c00cc50254785cb71e09
+1d73ce6cbc40b02c59c928238f1d316b4340c4ac1e0231f608fa7b5d2fb24836
+b27fb67c5a86f65c762a8af7537c8c5d5fc27e3e2f600495d22cd39fbe82018b
+24982da99435dd1a12c1a7bda53e7325b5081dff96b441287a99027a6b379309
+b78dcbf395b7c934344e4f1bb3cb08628455e8d2a997dbad0bce7afdd573ff8e
+2665260758371f88ca4e49dd577e885fc138651a0e2b3564309b892eea36f7af
+276fd3e1e484996c7f2cd8d9b9d0125dc0d9d6488a65417fb80662616b76adc2
+c411f18d2d53f26dad5275a549d288447a492487b46379fe07087f42792a1be1
+2cc4ca03a31e970a020bc85bb797847abaae41af7c0734826213b4938e5040cb
+c7dc067b3e6ba29ffbfc45d9c32219f3e6898142dfc6da374c752b0bc0fb4c01
+350e989a917614bc2f830dbe61cbad08b444d9cfe96706ed0bd2d86e3a586ec4
+d38ba2dfc9e02a2c6997901aae2197402ce7cf3e79973b81dd06271dbac17328
+3a9cbdb511a5c3fad3f3d6eedaf0fe7aa61bd362d374aa8b0e7924ea1a07be48
+dfb72c342d42655c6309a7496acdad721d7ab1b171e90eaef8b676ac99a06461
+486a3f4053c1e44cb09a43d645227b4916a6475658f3e21ee02bae66df6a8667
+e0f9cca4d7acda468bf1e8f0fab70f4b95b37cc711dae3d972aaf0c4bb0dabc6
+52db4cca867773fdce9cd8d6d4e9b8ea66c2c0c4067f33fd4aaf6bfa0c5e4d62
+e4ec3cdf1bb578d2740c06a0e615f4b2f08ce1ff6f925670a92630fc3daedda1
+65184fbf32ef6a9e109115aaac401de7c0af797d485396091f284a262abf222c
+e67599948a41876b59f09af447816391fd5d29fdebaa5b1fc344980c0b13574b
+6f354a86af7f1885935f0214e663734479e560784c257fa006030fb64d9f38bb
+eb822fb0d99a0b8aefcf70e484b997979a4a4c22325dfd52c4bec492e9937a03
+750c0fdd43575e5110fe348f8fc46f5e5413b0e1aed1c3547bb2e216255e4f00
+edb73979f8d857a35f0be95538db9bc33bc583021feca81c1a64f2da18a902d3
+8424b5178273e0b5d17ae34a1bf3889b1e1d4a351246d342cad933e1e5ec7779
+ee4adfcfc84afbde6180495e132a5477c8d48739051db7d996e078b33c1a5e45
+8b178a3e113a14ebb0e288d610540b15df9a3c59f72667d7142782fd3ef9f370
+f175ed80e667d31877ad75117f2e98a2fb83eeec8f5a523d9ed10ae6fc2dc453
+8bb3c9df22203fadd942b4a4820219f88e20833f9f33ff9ae0361074dc3786f3
+f3877a6e45463ebfa03b49087852572793e4233d084a64584e29f6b7c83af1e8
+
+8e508ea5009677860b67e34af22f6706e6aa1e94c84759a43b1c9f3e40dbe013
+
+Subjects Observed:
+Scanned image from MX-2600N (Largest scale with single subject)
+Receipt (Variants include mix of characters like - or _ and a series of numbers i.e. Receipt#25088)
+Payment (Variants include mix of characters like - or _ and a series of numbers i.e. Payment-7084)
+Payment Receipt (Variants include mix of characters like - or _ and a series of numbers i.e. Payment Receipt_67467)
+
+Conclusion
+Ransomware's monetary draw has continued to push it to the forefront of the threat landscape. Locky had prolific distribution for the majority of 2016, but has been largely absent for 2017. This could be the first significant wave of Locky distribution in 2017. The payload hasn't changed but they methodology has; the use of PDFs requiring user interaction was recently seen by Dridex and has now been co-opted into Locky. This is an effective technique to defeat sandboxes that do not allow user interaction and could increase the likelihood of it reaching an end user's mailbox.
+
+Adversaries will continue to evolve to try and maximize their profits. This is just another example in a long line of evolution that email based malware delivery has gone through. For a time PDF based compromise was down significantly and word macro based compromise up. In this campaign they figured out how to disguise a macro laden word doc in a PDF, compromising victims around the globe. 
+
+
+Coverage
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network
+
+
+

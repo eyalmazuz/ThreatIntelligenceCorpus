@@ -1,0 +1,152 @@
+
+Dumping iClass Keys
+
+
+By Brad Antoniewicz.
+
+
+
+iClass, arguably the second most widely deployed technology in proximity card access systems (the first being the ProxCard II), is a proprietary RFID communications standard and card type. It provides an enhanced level of security over the ProxCard as it encrypts the data stored on the card and leverages a challenge/response form of authentication between the card and the reader. At the 27th Chaos Communication Congress (27C3) Henryk Plötz and Milosch Meriac took a look at iClass systems. They ingeniously dissected the RW400 iClass reader and released a method to dumping it's firmware via the exposed In Circuit Serial Programming (ICSP) interface of reader's PIC18F452 microcontroller. Within the firmware were the keys used as part of the iClass card to reader authentication making it possible for anyone with the appropriate skill to read and clone these cards. It was an awesome moment for RFID and hardware hacking geeks everywhere! 
+The Downside
+
+
+
+But... there was a slight downside - the method of dumping the firmware was a arguably brutish. You have to actually overwrite a portion of the reader's firmware with "dumper code" that reads and then dumps the remaining portions of it's own firmware. To obtain a complete firmware image, you have to have access to two readers. This isn't that big of a deal when targeting "Standard Security" iClass implementations because you can just buy two RW400s, get their keys, and be forever happy since the keys are static across all cards/readers. But when it comes to "High Security" implementations, you have to physically remove a reader from the wall within your target's facilities, dump a portion of the firmware, then using another reader, dump the portion of the firmware you overwrote with the dumper code on the first reader. I should say that in theory you could just write the dumper code, dump the area of the firmware that contains the keys, and then just leave the reader in a inoperable state - but a good hacker wouldn't be a jerk and just leave a broken reader laying around so lets just forget about that option. 
+Another Method
+
+Those interested in RFID hacking have probably stumbled upon http://www.proxclone.com/ at least once. It's a humble site in which the author takes on various RFID related hacking projects. One of the projects was to emulate the iClass work presented at 27C3. The author successfully re-enacted the method on a RW300 reader using the same general idea, but with the author's own code and different tools. Well done. Even more interesting though was that during the re-enactment, the author discovered a new method to gain access to the reader's keys - one that only required access to a single reader, didn't involve overwriting the firmware, and even yielded the last read card value stored by the reader!
+Another Downside
+
+
+There is also slight downside with this as well - the author described how to perform the attack, but implemented in a hardware prototype without releasing any code or schematics. This made it a little challenging for someone like me, who wanted to reproduce his work. Here's the hardware device he created, this image is straight from the whitepaper: 
+
+
+Using the Old with the New
+
+Henryk Plötz and Milosch Meriac leveraged the FTDI TTL-232R-5V-WE to interact with the reader's microcontroller. It's a simple and elegant solution and I really wanted to use it to implement the proxclone method.
+Hardware
+
+
+
+
+The TTL-232R-5V-WE's true power is shown through its "bit bang" mode that allows its pins to be individually controlled. This makes it possible to emulate the PIC programming hardware without the restrictions imposed by more traditional PIC programmers. It costs around $20USD. The only additional hardware requirement is a power source to bring the PIC into High Voltage programming mode. I used a 9V battery power supply enclosure that included a switch so I can enable/disable it as needed. So all in all, we're looking at about a $25USD investment!
+
+The exposed 6 pin ICSP interface on RW300s/RW400s is usually under a piece of electrical tape on the back of the reader. It differs slightly from the standard ICSP interface but not by much. Connect the ground on your 9V power to the FTDI ground (Black) and the VCC to PIN 3 on the reader. The pinouts are as follows:
+
+
+
+9V PowerFTDIReader PINICSP
+Black (GND)Black1VSS
+N/ARed2VDD
+RedN/A3VPP
+N/AGreen4PGD
+N/AOrange5PGC
+N/ABrown6PGM
+
+
+The green FTDI wire looks very much Blue in this picture, my guess its just iPhone camera funky-ness:
+
+
+Software
+On the software side, I used much of the code from the  PIC18F ICSP programmer to implement the read instructions used in the proxclone paper. The instructions seemed simple enough:
+
+
+
+The code can be found on our github repo here:
+https://github.com/OpenSecurityResearch/iclass_dump
+
+We'll also need to install the D2XX drivers from FTDI. You can get away with using the standard libFTDI  that's included with most Linux distributions (you'll just need to change some function names and add some #define's) but I choose the D2XX drivers. To install:
+ root@bt:~# wget http://www.ftdichip.com/Drivers/D2XX/Linux/libftd2xx1.1.12.tar.gz
+ root@bt:~# tar -zxvf libftd2xx1.1.12.tar.gz
+ root@bt:~# cd release/build/i386
+ root@bt:~/release/build/i386# sudo cp lib* /usr/local/lib
+ root@bt:~/release/build/i386# sudo chmod 0755 /usr/local/lib/libftd2xx.so.1.1.12
+ root@bt:~/release/build/i386# sudo ln -sf /usr/local/lib/libftd2xx.so.1.1.12 /usr/local/lib/libftd2xx.so
+
+
+
+I choose this method because its easy and I'm working on non-persistent BT5R3, alternate installation methods are detailed in the ReadMe.txt included within the archive.
+Dumping Keys
+
+Once the hardware is all set up, connect the FTDI adapter to your Linux box. You may have to rmmod the ftdi_sio and usbserial modules so that the D2XX drivers can work. 
+ root@bt:~# rmmod ftdi_sio usbserial
+
+
+
+Next clone the github repo and compile:
+ root@bt:~# git clone https://github.com/OpenSecurityResearch/iclass_dump.git
+ root@bt:~# cd iclass_dump/
+ root@bt:~/iclass_dump# gcc -lftd2xx -o iclass_eeprom_dump-d2xx iclass_eeprom_dump-d2xx.c
+
+
+
+Apply power to the reader (I just used a spliced Enercel 12V adapter I picked up at a nearby RadioShack), read a card, then run:
+ root@bt:~/iclass_dump# ./iclass_eeprom_dump-d2xx -v 
+
+
+iclass_eeprom_dump-d2xx will give you 20 seconds to connect the FTDI cable and apply the VPP programming voltage.
+
+
+
+The program will continue and start dumping. About 10 seconds later, you'll have the full memory dump. Note that I'm not disclosing the offsets for any keys, so you'll have to figure them out yourself. iclass_eeprom_dump-d2xx automatically provides the key permutations so you don't have to worry about running them through permute.php.
+
+ root@bt:~#  ./iclass_eeprom_dump-d2xx -v
+iClass EEPROM Dumper
+brad.antoniewicz@foundstone.com
+------------------------------------------------
+Connecting to FTDI TTL-232R-5V-WE...Connected!!
+Checking bitmode...Success! - 0xf0
+
+Make sure at least one card has been read by the reader, then
+connect your FTDI TTL-232R-5V-WE to the reader's ICSP port
+and introduce the VPP power
+
+Sleeping for 1 Seconds while you do so....
+
+Starting EEPROM Dump
+        MOVLW       - Writing PGM_CORE_INST 0x0E00
+        MOVWF FSR0H       - Writing PGM_CORE_INST 0x6EEA
+        MOVLW       - Writing PGM_CORE_INST 0x0E00
+        MOVWF FSR0L       - Writing PGM_CORE_INST 0x6EE9
+
+Dumping (takes ~10 seconds)..
+Dump Complete!
+
+Full EEPROM Dump:
+-------------------------------------------------------
+
+                [ REMOVED ]
+
+-------------------------------------------------------
+
+Parsed Keys:
+        HID Master:
+                [ REMOVED ] (parsed)
+                [ REMOVED ] (rev. permutated)
+                [ REMOVED ] (shaved)
+        TDES K1:
+                [ REMOVED ] (parsed)
+                [ REMOVED ] (rev. permutated)
+                [ REMOVED ] (shaved)
+        TDES K2:
+                [ REMOVED ] (parsed)
+                [ REMOVED ] (rev. permutated)
+                [ REMOVED ] (shaved)
+Parsed Last Read Card:
+        Wiegand:        [ REMOVED ]
+        First 4 of CSN: [ REMOVED ]
+        Full CSN:       [ REMOVED ] (not always right)
+
+
+All Done!  - Closing the adapter
+Dont forget to disconnect the FTDI from the reader's ICSP
+
+
+
+
+
+Enjoy!
+
+
+
+

@@ -1,0 +1,215 @@
+
+Threat Spotlight: Upatre - Say No to Drones, Say Yes to Malware
+
+
+This post was authored by Nick Biasini and Joel Esler
+
+Talos has observed an explosion of malicious downloaders in 2015 which we’ve documented on several occasions on our blog. These downloaders provide a method for attackers to push different types of malware to endpoint systems easily and effectively. Upatre is an example of a malicious downloader Talos has been monitoring since late 2013. However, in the last 24-48 hours, things have shifted dramatically. We’ve monitored at least fifteen different spam campaigns that are active between one and two days.  While the topic associated with the spam message has varied over time, the common attachment provided is a compressed file (.zip or .rar) that contains an executable made to look like a PDF document by changing the icon.
+
+
+Execution
+
+When Upatre is executed, a PDF document is quickly downloaded and displayed while Upatre is delivered in the background. The document displayed has been either one of two PDFs.  The first PDF, which was used until March 17, contained some information about Viagra:
+
+
+
+Figure 1: Sexual Dysfunction, what’s your function?
+
+
+
+
+
+For all the samples we’ve observed since, is related to an event in 2012 against military drones in the United States.
+
+
+
+Figure 2: Document displayed to Users after executing attachment
+
+
+
+
+These PDFs are one of the key indicators of recent Upatre activity.  Most communication in Upatre was performed using standard HTTP and could be easily identified. This included the non-standard port HTTP traffic, and occasional intermittent SSL traffic. However, a new variant has changed drastically and added SSL encryption from the beginning. In these samples, all communication after the identification of IP address from public websites has been placed inside an SSL session making identification of the threat more difficult.
+
+
+Email Details
+
+There have been at least fifteen unique campaigns identified. Each campaign had a different “From” address, subject, and attachment. The attachment names were adjusted for each individual email but the file that was attached was similar for each campaign. There was one campaign in particular that served ten different hashes during the same campaign. Below is a walkthrough of some of the interesting campaigns with brief details supporting each:
+
+
+
+Figure 3: Sample Email from campaign seen March 30, 2015.
+
+
+This particular campaign was associated with a quotation and were all sent as Mark Kemsley <mark.kemsley@energy-solutions.co.uk> with an identical body as shown above. The attachment contained a zip file, named corresponding to the subject, which contained an executable with the icon of a PDF to encourage a user to open.
+
+
+
+Figure 4: Sample Email from campaign seen March 31, 2015.
+
+
+
+
+The next day another campaign started again associated with a quotation for a product. This particular email was sent as Office <sales@bewiser.co.uk> with a subject of <Random String> - Your Quotation. The random string was referenced again in the actual attached zip file. This zip file contained an executable made to look like a PDF document to encourage users to open. The body of the email looked more professional than the other examples that were covered during this time period.
+
+
+
+Figure 5: Sample Email from campaign seen March 31, 2015. 
+
+
+
+
+The same day as the campaign above another campaign serving a different file was being sent as Mike Longo <mike.l.longo@damagt.com> with a subject of 2015 expenses. Again the body of the email was identical with a unique filename for the same zip file, containing yet another executable.
+
+
+
+Figure 6: Sample from April 7, 2015.
+
+
+
+
+This campaign marked a shift in tactics for the spam campaigns. This particular spam made use of an encrypted rar file and provided the password and a link to download a popular windows rar program in the email. This change allowed detection to be far behind on this particular sample which still had a poor AV detection rate a week after the campaign. Additionally, by making use of a compromised users email they were able to add some legitimacy to the email by including a signature block and subject that appeared somewhat relevant. Upon extraction and execution the payload was the same with the same document being presented to the user.
+
+
+
+Figure 7: Sample from April 16th, 2015.
+
+
+
+
+This is the campaign that delivered the new version of Upatre with encryption added. Note that the attachment does not have an extension but is a zip file which displays the same PDF as shown above. The difference being in the earlier samples you could see the PDF being downloaded in the HTTP traffic, with the addition of SSL that transaction can no longer be seen.
+
+
+Payload
+
+All of the campaigns shown above are delivering the same family of malware that poses as a PDF file. As the executable runs, a specific PDF is downloaded, as discussed above, and displayed to the user. Another executable is downloaded and executed which is Upatre. Upatre is a loader for yet another piece of malware and the samples Talos has analyzed associated with the majority of these campaigns have been seen downloading Dyre, the banking trojan, which we discussed in a separate blog post. The majority of the samples were the same version of Upatre. The “normal” behavior involved first determining the IP address of the compromised system and then a specially crafted HTTP GET request that identified the date of the compromise, the country of origin, the number of the campaign, the hostname, and OS version of the system. Below, in Figure 8, is an example GET request with the GET Request and User-Agent fields highlighted.
+
+
+
+Figure 8: Previous Upatre Variant Note GET Request and User-Agent 
+
+
+
+
+This behavior has been consistent for Upatre since January 2015.
+
+
+New Variant
+
+While researching these campaigns and behavior new variants of Upatre was identified by Talos on April 13th. This variant makes some major changes to the previous behavior of Upatre. The previous samples all made GET requests to checkip.dyndns.org in order to obtain the IP address of the compromised system. That was followed up with the GET requests shown above. This new variant has shifted to icanhazip.com as the site used for IP identification. The User-Agent used during the communication by Upatre to date have been non-standard and somewhat unique. User-Agents such as “Mazilla/5.0” have been used for several months, while in the past, other User-Agents such as “testupdate”, “onlyupdate”, etc have been used. This new variant has changed that to “Mozilla/5.0 (Windows NT 6.1; WOW64; rv:36.0) Gecko/20100101 Firefox/36.0” which is a more standard User Agent again driven to hinder detection, as seen in Figure 9, below.
+
+
+
+Figure 9: HTTP Activity of New Sample 
+
+
+
+
+The URL structure has changed structure slightly to generally smaller.
+In the past 24-48 hours we’ve seen:
+/TOS22
+/TUK21
+/TIS24
+/TUK22
+/TUK11
+/WEDUS12
+/FILE12
+
+
+New SSL Variant
+
+The most significant update to Upatre has occurred within the past 24 hours, is the addition of SSL communication replacing the previous HTTP over non-standard ports.  While Upatre has always had a small SSL component, this is the first we’ve seen a full shift to total SSL for all communications.  This has greatly reduced the visibility into the communication methods that are being used between between the client and server and added a level of sophistication that has not been seen in Upatre previously. Below are two captures showing network activity the first is the old sample. Note how easy it is to identify the communications between the client and server. (Figure 9)
+
+
+
+Figure 9
+
+
+
+
+The identification of the compromised host is easily identified as well as the pdf that is eventually displayed to the user. Now on to the new variant. (Figure 10)
+
+
+
+
+Figure 10
+
+
+
+
+Now after the initial IP check and a brief communication to a IP address on a high port, all further communication is encrypted. The non-encrypted portion only accounts for less than 1% of the data transferred between the compromised host and C2 servers.
+
+Shortly after this new SSL variant was deployed another change occurred to the delivery of Upatre. On April 17th 2015, Talos saw a new sample of the Upatre that has stopped displaying PDF’s to the user.  Now the malicious file download occurs in the background and communication is encrypted with SSL.  This is another change to go along with the addition of SSL encryption.
+
+
+IOCs (New Variant)
+
+Hashes
+(*Note new variants are coming out constantly and change daily) However, the newest one we’ve seen as of the writing of this post is:
+4FE85509BB6A87DBF04AA114C5523B183F995A6820F424871DF29BCA64AD7ECC
+
+Hash of PDFs
+97a49c638abbb640f651f4d7970a4fc316eb3b836c205feb67b8da9df9b68e89
+8B4A6EE16088605264A35D490AEE12789C6DF94F391690C1ACA4022528486592 (older, and not used anymore)
+
+IP Addresses
+106.187.40.118
+173.227.247.30
+176.106.142.52
+176.106.121.140
+176.223.122.103
+188.123.37.229
+188.124.211.142
+198.41.214.183
+199.21.148.88
+210.59.185.3
+217.12.59.234
+220.130.123.138
+220.229.230.132
+220.229.230.35
+220.229.230.81
+220.229.230.86
+220.229.230.87
+223.26.70.33
+5.141.22.43
+50.58.123.11
+60.199.230.126
+72.22.155.158
+78.157.227.34
+83.219.139.124
+83.239.125.206
+85.248.2.228
+91.212.221.5
+
+Domains Contacted
+hbanela.com
+hermanosalvarez.com
+hitachimriservice.com
+hodramoua.org
+host2fast.ro
+howtodealwith-depression.com
+imoveisemribeiraopretosp.com.br
+
+
+Conclusion
+
+Upatre has been a constant threat since it appeared in 2013 and has shown the ability to mutate and evolve as needed to avoid detection. Initially this development had been focused on getting past initial AV detection and landing in a users inbox. This included encrypting the compressed archive as well as changing to a less common type of compression (rar vs zip) and delivering the spam from compromised systems to allow for real email addresses and even signature blocks to be included in the emails. In the last 24 hours the focus has changed. With the addition of SSL encryption, changes to URL structure, and continually evolving User-Agents, Upatre has clearly evolved and is a sophisticated piece of malware that is mutating to avoid detection post-infection and hide communications in an efficient manner that is difficult to block. This continues to reinforce a common theme of 2015 the basic threats are becoming more advanced. The monetization of hacking is continuing to drive innovation at lower levels of the attack structure and will continue as long as there are significant financial gains at stake.
+
+
+Coverage
+
+Snort Rules:
+The following Snort rules will detect Upatre.  These rules are subject to change pending new information regarding the threat. Please refer to your FireSIGHT Management Center or the Snort Subscriber Rule Set for the latest rules.
+
+33211
+33207
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails including phishing and malicious attachments sent by threat actors as part of their campaign
+
+

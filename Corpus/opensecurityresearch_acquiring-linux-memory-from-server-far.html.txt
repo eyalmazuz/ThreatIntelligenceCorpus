@@ -1,0 +1,278 @@
+
+Acquiring Linux Memory from a Server Far Far Away
+
+
+By Dan Caban.
+
+
+In the past it was possible to acquire memory from linux systems by directly imaging (with dd) psudo-device files such as /dev/mem and /dev/kmem.  In later kernels, this access was restricted and/or removed.  To provide investigators and system administrator’s unrestricted access, loadable kernel modules were developed and made available in projects such as fmem and LiME (Linux Memory Extractor).
+
+In this blog post I will introduce you to a scenario where LiME is used to acquire memory from a CentOS 6.5 x64 system that is physically hosted in another continent.  
+   
+LiME is a Loadable Kernel Module (LKM).  LKM’s are typically designed to extend kernel functionality, and can be inserted by a user with root privileges.  This sounds a little scary, and it does introduce tangible risks if done wrong.  But on the positive side:
+
+the LiME compiled LKM is rather small
+the process does not require a restart
+the LKM can be added/removed quickly
+the resulting memory dump can be transferred over the network without writing to the local disk; and 
+the memory dump is compatible with Volatility
+
+Getting LiME
+
+Since LiME is distributed as source without any binaries you need to compile it yourself.  You will find documentation on the internet suggesting that you jump right in and compile LiME on your target system.  I recommend you first see if a pre-compiled LKM exists, or alternatively compile and test in a virtual machine first.
+
+In either case, you first need to determine the kernel running on your target system, as the LKM you use must have been compiled on the the exact operating system, kernel version and architecture. Here we determine our target is running the kernel 2.6.32-431.5.1.el6.x86_64.
+[centos@targetsystem ~]$ uname -a
+Linux localhost.localdomain 2.6.32-431.5.1.el6.x86_64 #1 SMP Wed Feb 12 00:41:43 UTC 2014 x86_64 x86_64 x86_64 GNU/Linux
+
+
+
+One great reputable resource for pre-compiled LiME LKM’s is the Linux Forensics Tools Repository at Cert.org.   They provide a RPM repository of forensic tools for Red Hat Enterprise Linux, CentOS and Fedora.
+
+To check to see your specific kernel is compiled for your operating system, visit Cert and find the “repoview” for your target operating system.
+ 
+
+Browse to “applications/forensics tools” and view the documentation on “lime-kernel-objects”. 
+
+As of today's date the following kernels have pre-compiled LiME LKM’s for CentOS 6 / RHEL 6:
+2.6.32-71
+2.6.32-71.14.1
+2.6.32-71.18.1
+2.6.32-71.24.1
+2.6.32-71.29.1
+2.6.32-71.7.1
+2.6.32-131.0.15
+2.6.32-220
+2.6.32-279
+2.6.32-358.0.1
+2.6.32-358.11.1
+2.6.32-358.14.1
+2.6.32-358.18.1
+2.6.32-358.2.1
+2.6.32-358.23.2
+2.6.32-358.6.1
+2.6.32-431
+2.6.32-431.1.2.0.1
+2.6.32-431.3.1
+
+
+
+Oh no!  The kind folks at Cert are not completely up to date, and my target system is running a newer kernel.  That means I have to do the heavy lifting myself.  
+
+I installed CentOS 6.5 x64 in a virtual machine and updated until I had the latest kernel matching 2.6.32-431.5.1.el6.x86_64.
+[root@vmtest ~]$ yum update
+[root@vmtest ~]$ yum upgrade
+
+
+
+
+Since this was a kernel upgrade, I gave my virtual machine a reboot.
+[root@vmtest ~]$ shutdown -r now
+
+
+
+We now have the matching kernel, but we still need the associated kernel headers and source as well as the tools needed for compiling.
+[root@vmtest ~]$ yum install gcc gcc-c++ kernel-headers kernel-source
+
+
+
+
+
+Now we are finally ready to download and compile our LiME LKM!
+[root@vmtest ~]# mkdir lime; cd lime
+[root@vmtest lime]# wget https://lime-forensics.googlecode.com/files/lime-forensics-1.1-r17.tar.gz
+[root@vmtest lime]# tar -xzvf lime-forensics-1.1-r17.tar.gz  
+[root@vmtest lime]# cd src 
+[root@vmtest src]# make
+….
+make -C /lib/modules/2.6.32-431.5.1.el6.x86_64/build M=/root/lime/src modules
+…
+[root@vmtest src]# ls lime*.ko
+lime-2.6.32-431.5.1.el6.x86_64.ko
+
+
+Conducting a test run
+We can now test out our newly built LiME LKM on our virtual machine by loading the kernel module and dumping memory to a local file.
+
+We are opting to create our memory image on the local file system, so I provide the argument path=/root/mem.img.  LiME supports raw, padded and “lime” formats.  Since volatility supports the lime format, I have provided the argument format=lime.
+[root@vmtest ~]# insmod lime-2.6.32-431.5.1.el6.x86_64.ko "path=/root/mem.img format=lime"
+
+
+
+
+I have validated the memory images matches the amount of RAM I allocated to the virtual machine (1GB) and that it contains valid content.
+[root@vmtest ~]# ls -lah /root/mem.img 
+-r--r--r--. 1 root root 1.0G Mar  9 08:11 /root/mem.img
+[root@vmtest ~]# strings /root/mem.img | head -n 3
+EMiL
+root (hd0,0)
+kernel /vmlinuz-2.6.32-431.5.1.el6.x86_64 ro root=/dev/mapper/vg_livecd-lv_root rd_NO_LUKS 
+
+
+
+I can now remove the kernel module with one simple command:
+[root@vmtest ~]# rmmod lime
+
+
+Acquiring memory over the internet
+
+Now we return to our scenario where we are trying to capture memory from a CentOS server on another continent.  I opted to upload LiME LKM to a server I control and then download it via HTTP.
+[root@targetserver ~]# wget http://my.server-on-the-internet.com/lime-2.6.32-431.5.1.el6.x86_64.ko
+
+
+
+
+
+The great thing about LiME is that it is not limited to just output to a local disk or physical file.  In our test run we supplied an output path with the argument path=/root/mem.img.  We will instead create a TCP service using the argument path=tcp:4444.
+[root@targetserver ~]# insmod lime-2.6.32-431.5.1.el6.x86_64.ko "path=tcp:4444 format=lime"
+
+
+
+
+
+If I were situated within our clients network or port 4444 was open over the internet, I could simply use netcat to connect and transfer the memory image to my investigative laptop. 
+[dan@investigativelaptop ~]# nc target.server.com 4444 > /home/dan/evidence/evidence.lime.img
+
+
+
+
+
+Since in this scenario our server is on the internet, and a restrictive firewall is inline we are forced to get creative.
+
+Remember how I downloaded the LiME LKM to the target server via HTTP (port 80)?  That means the server can make outbound TCP connections via that port.
+
+I can setup a netcat listener on my investigative laptop here in our lab, and opened it up to the internet.  I did this by configuring my firewall to pass traffic on this port to my local LAN address, and you can achieve the same results with most routers designed for home/small office with port forwarding.
+
+Step 1: setup netcat server at our lab listening on port 80.
+[dan@investigativelaptop ~]# nc –l 80 > /home/dan/evidence/evidence.lime.img
+
+
+
+Step 2: Run LiME LKM and configure it to wait for TCP connections on port 4444.
+[root@targetserver ~]# insmod lime-2.6.32-431.5.1.el6.x86_64.ko "path=tcp:4444 format=lime"
+
+
+
+On the target server I can now use a local netcat connection that is piped to a remote connection in our lab via port 80 (where 60.70.80.90 is our imaginary lab IP address.)
+
+Step 3: In another shell initiate the netcat chain to transfer the memory image to my investigative laptop at our lab.
+[root@targetserver ~]# nc localhost 4444 | nc 60.70.80.90 80
+
+
+
+
+
+Voila!  I now have a memory image on my investigative laptop and can start my analysis.
+
+Below is a basic visualization of the process:
+
+Memory Analysis with Volatility
+Volatility ships with many prebuilt profiles for parsing memory dumps, but they are focused exclusively the Windows operating system.  To perform memory analysis on a sample collected from linux, we need to first create a profile that matches the exact operating system, kernel version and architecture (surprise, surprise!)   So let’s head back to our virtual machine where we will need to collect the required information to create a linux profile: 
+
+the debug symbols (System.map*);
+ Requirements: access to the test virtual machine system running on the same operating system, kernel version and architecture
+
+and information about the kernel’s data structures (vtypes).
+ Requirements: Volatility source and the necessary tools to compile vtypes running on the same operating system, kernel version and architecture.
+
+
+
+First let’s create a folder for collection of required files.
+cd ~
+mkdir -p volatility-profile/boot/
+mkdir -p volatility-profile/volatility/tools/linux/
+
+
+
+Now let’s collect the debug symbols.  On a CentOS system it is located in /boot/ directory.  We will need to find the System.map* file that matches the active kernel version that was running when we collected the system memory (2.6.32-431.5.1.el6.x86_64).
+[root@vmtest ~]# cd /boot/
+[root@vmtest boot]# ls -lah System.map*
+-rw-r--r--. 1 root root 2.5M Feb 11 20:07 System.map-2.6.32-431.5.1.el6.x86_64
+-rw-r--r--. 1 root root 2.5M Nov 21 22:40 System.map-2.6.32-431.el6.x86_64
+
+
+
+Copy the appropriate System.map file to the collection folder.
+[root@vmtest boot]# cp System.map-2.6.32-431.5.1.el6.x86_64 ~/volatility-profile/boot/
+
+
+
+One of the requirements to compile the vtypes is libdwarf.  While this may be easily installed on some operating systems using apt-get or yum, CentOS 6.5 requires that we borrow and compile the source from the Fedora Project.  The remaining prerequisites for compiling should have been installed when we compiled LiME earlier in the section Getting LiME.
+[root@vmtest boot]# cd ~
+[root@vmtest ~]# mkdir libdwarf
+[root@vmtest libdwarf]# cd libdwarf/
+[root@vmtest libdwarf]# wget http://pkgs.fedoraproject.org/repo/pkgs/libdwarf/libdwarf-20140208.tar.gz/4dc74e08a82fa1d3cab6ca6b9610761e/libdwarf-20140208.tar.gz
+[root@vmtest libdwarf]# tar -xzvf libdwarf-20140208.tar.gz 
+[root@vmtest dwarf-20140208]# cd dwarf-20140208/
+[root@vmtest dwarf-20140208]#./configure
+[root@vmtest dwarf-20140208]# make
+[root@vmtest dwarfdump]# cd dwarfdump
+[root@vmtest dwarfdump]# make install
+
+
+
+
+Now we can obtain a copy of the Volatility source code and compile the vtypes.
+[root@vmtest dwarfdump]# cd ~
+[root@vmtest ~]# mkdir volatility
+[root@vmtest ~]# cd volatility
+[root@vmtest volatility]# cd volatility
+[root@vmtest volatility]# wget https://volatility.googlecode.com/files/volatility-2.3.1.tar.gz
+[root@vmtest volatility]# tar -xzvf volatility-2.3.1.tar.gz
+[root@vmtest volatility]# cd volatility-2.3.1/tools/linux/
+[root@vmtest linux]# make
+
+
+
+After successfully compiling the vtypes, we will copy the resulting module.dwarf back out to the collection folder.
+[root@vmtest linux]# cp module.dwarf ~/volatility-profile/volatility/tools/linux/
+
+
+
+Now that we have our collected the two requirements to create a system profile, let’s package them into a ZIP file, as per the requirements of Volatility.
+[root@vmtest linux]# cd ~/volatility-profile/
+[root@vmtest volatility-profile]# zip CentOS-6.5-2.6.32-431.5.1.el6.x86_64.zip boot/System.map-2.6.32-431.5.1.el6.x86_64 volatility/tools/linux/module.dwarf 
+  adding: boot/System.map-2.6.32-431.5.1.el6.x86_64 (deflated 80%)
+  adding: volatility/tools/linux/module.dwarf (deflated 90%)
+
+
+
+
+
+On my investigative laptop I could drop this ZIP file in the default volatility profile directory, but I would rather avoid losing it in the future due to upgrades/updates.  I instead will create a folder to manage my custom profiles and reference it when running volatility.
+[dan@investigativelaptop evidence]# mkdir -p ~/.volatility/profiles/
+cp CentOS-6.5-2.6.32-431.5.1.el6.x86_64.zip ~/.volatility/profiles/
+
+
+
+Now I can confirm Volatility recognizes providing the new plugin directory.
+[dan@investigativelaptop evidence]# vol.py --plugins=/home/dan/.volatility/profiles/ --info | grep -i profile | grep -i linux
+Volatility Foundation Volatility Framework 2.3.1
+LinuxCentOS-6_5-2_6_32-431_5_1_el6_x86_64x64 - A Profile for Linux CentOS-6.5-2.6.32-431.5.1.el6.x86_64 x64
+
+
+
+Now I can start running the linux_ prefixed plugins that come shipped with Volatility to conduct memory analysis.
+dan@investigativelaptop evidence]# vol.py --plugins=/home/dan/.volatility/profiles/ --profile=LinuxCentOS-6_5-2_6_32-431_5_1_el6_x86_64x64 linux_cpuinfo -f /home/dan/evidence/evidence.lime.img
+Volatility Foundation Volatility Framework 2.3.1
+Processor    Vendor           Model
+------------ ---------------- -----
+0            GenuineIntel     Intel(R) Xeon(R) CPU           X5560  @ 2.80GHz
+1            GenuineIntel     Intel(R) Xeon(R) CPU           X5560  @ 2.80GHz
+
+
+
+
+About the Author
+
+Dan Caban (EnCE, CCE, ACE) works as a Principal Consultant at McAfee Foundstone Services EMEA based out of Dubai, United Arab Emirates.
+References
+
+LiME Forensics - https://code.google.com/p/lime-forensics/
+CERT Linux Forensics Tools Repository - https://forensics.cert.org/
+Volatility documentation on Linux Memory Forensics - https://code.google.com/p/volatility/wiki/LinuxMemoryForensics
+Netcat - http://netcat.sourceforge.net/
+Cryptcat - http://sourceforge.net/projects/cryptcat/
+
+
+

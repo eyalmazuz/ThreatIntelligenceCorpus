@@ -1,0 +1,194 @@
+
+A quick REVENGE Analysis
+
+
+
+
+Another free weekend, another suspicious link provided by a colleague of mine and another compelling feeling to understand "how it works".  The following analysis is made "just for fun" and is not part of my professional analyses which have to follows a complete different process before being released. So please consider it as a "sport activity".
+
+A colleague of mine provided me a suspicious link which I decided to analyze.
+
+
+The infection starts by redirecting the browser to the page "see.aliharperweddings.com" through a GET request with the following parameters:
+
+biw=diamonds.104wh99.406v6e7i0&que=diamonds.124if80.406v5h6e9&qtuif=3654&fix=diamonds.108bf93.406p9e7i4&oq=CeliDpvspJOdZNQOyj0SGfwZkm4pcBwhH9Pqqj0bWmxCag57W9CW9UU4HupE&q=z3jQMvXcJwDQDoTBMvrESLtEMU_OHEKK2OH_783VCZ39JHT1vvHPRAPytgW&ct=diamonds&tuif=6124
+
+The page is not build to return rendered content but rather to return three different scripts. Indeed the returned visible page holds a weird displayed content as follows:
+
+
+
+Weird visible content by: see.aliharperweddings.com
+
+
+
+Getting a little deeper on the page source code it is easy to experience nice obfuscated scripts, which look like (at least to my experience) a first infection stage. Let's have fun and try to understand how this new sample works. The following image shows an obfuscated piece of code portion. We are getting into the first stage of analysis.
+
+
+
+First Stage: The fun begins.
+
+
+
+Just few steps on google V8 engine to de-obfuscate the first stage which uses a couple of techniques to run VBscript on the target machine. The first implemented trick, as shown in next image, is to use the classic  but "ever green" window.execScript which is no longer supported on Explorer >= 11. execScript takes two parameters: "the code to be run" and the "used programming language". The function invokes the right interpreter depending on "programming language" parameter.
+
+
+
+Second Stage: Running VBScript
+
+
+The second trick is to use eval to de-obfuscate the second stage and later on to run its functions through VBArray technique.  Decoding the second stage was easier if compared to the first stage since less obfuscation rounds are involved. Once de-obfuscated the second stage I've run into another "browser" stage (let's call it Third Stage) written in VisualBasic Language as follows:
+
+
+
+Third Stage: The VBScript saving Windows PE
+
+The resulting script is quite simple to read no further obfuscated loops were involved.  The script per se is quite big so I am not going to describe every single line of code but just the most interesting one (at least in my personal opinion), so let's focalize on the "random function" (showed in the following image) which returns strLen number of "random" letters from a well defined alphabet :).
+
+
+
+Third Stage: Implemented "random" function
+
+
+
+This function is used later on to save the PE FileSystemObject into temporary file by using the number "8" as parameter to the rnds function. A nice and dirty IoC would be: "8 letters" from "abcdehiklmnoprstuw02346" alphabet ".exe" into system temporary directory as shown in the next image. 
+
+
+
+Third Stage: Saving PE Object using 8 "random" (not really) characters
+
+
+The FileSystemObject is then executed through the WScript.Shell technique as shown in the next image.
+
+
+
+Third Stage: Running the fake shell32.dll
+
+
+A key argument is defined as "gexywoaxor" and a stream is taken from an url as shown in the following image.
+
+
+
+Third Stage: Key and Stream
+
+
+A special function is crafted to decrypt the stream having as a key the defined one. The decoded stream is getting saved and launched according to the fake shell32.dll.
+
+
+
+Third Stage: Decryption stream function (key= gexywoaxor)
+
+
+Most of you would recognize RIG Exploit kit which used to decrypt streaming (ADOBE StreamObj) objects through inline xor. That decrypt function would not use a simple xor, and for such a reason I would consider it as new version of RIG Exploit Kit. The overall behavior looks like standard RIG EK having threes infection browser scripts and stream decoding procedure.
+
+
+
+Finally I've got a Windows PE on my temporary directory and a script launching it from browser ! 
+
+
+
+Let's move on and see what it does. A first run the PE file gets information from its Command and Control server which, on my time, happened to be: 193.70.90.120 (France)
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Andale Mono'; color: #28fe14; background-color: #000000; background-color: rgba(0, 0, 0, 0.9)}
+span.s1 {font-variant-ligatures: no-common-ligatures}
+
+
+It downloaded a Public Key (maybe for encrypting files ?) as follows:
+
+
+
+
+Fourth Stage: Downloaded Public Key
+
+This behavior reminds me a romantic Ransomware attack, which happens to fit pretty well with RIG distribution rings. The sample starts with simple http GET but later on it keeps trace of its malicious activity (encrypted files) by posting, on the same C&C, the number of encrypted files and a unique serial number as well. The sample returns back two parameters: id and count.
+
+
+
+Fourth Stage: POST to C&C
+
+
+
+id is different for every infection while it could be consider as a unique constant for a given one. count constantly increases its value as a counter depending to the number of encrypted files.
+
+The sample presents some tricks to control the running environments such as (but not limited to): IsDebugPresent and VolumeChecking. The sample is a multi-thread encryptor which spawns an encrypting thread for each found system folder (limiting to 10 per times). The sample is not packed/encrypted from a well known packer/encryptor as the following image shows, but the real code (payload) is encoded into a Fourth Stage (let me define the Windows PE as fourth stage of infection).
+
+
+
+Fourth Stage: No known packers/encrypters are found
+
+
+
+The following image shows the real payload dynamically build in the heap of the fourth stage. As analyst I decided to not extract it but rather following on the original sample in order to understand how happens the control flow switch.
+
+
+
+
+Stage Fifth: HEAP built payload 
+
+
+The fifth stage is run by the following code which after having built the payload straight into the memory gets the control flow by simple dynamic "call" to dynamic memory [ebp+var_4].
+
+
+
+
+Fifth Stage: getting control by call [ebp+var_4]
+
+This is the last stage where the payload runs over the folders, read files and encrypt them by using a dynamically loaded cryptbase.dll and the downloaded public key. The payload per-se saves itself and get persistence by infiltrating on register keys. The following images show where the payload copies itself in the target machine
+
+
+
+Fifth Stage: Payload Persistence
+
+
+Te payload saves itself as svchost file creating a folder named Microsofts\ Windows NT\svchost.exe as the most classic payloads does ! Cryptobase.dll functions are dynamically loaded, only few library functions have been involved which takes easy to track them down (the following images show the tracking down imported libraries).
+
+
+
+Stage Fifth: Cryptobase.dll tracking functions
+
+
+Finally the SaveFile function write the ransom file: # !!!HELP_FILE!!! #.TXT  to physical drives having the following content and encrypts file through .REVENGE extension
+
+
+
+Ransom File
+
+
+Since the implemented languages are: English, Italian, German, Polish and Korean  it is easy t believe this ransomware attack would target European countries mainly.
+
+
+
+While the infected website (see.aliharperweddings.com) has promptly been closed (now it belongs to GoDaddy) the Command and Control page is still up and running. Indeed the command and control appears to be an old vulnerable fake website created on 2016-10-07T08:19:40Z weaponized with an ancient content back to November 2014. The website is not a real one, it's a simple "lorem ipsum" with no apparent purpose. The following images shows the apparent not real website.
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Andale Mono'; color: #28fe14; background-color: #000000; background-color: rgba(0, 0, 0, 0.9)}
+span.s1 {font-variant-ligatures: no-common-ligatures}
+
+
+
+
+Command and Control Vulnerable Web Site
+
+Conclusions
+
+
+Despite the reverse engineering difficulty and/or the technical details I addressed in this quick and dirty post, I found an unusual C&C behavior. Usually attackers want to protect their C&C and are the first system (page, connection, services) to be closed and/or moved after a first disclosure. Indeed the attacker wont be "syncholed" by receiving injection commands into her malicious network. Contrary in this example the current C&C looks to be alive from October 2016. Please note that I am not saying it servers RIG from 2016 but it might have served many different EK over time, which makes me thinking to a well defined operation attributable to a RIG as a service group.
+
+Useful IoC:
+- url: see.aliharperweddings.com
+- url: far.nycfatfreeze.com
+- ip: 193.70.90.120
+- ip: 188.225.38.186
+- email: rev00@india.com
+- email: revenge00@writeme.com
+- email: rev_reserv@india.com
+- string: 5427136ABEE9451E
+- string: # !!!HELP_FILE!!! #.TXT
+- string: gexywoaxor 
+- file extension: REVENGE
+- File Name: 8 characters from {abcdehiklmnoprstuw02346}.exe
+
+BONUS:
+A similar dropper (Third Stage) has been published on March 9th 2017 on pastebin.
+
+
+
+

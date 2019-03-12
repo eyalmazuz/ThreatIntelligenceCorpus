@@ -1,0 +1,15 @@
+Critical glibc Vulnerability Puts All Linux Machines at Risk
+Glibc, the GNU C library at the core of last year’s GHOST vulnerability, is vulnerable to another critical flaw affecting nearly all Linux machines, as well as API web services and major web frameworks where the code runs.
+The vulnerability, discovered independently by researchers at Google and Red Hat, has been patched.
+The flaw, CVE-2015-7547, is a stack-based buffer overflow in the glibc DNS client-side resolver that puts Linux machines at risk for remote code execution. The flaw is triggered when the getaddrinfo() library function is used, Google said today in its advisory.
+“Overflowing bytes are entirely under the control of the attacker and are the result of a crafted DNS response,” said a separate advisory posted by Carlos O’Donnell of Red Hat. O’Donnell and Florian Weimer of Red Hat worked on the patch along with Google researcher Fermin J. Serna.
+“A back of the envelope analysis shows that it should be possible to write correctly formed DNS responses with attacker controlled payloads that will penetrate a DNS cache hierarchy and therefore allow attackers to exploit machines behind such caches,” O’Donnell said. It’s likely that all Linux servers and web frameworks such as Rails, PHP and Python are affected, as well as Android apps running glibc.
+The bug was reported to the glibc maintainers last July, but was apparently introduced in glibc 2.9 in May 2008. O’Donnell said in the advisory that the vulnerability has likely not been publicly attacked.
+“Local testing shows that we have been able to control at least the execution of one free() call with the buffer overflow and gained control of EIP,” O’Donnell said. “Further exploitation was not attempted, only this single attempt to show that it is very likely that execution control can be gained without much more effort.”
+Experts urge admins to patch immediately.
+“It qualifies as an urgent ‘patch today’ vulnerability,” said Kenneth White, security researcher and director of the Open Crypto Audit Project (OCAP).
+Google’s Serna confirmed the issue affects all versions of glibc since 2.9 and added that there are temporary mitigations that can be implemented until Linux machines can be patched.
+“The vulnerability relies on an oversized (2048+ bytes) UDP or TCP response, which is followed by another response that will overwrite the stack,” Serna said. “Our suggested mitigation is to limit the response (i.e., via DNSMasq or similar programs) sizes accepted by the DNS resolver locally as well as to ensure that DNS queries are sent only to DNS servers which limit the response size for UDP responses with the truncation bit set.”
+Google said that a number of exploitation vectors can be used to attack this vulnerability, including but not limited to ssh, sudo and curl.
+“Remote code execution is possible, but not straightforward,” Serna said. “It requires bypassing the security mitigations present on the system, such as ASLR.”
+Glibc is the C library that defines systems calls and other basic functions on Linux systems including the GNU OS and GNU Linux.

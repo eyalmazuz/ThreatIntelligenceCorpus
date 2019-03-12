@@ -1,0 +1,72 @@
+
+BUSY,BUSY,BUSY and Java Vulnerability
+
+
+
+
+Hi Folks,
+
+it's a very BUSY working time for me, my apologies for the few blog-posts during the past months !
+
+
+
+Even today I am writing in the middle of the night  and I don't have enough energies to write a detailed post, BUT I do want to remember this incredible vulnerability found on Java 7, during the past few days. The Java bug is still not well described in the CVE-2013-0422 , Oracle did not publish further details so far.
+
+
+
+
+
+
+
+It seems the only suggestion from the security community is to disable Java from Browsers. Take a look here and to the Vulerability Source Code.
+
+
+
+
+
+
+
+BlackHole, as well as many other exploit packs might have it since 2010 [Unconfirmed information, given from private source] ! 
+
+
+
+[update]
+
+My quick and dirty explanation  (remember what I wrote on line 4):
+
+The com.sun.jmx.mbeanserver.MBeanInstantiator.findClass method has a bug that allows users to retrieve Class references of any package. In fact findClass calls another method called loadClass(ClassName) which loads the given Class. Unfortunately the findClass method is private and not accessible from external users. However looking at the Call Hierarchy we see there is a public method that calls the contractors. The method is: com.sun.jmx.mbeanserver.JmxMBeanServer. The JmxMBeanServer constructor implementation shows the MBeanInstantiator is stored in the
+instantiator attribute. Such a class has a method called getMBeanInstantiator  which returns what we need (findClass).
+
+
+
+The exploit's code looks like the following one:
+
+
+
+
+
+
+
+Actually the entire exploit is way more complex then the one represented up here;  it uses Recursive Reflection Vulnerability (
+CVE-2012-5088). Following the main steps of the exploit.
+
+
+
+
+
+
+The exploits' teps are the following(taken from immunityinc):
+
+
+Using the previously described vulnerability, it gets two classes from a restricted package. 
+Using a simple public Lookup instance it uses reflection on the Lookup class to get a
+MethodHandle for the findConstructor method. 
+Invokes the findConstructor MethodHandle on the public Lookup instance passing clazz1 as
+parameter to get a MethodHandle for sun.org.mozilla.javascript.internal.Context
+constructor. 
+Invoke the constructor and create a sun.org.mozilla.javascript.internal.Context instance.
+
+
+For more information  here.
+
+

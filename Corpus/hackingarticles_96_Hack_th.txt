@@ -1,0 +1,52 @@
+
+Hack the VulOS 2.0 VM (CTF Challenge)
+
+“Your assignment is to pentest a company website, get root of the system and read the final flag” is the only thing we know about this VM other than that is it a smaller one. Therefore without any further ado lets starts by finding our target aka victim.
+Breaching Methodologies:
+netdiscover
+
+Here it has discovered the target IP: 192.168.1.102, and now we will run nmap to determine what services are running.
+
+So, the services that running is SSH on 22 ports, HTTP on 80 ports, IRC on 6667. As port 80 is open that means we can open it in browser.
+
+Since we didn’t found anything on web page therefore we looked into its source code and here saw a link /jabc; let’s open it.
+
+When we had explored /jabc in the browser, it put up following page.
+
+In this webpage there were various tabs and I explored each tab including their page source and I found nothing except for the last tab i.e. Document. 
+
+When you look into the page source there will be line saying “/jabd0cs/ on the server. Just log in with guest/guest.”
+
+So, I opened the directory and logged in with guest: guest as username: password respectively. And there was an upload option but there was a restriction that you can only upload .doc file so it was pretty useless.
+If you observe the log in page there is a cms opendocman v1.2.7. this version of opendocman is vulnerable.
+
+Let’s search for its exploits to be used against opendocman. And for that type:
+searchsploit OpenDocMan 1.2.7
+From its result we found exploit 32075.txt which was showing “the vulnerability exists due to insufficient validation of “add_value” HTTP GET parameter in “/ajax_udf.php” script. A remote unauthenticated attacker can execute arbitrary SQL commands in application’s database.”
+
+Now we will use sqlmap to find out database of usernames and passwords and for that type:
+
+And we have fetched database name “jabcd0cs”
+
+The sqlmap command will show us all the username and passwords as shown below.
+
+As you can see that the password is in MD5 hash value. We can crack it online no third party tool is needed.
+
+Password turns outs to be webmin1980 with the username of webmin. As we have username and password we can log in through SSH port. And to log in through SSH open a new terminal in kali and type:
+And then give the password when asked and you will have a session. Let’s check the version of kernel to see if it vulnerable or not.
+
+The version is 14.04 that means it can be exploited, and for that type:
+searchsploit ubuntu 14.04 
+It has shown so many exploits and from those we chose 37292.c for overlayfs’ Local Privilege Escalation’.
+
+Start python HTTP server for transferring it into victim’s machine.
+
+Type the following command to download it:
+As the exploit is downloaded, now as always we need compile it and then run it. And for that the set of commands is:
+And voila you have reached root but our challenge is not completed here. We still have to find the flag. Once you have reached root then go into the /root directory:
+Lets check what files and folders it is holding.
+ls
+And here you will a flag.txt. Read it!
+cat flag.txt
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

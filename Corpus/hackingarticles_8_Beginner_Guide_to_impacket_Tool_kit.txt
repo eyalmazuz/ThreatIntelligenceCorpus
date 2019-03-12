@@ -1,0 +1,86 @@
+
+Beginner Guide to impacket Tool kit
+
+Impacket is a collection of Python classes for working with network protocols. Impacket is focused on providing low-level programmatic access to the packets and for some protocols (e.g. SMB1-3 and MSRPC). According to the Core Security Website, Impacket supports protocols like IP, TCP, UDP, ICMP, IGMP, ARP, IPv4, IPv6, SMB, MSRPC, NTLM, Kerberos, WMI, LDAP etc.
+For the following practical we will require two systems,
+Here, in our lab scenario we have configured the following settings on our systems.
+Windows Server Details
+Kali Linux: 192.168.1.135
+Before beginning with the Impacket tools, let’s do a Nmap version scan on the target windows server to get the information about the services running on the Windows Server.
+
+As you can see in the above screenshot, we have domain services, Kerberos Services, Netbios Services, LDAP services and Windows RPC services.
+Now let’s install the Impacket tools from GitHub. You can get it from here.
+Firstly, clone the git, and then install the Impacket as shown in the screenshot.
+
+This will install Impacket on your Kali Linux, now after installation let’s look at what different tools does Impacket have in its box.
+cd impacket/examples
+These are the some of the tools included in impacket, let’s try some of them.
+
+Simple ICMP ping that uses the ICMP echo and echo-reply packets to check the status of a host. If the remote host is up, it should reply to the echo probe with an echo-reply packet.
+./ping.py
+
+Syntax: ./ping.py [Source IP] [Destination IP]
+Here we can see that we are getting the ICMP reply from 192.168.1.140 (Windows Server)
+
+A Windows SID bruteforcer example through [MS-LSAT] MSRPC Interface, aiming at finding remote users/groups.
+./lookupsid.py
+
+Syntax: ./lookupsid.py [[domain/] username [: password] @] [Target IP Address]
+As you can see that the lookupsid tool had extracted the user and group information from the server
+
+It lets you execute processes on remote windows systems, copy files on remote systems, process their output and stream it back. It allows execution of remote shell commands directly with full interactive console without having to install any client software.
+./psexec.py
+
+Syntax: ./psexec.py [[domain/] username [: password] @] [Target IP Address]
+As you can see that we got a remote shell of the server in the given screenshot
+
+This script will dump the list of RPC endpoints and string bindings registered at the target. It will also try to match them with a list of well-known endpoints.
+./rpcdump.py
+
+Syntax: ./rpcdump.py [[domain/] username [: password] @] [Target IP Address]
+As you can see below we have the list of RPC targets
+
+An application that communicates with the Security Account Manager Remote interface from the MSRPC suite. It lists system user accounts, available resource shares and other sensitive information exported through this service.
+./samrdump.py
+
+Syntax: ./samrdump.py [[domain/] username [: password] @] [Target IP Address]
+As you can see below we have extracted SAM information form the Target Server
+
+Simple packet sniffer that uses the pcapy library to listen for packets in transit over the specified interface.
+. /sniff.py
+Choose the interface using the number associated with it. And the sniffing starts.
+
+Simple packet sniffer that uses a raw socket to listen for packets in transit corresponding to the specified protocols.
+. /sniffer.py
+And the sniffer starts to monitor icmp, tcp and udp
+
+It generates a semi-interactive shell, used through Windows Management Instrumentation. It does not require to install any service/agent at the target server. It runs as Administrator. It is highly stealthy.
+./wmiexec.py
+
+Syntax: ./wmiexec.py [[domain/] username [: password] @] [Target IP Address]
+As you can se below that we have the shell from the Target Server
+
+It allows to issue WQL queries and get description of WMI objects at the target system.
+./wmiquery.py
+
+Syntax: ./wmiquery.py [[domain/] username [: password] @] [Target IP Address]
+This will open a shell, where you can run WQL queries like
+
+This example executes a command on the target machine through the Task Scheduler service and returns the output of the executed command.
+./atexec.py
+
+Syntax: /atexec.py [[domain/] username [: password] @] [Target IP Address] [Command]
+As you can see below that a remote connection was established to the server and the command systeminfo was run on the Target server with the output of the command delivered on the Kali terminal.
+
+This script will connect against a target (or list of targets) machine/s and gather the OS architecture type installed by (ab) using a documented MSRPC feature.
+./getArch.py
+
+Syntax: ./getArch.py -target [IP Address]
+Command: ./getArch.py -target 192.168.1.140
+Here we can see that the architecture of the target system is 64-bit
+
+This script will bind to the target’s MGMT interface to get a list of interface IDs. It will use that list on top of another list of interfaces UUID and reports whether the interface is listed and/or listening.
+Syntax: ./ifmap.py [Host IP Address] [Port]
+
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

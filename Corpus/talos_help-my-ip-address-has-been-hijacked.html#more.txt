@@ -1,0 +1,85 @@
+
+Help! My IP Address Has Been Hijacked!
+
+
+This post is authored by Jaeson Schultz. 
+
+SpamCop is a free, community-based spam email reporting service provided by Cisco. SpamCop analyzes reported spam, and extracts details about the sending IP, the URLs contained in the spam, and the networks over which the spam message has transited. This information is used to create the SpamCop Block List (SCBL). The SCBL a list of IP addresses believed to be sending Unsolicited Bulk Email.
+
+As part of its service, each week SpamCop sends millions of email messages to notify network administrators about malicious activity that is observed occurring on their networks. SpamCop receives all types of replies in response to our notification emails. Many times recipients of SpamCop’s notifications will reply to SpamCop and claim, “we did not send the spam”. The SpamCop Deputies responsible for following up on these replies have heard every excuse under the sun. For them, “we did not send the spam” is the spam block list equivalent of “the dog ate my homework.”
+
+
+However, every once in a while, a network administrator who claims not to have transmitted a piece of spam from their network is telling the truth. There are times when SpamCop attributes a spam email to the correct sending IP address, yet the network owner of the IP range did NOT transmit the spam in question. How in the world could this possibly be? For an example of such anomalous behavior, consider a piece of spam that was recently sent from the IP 146.0.53.17.
+
+
+
+After SpamCop contacted the owners of this netblock, we received an interesting reply. According to the netblock’s owner, the spam had indeed come from their IP, however the IP was not being hosted on their network. The IP had been hijacked by a spam outfit!
+
+Talos’ investigation showed that the IP 146.0.53.17 is legitimately allocated to an organization named “Logfont Ltd” located in Dublin, Ireland, operating under Autonomous System (AS) AS51677.
+
+
+
+Here are all the network prefixes announced by Logfont Ltd’s AS51677.
+
+
+
+If we look at historical Border Gateway Protocol (BGP) announcements for the IP 146.0.53.17 we see something quite interesting. Two different foreign Autonomous Systems (AS) have announced two unique BGP prefixes, 146.0.32.0/19 by AS47147 and 146.0.52.0/23 by AS201640, that IP address 146.0.53.17 falls within. Strikingly, we can also see a huge gap where no BGP prefixes were announced that this IP address is associated with.
+
+
+
+So, who are these other Autonomous Systems announcing BGP prefixes that IP address 146.0.53.17 is associated with? Well, one of the AS's is AS47147 which belongs to VisNetwork Media SRL of Romania.
+VisNetwork Media SRL was the previous legitimate owner of the IP block, according to this page from RIPE detailing transfers of IPv4 space. This neatly explains the times when no routes were announced for this prefix. It was because VisNetwork Media SRL was preparing to transfer the IP allocation.
+
+The other AS, the rogue AS who hijacked the IP space, is AS201640 which belongs to MEGA-SPRED, an Autonomous System registered in Bulgaria.
+
+
+
+We have all heard warnings about the dearth of IPv4 addresses. This is true, IPv4 address allocations are running out. However, the real truth is that there are IPv4 allocations out there that are so broad that they remain unused. As a consequence, these unused and unannounced IP prefixes become ripe for abuse. Increasingly, miscreants are maliciously announcing BGP prefixes for unused IP netblocks, hijacking these IP addresses for their own means. The potential havoc that can be wreaked by a hijacked IP is not limited to sending spam. The hijacked IP could be used for any manner of illicit activities including Denial of Service (DoS),  or even stealing traffic from the legitimate network owners.
+
+Network administrators aren’t completely helpless in this fight. Resource Public Key Infrastructure (RPKI) can be leveraged to protect BGP routes. RPKI uses cryptographic certificates to specify the Autonomous Systems that are allowed to announce particular BGP prefixes. Prefix filters can be used to prevent a network from ingesting an incorrect or malicious BGP prefix. SpamCop has also been faithfully block listing hijacked IP's used to transmit spam. Finally, there are also other tools that can be leveraged against these attackers. For example, by checking the WHOIS record for the domain used to send the spam, Talos found something interesting.
+
+
+
+This domain was registered under the name “Mike Prescott” which is probably a pretty common name, however the email address mikeprescott7777@gmail.com is much more likely to be under the direct control of the attackers. What other domains has the email address mikeprescott7777@gmail.com registered? According to DomainTools, this email address is responsible for registering 45 domains. A quick check into the domains, and associated spam shows that these domains have been deployed as part of the same IP hijacking campaign, but using different IP addresses from the same hijacked netblock. SpamCop also confirms this is the case.
+
+
+
+As we can see from this example, malicious BGP announcements can still find their way out onto the Internet, causing havoc for end users and network administrators alike. What can be done to stop this atrocity? Unfortunately, the solution to this problem is not so easy. IP hijacking is made possible when Internet networks are not configured to filter their BGP traffic. A properly configured Internet network would prevent its downstream networks from announcing BGP prefixes for IP netblocks they do not control. Until more networks get strict about monitoring for, and preventing malicious BGP announcements, the problem will continue. The good news is that these attacks are difficult to pull off successfully, and generally only the more sophisticated computer criminals have the necessary skills to conduct such an attack.
+
+While the world isn’t yet in a position to entirely prevent IP hijacking from occurring, administrators and security personnel should still remain vigilant so they can respond quickly when it happens. Cisco Talos continues to track the threat actors, and block the associated hijacked IP’s, and domains behind them.
+
+
+For Additional Information on Protecting BGP
+
+Protecting BGP for the Enterprise White Paper
+http://www.cisco.com/web/about/security/intelligence/protecting_bgp.html
+
+Resource Public Key Infrastructure (RPKI)
+https://www.arin.net/resources/rpki/
+
+BGP Origin AS Validation (leveraging RPKI)
+http://www.cisco.com/c/en/us/td/docs/ios-xml/ios/iproute_bgp/configuration/15-s/irg-15-s-book/irg-origin-as.html
+
+A terrific blog by Joeseph Karpenko on Prefix Filtering for BGP
+http://blogs.cisco.com/security/surprise_all_your_prefix_are_belong_to_us/
+
+
+Protecting Users Against These Threats
+
+
+
+Though BGP can be announced surreptitiously by networks outside of your control, Cisco security products are still the best way to protect against the malicious activity often attributed to hijacked IP addresses.
+
+
+The Advanced Malware Protection (AMP) protects the client against malware that may be delivered through spam email messages.
+
+
+Cloud Web Security (CWS) and the Web Security Appliance (WSA) will protect users against websites hosting malicious content. These malicious sites may appear as links in spam email.
+
+
+The Network Security provided by the Intrusion Prevention System(IPS) and Next Generation Fire Wall (NGFW) will detect direct attacks coming from hijacked IP addresses.
+
+
+The Email Security Appliance (ESA) is designed to block spam email messages transmitted by hijacked IP addresses.
+
+

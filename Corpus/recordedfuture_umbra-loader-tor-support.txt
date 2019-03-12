@@ -1,0 +1,40 @@
+Release the Hydra: Umbra Loader With Tor Support
+By Filip Reesalu on March 17, 2016
+In February 2016, a Recorded Future (RF) alert drew our attention to a Hydra update.
+
+The author — crazyskate66 — released an update to a rudimentary open source botnet (malware that allows a malicious actor to control a group of connected computers) based on the popular Umbra Loader utilizing Tor for network stealth (not to be confused with the older IRC-based RAT with the same name or the brute-force password cracker THC Hydra). 
+
+Release Post
+While other more advanced botnets have had their source code leaked (notable examples include Zeus, Carberp, and SpyEye) this is an interesting case of a botnet variation that has been developed publicly from December 2014 through February 2016 offering other Umbra Loader users the option of leveraging Tor for communication.
+
+Command and Control UI
+
+Included Builder
+Beyond the initial postings to ic0de[.]org, older versions of the code were advertised on additional forums.
+
+Advertising on a Russian Forum
+As the Bot code executes, it sets up a hidden Tor proxy on the victim machine and subsequently uses the local proxy to route all command and control (C&C) communication. The administration panel is locked to one configurable user agent, and all bots are also required to use a specific user agent in order to communicate with the C&C.
+The Tor binary is either included with the malware or can be downloaded during install, and gets copied into %LocalAppData%\\.
+To receive commands from the C&C server, the bot generates an identifier string that the server uses:
+
+untParser.pas
+The identifier is encrypted with AES and the result is used as a parameter in a HTTP GET request to the C&C server:
+
+untParser.pas
+Where tmp is the AES encoded identifier and the default values would make the URL: 
+http://00000000000000.onion/Public/gate.php?thread=<encrypted identifier>
+The response from the C&C server contains instructions (commands followed by arguments) that the client decrypts (using the same key and IV) and interprets.
+Hydra comes with one bundled plugin (ChromeStealer) which extracts and decrypts any passwords saved by the Chrome password manager and communicates them back to the C&C server by calling, once for each credential found, where a[i] represents one credential on the form url|username|password:
+
+ChromeStealer.dpr
+However, this functionality appears broken since the author seems to have confused the delimiters used for the steal parameter in different files. Additionally, the author forgot to encrypt the ChromeStealer communication with AES (although it does use the Tor proxy) and ignored  validation of the identifier, allowing anyone with the correct user agent to flood the credential database. 
+Despite these shortcomings, this development effort illustrates how easily malware written in Delphi could be modified to utilize the Tor network. Obviously other malware developers may find value in this update as a template for similar work.
+All releases seem to have originated at ic0de[.]org, from user crazyskate66, and the public release schedule is as follows:
+The author joined ic0de in September 2011 and was active on hackforums[.]net in 2010.
+
+Hackforums[.]net Activity for crazyskate66
+In the latest changelog crazyskate66 states:
+
+Malware utilizing Tor isn’t novel, one notable historical example: in 2013, MEVADE/SEFNIT increased the number of Tor “users” from one million to five million within a couple of weeks.
+Compared to the open source ZIB-Trojan (IRC-based botnet using Tor with a slew of built-in functionality) Hydra is lacking in features and seems like a rough draft of how one could route Umbra Loader traffic through Tor, but it does have the advantage of being based on Umbra Loader/Delphi — meaning there’s the option of reusing leaked/purchased code.
+Detecting and filtering Tor traffic is difficult by design but there are a few different methods available for defenders:

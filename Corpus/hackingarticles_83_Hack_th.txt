@@ -1,0 +1,37 @@
+
+Hack the Pentester Lab: from SQL injection to Shell VM
+
+Today we are going to perform penetration testing in another lab, download it from here. Now install the iso image in VM ware and start it. The task given in this lab is to gain access of administration console and upload PHP webshell.
+Start your Kali Linux then open the terminal and type netdiscover command for scanning network. Here 192.168.0.105 is my target IP which is shown in the screenshot. Then explore this IP in browser
+
+When you will open target IP in browser you will get a web page having heading My Awesome Photoblog. On the top of left side it contains some tags: home; test;  ruxcon; 2010; all pictures; admin. Now Click on test.
+
+The above URL: http://192.168.1.105/cat.php?id=1 will run query for ID 1 now let try to find out whether the above URL is vulnerable to sql injection or not by adding ‘ at last of URL:
+And I have got a message of sql error.
+
+It confirms that this web page is suffering from sql vulnerability. Now I am making use of sqlmap tool to enumerate database name and then try to fetch entire data under that database. First of all type following command to enumerate database name:
+
+If you remembered the title of web page was “A Awesome Photoblog” hence name of database must be photoblog.
+
+Now let’s fetch entire data under photoblog database through following command:
+
+The first task was to gain access of administration console for which we required the login: password of his account. Through sqlmap command we have got login as admin and password as P4ssw0rd
+
+Now try to use above credential to access administration console, again open target IP: 192.168.0.105 in browser and click on login tab and type login as admin and password as P4ssw0rd.
+
+Congrats!!! The first task is completed.
+Now last task is to upload PHP webshell. Under administration console you will see a link Add a new picture to upload an image in this web server. Click on Add a new picture to upload image.
+
+Here we can upload image through Add option now I will try to upload PHP webshell instead of picture.
+
+Let’s prepare the malicious file that you would upload with msfvenom :
+Copy the code from <?php to die() and save it in a file with .pHP extension. I have saved the backdoor as shell.pHP on desktop and will later browser this file to upload on web server.
+Now load metasploit framework by typing msfconsole and start multi/handler
+Move back to admin account and then give title “shell”, click on browse to browse shell.pHP and then click on Add.
+Note: it will reject the file if you saved the file as shell.php, used capital letter for extension like: PHP, pHP.
+
+Our malicious file successfully uploaded on web server. You can see a new row is added as shell which contains our backdoor shell.pHP, now to execute backdoor click on shell and you will get reverse connection at multi handler.
+
+ Wonderful!!! We completed our last challenge also here we have victim web shell.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

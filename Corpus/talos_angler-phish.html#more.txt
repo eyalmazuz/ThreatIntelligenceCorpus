@@ -1,0 +1,159 @@
+
+Angler Catches Victims Using Spam as Bait
+
+
+This post is authored by Nick Biasini with contributions from Erick Galinkin and Alex McDonnell
+
+Exploit kits have been a recurring threat that we've discussed here on this blog as a method of driving users to maliciousness.  Users typically encounter exploit kit landing pages through  compromised websites and malvertising. However, we've found a new email twist to the standard procedures associated with getting users into the exploit kit infection chain.
+
+Usually when we see compromised websites serving exploit kit gates there are malicious iframes dropped on single pages or throughout the entire site. These iframes can either be links to an exploit kit landing page directly or to a gate. Using a gate allows the adversary to change the location of the landing page without having to change the compromised wordpress site. In the spam campaign that we detected and blocked, adversaries were instead linking users to "hidden" web pages (pages located within the site's directory structure) on these sites instead of linking users to pages containing an iframe. 
+
+
+Sample Spam Message
+
+
+
+
+
+
+Process
+We are always looking at exploit kit behavior to find the techniques the adversaries are using to determine if there are ways we can detect and block it. While doing this research yesterday we noticed something a little odd. We were looking at Angler infection runs and stumbled across what looked like a new gate.
+
+blog[.]silverline[.]com/wp-content/uploads/2014/08/8F1A1B774013446CD626408FEA44482B/order/order_details.html
+
+It isn't uncommon to see redirection to Angler  from compromised wordpress sites, but it's usually not using its own sub page.  The normal behavior is for iframes to be dropped in to random pages on the website. The reason you use the iframes embedded in pages is to ensure that users actually browse the page. This technique pointed to users being driven to the specific URL via other means.  
+
+We began digging around in various data sources and found something surprising: spam redirection. While searching we stumbled on a link to the URL being presented via an email message, a sample of which is show above.
+
+The basic structure of the message begins with a "Thank you for your order" and asks you to visit a site to get the details.  The campaign itself only lasted a couple of hours and used a wide variety of company names including well known sites such as  Amazon, AT&T, Comcast, and General Electric, as well as a mix of a bunch of lesser known or non-existent companies.  We found a total of ~900 different companies used in the campaign, all of which are listed in the IOC section.
+
+The link was actually to a series of compromised wordpress sites. Using different folder structure but all of them ending in /order/order_details.html. There were a total of 22 different wordpress sites leveraged to host the activity, a full list of which are found below:
+
+Wordpress Gates:
+
+
+http://aquiladoro[.]eu/demo/wp-content/uploads/2016/03/qhcka/order/order_details[.]html
+
+http://blog[.]silverline[.]com/wp-content/uploads/2014/08/8F1A1B774013446CD626408FEA44482B/order/order_details[.]html
+
+http://digitalism[.]de/wp-content/uploads/2015/10/dkto3w/order/order_details[.]html
+
+http://digitero[.]pl/wp-content/plugins/contact-form-7/admin/css/order/order_details[.]html
+
+http://dottactical[.]pl/administrator/templates/bluestork/images/system/order/order_details[.]html
+
+http://duancanhobason[.]com/wp-includes/js/tinymce/plugins/hr/order/order_details[.]html
+
+http://fatiteke[.]ru/images/stories/demo/general/ext/order/order_details[.]html
+
+http://forexlearns[.]com/wp-admin/css/colors/coffee/014EEBC06CD57E0EF9C5FE5B56A623E8/order/order_details[.]html
+
+http://genialgest[.]it/administrator/tmp/install_568ac8c8e3ac3/DirectPHP_v1[.]56/DirectPHP_v1[.]56/order/order_details[.]html
+
+http://gestionalesweethome[.]it/images/stories/virtuemart/category/resized/order/order_details[.]html
+
+http://hossanashipping[.]com/images/cg-bn/order/order_details[.]html
+
+http://huangpai88[.]com/update/20111209/base/admin/js/order/order_details[.]html
+
+http://klasplan[.]com/webmail/logs/migjc/templates/lro5bi/order/order_details[.]html
+
+http://ohle-bau[.]de/administrator/components/com_admin/views/profile/tmpl/order/order_details[.]html
+
+http://petitshop[.]by/wp-content/themes/multi-color/colors/blue/order/order_details[.]html
+
+http://pijar[.]co[.]id/wp-content/uploads/wysija/bookmarks/medium/11/order/order_details[.]html
+
+http://plawyer[.]com/include/FCKeditor/editor/dialog/fck_link/order/order_details[.]html
+
+http://salonjar[.]ru/wp-content/themes/x/buddypress/activity/order/order_details[.]html
+
+http://salonmanifest[.]ro/wp-includes/js/tinymce/plugins/wpdialogs/order/order_details[.]html
+
+http://solom[.]it/tmp/install_53eb25ed3533b/chronoforums/locales/en_gb/order/order_details[.]html
+
+http://strategies-sociales[.]com/cache/images/tpnose/templates/lro5bi/order/order_details[.]html
+
+http://universalmen[.]es/wp-content/themes/destro/images/grun/order/order_details[.]html
+
+http://women-peace[.]net/wp-content/ngg/modules/photocrati-nextgen_basic_gallery/static/order/order_details[.]html
+
+When doing additional research on the domains in OpenDNS, we found this activity may have been ongoing periodically for the last couple of months.  Below is a screen capture showing the most recent spike, but as you can see there are other spikes present over the last couple of months.
+
+
+
+
+Infection
+If the user does click the URL and goes to the page they are greeted with a gif presenting a "Please wait…" spinner animation to the user.
+
+
+
+Here is how the infection actually occurs. When the user clicks the link from the email above they are presented with the following code:
+
+
+The first GET request is the gif that is shown above. The second link at the hard coded IP address of subfolder /facebookapi is the actual gate to Angler and will return a 302 cushion similar to the following:
+
+
+This syntax should look familiar, an Angler landing page. However, the adversaries did not want the landing page to be served consistently so during our analysis we found an interesting 302 to a major company's website instead:
+
+
+The GET request is for an Angler landing page, but what is presented to the user is a 302 directing them to att.com. This could be done to help minimize the visibility of the exploit kit and is something we will see commonly with gates, just not as commonly with the actual exploit kit landing page. Additionally we only saw a single Angler server related to this campaign, a departure from normal Angler activity where a cluster of IP's at a provider are usually leveraged.
+
+IOC
+Wordpress Sites:
+aquiladoro.eu
+blog.silverline.com
+digitalism.de
+digitero.pl
+dottactical.pl
+duancanhobason.com
+fatiteke.ru
+forexlearns.com
+genialgest.it
+gestionalesweethome.it
+hossanashipping.com
+huangpai88.com
+klasplan.com
+ohle-bau.de
+petitshop.by
+pijar.co.id
+plawyer.com
+salonjar.ru
+salonmanifest.ro
+solom.it
+strategies-sociales.com
+universalmen.es
+women-peace.net
+
+Gate Server:
+207.244.95.41
+
+Angler Proxy Server:
+212.227.162.50
+
+Email IOC's:
+Subject: Your Online Order was Successfully Submitted. Thank You!
+Company Names
+
+Payload Hash:
+da6641030988baf5b0b0352e4c4fc8e1a6b08def527e1fca97518d305c5adcec
+
+Conclusion
+Exploit Kits are compromising users in alarming numbers and their reach continues to grow. First, it was compromised websites and malicious ads. Now it's a combination of spam emails with compromised WordPress sites being used as a gate into the malicious activity. Exploit kit users and authors are going to continue to push the envelope and evolve to compromise as many users as possible. With ransomware being a major way of generating revenue, the competition to compromise vulnerable users is going to continue to increase. That's why we pay attention to these threats, release IOCs, and develop protections not only for our user base but the community in general.
+
+As long as adversaries are compromising users via exploit kits, we will remain diligent in finding the activity and stopping it in as many different ways as possible.
+
+Coverage
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails sent by threat actors as part of their campaign.
+
+

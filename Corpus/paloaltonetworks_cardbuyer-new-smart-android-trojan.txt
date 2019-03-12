@@ -1,0 +1,56 @@
+Cardbuyer: New Smart Android Trojan Defeats Multi-factor Verification and Steals Prepaid Game Cards
+
+On April 21st our WildFire analysis cloud detected a new Android Trojan, which is currently completely undetected in VirusTotal and uses a new combination of tactics to make money for the author. Based on the state of the code and the limited distribution we believe we may have detected this malware during a testing phase, before the attacker released it into the wild through an app store or other means. We’ve named the Trojan Cardbuyer because of the way it converts an infection into cash for the author.
+Cardbuyer is much “smarter” compared to the existing Android malware families that we have ever seen. Specifically, this malware sample can solve CAPTCHA challenges, emulate user’s behaviors, parse SMS’s content from different vendors, and then automatically reply the confirmation message accordingly. Code analysis shows that this malware sample can defeat the existing multi-factor verification procedures of many popular game platforms or online payment systems, and impersonate the smartphone user in making the purchase.
+
+While some Android Trojans send premium SMS messages or steal banking credentials, Cardbuyer specifically targets Chinese video games and mobile platforms by purchasing pre-paid and top-up cards. The attacker can then convert these cards into cash, while the victim’s mobile account is charged for the purchase. It proves again that the SMS channel is insecure for user authentication in online purchase confirmation.
+Cardbuyer’s code allows it to target any of the following services and evade their SMS-based authentication mechanisms:
+
+The online purchase platform by China Mobile(中国移动通信账户支付)
+The Wo Store of China Unicom(中国联通沃商店)
+The Huajian Networks of China Unicom(联通华建网络)
+Upay online recharge service of China Unicom
+Platform of China Telecom(中国电信)
+The Giant Interactive(巨人网络)
+The SNDA( 盛大)
+The Perfect World(完美世界)
+Y Coin by Duowan YY(多玩Y币)
+Debit card of 91 Purchase Platform(91充值平台)
+The V Coin(V币)
+Any other purchase platforms which send SMS that contain one of the following words “支付”(payment), “卡号”( card number), “密码”( password) or “客服” (customer).
+
+The vulnerability that Cardbuyer exploits is that many services in China rely on sending and receiving SMS messages to authorize mobile purchases. This assumes that the mobile phone making the purchase is not only in the possession of the owner, but also that malware is not intercepting their messages. The service providers have recognized that this is a problem and placed multiple hurdles along the way, but Cardbuyer jumps over each of them.
+Cardbuyer in Action
+The sample of Cardbuyer we detected this week is disguised as “sexy” video application. The name is看片神器 which translates to “a super tool for watching videos” and the icon is a provocative photo. The Trojan was detected by WildFire when a user at a university in China downloaded an Android APK file from fdown.u.qiniudn.com, a Chinese cloud-based file storage service.
+After installation, Cardbuyer will be launched automatically by system events and run stealthily in the background. Once launched, it contacts a command and control server hosted in China using an HTTP GET request to the following website to register the infection with the attacker: http://14.17.95.205:21910/my/service.php.
+Next, Cardbuyer begins to methodically jump each of the hurdles put in place by tianxiafu.cn, a third party gateway for purchasing game cards for Perfect World, one of the biggest digital game vendors in China. The first hurdle to pass is a CAPTCHA, which is intended to prevent machines from ever attempting to log into the tianxiafu.cn website. It asks users to look at some slightly skewed numbers (see below) and type them into a box. To add context for the following webpage (Figure 1), written in Chinese: the user is asked to recognize the CAPTCHA image and reply the recognized verification code back to the vendor in order to continue the purchase procedure.
+
+Figure 1. The payment page of tianxiafu.cn
+Cardbuyer evades this CAPTCHA by downloading the CAPTCHA image (Figure 2) and recognizing the image using a Chinese cloud based CAPTCHA solving service named UUDama. UUDama uses a combination of machines and humans to quickly take CAPTCHA images submitted by Cardbuyer (or anyone else who will pay) and turn them into the expected text within 60 seconds. We are even able to capture the username “liweixw” and its password for malware to login into the UUDAMA website, (Figure 3).
+
+Figure 2. Cardbuyer retrieve the CAPTCHA image from webpage and get recognition result from UUDama
+
+Figure 3. Cardbuyer will login into UUDAMA website with attacker’s account
+With the correct numbers in hand, Cardbuyer then assembles a POST request containing the necessary details to initiate a purchase from the infected mobile phone. This includes the phones mobile number, as well as the payment method, which is always to charge the user’s China Mobile account. To avoid having this request rejected by the server, the Trojan alters its user-agent string to appear as Internet Explorer 9 running on Windows 7.
+
+Figure 4. Cardbuyer input user’s phone number and choose to pay by SMS
+At this point, Tianxiafu has not yet authenticated that the person making the purchase actually owns the phone in question. To do that, it generates a one-time-code and asks the user to send an SMS message containing it to a specific phone number.
+
+Figure 5. The payment platform asks user to send a one-time-code to a specific phone service number (Translation of message in the figure: “Information submitted successfully! Please use the phone number you submitted 139********” to send a command code 001942415 to 1065800886172, and follow the instructions shown in replied SMS message to confirm the payment”, the 139******** is the current victim user’s phone number)
+To pass this hurdle, Cardbuyer uses a regular expression to parse the numbers out of the websites HTML and sends the message using Android’s built-in SMS API.
+
+Figure 6. Cardbuyer parses command code and phone number from web page
+The complicated user verification procedure continues. After receiving the command code, the vendor will send a SMS verification message to the user. The user is required to follow instructions in described in this SMS’s content to finally confirm the purchase.
+To defeat the SMS based verification, Cardbuyer registers a BroadcastReceiver to receive all incoming SMS, and registers a ContentObserver to monitor any change of the SMS’s inbox. When a SMS arrives to the infected device, Cardbuyer will intercept and parse it. With conditions, this SMS message may be uploaded to the attack through the C&C communication or deleted (Figure 7).
+
+Figure 7. SMS from targeted vendors will be intercepted and uploaded to Cardbuyer’s C&C server
+More interesting, the Cardbuyer is “intelligent” and capable of parsing SMS’s content from different vendors, and take actions in a more intelligent way than any existing Android Trojans found. In Figure 8, we show the patterns for different types of SMS contents. For example, for any SMS related to the Perfect World, it will try to match its content with two pre-defined regular expressions (Figure 8), search for numbers in it by specified format, and sent SMS of some matched content to matched phone number (Figure 9).
+
+Figure 8. Matching SMS content with different format and extract information accordingly
+
+Figure 9. The Cardbuyer sends replied SMS to complete the payment verification procedure
+At this point the Trojan has verified ownership of the phone and the service sends an SMS message to the device containing a code that can be redeemed for credit with vendors like Perfect World. From here the attacker can sell the code to someone else for cash, or redeem it directly.
+While in the example here Cardbuyer targeted the Tianxiafu service, all of the services listed above are targets already pre-defined in its source code. Any service that uses SMS for authentication of information or proof that a user is authorizing a charge is vulnerable to Trojan attacks. Palo Alto Networks has already released malware signatures for the file, and more details on the sample are available in the ThreatVault.
+Join us Wednesday, April 30 at 3 p.m. EDT, for a new webinar, “Need to Defeat APTs? Tony Sager Explains Where We’re At With Live Threat Detection Automation.” 
+ 
+

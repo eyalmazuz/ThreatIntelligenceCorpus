@@ -1,0 +1,61 @@
+
+Forensic Data Carving using Foremost
+
+Foremost is a program that is used to carve data from disk image files, it is an extremely useful tool and very easy to use.
+For the purpose of this article we have used an Ubuntu disk image file and the process has been repeated twice. The purpose of doing so was to see if Foremost can carve data out of incomplete disk images as well. We have used Kali Linux but if you want you can install Foremost on pretty much any distro of Linux.
+Here’s how it was done:
+Navigate to the Applications menu in Kali, Forensics is option 11. The fifth option from top in the Forensics menu is Foremost. Click on it and let’s get to carving some data!!
+
+Foremost starts and shows you the options you have at your disposal.
+
+In order to keep things simple, you first want to navigate to the Desktop using “cd Desktop”.
+Next, make a folder on the desktop by the name of “recov”. This isn’t a mandatory step, it just makes things easier to access by making a new folder where the carved data will be stored.
+
+We will be dealing with the disk image of a flash drive partition, so let’s make one using the “dd” command. The dd command can be used to copy files and with the option of converting the data format in the process.
+In the interest of thoroughness we have copied .docx, .jpeg, .png, .zip, .pdf and .avi files onto the partition from which we will be making our disk image.
+
+Now let’s make a disk image.
+In a new terminal window, type the following “fdisk –l | grep /dev/”. This command will show you the disk partitions available to you without any clutter.
+
+The partition we are concerned with is /dev/sbd2, this was specially allocated 10 MB of space so that the imaging process is quick.
+The command to create the disk image is “dd if=/dev/sdb2 of=disk.img”. Here, “dd” is the utility we are using, “if=” is to denote the input destination and “of=” is to denote the output destination and name of the image file we are creating.
+
+We have not specified any output destination, but, just the name for the image file. The image file will be created in the Home directory by default. Copy the disk image file from here and place it on the desktop.
+
+Let’s navigate back to the terminal where we have Foremost running and start the file carving process.
+This disk image file will be carved for .jpeg, .png, .zip, .pdf and .avi  file formats. We will not be instructing Foremost to carve the .docx but, since one exists in the .zip we have placed inside the disk image, it will do so automatically.
+Type the following “foremost -t jpeg,png,zip,pdf,avi -i disk.img -o recov –v”.
+To break this down “-t” is setting the file types we want to carve out of the disk image, here those are .jpeg and .png.
+“-i” is specifying the input file, the “disk.img” that is placed on the desktop.
+“-o” is telling Foremost where we want the carved files to be stored, for that we have the “recov” folder on the desktop that we made earlier.
+“-v” is to tell Foremost to log all the messages that appear on screen as the file is being carved into a text file in the output folder (recov) as an audit report.
+
+That’s all it takes for Foremost to start digging into the disk image. The process looks like this.
+
+Once Foremost is done carving the disk image, it shows you the result: that’s is, how many of which file types have been carved. All it took was a second, to get the job done.
+
+Now open the output (recov) folder and you will see an audit report and six folders which will be named by the file types we invoked Foremost to carve for us.
+
+First, the audit report. It shows us the particulars of the scan, which file types were carved, from which image file, the size of the image file, where it was located, where the output folder was located, etc. Let’s have a look.
+
+The end of the report contains shows the total files extracted with more particulars.
+
+We will open one file from the jpg folder to see what we have.
+
+One from the png folder.
+
+Inside the docx folder.
+
+Inside the pdf folder.
+
+Now the avi folder
+
+And finally the zip folder.
+
+As you can see, Foremost was successfully able to carve files out of the disk image file and give us the results. Let’s put it to the test.
+This a very interesting tool and its simplicity is what makes it stand out.
+The only issue I could see with this is that the file names are not recovered, which can make the search process very tedious unless the option of automation and a frame of reference are available.
+That being said, in forensics, just being able recover the files without opening or extracting disk image itself is a huge advantage, the reason for saying so is that, if you do extract or open the disk image you never know what might be waiting for you inside, this way you have more control over the entire investigation process. Enjoy using this tool.
+Have fun and stay ethical.
+About The Author
+Abhimanyu Dev is a Certified Ethical Hacker, penetration tester, information security analyst and researcher. Connect with him here

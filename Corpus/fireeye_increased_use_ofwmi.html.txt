@@ -1,0 +1,53 @@
+Increased Use of WMI for Environment Detection and Evasion
+Throughout the past few months, FireEye Labs has observed an increased use of Windows Management Instrumentation (WMI) queries for environment detection and evasion of dynamic analysis and virtualization engines. WMI provides high-level interaction with Windows objects using C/C++, VBScript, JScript, C#, and more in the form of WMI Query Language (WQL). Last year, FireEye published a white paper detailing an in-depth analysis of WMI infrastructure and potential abuse of WMI services by malware writers.
+In this post we will present an analysis of some samples found in the wild in 2016. For the purposes of this blog post, we will focus on evasion only, ignoring other malicious aspects of the samples.
+Anti-virus can be detected by a WMI query as they are registered in AntiVirusProduct class under root\SecurityCenter2 (root\SecurityCenter before Vista) namespace. We analyzed a sample that checked the operating system from Win32_OperatingSystem class under root\cimv2 namespace first and if the OS version was above 6 (Windows Vista and above), then anti-virus check was performed. Figure 1 shows the VBScript code of anti-virus check.
+
+Figure 1: Anti-virus product checks in VBScript code using WMI query
+Anti-virus and other user information is sent to the server for fetching the right payload or performing evasion, as shown in Figure 2.
+
+Figure 2: Anti-virus and other info being sent to the server and actions against response
+One of the samples was found to monitor many security products using different techniques, but most popular virtualization software (such as VMware and VirtualBox) were being detected using WMI queries. It retrieves BIOS information from Win32_BIOS class under root\cimv2 namespace. Specific fields/columns can also be retrieved similar to an SQL query. The following queries were found in this sample binary (Figure 3).
+
+Figure 3: Virtualization software checks by the malware using WMI queries
+The query yields the following result when executed in PowerShell in Bochs Emulator, as shown in Figure 4.
+
+Figure 4: Query result in PowerShell in Bochs Emulator
+Figure 5 shows the full scale environment detection being performed by this sample. Other services may be checked by enumerating the running processes or using Windows Registry.
+
+Figure 5: Security products being monitored by the malware
+Another sample used Win32_ComputerSystem class for virtual machines detection, as show in Figure 6.
+
+Figure 6: ComputerSystem WMI query found in the sample
+The result of the query (Figure 9) has ’Model’ field (Figure 7), which holds the virtual machine information in case of VMware, VirtualBox and Virtual Machine.
+
+Figure 7: Model column retrieval
+When any of the three strings matched with ‘Model’ field output, virtualization gets detected by matching the stored value with the one created in the process, as evident in Figure 8.
+
+Figure 8: VirtualBox, VMware and Virtual Machine checks
+When the aforementioned query was executed in PowerShell in VMware workstation 12.0, it gave the result illustrated in Figure 9.
+
+Figure 9: Query result in PowerShell 2.0
+Another sample has used Win32_DiskDrive to detect Virtual Box (Figure 10), Virtual Hard disk (Figure 11) and VMware (Figure 12). When any of the virtual machines get detected, the process terminates itself, evading the behavioral analysis.
+
+Figure 10: VirtualBox detection
+
+Figure 11: Virtual Hard disk detection
+
+Figure 12: VMware detection
+We analyzed a sample that not only checked a specific process from Win32_Process class under namespace root\cimv2, but also killed it. Immunity debugger, a well-known debugger, is terminated and its folder is deleted after changing permissions using Windows Script Host shell, as evident in the code in Figure 13.
+
+Figure 13: Immunity debugger being terminated and folder being deleted
+Moreover, anti-virus vendor Kingsoft Corporation’s processes are also forced to stop execution, meaning its anti-virus processes are being killed. The code is shown in Figure 14. Usually samples use CreateToolHelp32Snapshot, Process32First and Process32Next APIs for finding a process, but here it is evident that one WMI query comes in handy to replace tens of lines of code.
+
+Figure 14: Code designed to kill processes associated with Kingsoft (an anti-virus product company)
+Another sample, an MS Office key generator, checked Windows Office Software Protection Service through WMI queries (Figure 15). This service enables software vendors to enforce secure licensing on the client machines. If this service is not running, it is started as shown in Figure 16. Once the Office Software Protection Service object is retrieved, it is then used to install MS Office product key.
+
+Figure 15: OfficeSoftwareProtectionService check using WMI query
+
+Figure 16: Code to start/restart OfficeSoftwareProtectionService
+During analysis and research, it has been observed that WMI queries, shown in Figure 17, can be used for environment detection and (with more details) for evasion as well. There may be more queries that are not listed here, but we suggest security researchers should at least monitor these queries for evaluating the samples.
+
+Figure 17: Possible WMI queries for environment detection/evasion
+Malware writers are always in search of new ways to evade analysis frameworks and sandboxes in order to make the payload execution successful in their targeted environments and platforms. WMI provides a simple way of environment detection that can be used to evade sandboxes and dynamic analysis tools, which seems to be underestimated by reverse engineers and others in the security community. Mitigation Steps should be taken to monitor WMI queries that could lead to possible evasion.       
+We would like to thank Matthew Dunwoody for his valuable input. Moreover, we are also grateful to Muhammad Umer Khan and Imran Khan for their continuous support in providing relevant sample sets and validation effort.

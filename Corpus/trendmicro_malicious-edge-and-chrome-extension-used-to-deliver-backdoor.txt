@@ -1,0 +1,55 @@
+Malicious Edge and Chrome Extension Used to Deliver Backdoor
+by Jaromir Horejsi, Joseph C. Chen, and Loseway Lu
+We noticed a series of testing submissions in VirusTotal that apparently came from the same group of malware developers in Moldova, at least based on the filenames and the submissions’ source. It appears they are working on a new malware that — based on how they were coded — is most likely intended to spread through spam emails embedded with malicious attachments. Trend Micro detects this malware as JS_DLOADR and W2KM_DLOADR.
+The downloader malware’s payloads (TROJ_SPYSIVIT.A and JAVA_ SPYSIVIT.A) are what make it notable. It delivers a version of the VisIT remote administration tool, which is used to hijack the infected system. More importantly, it also delivers a malicious extension that could serve as a backdoor, stealing information keyed in on browsers.
+Abusing legitimate remote access tools (and stealing its configurations) is not new. This was observed in spam campaigns carrying the TeamSpy malware that abuses TeamViewer to take over affected systems remotely. Nevertheless, the techniques it employs still make it a credible threat — such as the abuse of legitimate application programming interfaces (APIs) and open-source tools such as Chrome WebDriver and Microsoft WebDriver.
+
+Figure 1: The malware’s infection chain
+Delivery via malicious macro
+When correlating the variety of malicious documents embedded with DLOADR, we observed certain peculiarities in how it is delivered. The way the malware is named, for instance, indicates it is still under development. Some of the names also suggest the social engineering the documents use: TEST1234.docm, Employment Application(2).dotm, tewst123.dotm, test2.docm, 123.doc, test1111.docm, t1.docm, INVOICE.docm, Invoice_Example.dotm, Doc1.docm, Fake Resume.doc, wwww.doc, and zzzzz.dot among others.
+The documents are embedded with malicious macro, some of which are obfuscated. They all have the same function — dropping and executing a JavaScript file, which downloads a ZIP archive, unpacks it, and executes its contents. We saw two archives with two kinds of payloads: one based on NodeJS, and another based on Java.
+ 
+Figure 2. Screenshots of the malware-embedded documents, posing as an invoice (top) and another with a missive urging would-be victims to “enable editing” (bottom)
+
+Figure 3. Macro code of one of the malicious documents
+NodeJS App payload
+The NodeJS ZIP archive contains several files. The macro will first execute node.exe install.js, which executes an installation script that checks if the user has administrator rights and the groups to which the user belongs. It then calls the file install.vbs, which in turn calls install_do.js. If the process has elevated privileges, it will add new firewall rules to enable traffic between the remote access tool it will install. It establishes persistence by adding shortcut (LNK) files in the Startup folder. install_do.js will also install a browser extension to the system’s browser extension directory and creates a timestamp.dat file. It indicates the timestamp value of the time it was installed; this is later used in the attack chain as a unique victim identifier.
+The lnk_service.vbs (shown in Figure 4) is then started, which will run service.js — a file with only one line of code responsible for loading a native NodeJS module named app via node-bindings, an open-source helper module.
+
+
+
+Figure 4. Contents of the NodeJS archive (top); code snapshot showing firewall rules being added (center); and a native NodeJS extension being loaded (bottom)
+How the native NodeJS extension leads to remote access tool
+The extension located in build/app.node kills currently opened web browsers via taskkill /IM <filename> then executes a certain VisIT 0.63 application, which is actually a legitimate and signed remote access tool.
+Similar to TeamViewer, VisIT displays a graphical user interface (GUI) with a machine identifier and password.  This information needs to be passed to the remote user to be able to connect to the current machine. The malicious extension executes this client, but no GUI window is displayed because the extension contains a piece of code that scans for the “TFMain” window. If found, the ShowWindow application programming interface (API) with the parameter SW_HIDE will be abused to hide the client window.
+Figure 5 shows VisIT’s application window and a list of other corresponding windows. Notice the names of some windows: TPanel with TMaskEdit, in particular, contain the machine ID, while TMemo contains the password.
+
+Figure 5. Structure of the windows within the VisIT remote access tool
+Figure 6 shows the code responsible for hiding the TFMain window and reading the machine number and password. Later, the code identifies the desired window by abusing the FindWindowEx API. It then reads the contents of the field by sending WM_GETTEXT messages. These two values are saved into a file named vnc_access.dat.
+Afterward, app.node will execute the vnc_access.js script, which uploads the stolen configuration of the remote access tool to the command-and-control (C&C) server. Attackers will now see the machine ID and password, allowing them to connect to the victim’s machine remotely and gain full control over it.
+
+
+Figure 6. The remote access tool’s configuration being obtained (top) and uploaded to the C&C server (bottom)
+How the JavaApp payload leads to remote access tool
+The Java-based payload works similarly with the NodeJS version but has the following execution sequence:
+Malicious browser extension as a backdoor
+When analyzing the NodeJS and Java modules, we saw that it also deploys malicious browser extensions for both Google Chrome and Microsoft Edge. Once the malicious NodeJS or Java process detects that the system has an open Chrome or Edge browser, it will kill the original browser’s process and create another one, loading the malicious extension in the process. On Chrome, the use of command-line arguments and Selenium disable security checks to load the malicious extension.
+We found that the malicious extension was for Chrome but is also compatible with Edge. This compatibility was a feature introduced by Microsoft last year to help developers port their Chrome extensions to Edge. Selenium is also used to load the extension into Edge.
+The malicious extension was designed as a backdoor. Whenever a victim opens a webpage, the malicious extension will send the website URL and HTTP referrer information to the C&C server. The C&C server can then return any malicious code, which will then be executed by the extension on the webpage. During our tests, we did not see any code delivered from the C&C server.
+The extension can also sniff certain actions including clicking buttons, selecting items from a drop-down list, and typing any value into a form inside the webpage. The extension will immediately send this information to the C&C server. We’ve verified this behavior on both Chrome and Edge.
+
+
+
+Figure 7. A new Chrome process being created to load the malicious extension (top); the malicious Chrome extension ported on Edge (center); and how the extension sniffs user actions (bottom)
+C&C communication
+Figure 8 shows the C&C communication between an infected machine and the C&C server. It sends the sniffed data in POST request with the following unencrypted parameters:
+
+Figure 8. Traffic between an infected machine and the C&C server
+As shown in Figure 7, /api/input/ is the URL path of C&C server where all the user inputs are reported. Figure 8 shows what happens when a victim, using an infected system, searches in Google. name is the ID of the HTML element where user enters the query, while value is the text entered in the input field. The highlighted text in Figure 8 shows the C&C communication after the victim enters inputString in the input box on Google’s website.
+
+Figure 9. Traffic between infected machine and C&C after the victim enters inputString
+Indeed, given the nature of this kind of malware and the potential impact of its payloads, organizations and end-users should follow best practices to defend against email-borne threats. They should also enable the security settings of Microsoft Word are enabled (i.e., restricting or disabling the use of macros).
+We’ve disclosed our findings to Google and Microsoft, and worked with them to ensure that the malicious extension does not affect the security of Chrome and Edge. The indicators of compromise (IoCs), and their corresponding Trend Micro detections, are in this appendix.
+Trend Micro Solutions
+Given how the downloader malware is designed to use email as an entry point, businesses and users need to secure the email gateway to defend against this kind of threat. Trend Micro™ Hosted Email Security is a no-maintenance cloud solution that delivers continuously updated protection to stop spam, malware, spear phishing, ransomware, and advanced targeted attacks before they reach the network.  Trend Micro™ Deep Discovery™ Email Inspector and InterScan™ Web Security prevent malware from ever reaching end users. At the endpoint level, Trend Micro™ Smart Protection Suites, deliver several capabilities that minimize the threat’s impact.
+These solutions are powered by the Trend Micro XGen™ security, which provides a cross-generational blend of threat defense techniques against a full range of threats for data centers, cloud environments, networks, and endpoints. It features high-fidelity machine learning to secure the gateway and endpoint data and applications, and protects physical, virtual, and cloud workloads.

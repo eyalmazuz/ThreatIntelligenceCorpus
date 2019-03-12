@@ -1,0 +1,18 @@
+
+					A security expert found a 0-Day flaw in NETGEAR WNR2000 Routers					
+The security expert Pedro Ribeiro discovered vulnerabilities in NETGEAR WNR2000 Routers, including a zero-day flaw, that could be exploited remotely to take full control of the device if remote administration is enabled.
+Ribeiro has already discovered around 10,000 vulnerable devices with the remote admin enabled that are affected by an RCE flaw. According to the expert, the overall number of affected devices could be much greater.
+The expert decided to publish the advisory and to release the exploit code because NETGEAR did not respond his emails.
+The vulnerabilities were found in NETGEAR WNR2000v5, which doesn’t have remote administration enabled by default on the latest firmware. Remote attacks against WNR2000v5 routers would be possible if a user had manually enabled remote administration.
+The expert explained that the NETGEAR WNR2000 router allows an administrator to perform sensitive actions by invoking the CGI apply.cgi URL on the web server on the device. The URL is exposed by the embedded web server uhttpd . While reverse engineering
+Ribeiro reverse engineering the uhttpd discovered that another function, the apply_noauth.cgi, allows an unauthenticated user to perform sensitive actions on the device. It could be used to reboot the router or to reset factory settings.
+Below the code to reboot the router:
+
+The researcher also discovered that it is possible to invoke other functions (i.e. Changing Internet WLAN settings or retrieving the admin password) by sending a “timestamp” variable attached to the URL.
+“Some of the functions, such as rebooting the router, can be exploited straight away by an unauthenticated attacker. Other functions, such as changing Internet, WLAN settings or retrieving the administrative password, require the attacker to send a “timestamp” variable attached to the URL. This timestamp is generated every time the target page is accessed and functions as a sort of anti-CSRF token.” states the advisory published by Ribeiro. “The timestamp generating function was reverse engineered and due to incorrect use of random number generation (details below) it is possible to identify the token in less than 1000 attempts with no other previous knowledge.”
+The expert explained that it is easy for an attacker in the same LAN to obtain a root shell on the router by exploiting an information leakage vulnerability to recover the administrator password and then use it to enable telnet functionality in the router.
+Finally, the researcher found a stack buffer overflow that could be exploited by an unauthenticated attacker to take full control over the device and execute code remotely. The exploitation of this flaw leverages the apply_noauth.cgi issue and the timestamp identifying attack.
+“Finally, a stack buffer overflow was also discovered, which combined with the apply_noauth.cgi vulnerability and the timestamp identifying attack allows an unauthenticated attacker to take full control of the device and execute code remotely. This vulnerability allows the attacker to execute code in the LAN and in the WAN.” added Riberio.
+Recently experts found NETGEAR R7000, R6400, and R8000 routers affected by a security flaw that could be exploited by hackers to gain root access on the device and remotely run code.
+Pierluigi Paganini
+(Security Affairs – NETGEAR WNR2000, hacking)

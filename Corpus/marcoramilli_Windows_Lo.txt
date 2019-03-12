@@ -1,0 +1,52 @@
+
+Windows Loader and ASLR on Binaries
+
+
+
+
+Hi Folks, this morning I'd like to share a nice resource for analyzing ASLR on Windows Binaries. So far if you'd like to know if a given binary is currently using ASLR or not, you need to run it. You could run it through your favorite debugger (such as IDA or Olly ...) or by itself and later append to the run process an analyzer. But, obviously windows loader needs to know it before running the desired binary. So how does it work ? How does the loader know about ASLR on a given binary ?  If you are an avid reader of this blog you might had a chance to know answers to these questions ( here ). So what new about that ?  I've never found a static tool for that.
+
+
+Summing up for newer readers, Widows Loader looks for a specific FLAG into the PE Header. In the PEHeader, specifically in the IMAGE_OPTIONAL_HEADER section there is a flag called DLLCharacteristics that defines many features for the executable during its loading time, 1 of them being ASLR.  If you take a closer look at the definition (you can find definition here) you might see the definition for DEP (NX bit) and for SEH too. 
+
+
+
+
+
+
+
+Definition for IMAGE_OPTIONAL_HEADER, PEHEader section defining optional binaries features.
+
+
+
+Myne-us wrote a simple ruby script which investigates through given binaries helping you in figuring out what "optional features" have been enabled on the passed binary. You can download the script here.  The script firstly loads the binary making the opportune controls over the PE format and later moves on the known offset checking bytes and filling on a main internal structure
+
+
+
+
+
+Checking and moving to desired offset
+
+
+
+
+
+
+
+
+Internal Structure
+
+
+
+Personally I do like this simple script, it has been written in modular and very easy way. Pretty quick to upgrade with new features. I really would like to see a more complete static analysis from it, lets see if it will be uploaded ! ;) In the meantime it could be very useful to make static analysis over multiple files. Let assume you want to know how many binaries have ASLR or DEP enabled on your system, with current tools you need to open every binary dynamically and perform dinamic analysis. It would take forever. By using this simple script you might just cycle over every PEHeader and save output on a .text file ready to be analyzed from your favorite spreadsheet. Good Job !
+
+
+
+
+
+
+
+
+
+
+

@@ -1,0 +1,51 @@
+
+Hack the Trollcave VM (Boot to Root)
+
+Hello friends! Today we are going to take another CTF challenge known as Trollcave. The credit for making this vm machine goes to “David Yates” and it is another boot to root challenge in which our goal is to gain root access and capture the flag to complete the challenge. You can download this VM from here.
+Penetrating Methodology
+Let’s Breach!!!
+Let’s start with getting to know the IP of VM (Here, I have it at 192.168.1.124 but you will have to find your own)
+netdiscover
+
+Now let’s move towards enumeration in context to identify running services and open of victim’s machine by using the most popular tool Nmap.
+Awesome!! Nmap has dumped the details of services running on open port 22 and 80.
+
+Knowing port 80 is open in victim’s network I preferred to explore his IP in a browser. At first glance, we saw three tabs Home, login and Register.
+
+Then we scroll down the page and look at Ruby gem and found that this site is based on Ruby on rails. And on the right side we saw two categories i.e. 0nline users and Newest users, when we click on “xer” a new web page gets opened.
+
+From its URL we perceived that user xer has user ID 17 and hence there must be any user between user ID 1 to 17.
+
+So we manually replace id 17 from id 1 and found King’s page which was for superadmin account.
+
+At its home page we read the post password reset by coderguy, represented by ruby gem for rail password reset and from Google we found default directory for password reset for reset. So we explored http://192.168.1.124/password_resets/new  and obtained password reset form.  Very first we try to reset superadmin password but unfortunately get failed, BUT successfully got the link for xer password reset.
+
+Yeah!! It was Pretty Good to see a link for xer password reset, then we have copied that link.  
+
+ 
+And past the copied link in URL, then swap name=xer from king as given below, later entered a new password for superadmin (king), it is known as IDOR.
+Well!!! On executing URL; it gives a message “password reset successfully” and then we logged in superadmin account.
+
+Yippee!!! Finally, we logged in as superadmin and access admin console, we saw many tabs and apparently click on file manager.
+
+ 
+Here we saw enable file upload option, and we enabled it so that we can upload any backdoor whenever we need to upload that.
+
+Thus we start from uploading PHP backdoor but failed to upload, similarly, we tried so many backdoors such as ruby, C shell and many more but get failed each time. After so many attempts we successfully upload ssh RSA file.
+To do so follow the below steps:
+
+ Here we have generated ssh RSA key file by the name of rails without a password and transferred rails.pub into authorized_keys and gave permission 600 for proper authentication.
+Then upload the authorized_keys and add ../../../../../../home/rails/.ssh/authorized_keys path manually.
+
+So after uploading SSH key, it was time to connect target’s machine through ssh key.
+Awesome!! From below image, you can observe the target machine’s tty shell.
+
+Then we execute lsb_release -a command to know the version of the kernel and found 16.04. After then with the help of searchsploit found kernel exploit 44298.c for local privilege escalation.
+
+At that moment we copied this exploit on Desktop and compiled it, now it was impossible to transfer the exploit using simple complied file, therefore, we need to encode it file into base64. You use below command to follow same steps.
+
+We copied the base64 encoded value then movie into target’s terminal where we created an empty file exploit.base64 with the help of nano and past above copied encode code.
+Far ahead decoded it in a new file as rootshell and give all permission to the decoded file. At last, we run the rootshell file to get root privilege.
+
+BINGO!!!! We got the root flag!!!
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,59 @@
+
+Vulnerability Spotlight: FreeRDP Multiple Vulnerabilities 
+
+
+Vulnerabilities discovered by Tyler Bohan of Talos
+
+Overview
+
+Talos has discovered multiple vulnerabilities in the FreeRDP product. FreeRDP is a free implementation of the Remote Desktop Protocol (RDP) originally developed by Microsoft. RDP allows users to connect remotely to systems so they can be operated from afar. The open source nature of the FreeRDP library means that it is integrated into many commercial remote desktop protocol applications.
+We identified a number of vulnerabilities falling into 2 classes:
+2 Code Executions;
+4 Denials Of Service.
+The first category allows code execution on the client side through a specially crafted response from a RDP server. The second category can cause the termination of the FreeRDP client. The vulnerabilities result from weaknesses in the handling of network packets sent from the RDP server. Indeed, the size of the data needed to be parsed is sent from the server without checks on the client side. An attacker can compromise the server or use a man in the middle attack to trigger these vulnerabilities.
+
+
+Details
+Code Execution
+TALOS-2017-0336 (CVE-2017-2834) - FreeRDP Rdp Client License Recv Code Execution Vulnerability
+
+The vulnerability is located in the license server handling. The license message sent by the server contains a length field, which is not correctly verified by FreeRDP. For internal purposes, the library decreases this value by 4, if the server is sent a value inferior to 3, this will result in a negative value and the writing of packet contents outside of the allocated buffer in memory. This vulnerability can allow the execution of arbitrary code on the FreeRDP client side. 
+More details can be found in the vulnerability report: TALOS-2017-0336
+TALOS-2017-0337 (CVE-2017-2835) - FreeRDP RDP Client Recv RDP Code Execution Vulnerability
+
+The vulnerability is located in the RDP received function of FreeRDP. Similar to the previous vulnerability, the RDP message sent from the server contains a length field, but this field is not verified by the FreeRDP client code. This length can become negative and allows the attacker to execute code on the client side.
+
+More details can be found in the vulnerability report: TALOS-2017-0337
+
+Denial Of Service
+TALOS-2017-0338 (CVE-2017-2836) - FreeRDP RDP Client Read Server Proprietary Certificate Denial of Service Vulnerability
+
+The vulnerability is located in the parsing of proprietary certificates. In this function, the public key is parsed by the FreeRDP library. However the size of the key specified in the server message packet is inferior to 8, the FreeRDP library crashes. 
+
+More details can be found in the vulnerability report: TALOS-2017-0338
+TALOS-2017-0339 (CVE-2017-2837) - FreeRDP RDP Client GCC Read Server Security Data Denial of Service Vulnerability
+
+This vulnerability is located in the handling of security data function. The function reads a length value from the server packet. A malicious actor can send a specially crafted packet with a modified length value causing the client to crash and causing a denial of service condition.
+
+More details can be found in the vulnerability report: TALOS-2017-0339
+TALOS-2017-0340 (CVE-2017-2838) - FreeRDP RDP Client License Read Product Info Denial of Service Vulnerability
+
+The vulnerability is located in the license read product info handling. A malicious crafted packet may cause the application to crash. The vulnerable code reads in an unsigned integer from the server message which then incremented by  four as part of a length check.  However, the size of the unsigned integer is never validated and thus the addition of four could cause an overflow and result in the client crashing.
+
+More details can be found in the vulnerability report: TALOS-2017-0340
+TALOS-2017-0341 (CVE-2017-2839) - FreeRDP RDP Client License Read Challenge Packet Denial of Service Vulnerability
+
+The vulnerability is located in the license read challenge packet handling. A malicious crafted packet may cause the application to crash. The vulnerability is the same than on TALOS-2017-0340 previously mentioned.
+
+More details can be found in the vulnerability report: TALOS-2017-0341
+
+Tested Versions:
+FreeRDP 2.0.0-beta1+android11 - Windows, OSX, Linux
+
+Coverage
+
+The following Snort Rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+Snort Rules: 42941,42973,42998,42974-42975
+
+

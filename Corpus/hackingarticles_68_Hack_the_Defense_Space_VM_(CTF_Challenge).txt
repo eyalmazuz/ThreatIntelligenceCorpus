@@ -1,0 +1,65 @@
+
+Hack the Defense Space VM (CTF Challenge)
+
+Defence VM is made by Silex Secure team. This VM is designed to honor and pay respects to the military of Nigeria and the soldiers who stood up against the terrorist attack. It is of intermediate level and is very handy in order to brush up your skills as a penetration tester. You can download it from https://www.vulnhub.com/entry/defence-space-ctf-2017,179/
+Are you ready for the challenge soldier? First step to attack is to identify the target. So, identify your target. To identify the target we will use the following command:
+netdiscover
+
+Now that you have identify your target (mine is 192.168.1.17) you will need to acquire it and declare you victory.  In order to acquire it we will need a plan to enter our enemy. To let us search for all the doors, closed or not. And for that let’s fire up the nmap.
+
+Our search has led us to the result that Port nos. 21, 80,443, 2225 is open with the services of FTP, HTTP, HTTPS, SSH respectively. As the port 80 is open we can open our target IP in the browser.
+
+But there is no hint or what-so-ever in there. But as this based on military aspects the hint could be camouflaged. Therefore let’s check the source code.
+
+And yes!! We have found the flag 0 although it is coded base64. Upon decoding it will become netdiscover.
+
+As the source is unknown territory, I inspected more and found that there was a directory which proved to be very useful : assests/lafiya.js
+
+Open the said directory in browser and check it source code. In the source code you will find flag 1 which will be in hex.
+
+Upon converting hex you will uncover flag 2 in an MD5 form.
+
+When you convert MD5 value to its original, it will be nmap as shown in the image below.
+
+The second flag was nmap that means there is something the nmap that we missed. And upon reviewing it I remembered that SSH service was open on the port 2225. And so I accessed it with the following command.
+
+And there we have it our flag 2B in an MD5 value. Let’s convert it.
+
+Our flag 2B is encrypt. That means there is something related to encryption and security. Now the best way to provide security to a website is through it security certificate. Let’s check it out.
+
+Now, upon examining the certificate, you will find your third flag and a hint i.e [39 39 30].
+
+Firstly, decode the flag which will be unit. Now if you decode it anywhere you will not get a result. And I did searched and re-searched but couldn’t get it to decode. So I visited the author’s walkthrough and there it says that it is translated to unit. And therefore I use unit in my walkthrough.
+
+The combination of 3, 9, 0 will be the suffix of the word unit. But there are a lot of combination foe it so let’s create those combinations with the help of crunch with command:
+crunch 3 3 390
+
+We will get 27 possible combinations and so make a text file for dictionary attack and add the word ‘unit’ as a prefix to every combination. Now let’s use dirb to find anything related to unit and these combinations.
+
+To our joy there is a directory that goes by unit990. Let’s open it in our browser without further delay.
+
+We do not have credentials for logging in. So, I checked it source code instead. In the source code you will find flag 4 in a base64 code.
+
+Decode the flag and you will get admin.php
+
+
+Opening the previously found directory in the browser will show the same page but its source code is edited. As you will check it, you will find that flag 5 again in base64 code.
+
+By decoding flag 5 you will get SQL injection. That means next step should be SQL injection.
+
+Now this hint is just to throw us of our track. I used every SQL injection technique I could find but it didn’t help. So I used dirb on the target.
+
+I found a directory called assets. And opened it in the browser and found the 7th flag.
+
+Now try and decode it widgets. 
+
+Now you can try and decode it but it’s hopeless to decode it anywhere online. So examined the dirb result more and found another directory called phpmyadmin
+
+If you open this directory in browser you will find a log in page. I used the top 10 most commonly used password and username i.e root and root and got in. In the database I found a silex table. Now silex is the team’s name so I guess this is most important table.
+
+Upon checking it, I found admin and in admin there was our 6th flag coded in base64
+
+Upon decoding, it says Nigiarforcecloud.
+
+And voila!! All our flags are uncovered. Good work soldiers. Solving this VM was good exercise and I salute the fallen Nigerian soldiers and wish them peace and praise the whole army.
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

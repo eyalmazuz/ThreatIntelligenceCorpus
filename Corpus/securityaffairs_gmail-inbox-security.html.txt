@@ -1,0 +1,99 @@
+
+					How much trust do you put into your Gmail inbox messages?					
+1.    Introduction
+Taking good care of e-mail messages is certainly among the first recommendations of any information security policy and user awareness program. The involved risks range from SPAM to Spear Phishing attacks, generally aimed to steal information or infect the victim’s computer. Most malicious messages are filtered by anti-“everything” engines before ever being delivered to the user’s mailbox, although some bypass those filters and require the user’s perspicacity to be detected.
+Generally, our trust on the technology security filters is proportional to the reputation of the service provider. The higher our belief on the provider, the lower tends to be our attention to the risks. Given the high trust we have on Gmail we tend to believe that all messages that fall into our inbox are legit and safe.
+It turns out that, based on our findings this week at Morphus Labs, this “trust” logic should be revisited. We realized that a message that appears in your Gmail inbox folder even with an important sign, coming from one of your Gmail contacts with no spoof or security alert, may have been forged and impersonated by a fraudster or a cybercriminal. As few people may be aware of this possibility, we decided to shed light on this problem with this article.
+This document is divided into four parts. First, it presents a contextualization on e-mail spoofing. Then, it passes through to our e-mail spoofing experiment scenarios involving Gmail and Yahoo. Next, it presents an extra Gmail behavior and finally, it presents advices on how users could identify Gmail spoofed messages and final words.
+2.   E-mail Spoofing
+In this section, we will pass through some SMTP concepts and how e-mail sender spoofing occurs. If you are familiar with those concepts, you can skip to the next section.
+The Simple Mail Transfer Protocol (SMTP) is the standard protocol used for email transmission over the Internet. Considering the technology evolution rate and today’s security requirements, we may say that this protocol is, at least, anachronistic. Its first version was defined in 1982 by the RFC 821 [1] and has not evolved much since – mainly in security aspects.
+As stated in the previous paragraph, the SMTP protocol defines the message transport, not the message content. It defines, therefore, the mail envelop and its parameters, such as the message sender and recipient. The message content (body) and headers are defined by the standard STD 11 (RFC 5322) [2].
+Basically, a SMTP transaction consists of three commands:
+Mail From: establish the message return address in case of delivery failure;
+Rcpt to: establish the message recipient. In case of multiple recipients, this command may be repeated for each one;
+Data: this command sign the SMTP server to receive the content of the message which consists of the message headers and body.
+To make it clear, let’s look at a very basic sample of a SMTP transaction in the Figure 1.
+Figure 1: Simple SMTP transaction sample
+Note that the directive “From:” is part of the message content and is normally equivalent to the value used in the SMTP command “mail from:”, but not necessarily. Its value can be freely specified by the system or person issuing commands to the SMTP server. Using the same sample, but now spoofing the message sender, it would be enough to change the “From: “ to the desired value, as seen in Figure 2.
+Figure 2: A sample SMTP transaction with a spoofed sender
+In this case, the message delivered to recipient@domain.com will look like it has been sent by SpoofedSender@anydomain.com rather than sender@domain.com. This open space for message impersonation or sender spoofing. And this is exactly the way it is done by cybercriminals or fraudsters to trick its victims to click on malicious links, for example.
+Note that by using this kind of impersonation, if the recipient replies the message, it will be delivered to the spoofed address. For the example above, it would be delivered to SpoofedSener@anydomain.com.
+It turns out that changing the “From:” to the desired value will almost certainly trig the recipient’s mail server anti-spam or anti-phishing to reject or quarantine the sent. If the message bypasses those filters, it will depend on the recipient to detect that the message was forged by analyzing the message headers.
+Trying to avoid those filters, some spammers configure ad-hoc mail servers in a way to send spoofed messages on behalf of a certain domain by changing the “Mail from:” SMTP command and “From:” header to the desired value. This spoof strategy can be combated by the owners of the Internet domain by applying spoofing protection mechanisms, like SPF (Sender Policy Framework), DKIM (DomainKeys Identified Mail) and DMARC (Domain Message Authentication Reporting & Conformance). By using SPF, for example, you can specify the IP addresses of the mail servers that are allowed to send e-mail messages on behalf of your domain. Once this policy is stablished, it will be up to the recipient’s mail server to check the policy and reject messages coming from non-authorized servers.
+3. Experiments
+After some basic concepts on SMTP protocol and how e-mail spoofing occurs, it’s time to check the resilience of Gmail and Yahoo against mail spoofing. We are going impersonate the “From:“ message header value. The “Mail from:” SMTP command will be issued using an address of a generic domain owned by us.
+For the experiments, we created a very simple scenario:
+Let’s get started.
+3.1. Trying to spoof without SPF
+In this experiment, we are going to try this scenario:
+Figure 3: No SPF policy associated to the experiment domain
+3.1.1. Trying to spoof a Gmail to Gmail message
+This experiment itself consisted in sending an e-mail message to temporaryrecipient@gmail.com pretending to be from temporarysender@gmail.com. It is to be observed that email@our-generic-domain.com was set as the “Mail from:” SMTP parameter while the “From:” header was set to the forged value temporarysender@gmail.com, as seen in Figure 4.
+Figure 4 – Trying to spoof Gmail to Gmail message with no SPF policy
+As the result of this experiment (Figure 5), the Gmail servers rejected our spoofed message (ID: 7A14D2452C) with the error code 421-4.7.0 followed by the message “To protect our users from spam, mail sent from your IP address has been temporarily rate limited.” We can also see the error 421-4.7.0 and the message “Our system has detected that this message is suspicious due to the very low reputation of the sending IP address.”.
+Figure 5 – Gmail servers rejecting the spoofed message
+3.1.2. Trying to spoof a Yahoo to Yahoo message
+Now, let’s see what happened in the Yahoo spoofing scenario. Similarly to Gmail scenario, we tried to send a message to temporaryrecipient@yahoo.com pretending it to be from temporarysender@yahoo.com, as seen in Figure 6.
+Figure 6 – Trying to spoof Gmail to Gmail message with no SPF policy
+As the result for this experiment, we verified that our Postfix mail server couldn’t deliver the message (ID 4259245CE). The error 421-4.7.0 followed by the message “suspicious due to the very low reputation of the sending IP address” was triggered as seen in Figure 7.
+Figure 7: Mail rejected by Yahoo servers during the spoofed message delivery
+3.2. Trying to spoof with SPF
+In this experiment, we are going to try this scenario:
+Figure 8: SPF policy allowing our SMTP Server
+3.2.1. Trying to spoof a Gmail to Gmail message
+As the previous experiment, we try to send an e-mail message to temporaryrecipient@gmail.com pretending to be from temporarysender@gmail.com. In the Figure 9, you can see the commands issued to our SMTP server in order to send the spoofed message.
+Figure 9: Spoofing Gmail to Gmail with SPF policy allowing our SMTP server
+In Figure 10, you can see the logs from our SMTP server while delivering the message (ID EBE852452C) to Gmail servers.
+Figure 10 – SMTP logs
+Unlike what happened when the SPF policy wasn’t authorizing our SMTP server, this time Gmail servers accepted our message delivery. Remains to know if the message was tagged as SPAM or something like that. To our surprise, the message was delivered to the recipient’s inbox folder, as seen in Figure 11. We got really surprised about that.
+Figure 11 – Spoofed message in the recipient’s inbox folder
+As you can see in Figure 12, by opening the message, the only detail that may draw the user’s attention to a suspicious “non-Gmail” message is the “via our-generic-domain.com” near the sender’s address. As it’s not an alert and it doesn’t have any warn sign, users may not pay enough attention to this detail and believe the message is legit. It’s important to note that if the user receives this message on iOS mobile app, this detail does not even appears as shown in Figure 13. The Gmail app for Android offers user the option to see the security details of the message.
+Figure 12 – Spoofed message in the Gmail Web app
+Figure 13 – The spoofed message seen from the Gmail iPhone mobile app
+By observing the message headers, in Figure 14, we can see that the SPF check PASS and besides the unsuccessful DMARC check, the e-mail was properly delivered to the inbox folder of the recipient. Technically speaking, the DMARC test depends on SPF and DKIM tests. If both tests return Ok, DMARC will PASS. [3]
+Similarly to SPF, DMARC is a configuration done at DNS zone level that informs what the recipient’s e-mail server should do with a message that does not comply to its policy. If it should be “rejected” to drop the message, “quarantine” to isolate the message or “none” if you want to inform that the message should be delivered.
+Figure 15: Spoofing Yahoo to Yahoo with SPF polity SMTP transaction
+Unlike Gmail, Yahoo rejected our spoofed message during the SMTP transaction with the error 554 5.7.9 followed by the message “Message not accepted for policy reasons.”. It is not clear, but the message was probably blocked because of the @yahoo.com e-mail address in “From:” message header sent from a non-Yahoo server.
+Figure 16 – Spoofed message rejected by Yahoo servers
+3.3.  Trying to spoof message between corporative domains hosted by Google Apps
+Given we had success spoofing messages between @gmail.com accounts, we became curious if the same strategy would work for corporative domains hosted by Google. For this scenario we had help from two companies that host their e-mails with Google and tried to send a spoofed message between user accounts.
+The same steps from section 3.2.1 (spoofing Gmail to Gmail with SPF) were used. The results in this more sensitive scenario showed us concerning results. Not only the message was delivered without security warnings to the recipient’s inbox folder, but also the spoofed account profile picture.
+3.4. Extra findings
+During our experiments, we’ve found a curious scenario in which Gmail detects the spoofed message. It happened when we tried to spoof an address that apparently does not exists on Gmail user base.
+In this situation, unlike the successful scenarios, Gmail forwarded the message to Spam folder and adds a special security alert informing that they could not verify if the message was really sent by gmail.com, as seen in Figure 17.
+Figure 17 – Behavior when the spoofed sender is a non-existing Gmail account
+Take a look at the same message at the Gmail app for iOS on Figure 18. Beyond the alert, it shows a fish hook icon as an allusion to a phishing attack.
+Figure 18 – Spoofed message on Google mobile app for iOS
+Another interesting finding is related the spoofed email avatar. Google loads the real spoofed email associated profile image, which increases the legitimacy perception by the message recipient, as seem in the Figure below.
+Figure 19 – Spoofed sender profile picture
+4. How to identify Gmail spoofed messages
+Given the spoofed message is delivered to your inbox, without security warning, may have been flagged as important, shows the picture associated with the spoofed email and may not show that the message was sent through a non-google server, what can an user do to protect itself?
+In this section, we give advices on how users may identify Gmail spoofed messages and avoid risks.
+4.1. Examine message details on Gmail
+Be aware of messages in your inbox coming from “@gmail.com” via another servers or domains. Normally, @gmail.com messages are delivered directly from the Gmail servers. Unfortunately, the “via” tag is available only in Gmail Web Application. In the mobile (Android and iOS) apps this information is not present making it harder to identify fake messages.
+Additionally, you may take a look at the message details. This feature is available at Gmail Web application by clicking on the “down-arrow” near “to me”, as in Figure 20
+Figure 20 – Examining message details
+4.2. Examine message source
+By examining the message details, you may notice the first signs of a spoofed message, but, only by examining the full message headers you can make sure about that.
+You can access the message source by clicking on the drop down button near the “reply” button on Gmail Web application and choosing the “Show original” option as seen in the Figure 21.
+Figure 21 – Opening message source/original
+Note that the value of the field “Return-Path” in the message headers is an address of a non-Gmail domain. The value in this field is exactly the same used in the “Mail from: “ SMTP command when we forged this message.
+So, suspect Gmail messages you receive with improper address on this field, as seen in Figure 22.
+Figure 22 – Observing the message source
+It is worth noting that, as Gmail marks messages with the “via” tag, obviously there are situations in which the message was sent by another mail server and yet is legit. Thus, not all messages marked with the “via” tag are malicious.
+4.3. Report malicious or spam messages to Gmail
+Finally, as you identify malicious or spoofed messages, report it to Gmail. By doing this, you will help Gmail improve its message filters.  The report spam/phishing functions are available on the drop down button near the “reply” button on the Gmail Web application.
+5. Final considerations
+As we can see, if you have a “self-authorized-email-server” by your own domain SPF policy, you can deliver spoofed messages pretending to be any existing @gmail.com address to the inbox folder of any other @gmail.com account with no security warning.
+As per the results of section 3.3, it was also possible to spoof messages between corporative domains hosted by Google Apps. Beyond the malicious actions that may target a regular Gmail account, this possibility may put at risk entire businesses.
+We’ve privately contacted Google Security team informing the possibilities that we have found and the potential impact to users. They gave us a rapid feedback informing that our submission won’t be tracked as a security bug.
+Although it has not been considered a security bug, in our opinion, it would be better if Gmail could at least adopt the same behavior we saw when trying to spoof a non-existing Gmail account. The alerts used in this case could prevent users from a variety of malicious actions. Additionally, we suggest to add the possibility to view message security details within the Gmail IOS app, as today users have no options to verify if they are being spoofed.
+It’s worth to mention that, as per our experiments, Yahoo rejected spoofed messages in both cases. We didn’t document Outlook.com tests, but the spoofed messages we tried to send were forwarded to recipient’s SPAM folder.
+As it can be used by cybercriminals or fraudsters to make victims among Gmail users, we decided to publish this article to make people aware of this possibility and protect themselves.
+Article also published on LinkedIn
+https://www.linkedin.com/pulse/how-much-trust-do-you-put-your-gmail-inbox-messages-renato-marinho?trk=pulse_spock-articles
+About the Author:
+Renato Marinho
+Edited by Pierluigi Paganini
+(Security Affairs – Gmail, hacking)

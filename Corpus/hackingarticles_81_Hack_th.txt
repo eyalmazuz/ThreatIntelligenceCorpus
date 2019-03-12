@@ -1,0 +1,29 @@
+
+Hack the Basic HTTP Authentication using Burpsuite
+
+In the context of a HTTP transaction, basic access authentication is a method for a HTTP user agent to provide a user name and password when making a request.
+HTTP Basic authentication (BA) implementation is the simplest technique for enforcing access controls to web resources because it doesn’t require cookies, session identifiers, or login pages; rather, HTTP Basic authentication uses standard fields in the HTTP header, obviating the need for handshakes.
+The BA mechanism provides no confidentiality protection for the transmitted credentials. They are merely encoded with Base64 in transit, but not encrypted or hashed in any way. HTTPS is, therefore, typically preferred used in conjunction with Basic Authentication.
+For more details read from wikipedia.org
+Attacker: Kali Linux
+Target: TP link Router
+ In this article I will perform an attack on router and try to bypass its authentication. In order to bypass user authentication page I am going to explore router IP: 192.168.1.1 on browser. Here now you can see it asking for user credential to get inside the control panel of router. 
+
+Now I had just typed the random value for authentication in order to fetch the request through burp suite. So before you sent the request to server turn on the burp suite and select proxy tab then click on intercept is on after then send the user authentication by clicking ok
+
+Thus the sent request will be captured by burp suite which you can see in the given below image. In the screenshot I had highlight some value in the last line. Here it tells the type of authentication provided by router is basic and if you have read above theory of basic authentication I had described that it is encoded in base 64
+
+Now time to generate the encoded value for authentication inside the burp suite. Click on action tab select send to intruder for brute attack.
+
+Now open intruder frame and click on position. Configure the position where payload will be inserted into request. The attack type determines the way in which the payload assigned to payload position Now select the encoded value of authentication for payload position and click to ADD button on the left side of frame.
+
+The base64 encoded value of Authentication is combination of username and password now the scenario is to generate same encoded value of authentication with help of user password dictionary Therefore I have made a dictionary which contains both user password names in text file and save it on the desktop. Later use this dictionary under burp suite through intruder as payload for brute force attack.
+
+In order to use dictionary as payload click on payload tab under intruder; now load your dictionary which contains user password names from payload options. But we want to send request in encoded value of our payload. To encode your payload click on ADD button available under payload processing
+A new dialog box will generate to select the rule choose encode option from list; now select base 64 from drag down list of URL encode key character for payload processing.
+
+This will start brute force attack and try to match string for user authentication. In screenshot you can the status and length of the highlighted value is different from rest of values. This means we can use this encoded value to bypass the user authentication which occur from request number 6. Now check the username and password of 6th line in dictionary. In dictionary I found admin: ps******** have matching authentication.
+
+Now again open the router IP and this time type the above username and password. From screenshot you can see I have successfully login in control panel of router.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

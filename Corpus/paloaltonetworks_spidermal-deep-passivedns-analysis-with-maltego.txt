@@ -1,0 +1,23 @@
+SpiderMal: Deep PassiveDNS Analysis with Maltego
+
+One investigative technique for threat analysis involves pulling information from disparate data sources to start piecing together breadcrumbs of data. This technique forms a more holistic picture of a threat. One of the most basic forms of telemetry used to research a threat is the classic IP address/domain record pair, to which the Maltego platform provides an excellent interface to graph these pairs so that interesting links or clusters standout for further analysis. This has historically been a very manual process and often leads to a dead end, as a lot of threat actors commonly take over legitimate systems to carry out campaigns.
+Given this, and with a yearning to have more control over the graphing process, we created a new script to facilitate automating the initial building of Maltego graphs using passive DNS (pDNS) data from PassiveTotal. Specifically, SpiderMal is a Python script that can be run from the CLI or, alternatively, pointed to by a Maltego Local Transform. At its core, it uses the PassiveTotal API to connect domain nodes to IP address nodes, and vice versa with their pDNS data. It then recursively crawls from the seeded entity out to a specified level, building out the diagram. This can easily be accomplished through the existing PassiveTotal Maltego transforms by chaining together lookups; however, SpiderMal also includes the ability to filter results based on a temporal range so that only domains or IPs seen within a specified date range are included in the graph. This reduces the noise and allows an analyst to fine tune their results before diving in further.
+To illustrate the temporal filtering and recursive search feature we start with a domain and query the PassiveTotal API to pull back all of the resource data for that record. This data is then subsequently passed back to PassiveTotal and their individual resource data is pulled back, so on and so forth until the specified recursive level is reached. This spidering allows one to quickly map out a potential infrastructure or quickly determine that the infrastructure is not actually relevant for a particular threat.
+
+Figure 1: Unfiltered, 3-level, recursive search
+Immediately, a few areas jump out as potential points to investigate but there’s a lot of data that may not necessarily be relevant to a threat. To fine-tune this, the same query was run with a filter that limited results to active records in the year 2015.
+
+Figure 2: Temporal filtered, 3-level, recursive search
+The ability to jumpstart these graphs, with more control over what goes in them, will hopefully give researchers and analyst more time for the investigative aspect of threat analysis.
+Download the SpiderMal.py version 1.0.0, and the Maltego Local Transforms/Machines.
+Some additional examples of using the script are included below.
+
+Figure 3: Running the script from the CLI
+
+Figure 4: The graph of the above search
+
+Figure 5: A query seeded with an IP address of a fake Tech Support phishing site
+
+Figure 6: Running the SpiderMal recursive 3 level Machine against an IP within Maltego
+
+

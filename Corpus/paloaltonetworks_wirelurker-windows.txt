@@ -1,0 +1,111 @@
+WireLurker for Windows
+
+Summary
+Yesterday we published a whitepaper introducing WireLurker, the first malware attacking both non-jailbroken and jailbroken iOS devices from a Mac OS X system. Shortly after we released the paper, Jaime Blasco from AlienVault Labs notified us that he’d found a Windows executable file that contains WireLurker’s command and control server address. We analyzed and investigated the sample and have confirmed that it is an older version of WireLurker.
+This variant is being distributed by a different Chinese source that is hosting 180 Windows executables and 67 Mac OS X applications, each of which contains a version of the WireLurker Trojan. The Windows variant opens a new vector for iOS users to be infected with WireLurker, but appears to have been less successful than its Mac OS X descendent.
+Samples of this older variant display a user interface and are advertised as an installer for specific pirated iOS apps. Between March 13 and today these programs have been downloaded 65,213 times, with 97.7% of the downloads being the Windows version. Like the latest WireLurker, this variant tries to infect jail-broken iOS devices with the WireLurker iOS malware.
+This version of the malware also installs the sfbase.dylib tweak to the iOS file system, which is an earlier version of the malicious iOS binary file mentioned in our earlier report. These samples also indicate that the creator of WireLurker may have a direct relationship with the Maiyadi App Store.
+Palo Alto Networks has released protections for all versions of WireLurker in our Antivirus, WildFire, IPS, and URL Filtering products. We’ve updated our detection code in Github to detect the older Mac OS versions of the malware and plan to release a tool to detect the Windows variant.
+(UPDATE: Based on our analysis others have begun creating detection tools for WireLurker for Windows. Check our GitHub for links to them.)
+Early Versions of WireLurker for Windows and OS X
+A Different Source
+Previously we knew the WireLurker was distributed through the Maiyadi App Store. However, the newly revealed samples were directly uploaded to Baidu YunPan (a public cloud storage service of Baidu) by user “ekangwen206” (Figure 1). When we investigated this source we found the user had uploaded 247 samples in total, of which 180 are Windows software and the other 67 are OS X applications. All OS X samples were uploaded on March 12 and all Windows samples on March 13, over a month before the Mayaidi App store infections.
+We downloaded and confirmed that all of these files belong to a new variant of WireLurker and should be classified as Trojan malware.
+
+Figure 1: Samples of WireLurker list in the Baidu cloud storage system
+These samples are listed as “green” (e.g. good or clean) IPA installers for specific pirated iOS apps. Some of the named iOS apps are extremely popular, while some of the others are pre-installed iOS system apps, including the following:
+
+Facebook
+WhatsApp Messenger
+Twitter
+Instagram
+Minecraft
+Flappy Bird
+Bible
+GarageBand
+Calculator
+Keynote
+iPhoto
+Find My iPhone
+iMovie
+iBooks
+
+Baidu YunPan provides statistics of views and downloads for every single file. Through this feature, we found that in the past eight months, the 247 samples were downloaded a total of 65,213 times. Also according to their statistics, 97.7% of the downloads were Windows samples, which is consistent with the market share of Windows in China.
+File Information and Structures
+Based on the file information in PE structure, all of the Windows samples of  were created on March 13 on a Windows XP computer. Each Windows sample contains a malicious PE executable file, six normal DLL files and a manual TXT file.
+Each PE executable file has two extra IPA files (iOS app’s installation bundle file) appended to them, shown in Figure 2. The first IPA file, named “apps.ipa”, is a malicious iOS application; the second one, named “third.ipa”, is the pirated iOS app advertised by the sample. These two IPA files will be dropped to “C:\Documents and Settings\<USER>\Local Settings\Temp\” directory after the installer is executed.
+
+Figure 2: Two IPA files were appended to the PE executable file
+OS X samples of this variant have a fixed bundle executable name “appinstaller”. The IPA files are packed in the Resources directory in the OS X applications: one is named “infoplistab” for “apps.ipa”; the other is “third.ipa”.
+User Interaction
+After users download the samples and run them on Windows or OS X, a GUI appears as Figure 3 and Figure 4. If iTunes isn’t installed on the Windows system, the malware guides users to an official site of Apple China to download and install it.
+
+Figure 3: GUI of a Windows sample
+
+Figure 4: GUI of a OS X sample
+If iTunes is installed the user interface shows a message of waiting for iOS device connection. After the user connects their device to the computer, the device’s name will appear in the GUI and a “click to install” button becomes available.
+Install iOS application and iOS malware
+If the user runs the samples and clicks the installation button the pirated iOS application shown in the interface will be installed on the device, but only if the device is jailbroken. At the same time the program will secretly install the apps.ipa file.
+
+During our analysis, we connected an iPhone 5s running iOS 7.1 (jailbroken) and a 3rd gen iPad running iOS 6 (jailbroken) to infected Windows 7 and Windows XP systems. When using the iPhone 5s/iOS 7.1, the installer crashed after clicking the button; with the iPad, the interface shows “installation is successful”, but we did not find any new icon in the iPad display.  We believe this failure was caused by poor coding quality and incompatibility between the malware and the iOS device, but the malware code does attempt the installation.
+Pirated iOS Apps
+The pirated iOS apps that the malware attempts to install are cracked versions of legitimate iOS apps. Their code signatures and DRM protection were removed before the IPA files were appended to EXE files or packed into OS X applications.
+For example, in Figure 5, we can see the pirated WhatsApp has cryptid value 0, which means DRM encryption by Apple was removed by the attacker, something that can be easily achieved through many publicly available automatic hacker tools.
+
+Figure 5: Pirated iOS apps haven’t DRM protection
+The iOS Malware
+The iOS malware these samples attempt to install into iOS devices contains both sfbase.dylib and sfbase.plist files. In our previous report on WireLurker, we mentioned that sfbase.dylib is a MobileSubstrate tweak that steals the user’s contacts information and other private data and sends it to a C2 server.
+
+Figure 6: The iOS malware contains code for ARM64
+The main executable of this malware is named “apps”. It’s a Mach-O universal binary file that contains binary code for three different architectures and CPU types:
+
+32-bit ARMv7
+32-bit ARMv7s
+64-bit ARM64
+
+As far as we know, this is the first iOS malware that attacks the ARM64 architecture.
+The main functionality of this malware is to copy sfbase.dylib and sfbase.plist in its Resources directory to specific locations to make them perform as a MobileSubstrate tweak, shown in Figure 7. Additionally, the malware will communicate with the C2 server “www.comeinbaby.com”, the same server used by the version of WireLurker we revealed yesterday.
+
+Figure 7: The iOS malware copies sfbase.dylib to a specific location
+The dropped sfbase.dylib has nearly identical code and functionalities as the sample we detailed in our previous report. However, the earlier version was listed as 4.0.0, 4.0.1 or 4.0.2. This sfbase.dylib is version 2.0.0 as shown by its [mydUtils getCurrentVersion] method.
+Another difference in this older version is that it uses the following URL when checking for updated code (Figure 8):
+
+http://app.maiyadi.com/app/getversion. php
+
+
+Figure 8: Earlier version of sfbase.dylib check for update from Maiyadi
+Note that, this domain name is that of the Maiyadi App Store which spread later versions of WireLurker. Later versions of WireLurker used the domain www[.]comeinbaby.com but accessed the exact same GET request path.
+Similarly, when uploading the user’s contacts information and other private data, this version of sfbase.dylib uses this URL:
+
+http://app.maiyadi.com/app/saveinfo. php
+
+Clues link Attacker to Maiyadi
+Based on our analysis of this earlier version of sfbase.dylib, we suspect that Maiyadi has a close relationship with the creator of WireLurker. Beyond the link to the command and control server we’ve found additional clues.
+First, all OS X samples in this variant have a bundle identifier named “com.maiyadi.installer”, as well as a copyright information that contains  a reference to Maiyadi (Figure 9).
+
+Figure 9: Copyright information in the OS X malware
+Second, in the malicious iOS app, we found a certificate that belongs to “li fei” which was issued by Apple on March 6th, 2014 (Figure 10).
+Additionally, the name “li fei” exists in all Windows malware samples and sfbase.dylib in the following strings:
+
+E:\lifei\libimobiledevice-win32-master_last\Release\appinstaller.pdb
+/Users/lifei/Library/Developer/Xcode/DerivedData/SDMMobileDevice-dbskckexyqfxypdzrwfwereecnot/Build/Products/Debug-iphoneos/sfbase.app/sfbase
+
+These two strings are automatically generated by Visual Studio on Windows and Xcode on OS X for debugging when the developer built appinstaller and sfbase.dylib.
+
+Figure 10: Attacker’s certificate in the iOS malware
+Solutions
+Palo Alto Networks has updated our signatures for Antivirus, WildFire, IPS, and URL Filtering products to protect our customers by blocking associated malicious URLs and traffic patterns of all known versions of WireLurker.
+We have also open sourced a project on Github to help everyone in detecting WireLurker on their desktop computers. That project is available here:
+https://github.com/PaloAltoNetworks-BD/WireLurkerDetector
+We’ve already updated our OS X script to cover this newly discovered variant and we’re planning to release another tool to help Windows users scan their computers for WireLurker.
+Updates on the Threat from WireLurker
+After we published the WireLurker report and related detection tool, some OS X users in China discovered that their Mac computers were infected by WireLurker and posted screenshots on Weibo (Chinese social network similar to Twitter), shown in Figure 11. One of the users contacted us and provided all detected samples on his Mac, which we identified as the newest known version of WireLurker (version C).
+
+Figure 11: A Chinese victim reporting their Mac was infected by the WireLurker
+As we were writing this blog, Apple also announced that they’ve “blocked the identified apps to prevent them from launching” and we noted that the command and control domain, www[.]comeinbaby.com no longer resolves to the command and control server IP.
+Nick Arnott mentioned to us on Twitter that in iOS 8, the system no longer shows distribution profiles in the settings menu; users may need to use Xcode or the iPhone Configuration Utility to check or remove these abused enterprise distribution profiles.
+Acknowledgements
+Jaime Blasco from AlienVault first found a Windows variant of WireLurker and sent to us. Thank you Jaime!
+We would like to thank Laura Hartmann, Zhi Xu, Wei Xu, Yanxin Zhang and Suli Xu at Palo Alto Networks for quickly processing this new variant and updating our products. It’s their work that ensures our products defend our customers from the latest threats.
+We would also like to thank all people who have shared comments on the report and detection code or shared more information with us through Twitter, Github and email.
+

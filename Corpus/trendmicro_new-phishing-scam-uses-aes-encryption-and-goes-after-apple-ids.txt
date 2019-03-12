@@ -1,0 +1,69 @@
+New Phishing Scam uses AES Encryption and Goes After Apple IDs
+by Jindrich Karasek
+Recent data breaches and privacy scares, along with the upcoming General Data Protection Regulation (GDPR) from the European Union, have triggered a change in the way companies handle their users’ data. As a result, many of them have been sending emails asking their users to update their profiles or proactively strengthen security. The emails from the different companies usually look the same, containing a standard greeting and message explaining the reason for updating the policy, as well as a very visible button to click. Because many of these emails have been sent — and continue to be sent — it comes as no surprise that malicious actors are trying to take advantage of this email wave by sending phishing pages to users. These actors are getting quite good at impersonating major companies, and they usually try to masquerade as legitimate “user policy update” emails.
+Email phishing is still very successful, and is a rewarding tactic—a malicious actor can get personal data, financial account information, confidential enterprise information, or simply penetrate the network of the victims’ employer.
+On April 30, we detected a new Apple ID phishing scam using a known social engineering tactic —threatening to suspend a service to pressure users into divulging personal details. Multisite login details, like an Apple ID and corresponding password, are valuable because they can give an attacker access to all the applications linked to that account. The malicious website was already offline at the time of writing.
+Analysis of the phishing tactics
+The phishing email looked like a legitimate email from Apple. It notified the “customer” that their account has been limited because of unusual activity, and then asked them to update payment details through a link. The email immediately raised suspicions for various reasons. It was sent to a person who was not using Apple products, and if there was suspicious activity why would a customer need to update payment details? Upon checking, we also saw that the button linked to a site that is not related to the Apple domain name.
+
+Figure 1. A legitimate looking phishing email, but the sender is not Apple, and the update link does not lead to an Apple-affiliated site
+We checked the MX header to get more information about the sender:
+Received: from vm191647.had.su (example. com [185.51.247.117])
+by email-smtpd7.ko.seznam.cz (Seznam SMTPD 1.3.94) with ESMTP;
+Mon, 30 Apr 2018 10:21:47 +0200 (CEST)
+Received: from vh184404 by vm191647.had.su with local (Exim 4.88)
+(envelope-from <team@service.co.uk>)
+id 1fD44A-0004PB-0Z
+for XXXXXX@seznam.cz; Mon, 30 Apr 2018 11:21:46 +0300
+To: XXXXXX@seznam.cz
+Subject: Your Apple account Has Been Limited
+X-PHP-Originating-Script: 500:leafwp.php
+Date: Mon, 30 Apr 2018 11:21:45 +0300
+From: Apple Service <team @service.co.uk>
+Message-ID: <7ecf843abbe09d9e4127a39b7e1314bf @svalil.ru>
+X-Mailer: Leaf PHPMailer 2.7 (leafmailer.pw)
+MIME-Version: 1.0
+Content-Type: text/html; charset=
+Content-Transfer-Encoding: quoted-printable
+According to our header analysis, the sender is a known malicious actor and is already blacklisted.
+And when we took a closer look at the “Update Your Payment Details” button, we noted that it led to this link:
+hxxp://avtive1s[.]beget[.]tech/limited/apple-couzin/apple%20couzin/Uu4gX/login.php?sslmode=true&access_token=1SGMm8LG43m4qPGE7D8Q00qCRZ2hwIVyBBkYK6FP91UzQBe
+YemPenfQeeTwLCrjd3EcNKRDUTxuJ8IIm
+There was a token generated for each particular victim, and the token was valid for at least 48 hours. It seemed to be for tracking the user and was not affected by various user-agents of the different browsers and devices.
+If clicked, the button opened to a fake Apple website stylized to look legitimate—the fake site even had the same background image as the legitimate Apple site. But the URL was obviously not Apple.
+
+Figure 2. The fake site had the Apple logo and the minimalist design associated with Apple
+We used a fake Apple ID (to be sure that no Apple accounts were affected) and tried to log onto the site. After logging in with the fake Apple ID and password, the website answered a standard message: “Your account has been locked…”, even if the information given was fake.
+
+Figure 3. The site mentioned suspicious activity to pressure the user to provide more information
+The “Unlock Account Now” button was linked to a malicious site that collects user data:
+hxxp://avtive1s[.]beget[.]tech/limited/apple-couzin/apple%20couzin/Uu4gX/process.php?access_token=1SGMm8LG43m4qPGE7D8Q00qCRZ2hwIVyBBkYK6FP91UzQBeYemPenfQeeTw
+LCrjd3EcNKRDUTxuJ8IIm
+
+Figure 4. The site asked users for personal information and financial account details
+This site was actually more sophisticated and looked more legitimate than most phishing sites. It had the basic data-input validation, checked if credit card numbers were correct using a basic checksum function that prevents typos, and also verified the numbers and text fields for string length and special characters’ presence. The date, email, name and CVC number fields were also validated for the proper input.
+Also, malicious actors usually use free hosting sites for their phishing scams since they expect them to have short lifespans, and they don’t put any effort into securing web server files. Because of this, it is typically easy to obtain information from phishing attacks and related sites; sometimes even the stolen data is accessible. In this case, the web directory permissions were set correctly, so we were not able to access that information.
+After all the personal and account information fields were filled in, the site informed the user that they will be logged out for security reasons. After that, it forwarded the user to the legitimate Apple website:
+
+Figure 5. The phishing site redirected to the legitimate Apple login page
+Encryption and evasion techniques
+The site was encrypted using Advanced Encryption Standard (AES) to avoid the reputation crawlers and other security countermeasures. Using AES for this kind of obfuscation is unusual for a phishing scam because, as we stated above, usually these malicious actors are more concerned with operations rather than security or evasion. This style of encryption is different from the more “normal” HTTPS encryption methods that protect entire transactions.
+The code in “login.php,” “process.php,” and “verified.php” was invoking the JavaScript based AES obfuscation and differed only in the variable “hea2t”:
+
+Figure 6. AES encryption hides the malicious payload well
+The script dashed.js referenced in the PHP code is pure AES implementation with custom variables — we see functions used in AES cipher in the code, and it then encodes the output to base64 (which is typical behavior). Network packet inspection would not identify this as malicious because the payload is hidden thanks to the encryption. The only way to spot this threat is via reputation services that identify the sender as malicious. The unique way that this phishing scam used AES makes it difficult to detect malicious activity. The phishing site was able to bypass some anti-phishing tools incorporated in antivirus solutions for home and business from various vendors.
+We verified this threat using the Trend Micro ™ Smart Protection Network™ infrastructure. We were able to track the activity of the sender, and this particular email scam was detected between the 23rd of April 2018 and 1st of the May, 2018:
+
+Figure 7. Detection of the phishing scam from April 23 – May 1 2018
+We were also able to gain detailed information about associated phishing emails connected to the case we analyzed. We found that different subject headers were used in the related emails; most were related to business proposals, but some were informing users about “locked accounts.”
+The United States and Venezuela were the most affected countries. We also detected some of the phishing emails scattered across Europe and North America.
+
+Figure 8. Countries affected by the phishing scam
+Solutions and mitigation tactics
+Awareness and proper training on phishing and social engineering attacks are still the best ways to defend against such threats. With increased awareness of these new tactics and methods, fewer people will take the bait.
+In general, phishing emails have some properties that should trigger suspicion:
+Users should be wary of links sent by email to access pages like Apple ID login, Google login page, PayPal, social networks and other sensitive sites. There might be other malicious links or file attachments as well, so scanning attachment files with security solutions is a must. Also, users should try to verify the urgency of the information found in suspicious email from other sources, like the social media pages of the particular organization.
+Trend Micro™ InterScan™ Messaging Security stops email threats in the cloud with global threat intelligence, protects your data with data loss prevention and encryption, and identifies targeted email attacks, ransomware, and APTs as part of the Trend Micro Network Defense Solution. Its enhanced web reputation blocks emails with malicious URLs in the message body or in attachments, and it is powered by the Trend Micro™ Smart Protection Network™. Meanwhile, social engineering attack protection identifies targeted attack emails by correlating email components such as the header, body, and network routing.
+Trend Micro™ Maximum Security provides multi-device protection so that users can freely and smoothly live out their digital lives. The product includes ransomware protection, blocks malicious links in email and IM, and provides anti-spam filters as well as effective anti-phishing features.
+Indicators of Compromise
+Malicious emails:

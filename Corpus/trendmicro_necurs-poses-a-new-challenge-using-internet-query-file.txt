@@ -1,0 +1,33 @@
+Necurs Poses a New Challenge Using Internet Query File
+By Jed Valderama, Ian Kenefick, and Miguel Ang
+Our last report on the Necurs botnet malware covered its use of an internet shortcut or .URL file to avoid detection, but its authors seem to be updating it again. Current findings prove that its developers are actively devising new means to stay ahead of the security measures meant to thwart it. This time, the new wave of spam from this botnet is using the internet query file IQY to evade detection.
+Necurs has cropped up in various cyberattack reports through the years, including a 2017 incident in which it was used to distribute Locky ransomware. Its current use of the IQY file type as an initial infection vector makes it notable. IQY files are also text files with a specific format. Its purpose is to allow users to import data from external sources to the user’s Excel spreadsheet. By default, Windows recognizes IQY files as MS Excel Web Query Files and automatically executes it in Excel.
+The role of IQY files
+The new wave of spam samples has IQY file attachments. The subject and attachment file contains terms that refer to sales promotions, offers, and discounts, likely to disguise it as the type of information opened in Excel.
+
+Figure 1. Sample email that has IQY attachment
+Once the user executes the IQY file it queries to the URL indicated in its code, the web query file pulls data — 2.dat in the sample — from the targeted URL into an Excel worksheet.
+
+Figure 2. Code snippet of the sample IQY file
+Closer examination of the pulled data shows that it contains a script that can abuse Excel’s Dynamic Data Exchange (DDE) feature, enabling it to execute a command line that begins a PowerShell process. This process allows the fileless execution of the remote PowerShell script, seen as 1.dat in the sample.
+
+Figure 3. Code snippet of the pulled data
+
+Figure 4. Code snippet of the PowerShell script
+The PowerShell script enables the download of an executable file, a trojanized remote access application, and its final payload: the backdoor FlawedAMMYY (detected as BKDR_FlawedAMMYY.A). This backdoor appears to have been developed from the leaked source code of the remote administration software called Ammyy Admin.
+In a more recent spam wave, the script downloads an image file before the final payload. The downloaded image is a disguised downloader malware (detected as BKDR_FlawedAMMYY.DLOADR) that downloads an encrypted component file (detected as BKDR_FlawedAMMYY.B) containing the same main backdoor routines.
+
+Figure 5. Infection chain starting with the attached IQY file
+The backdoor FlawedAMMYY executes the following commands from a remote malicious server.
+Adding this new layer of evasion to Necurs poses new challenges because web queries generally come in the form of plaintext files, which makes the attached IQY file’s URL the only indication of malware activity. In addition, its structure is the same as normal Web Queries. Therefore, a security solution that blocks malicious URLs could be used to defend against this threat.
+Solutions and mitigation 
+Against Necurs and other threats delivered via spam, employing strict security protocols and best practices can still make a difference in defending against them. In this case, users should download and execute uncommon attachments with extreme caution.  Microsoft is aware of the abuse in DDE that this infection vector uses. This is why it issues two explicit pop-up warnings upon execution of the IQY file attachment, giving users a chance to reconsider opening the file.
+
+Figure 6. First pop-up warning
+
+Figure 7. Second pop-up warning
+Necurs’ activities show that this botnet has all the signs of developing evasion techniques that might overtake an unpatched or outdated security solution. To protect against evolving spammed threats like Necurs, enterprises can use Trend Micro™ endpoint solutions such as Trend Micro Smart Protection Suites and Worry-Free™ Business Security. Both solutions protect users and businesses from threats by detecting malicious files and spammed messages, and blocks all related malicious URLs. Trend Micro Deep Discovery™ has a layer for email inspection that can protect enterprises because it detects malicious attachment and URLs. Deep Discovery can detect the remote script even if it is not being downloaded in the physical endpoint.
+Trend Micro™ Hosted Email Security is a no-maintenance cloud solution that delivers continuously updated protection to stop spam, malware, spear phishing, ransomware, and advanced targeted attacks before they reach the network. It protects Microsoft Exchange, Microsoft Office 365, Google Apps, and other hosted and on-premises email solutions. Trend Micro™ Email Reputation Services™ detects the spam mail used by this threat upon arrival.
+Trend Micro™ OfficeScan™ with XGen™ endpoint security infuses high-fidelity machine learning with other detection technologies and global threat intelligence for comprehensive protection against advanced malware.
+Indicators of compromise
+ 

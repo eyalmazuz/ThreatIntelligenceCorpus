@@ -1,0 +1,40 @@
+Fake Flash Player Update Linked to Watering Hole Attack on Popular Middle East News Site
+On the 9th of August, a tweet from @MalwareHunterTeam caught my eye; it mentioned a fake Flash update that used a PowerShell script to connect to a very particular host:
+Fig-1 The tweet that began my research
+Source: https://twitter.com/malwrhunterteam/status/895211298304163840
+Upon investigating this domain, I found it to be part of a watering hole attack on a news website popular in the middle east. In this blog, I’ll summarize the findings and what is currently known about this attack. As of now, the malicious hosts are down, but with the actors still in control, this attack can once again become a threat at any time. The actual investigation was a combination of research by @MalwareHunterTeam, @VK_Intel, and me (@ydklijnsma), which happened live on Twitter. The entire conversation of the investigation can be followed by reading the original tweet that started it [here] or by reading the summary below.
+The fake Flash updater sample (VirusTotal) contacted browser.updateplugin.org over HTTPS. The domain really piqued my interest because I couldn’t believe such a name would still be open for registration to be used by an attacker, but apparently, it was. Registered on June 23rd, the domain had been active only shortly, and a quick pivot through RiskIQ PassiveTotal showed a variety of subdomains:
+Fig-2 Subdomains inside of RiskIQ PassiveTotal
+A very interesting aspect of this domain was that we had already seen it in RiskIQ’s crawls of the Internet. One of its subdomains links to a website called muslm.org, which is a news website popular in the middle east:
+Fig-3 Relationships to the sample using the Host Pairs data set inside RiskIQ PassiveTotal
+A forum post on the muslm.org website shows a user noticed it around August 8th, posting that he was getting served a Flash update request. Another user noted it was, in fact, a malicious Flash update: هل موقع انا المسلم مصاب بفايروس. After investigating our crawl data, it was apparent something was redirecting visitors to a subdomain on the same domain as the sample:
+Fig-4 Web crawl showing muslm.net linking to the fake flash update
+Inspecting the source of this redirection showed a small JavaScript snippet was injected inside one of the resources of the muslm.org website:
+Fig-5 The small Javascript snippet
+A copy of the injected content is available on Pastebin as per the request of other researchers: 
+Interestingly, the page responds differently depending on the country from which you connect to it, or user-agent used to connect to it. For example, most of the RiskIQ web crawls in which our virtual browser was redirected to the legitimate Adobe Flash update page look like this:
+Fig-6 Redirect
+While in other cases, we received the page response instead of the Adobe redirect, a download for a payload that looks like this:
+Fig-7 Page response
+The payload comes in two forms, a Windows version with which you connect with a Windows user-agent and a Linux version with which you connect with a Linux user-agent. Both function identically, with the same fake Flash player update lure while contacting the browser.updateplugin.org host in the background.
+The file at this location is rotated quite frequently, so we’ve collected a large number of unique samples. The functionality of the samples is all the same, which is why the IOC section only lists a single hash for both platforms.
+We’ll take a look at the Windows variant listed as MD5 f8e95ded1629441ac9ce0d18fa67accf. When running the malware, it mimics the Flash Player update process:
+Fig-8 Fake progress bar
+The malware is written in C#, which means we can decompile the malware with a tool like ILSpy giving us the (near) original code written by the author if no obfuscation was used, which in this case, it wasn’t.
+The malware’s fake Flash update GUI is a simple form with a timer that increases the progress bar with 1% every 20 milliseconds until it reaches 100%, telling the user ‘Plugin Flash Updated to the latest version”. In the background, the malware spawns a new thread that runs a function called Updatef, which looks like this:
+Fig-9 Updatef
+The str variable is decoded and run as a PowerShell command. Decoded, the PowerShell command looks like this:
+
+Fig-10 Decoded PowerShell command
+The script will connect to browser.updateplugin.org over HTTPS with a unique (and fake) PHPSESSID header. The response of this request is run as another PowerShell command that allows the attackers to execute additional commands on the infected machine. The iex function used in the try-catch section of the script is, in fact, short for Invoke-Expression, which allows the PowerShell script to invoke other PowerShell scripts.
+This small PowerShell script is a very bare-minimum implementation of a backdoor that polls the backend for new/additional commands to execute, giving the attackers full control over the victim through this fake Flash update. Under Linux, this sample principle is implemented, but uses the wget command in combination with shell commands rather than PowerShell:
+Fig-11 Wget command in combination with shell commands
+
+Interestingly, the authors have added a check in case the command they send to the victim causes an error. This error information is then sent back to the C2 server in a barebones form of quality assurance and debugging.
+The following IOCs are available for this watering hole attack active from late July to mid-August. The hosts are still up, but it seems the service behind it was pulled down.
+We’ve listed only two hashes for the known files for Windows and the ELF variant because the hashes are different for almost every download, but the core functionality is the same. Because of these rotating hashes, we suggest blocking the domains and IPs while looking for traces of them in older logs, as this activity could go back to late July.
+Fig-12 We suggest blocking these malicious domains and IPs
+Fig-13 Hashes are different for almost every download
+Besides the IOCs listed above, I also created a public project in RiskIQ Community Edition for those who sync their data from it: [RiskIQ Community Project: WATERHOLING ACTIVITIES IN THE MIDDLE EAST (JULY-AUGUST 2017)]
+In addition to monitoring and protecting the company’s network and network perimeter, security defenders must continually monitor their company’s digital footprint for changes. Such vigilance requires current Internet intelligence, which RiskIQ collects via our network of crawlers, sensors, and proxy users. These virtual users emulate human users with a fully instrumented browser to store the entire chain of events that may have lead to a digital threat, such as a compromised page leading to malware. With this information, security teams can reconstruct an event and what led to it—just like we did in this blog.
+To learn more, visit our platform page, or contact us today.

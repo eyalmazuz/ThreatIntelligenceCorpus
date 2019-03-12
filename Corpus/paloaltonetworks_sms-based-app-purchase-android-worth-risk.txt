@@ -1,0 +1,65 @@
+SMS-Based In-App Purchase on Android Is Not Worth The Risk
+
+In-App Purchase (IAP) has become a popular way to sell services and virtual items through mobile applications. In the Android ecosystem, in addition to the official IAP service by Google, there are many third-party IAP Software Development Kits (SDKs) spread around the world.
+Some of these third-party SDKs provide IAP services based on existing online payment platforms. However, an increasingly popular method uses premium SMS. A primary reason for the popularity of SMS-based IAP is that it does not require Internet connectivity, just cell service. While this is more convenient for both users and developers, there are significant security concerns with using SMS-based IAP on Android.  These concerns are detailed below.
+Abuse of Privilege
+
+Installing an Android app with SMS-based IAP is almost equivalent to installing an “SMS manager” (or even a “contacts manager”) app on the phone. The reason is because most SMS-based IAP SDKs include comprehensive functionalities to monitor, manage, and even intercept a user’s SMS communication silently in the background, without any user interaction or knowledge. This is a critical point: these SMS-based IAPs are able to independently send, receive, or block any SMS to/from any cellphone on which they are installed, without the user having any idea this is occurring. This can include receiving instructions from a cloud server under the control of the SDK author.
+Palo Alto Networks Wildfire, through custom SMS blocking policies, recently discovered eight different SMS-based IAP SDKs with this abusive functionality. Further investigation shows that these SDKs have been used in at least 25 different Android games in two third-party app markets, JoloPlay and Wanyx. 17 of the top 50 games in JoloPlay contain at least one of these IAP SDKs.
+According to JoloPlay’s website, these 17 games have been downloaded and installed more than 1.7 million times. Most of them are pirated or repackaged from famous Android games, such as Plants vs. Zombies 2, Jewels Maze, Fishing Joy, and Where’s My Water. According to Wanyx’s website, 12 of the 50 games in Wanyx’s suggested games column contain the discussed IAP SDKs.
+In Wildfire, we classify apps using these IAP SDKs as Potentially Unwanted Applications (PUA). The reason they are not marked as malware is because all SDKs require user interaction when making a purchase (e.g. user clicks on the agreement).  However, these IAP SDKs are very dangerous to users because of what they are doing with a user’s SMS without his or her knowledge.
+Below are the details of eight SMS-based IAP SDKs discovered by Wildfire:
+
+JoloPay, provided by JoloPlay
+AstepPay, provided by Astep
+WiPay, provided by Wiyun Game Platform
+TPADPay, provided by Suzhou Tianping Co.
+NgstreamPay, provided by Xinyinhe
+Umpay, aka HuaFuBao, provided by Union Mobile Pay
+LinkSMSPayment
+EgamePay
+
+All of the identified IAP SDKs use premium SMS to provide the IAP service. They implement code that will send SMS to pre-defined premium numbers (Figure 1). This code implementation is also abstracted in an interface for developers.
+ 
+Figure 1. The AstepPay SDK implements SMS sending for developers
+ 
+However, in addition to sending, all of these IAP SDKs also implement a BroadcastReceiver and register it for SMS_RECEIVED actions (Figure 2).
+ 
+Figure 2. EgamePay registers a receiver for SMS
+ 
+In addition, Umpay, WiPay, and NgstreamPay will also register a ContentObserver to monitor all changes in an SMS inbox (Figure 3).
+ 
+Figure 3. NgstreamPay registers an observer to monitor and delete specific received SMS
+ 
+After an SMS is received, these receivers and observers will check the originating number and/or message body, and block the SMS by some policies (Figure 3 and Figure 4).
+For example, in Figure 4, the policy is defined as deleting SMS satisfying two conditions at the same time:
+1. Message comes from the phone number “+8610658008” or “10658008”
+2. The message body contains the term “You will use” (translated from Chinese shown in Figure 4). Some of these policies are hard-coded in the SDKs, e.g., in UmPay; but others are pre-fetched from cloud servers that are operated by the SDKs’ providers (Figure 5).
+ 
+Figure 4. UmPay checks the originating number and content and deletes certain SMS
+ 
+Figure 5. AstepPay implements blocking policies pre-fetched from a specific server
+ 
+Again, all the functions mentioned above run silently in the background. Except for LinkSMSPayment, all the IAP SDKs listed in this post do not notify the user in any way that they are taking actions against the user’s daily SMS communication. Users have no idea if an SMS was blocked or if it was delivered.
+All of the IAP SDKs in this post target Chinese users. Both SMS sending and SMS blocking will only affect Android phones with a valid Chinese mobile phone number. Some of them will even check which SIM operator a user is using (Figure 6). However, we’ve found Android games using these IAP SDKs being downloaded by users in other Asia Pacific areas.
+ 
+Figure 6. TPADPay checks which SIM operator a user is using
+ 
+An interesting observation is that half of these IAP SDKs implement the send and block SMS functions in separate codes. More specifically, the code was separated into two parts. One piece is embedded into Android apps or games for developers as a part of the source code. The other piece is included separately in the assets directory in APK files, and will be invoked by Java reflection in runtime (Figure 7). For example, JoloPay, WiPay, TPADPay and EgamePay follow this design exactly. AstepPay implements both sending and blocking in the “assets/astep.bin” file. This separation of functions may be intended to avoid detection by security products.
+ 
+Figure 7. Some of the JoloPay code is invoked by DEX dynamic loading and reflection
+
+Insecurity of SMS Communication
+SMS should not be used in payment or authentication for e-finance transactions. On the existing Android platforms it is very easy for any installed apps to send, intercept, or even forward SMS messages in background without any user knowledge or interaction. Previous attack cases, such as Zitmo and Cardbuyer, showed the risk of using SMS for payment authentication. For instance:
+
+Android apps with SMS-related permissions can use the phone and its SIM card to send any SMS content to any destination number in the background without user knowledge or interaction. Mobile malware commonly relies on this technique to send SMS to premium numbers; some mobile malware also uses this technique to communicate with the C&C server.
+Android apps with SMS-related permissions can also receive all incoming SMS or observe any changes about SMS in the phone. Further, they can intercept any SMS. There is mobile malware that will block SMS from premium numbers or operators unrelated to itself. There are also Android RATs that will block all SMS from an unknown C&C server.
+By combining the two methods above, Android apps with SMS-related permissions can even parse content in SMS and forward them to other numbers. For example, Zitmo, which was used to steal approximately 36 million euro in Europe, will block mTANs from banks and instead forward it to the attackers.
+
+To improve the security of IAP, some payment platforms try to add a verification step in order to confirm an SMS was really sent by the user, for example, it will ask the user to reply with certain text that was sent to a phone number specified by the user. However, two months ago, WildFire discovered a new Android malware, Cardbuyer, that circumvents this verification technique. Cardbuyer targets 11 different online payment platforms, as well as stolen prepaid cards, by parsing their verification SMS and automatically replying.
+The good news is this technique might be partially mitigated in Android KitKat (version 4.4), where Google introduced a security enhancement around SMS security. A user can set a system-wide default SMS app as the only app with permission to send and receive SMS. However, other installed apps are still allowed to receive SMS and upload the content via Internet. But as of June 4, 2014, only 13.6% of worldwide users had installed Android 4.4 or above. This means more than 86% of Android users do not benefit from this enhancement and are vulnerable. However, Palo Alto Networks users are protected from these PUAs by subscribing to WildFire and GlobalProtect services.
+Conclusion
+SMS-based IAP SDKs have become a gray zone that needs close attention. Because of convenience and popularity, SMS-based IAP will likely continue to spread and increase in worldwide use. However, users need to be protected from PUAs and malware that abuses the SMS-based IAP. Also, developers need to be aware that SMS cannot meet security requirements (e.g. authentication) during the payment transactions.
+Acknowledgement
+We would like to thank Kyle Sanders for his contribution to this work.
+

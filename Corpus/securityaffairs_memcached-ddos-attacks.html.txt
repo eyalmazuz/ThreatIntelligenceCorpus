@@ -1,0 +1,27 @@
+
+					Experts warn Memcached DDoS attacks could be soon a dangerous threat					
+Security experts from some security firms have reported that threat actors have started abusing the memcached protocol to power distributed denial-of-service (DDoS) Attacks, so-called memcached DDoS attacks. 
+Memcached is a free and open source, high-performance, distributed memory caching system designed to speed up dynamic web applications by alleviating database load.
+Clients communicate with memcached servers via TCP or UDP on port 11211.
+Researchers from Cloudflare, Arbor Networks and security firm Qihoo 360 discovered that recently attackers are abusing the memcached for DDoS amplification attacks.
+Chinese experts warned about abuses of memcached DDoS attacks in November.
+Experts at Cloudflare dubbed this type of attack Memcrashed.
+“Over last couple of days we’ve seen a big increase in an obscure amplification attack vector – using the memcached protocol, coming from UDP port 11211.” reads the analysis published by Cloudflare.
+“An IP-spoofing capable attacker sends forged requests to a vulnerable UDP server. The UDP server, not knowing the request is forged, politely prepares the response. The problem happens when thousands of responses are delivered to an unsuspecting target host, overwhelming its resources – most typically the network itself.“
+The involvement of memcached servers in DDoS Attacks is quite simple, the attacker sends a request to the targeted server on port 11211 spoofing the IP address of the victim. In a memcached DDoS attack, the request sent to the server is composed of a few bytes, while the response can be tens of thousands of times bigger, resulting in an amplification attack.
+
+The researchers at Cloudflare observed a memcached DDoS attack that peaked at 260 Gbps while Arbor Networks reported observing attacks that peaked at 500 Gbps and even more.
+“We have observed a considerable uptick in memcached reflection/amplification attacks ranging in size from a few hundred mb/sec up to 500gb/sec and larger. The amplified attack traffic is sourced from UDP/11211, with a packet size of 1428 bytes (1442 bytes with layer-2 Ethernet framing included), and no fragmentation (memcached segments large responses at layer-7, as does ntp).” reads the analysis published by Arbor Networks. “The attacker typically ‘primes’ a given set of memcached reflectors/amplifiers with arbitrary-length key/value pairs, and then issues memcached queries for those key/value pairs, spoofing the IP addresses of targeted hosts/networks.”
+Researchers at Arbor Networks added that attackers can also send queries at TCP port 11211, but since TCP queries cannot be reliably spoofed, the hackers opted for UDP.
+“I was surprised to learn that memcached does UDP, but there you go! The protocol specification shows that it’s one of the best protocols to use for amplification ever! There are absolutely zero checks, and the data WILL be delivered to the client, with blazing speed! Furthermore, the request can be tiny and the response huge (up to 1MB).” continues the analysis published by Cloudflare.
+“Launching such an attack is easy. First the attacker implants a large payload on an exposed memcached server. Then, the attacker spoofs the “get” request message with target Source IP.”
+According to Cloudflare, most of the memchached DDoS Attacks were launched from servers in North America and Europe, the majority of them is hosted by OVH, DigitalOcean, and Sakura.
+
+The experts observed attacks from roughly 5,700 unique IPs associated with memcached servers.
+The situation can rapidly get worse because the result of a simple Shodan query shows nearly 88,000 unsecured memchached servers, most of them in the United States, China and France.
+
+Cloudflare recommends disabling UDP support unless it’s needed and isolating memcached servers from the Internet. Internet service providers have to fix vulnerable protocols and prevent IP spoofing.
+“Internet Service Providers – In order to defeat such attacks in future, we need to fix vulnerable protocols and also IP spoofing. As long as IP spoofing is permissible on the internet, we’ll be in trouble.” concluded Cloudflare.
+“Developers – Please please please: Stop using UDP. If you must, please don’t enable it by default. If you do not know what an amplification attack is I hereby forbid you from ever typing SOCK_DGRAM into your editor.”
+Pierluigi Paganini
+(Security Affairs – memcached DDoS Attacks, hacking)

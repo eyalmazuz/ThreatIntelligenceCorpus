@@ -1,0 +1,87 @@
+Insecure Internal Storage in Android
+
+Today, Palo Alto Networks researcher Claud Xiao is delivering a presentation titled “Insecure Internal Storage in Android” at the Hacks in Taiwan Conference (HITCON).
+Claud is discussing techniques for accessing private data in Android’s internal storage system using the Android Debug Bridge (ADB) backup/restore functionality. While over 85% of active Android devices are vulnerable to this attack, Android includes multiple levels of protection to prevent unauthorized data access. In today’s presentation, Claud will have demonstrated how an attacker could bypass all of those protections to gain access to usernames, passwords and a treasure trove of other data.
+To understand this attack, it’s critical to understand how applications use Android internal storage and why unauthorized access to this data is so problematic.
+
+Android Internal Storage
+The Android operating system provides a mechanism for applications to store information that is isolated to their specific application; this area is called “internal storage.”
+ 
+If an application needs to store something secret, like a website username and password, internal storage is the place to do it. As the Android sandbox prevents other applications from accessing this data, many developers have chosen to store secret information here without any additional encryption in place.
+This first became a cause for concern in 2010 when users reported that the default e-mail application stored credentials in plain text. At that time, the Android development team explained that the security of the internal storage system prevented unauthorized access, and that there were many good reasons not to encrypt stored e-mail passwords. The primary reason is usability, as any strong encryption of the password would require the user to type the decryption password each time they needed to access the e-mail password, defeating the purpose of storing a password in the first place.
+While there is still debate about how to store passwords in internal storage, if Android internal storage isn’t accessible to anything but the application that owns it, it remains secure. Unfortunately, that isn’t always the case.
+ADB Backup and Restore
+The ADB provides users a mechanism for attaching their phone to a PC or other device and issuing commands. This includes backup and restore functionality, which allows the user to copy data from the phone to the PC and vice versa, including data contained in internal storage. This means that all of those passwords and any other data Android developers assume are secure (unencrypted) are accessible if an attacker can access the backup system.
+Attacking Internal Storage through ADB Backup
+ADB backup is not simple to access, as there are multiple physical and technical barriers standing in the way of the attacker.
+
+The Android device must be connected to another system using USB.
+The Android device must support ADB backup/restore.
+The Android device must have ADB debugging enabled.
+The Android device’s screen must be unlocked.
+If ADB Authentication is enabled, the PC must be able to authenticate.
+Someone must click the “Back up my data” button in the Android interface.
+
+This is admittedly a lot of hurdles, but all of them can be bypassed under the right conditions, leaving the data in internal storage exposed. Here’s how it might happen:
+1. The first challenge is getting access to the device over USB. The simplest way of doing this is by physically controlling the phone, either by borrowing or stealing it, but that isn’t the only way. If an attacker has control over a PC, which the Android device is attached to (for charging or for other purposes), they don’t need to get physical access to the phone. This could be accomplished through malware that infects the PC and waits for Android devices to be connected. Or through a rogue “charging station” which users plug their device into without thought.
+2. Next, the device must support ADB backup, which was not introduced until Android 4.0 (Ice Cream Sandwich). As of July 7, this includes 85.8% of active Android devices.
+
+3. For these devices, ADB debugging must be enabled for backup to work. This is generally disabled by default, but many enthusiasts enable it and PC-based tools often guide users to leave it enabled. Some device vendors have even left it enabled by default when shipping their phones. Additionally, for a small price an individual could purchase custom hardware that will enable the USB debugging.
+4. Screen lock prevents ADB backup, but many users do not use screen lock at all. If they do, there are a few vulnerabilities in Android versions < 4.4.4, which would allow an attacker to get around this.
+5. If the device is running Android 4.2.2 or above (approximately 54.3% of active devices) it uses ADB authentication. This means when a PC attempts to enable ADB debugging, the phone presents a dialog to the user to authenticate the PC. If the user has done this in the past and checked the “Always allow from this computer” for the system the attacker controls, they can bypass this protection. If this isn’t the case, they may be able to bypass this protection using a vulnerability in Android versions 4.4.2 and below.
+
+6. Finally, when an ADB backup is initiated, a window pops up on the device screen to ask the user to press “Back up my data.” If the attacker has physical access to the device, they can click this button, but if they don’t the “adb shell sendkey” function can simulate the necessary “click” to bypass this protection.
+ 
+Many of these protections have been deployed only in recent versions of Android, indicating that Google understands the risks presented by ADB. Unfortunately, none of these protections is fool proof. Successfully bypassing them means getting access to a lot of applications and their sensitive information.
+Vulnerable Applications
+The actual impact of the ADB backup attack depends on when data is actually stored in the device’s internal storage and whether or not it’s protected. One way to protect this data is to disable the backup system for a specific application. This is the easiest way for developers to prevent this attack against their data, but we’ve found very few make this choice.
+Of the 12,351 applications on the Google Play store with > 500,000 installations, only 556 explicitly disable this backup system. Another 156 implement a BackupAgent that restricts which data is subject to the backup. The other 94.2% of applications place no restrictions on the backup of their internal storage data.
+
+
+
+Installations Per Application
+# of backup-able apps 
+
+
+500,000,000 – 1,000,000,000
+4
+
+
+100,000,000 – 500,000,000
+35
+
+
+50,000,000 – 100,000,000
+38
+
+
+10,000,000 – 50,000,000
+524
+
+
+5,000,000 – 10,000,000
+766
+
+
+1,000,000 – 5,000,000
+5043
+
+
+500,000 – 1,000,000
+5229
+
+
+
+This includes (as discussed earlier) the default Android Mail and Browser applications, but also other e-mail, SSH and FTP applications, many of which store login and password details without any additional encryption.
+Recommendations
+It’s clear from the data above that most application developers either are not aware of, or aren’t concerned by, the potential leakage of the data they store in internal storage. Google could reverse this situation by making setting the android:allowBackup property to false by default, requiring developers to opt-in to the backup system, rather than opt-out. Developers can also make this choice by changing property in their AndroidManifest.xml files. Alternatively, developers can implement a BackupAgent that restricts the backup system from copying sensitive data in an unsafe way.
+Users interested in defending their phones from this attack should take the following actions, while understanding that none is 100% effective:
+
+Disable ADB debugging whenever it’s not needed.
+Always keep your phone patched with the latest Android updates.
+Enable screenlock.
+
+Conclusion
+The slides and demo code from Claud’s talk at HITCON are available now. These include more detail than we could fit into this blog and show specifically how Claud bypassed the ADB protections on-stage today.
+Palo Alto Networks first reported the issues described here to the Google security team in March of 2013 and provided them with the content of todays presentation in July 2014. While we understand their position on Android internal storage and applaud their patching of vulnerabilities that allow access to the system, we hope that developers will take action to protect their users’ data from the risk of the ADB backup attack.
+

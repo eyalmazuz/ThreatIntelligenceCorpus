@@ -1,0 +1,102 @@
+
+WireLurker, a shock in Apple World.
+
+
+
+
+
+
+I am not used to write "Malware centric" posts, contrary I do love to focalize my writing on specific techniques used by Malware to infect systems and/or to evade analysis. However today,  I want to stamp in my digital diary WireLurker since I see a "paradigm shift" on it. I find it a super fascinating peace of code where motivations are still unclear. WireLurker has been firstly analyzed by Unit42 (Palo Alto Networks) and suddenly became a quite spread news. It targets OSX and iOS devices (one of the first Malware entirely written for Apple platforms). WireLurker owns the following specif characteristics:
+
+It is only the second known malware family that attacks iOS devices through OS X via USB 
+It is the first malware to automate generation of malicious iOS applications, through binary file replacement 
+It is the first known malware that can infect installed iOS applications similar to a traditional virus 
+It is the first in-the-wild malware to install third-party applications on non-jailbroken iOS devices through enterprise provisioning 
+
+
+PaloAlto networks writes:
+
+
+Of known malware families distributed through trojanized / repackaged OS X applications, it is the biggest in scale we have ever seen.  .
+
+
+ WireLurker was used to trojanize 467 OS X applications on the Maiyadi 
+App Store, a third-party Mac application store in China. In the past six
+ months, these 467 infected applications were downloaded over 356,104 times and may have impacted hundreds of thousands of users. The following image shows the complete infection workflow.
+
+
+
+Complete infection workflow: From PaloAlto unit42 report
+
+
+
+Fascinating how simple is the thechnique used by the Malware writers to Trojanize a legitime APP.  Please substitute %@ with real paths to make sense on it.
+
+
+
+
+
+Trojanize script used by WireLurker. From PaloAlto unit42 report
+
+
+Once the "Trojanized App" has been saved on the infected machine, WireLurker builds its own "empire" by downloading applications, updating itslef and hiding files into folders spread on the file system. The following image  shows the amount of dropped, created, deleted file into the targeted machine.
+
+
+
+From PaloAlto unit42 report
+
+
+Even more fascinating the way WireLurker get persistence on the device. Generally speaking WireLurker runs as a background process, waiting for iOS devices to
+infect over USB connection, this represents a quite simple process, however it adopts multiple redundancy methods to guarantee its own presence such as:
+
+It does not check if the device is already infected, each time it executes malicious code. 
+
+This is actually a weak point. Detectors might exploit this behavior to identify it.
+It is not really "silent" adopting this "forcing method"
+
+WireLurker initialization and update scripts create and load launch daemons,
+ensuring persistence after reboot.
+
+Pretty simple approach if compared to complex Bootkit Malware who does not initialized a direct daemon. 
+
+It invokes the following launchctl 
+
+
+
+From PaloAlto unit42 report
+
+
+
+Comunication to Command and Control happens by using a Data Encryption Standard (DES) with Cryptographic Message Syntax Standard (PKCS7) padding. Researcher from PaloAlto Networks figured out that for each piece of TCP
+data WireLurker receives or sends, the first 10 bytes of the data are used to generate a session
+key. The session key is then combined with a fixed string, “dksyel”, to generate a
+decryption key. Remaining bytes of the data are encrypted data that has also been
+encoded using Base64. From here the analysis is quite usual.
+
+
+
+Quoting the unit42 report:
+
+
+
+
+The ultimate goal of the WireLurker attacks is not completely clear. The functionality
+and infrastructure allows the attacker to collect significant amounts of information
+from a large number of Chinese iOS and Mac OS systems, but none of the
+information points to a specific motive.
+As infected devices regularly request updates from the attackers command and
+control server, new features or applications could be installed at any time. It’s clear
+the tool set is still undergoing active development and we believe WireLurker has not
+yet revealed its full functionality.
+
+ 
+
+
+
+
+It is a quite weird behavior. Right now I do not have enough elements to understand the goal of such a targeted attack. Having a general information about Apple device owners seems to me a quite original target per se. For shure the security perspective for Apple users have been deeply changed.
+
+
+
+
+

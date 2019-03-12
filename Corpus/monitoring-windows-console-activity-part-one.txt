@@ -1,0 +1,41 @@
+Monitoring Windows Console Activity (Part 1)
+September 01, 2017 | by Andrew Davis
+Introduction
+While performing incident response, Mandiant encounters attackers actively using systems on a compromised network. This activity often includes using interactive console programs via RDP such as the command prompt, PowerShell, and sometimes custom command and control (C2) console tools. Mandiant’s Innovation and Custom Engineering (ICE) team researched how feasible it would be to capture this attacker activity on an endpoint.
+
+Depending on the target Windows version, capturing this data on a live system can be difficult. The varying level of difficulty is directly related to the evolving Windows implementation of virtual consoles over the last decade.
+
+This blog will discuss the implementation of the Windows console architecture from years past, with a primary focus on the current implementation present on modern versions of Windows.
+
+A Review of Console Applications
+The Windows PE loader determines if a file is a console application when the "Subsystem" field in the PE optional header is set to IMAGE_SUBSYSTEM_WINDOWS_CUI. If this flag is set, the loader allocates a console server for the process. The details of how the console server is implemented depends on the Windows version and has undergone three major revisions since Windows XP. Regardless of the implementation, when a client (e.g. cmd.exe, powershell.exe, etc.) is executed, by default, a console server connection is established typically via the AllocConsole Win32 API. The server process is what the user typically interacts with when typing commands that are then transferred to the client process through an Interprocess communication (IPC) mechanism. A single console server can host one or more clients simultaneously.
+
+Evolution of the Windows Console
+On Windows XP through Windows Vista, the Client/Server Runtime Subsystem process (CSRSS) was responsible for capturing user input and sending it to client processes. The clients and CSRSS communicated using a Local Procedure Call (LPC) Port to send captured input.  Figure 1 illustrates the client-server console architecture implemented in Windows XP and Vista.
+
+
+Figure 1: Windows XP/Vista console architecture
+
+This model suffered from privilege escalation vulnerabilities since the client ran as the current user, but the CSRSS server process ran as the Local System account. An attacker could exploit the exposed attack surface of CSRSS by connecting as an unprivileged user and triggering a vulnerable code path in CSRSS, giving them SYSTEM level access.
+
+This architecture problem was addressed with the release of Windows 7 and Windows Server 2008 R2. Instead of CSRSS being the only console server on the system, a new console host (conhost.exe) process was introduced that hosted the console input thread. This process now ran in the same context as the client, removing this attack scenario. Figure 2 illustrates the updated Windows 7 console architecture.
+
+
+Figure 2: Windows 7/Server 2008 R2 console architecture
+
+When a console in Windows 7 is allocated, CSRSS executes a new instance of the conhost.exe process. An Advanced Local Procedure Call (ALPC) port is created with the following naming convention: \RPC Control\ConsoleLPC-<conhost_pid>-<random_number>. This port is used along with a shared section object mapped into the client and server processes so command line data can be easily shared. In addition, an event object is created with the naming scheme \RPC Control\ConsoleEvent-<conhost_pid>-<random_number>. This event object is used so the client and server can notify each other when new data is present. A single conhost.exe process can service multiple client applications, as shown in the Windbg output in Figure 3.
+
+
+Figure 3: Windbg output for analyzing ALPC ports between a conhost process and multiple console applications on Windows 7
+
+The release of Windows 8 introduced the current console implementation at the time of this writing. This new architecture differs significantly from the previous ones in that there is now a dedicated kernel driver to handle console I/O between client and server processes. This new driver is named ConDrv.sys and brokers all console communication on the system. This is exposed to user mode applications by the driver with a device object named \Device\ConDrv. This device object is opened from user mode using a list of supported namespace parameters – Connect, Server, Input, Output, Reference, CurrentIn, and CurrentOut – that are opened depending on the needs of the application. Client applications will often have multiple open handles to the console driver depending on the functionality needed by the driver. This is shown in Figure 4.
+
+
+Figure 4: Command line application with multiple ConDrv handles open
+
+When a console is allocated by a command line process, kernelbase.dll will open a handle to \Device\ConDrv and request that a new conhost.exe process be created. ConDrv will execute this process from kernel mode and a memory descriptor list (MDL) chain is allocated. This MDL chain is used to map memory pages between the Conhost process and its clients so that data can be easily shared between them. Instead of the LPC/ALPC ports used in the previous versions, messages are now typically transferred using Fast I/O to the console driver. Fast I/O allows an application to communicate with a driver without the overhead of creating an I/O request packet (IRP) for each request. IRPs are an operating system structure that are used to deliver I/O data to device drivers. These fast I/O requests are used to read and write to the console and are brokered by the ConDrv driver.
+
+In Windows 10, conhost.exe is mostly a container process. The main input thread along with all the server functionality executes in either ConhostV2.dll or ConhostV1.dll. By default ConhostV2.dll is loaded and provides new console functionality to Windows 10 users (such as full screen console windows). ConhostV1.dll implements “legacy mode” that can be enabled that will make consoles behave as they did in Windows 7 and earlier. Regardless of the version being used, ConDrv.sys is used to transfer messages between console clients and servers. Figure 5 illustrates how all this fits together.
+
+
+Figure 5: Console driver based architecture used in Windows 10

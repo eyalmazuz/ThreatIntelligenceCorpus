@@ -1,0 +1,33 @@
+
+An Updated HTTP TRACE/TRACK Plugin for nmap
+
+
+by Patrick Bogen. 
+
+Two stock nmap plugins exist that provide some detection for sites that are vulnerable to cross-site tracing (a variant of cross-site scripting exposed when a site supports the TRACE or TRACK verbs).
+
+The first of these, 'http-methods,' relies on the server's response to an OPTIONS request; servers do not always report that they support TRACE or TRACK when they actually do. This is often the result of an administrator having (wisely) blocked OPTIONS requests, but not TRACE or TRACK requests.
+
+The second, 'http-trace,' is a specialized script for detecting HTTP TRACE- it does not detect HTTP TRACK. Additionally, the script only sends HTTP 1.0 commands, which some servers may not process correctly, due to configurations like name-based virtual hosting, where a different configuration is used depending on the HTTP 1.1 'Host' header sent in the response.
+
+The http-trace-track script below attempts to address the shortcomings of both of the above modules while at the same time leveraging nmap's built-in framework to provide a more robust experience. http-trace-track utilizes HTTP 1.1 (so, in this way, mimics the behavior of all modern web browsers) and independently sends both TRACE and TRACK requests to any server for which nmap has detected an open HTTP or HTTPS port, and then reports which (if any) of the two methods the server supports. Additionally, to reduce false positives, the script compares the TRACE and TRACK responses to a 'normal' GET request as well as to a request with an invalid verb (in particular, 'LOLWUT'). Thus, servers that treat unknown verbs as GETs will be weeded out as false positives, as will servers that generate an error page in response to invalid verbs.
+
+Because the script is an nmap plugin rather than a standalone tool, the script can be very quickly run against a large range of servers, and can be seamlessly integrated into existing testing workflows, since nmap is already commonly deployed in this role as a port scanner.
+
+http://opensecurityresearch.com/files/http-trace-track.nse
+
+How to Use
+$ wget http://opensecurityresearch.com/files/http-trace-track.nse
+$ nmap --script=http-trace-track.nse -p 80,443 192.168.1.1
+
+Starting Nmap 5.51 ( http://nmap.org ) at 2011-10-05 09:43 PDT
+Nmap scan report for 192.168.1.1
+Host is up (0.098s latency).
+PORT    STATE    SERVICE
+80/tcp  open     http
+|_http-trace-track: TRACE supported
+443/tcp filtered https
+Nmap done: 1 IP address (1 host up) scanned in 13.08 seconds
+
+
+

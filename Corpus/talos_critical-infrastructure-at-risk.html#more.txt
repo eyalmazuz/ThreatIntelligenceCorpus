@@ -1,0 +1,53 @@
+
+Critical Infrastructure at Risk: Advanced Actors Target Smart Install Client
+
+
+Update: 4/9 Cisco PSIRT has released additional guidance available here.
+
+Cisco has recently become aware of specific advanced actors targeting Cisco switches by leveraging a protocol misuse issue in the Cisco Smart Install Client. Several incidents in multiple countries, including some specifically targeting critical infrastructure, have involved the misuse of the Smart Install protocol. Some of these attacks are believed to be associated with nation-state actors, such as those described in U.S. CERT's recent alert. As a result, we are taking an active stance, and are urging customers, again, of the elevated risk and available remediation paths.
+
+On Feb. 14, 2017, Cisco's Product Security Incident Response Team (PSIRT) released an advisory detailing active scanning associated with Cisco Smart Install Clients. The Cisco Smart Install Client is a legacy utility designed to allow no-touch installation of new Cisco equipment, specifically Cisco switches. As a response to this activity, Cisco Talos published a blog and released an open-source tool that scans for devices that use the Cisco Smart Install protocol. In addition to the release of the scanning tool, additional coverage has been released for Snort (SID: 41722-41725) to detect any attempts to leverage this type of technology.
+
+
+The Cisco Smart Install protocol can be abused to modify the TFTP server setting, exfiltrate configuration files via TFTP, modify the configuration file, replace the IOS image, and set up accounts, allowing for the execution of IOS commands. Although this is not a vulnerability in the classic sense, the misuse of this protocol is an attack vector that should be mitigated immediately. Throughout the end of 2017 and early 2018, Talos has observed attackers trying to scan clients using this vulnerability. Recent information has increased the urgency of this issue.
+
+While we have only observed attacks leveraging the protocol misuse issue, recently, another vulnerability in the Cisco Smart Install Client was disclosed and patched. This vulnerability has been discussed publicly, and proof-of-concept code has been released. While mitigating the protocol misuse issue, customers should also address this vulnerability.
+
+Scope
+As part of the Cisco Talos investigation, we began looking at how many devices are potentially vulnerable to this attack. The results were extremely troubling. Using Shodan, Talos was able to identify that more than 168,000 systems are potentially exposed via the Cisco Smart Install Client. This is an improvement from the reported numbers in 2016, when fellow cyber security firm Tenable reported observing 251,000 exposed Cisco Smart Install Clients. There may be variations in methodology between the scans, but this still represents a substantial reduction in available attack surfaces.
+
+Additionally, while there has been on-and-off scanning since our initial disclosure, Talos has observed a sharp increase in scanning for Cisco Smart Install Clients on or around Nov. 9, 2017. Because of the relatively static nature of perimeter systems, we do not expect a great deal of scanning associated with malicious activity. Still, it is noteworthy that we are seeing an increase in scanning for the Cisco Smart Install Client.
+
+
+
+
+Mitigation
+You can determine if you have a device that is impacted by executing a command on the switch. Running the command show vstack config will allow you to determine if the Smart Install Client is active.Below is an example with output:
+
+switch#show vstack config | inc Role
+Role: Client (SmartInstall enabled)
+Additional indicators could be present if the logging levels are set to 6 (informational) or higher.  These logs could include, but are not limited to, write operations via TFTP, execution of commands and device reloads. 
+
+The simplest way to mitigate these issues is to run the command no vstack on the affected device. If, for some reason, that option isn't available for a customer, the best option would be to restrict access via an access control list (ACL) for the interface, a sample of which is shown below:
+
+ip access-list extended SMI_HARDENING_LIST
+     permit tcp host 10.10.10.1 host 10.10.10.200 eq 4786
+     deny tcp any any eq 4786
+     permit ip any any
+This type of ACL would only allow hosts shown above to access the Smart Install Client, greatly limiting the exposure for attack.In addition to these types of mitigations, there is additional detection in our IPS technologies to determine if the Smart Install Client is being leveraged.
+
+Support
+For this and other issues, it is important to remember Cisco's commitment to supporting affected customers. All customers, regardless of contract status, receive free incident response assistance, similar to the assistance offered to contract customers, for any incident that involves known or reasonably suspected security vulnerabilities in a Cisco product. If you have experienced an incident involving a Cisco product, please contact the Cisco Technical Assistance Center (TAC):
+
+Inside the United States or Canada: +1 800 553 2447 / +1 408 526 7209
+Outside the United States: Worldwide Contacts
+
+For more information, please see Cisco's Security Vulnerability Policy.
+
+Conclusion
+In order to secure and monitor perimeter devices, network administrators need to be especially vigilant. It can be easy to "set and forget" these devices, as they are typically highly stable and rarely changed. Combine this with the advantages that an attacker has when controlling a network device, and routers and switches become very tempting targets.
+
+Having observed attackers actively leveraging this vector, Cisco strongly encourages all customers to review their architecture, use the tools provided by Talos to scan their network, and remove Cisco Smart Install Client from all devices where it is not used.
+
+
+

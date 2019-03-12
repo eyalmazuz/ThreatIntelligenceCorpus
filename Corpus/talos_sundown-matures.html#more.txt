@@ -1,0 +1,267 @@
+
+Threat Spotlight: Sundown Matures
+
+
+This post authored by Nick Biasini with contributions from Edmund Brumaghin and Alex Chiu
+
+The last time Talos discussed Sundown it was an exploit kit in transition. Several of the large exploit kits had left the landscape and a couple of strong contenders remain. Sundown was one of the kits still active and poised to make a move, but lacked a lot of the sophistication of the other large kits and had lots of easy identifiers throughout its infection chain. Most of these identifiers have been stripped, new exploits added, and Talos was able to uncover an interesting campaign focused around the bulk purchase of expiring domains through auctions commonly held within the domain resellers market.
+
+
+
+Changes Underway
+
+Historically Sundown has done several things that made it easy to identify. This included doing things like including lots of references to the Yugoslavian Business Network (YBN). These references were found in HTTP headers and also in logos that would be provided to users browsing to Sundown URLs without following the proper referer path. Over the past several months those key indicators have begun to disappear. As you can see below the HTTP headers that used to clearly identify the YBN are now gone. 
+
+
+
+Old Version of Sundown Identifying YBN
+
+
+
+
+Current Landing Page Request - No YBN
+
+
+
+Additionally, if users try and browse to landing page URLs they will be greeted with HTTP 404 instead of a professional looking logo. However there are other more significant changes underway specifically related to the landing pages. Below is the original landing page seen from Sundown a couple of months ago.
+
+
+
+
+
+This shares some striking similarities to the RIG exploit kit including the use of three 's' variables that are all base64 encoded blocks of text. This is very similar to RIG's use of 's' variables which are also involved in the retrieval of malicious swf files. There are also several other types of obfuscation found including many different representations of characters. The instance below shows the use of ASCII chr() syntax as a way to obfuscate. These are all common techniques found when looking at obfuscated code. Now let's start to compare it to what was seen more recently from Sundown.
+
+
+
+
+
+There are a lot of subtle and not so subtle changes that have been made to the landing pages. The first can be seen in this initial screen capture. Sundown authors now included a title, albeit a basic "you are". Additionally, the use of 's' variables has been replaced with random strings. Looking a little further reveals some obvious changes.
+
+
+
+
+
+Here you can see use of ASCII chr() has been replaced with hexadecimal characters. Finally there are lots of comments found throughout the code associated with this more recent Sundown landing page.
+
+
+
+
+
+Talos has seen similar use of comments in other exploit kits. Angler famously spread quotes from Sense and Sensibility throughout their landing pages. In this particular instance it appears that Sundown has turned to Lorem Ipsum for its text. Lorem Ipsum is commonly found in design as a placeholder and is a collection of random Latin words from an old Latin text. Basically the Sundown landing page is full of random text comments to try and hinder analysis further.
+
+Going back to the decoded version of the landing page we are able to see several other changes related to URL structure of the exploit pages. Previously Sundown was using numeric subfolders (i.e. '/12346/') and numeric file names with proper extensions (i.e. '/496.swf'). That has now changed with this newer version of Sundown. Shown below is one of the requests for a malicious flash file.
+
+
+
+
+
+The syntax has now changed to just request a subfolder of '/7/' with a numeric string as a query. Some of the requests will also include an ID parameter. Also, the extensions are no longer included. In the instances Talos analyzed we did not find any Silverlight exploits indicating that Sundown has abandoned attempting to exploit vulnerabilities in the Silverlight browser plugin. Much has been made of Sundown adding a recent Microsoft Edge vulnerability, based on a publicly available PoC. That's not the only browser exploit found in Sundown as there is an additional exploit from another PoC found in the landing page itself. 
+
+Sundown still appears to be exploiting CVE-2016-0189, a remote code execution vulnerability in the JScript and VBScript script engines of Internet Explorer and Windows. In our analysis of the exploit kit landing page, Talos pulled out another encoded exploit page.
+
+
+
+
+
+In this case, we found that Sundown authors are continuing the practice of cloning previously written exploit PoCs with this one for CVE-2016-0189 being no exception. The biggest deviation from the PoC was the inclusion of two functions: overwrite2() and fire(). fire() is the main function of interest as it's called from the exploit() function and replaces the execution of 'notepad.exe' that was found in the PoC. Instead, fire() contains code that begins the process of pulling down the payload and executing it via cmd.exe.
+
+
+
+
+Also of note is Sundown's approach to compromising systems. Most exploit kits will attempt a single exploit on a system to achieve compromise. Sundown throws its full arsenal at a potential victim. Typically you will see the IE scripting vulnerability targeted as well as several malicious flash files. This approach is noisy but gives Sundown the best chance of successfully compromising endpoints.
+
+
+Payload Changes
+
+One of the biggest changes we have noticed with Sundown is the way it retrieves its payloads. Previous versions of Sundown would retrieve the payload via the web browser with a filename of 'z.php'. The filename has remained consistent but the means to get the payload and the location of the payload have both changed. 
+
+Sundown is now retrieving its payload via the command line and through the use of wscript similar to the way that RIG-v currently retrieves its payloads. This isn't surprising as Sundown is well known for "borrowing" techniques and methods from other exploit kits or resources publicly available. Below are two cmd.exe get requests one originated from Sundown and one from RIG-v. There are a striking number of similarities indicative of code reuse. This is another thing that Sundown has apparently stolen from another exploit kit.
+
+
+
+
+
+Sundown Payload
+
+
+
+
+RIG Payload
+
+Another change is the separation of systems. The payloads now reside on a different server than the one used to retrieve the landing and exploit pages. Both servers share a common root domain, but are using different subdomains. 
+
+
+
+
+
+Unfortunately, without access to the backend systems there is no way to determine if the source of these files is different or the same. However, this is the only exploit kit currently implementing this split server activity. One other note on Sundown payloads is that they are not encoded or encrypted in anyway (as shown above) which makes them easy to identify and analyze.
+
+
+
+
+
+
+Campaign Discovered
+
+Talos is always analyzing exploit kit campaigns and Sundown is no exception. While monitoring Sundown activity, Talos began to uncover a larger domain infrastructure and began investigating deeper. Sundown uses domain wildcarding to host its activity instead of Domain Shadowing. There are a couple impacts associated with this type of activity, namely it affects all traffic destined to anything within the domain, causing all subdomains to begin redirecting clients to the malicious content. For example a common subdomain for websites is 'www' by using wildcarding this subdomain would be impacted and now redirect to a malicious server.
+
+Talos began looking at the domains and started to find commonalities. First was the name used by the registrant account associated with the domains. We repeatedly encountered registrant accounts using the name "Stivie Malone" while investigating Sundown activity. There was also a common email address of stiviemalone@gmail[.]com. One thing that made this account interesting was the sheer number of domains the user owned. Typically when we are running down registrant accounts used for malicious activity there are only a hundred or fewer associated with the accounts. In the case of Domain Shadowing, the accounts are compromised and the users are typically unaware of the activity. The more we dug on this particular registrant the less likely it was a compromised account. As we continued to dig we ended up finding a registrant that was taking advantage of the way gmail handles '.' in email addresses. As a result we found several different registrant accounts that were tied to the same stiviemalone@gmail[.]com account. Below is a list of the variants that were found to have registrant accounts:
+
+
+stivie.ma.lone@gmail.com
+
+stiviemalone@gmail.com
+
+stivie.malone@gmail.com
+
+sti.vie.malone@gmail.com
+
+We then started pivoting through the use of the name "Stivie Malone" and found a second registrant account using a different email address that was also being used to host Sundown. This registrant was tied to the email address of porqish@europe[.]com. Looking back historically we have found a total of more than 3000 domains that at one point were owned by one of these registrant accounts. 
+
+Based on this information we started digging a little deeper on how a user could have this number of domains for illegitimate activity. It's not uncommon for domain registrars to run specials on certain types of TLDs or other promotions where domains will be a couple dollars or less. However, a lot of these domains appeared to be transfers instead of purchases. We started researching this particular username and what we found was a network of domain reselling and a history of bulk purchases of expired or soon to expire domains.
+
+
+Domain Reselling
+
+Our deeper investigation into this particular actor started with the name being used for the majority of the domain registrations "Stivie Malone". Since this is an odd spelling of a name it began with a simple google search. As shown below the google search top results were tied to namepros[.]com, which is a domain reselling site.  
+
+
+
+
+
+Reselling of domains is a common tactic used by individuals to try and get value out of their already registered domains, especially if they are soon expiring. In the case that the reseller does not plan to renew them, reselling allows them to get a bit of residual value out of them. We began to look at the activity associated with this particular user and found some relevant posts.
+
+
+
+
+
+This was the first indication that this actor was looking specifically for large amounts of domains and preferred them to be registered by godaddy. We looked a little further at one of the first posts the user made on namepros. 
+
+
+
+
+Here you can clearly see that the actor is showing preference to domains owned by godaddy and namecheap. Additionally you can see the price point of between $0.10 and $0.60 and the payment method being used, which in all cases we observed was bitcoin. This is why this is such an attractive avenue for adversaries looking to obtain lots of domains to host suspect activity. For a relatively small price and using a digital currency these actors are able to obtain a large amount of domains. Interestingly enough in some other posts the actor discusses specifically how the domains only need to be active for a week.
+
+
+
+
+
+Another key point here is that the actor wants domains that are at least six months old. This is another interesting piece of information. Some organizations and technologies look at the age of the domain as a way to evaluate the legitimacy of the domain. For example some technologies will by default block anything that has only been registered within the last X days. By only purchasing domains that are at least six months old, this allows the attacker to bypass this screening method. Also of note were periods of time where this particular user was not actively buying domains for various reasons including "an update to their software" though no other specific details were provided. The most recent activity from this user was from several weeks ago.
+
+
+
+
+
+At this point we have not been able to identify if these domain purchases did occur. However, in digging through the registrant information we were able to find other instances of bulk domain purchases by this user. The most recent of which was done right after the new year where at least 500 domains were transferred in the span of a couple of days. However, it was a couple of weeks before sundown activity was found being hosted on these domains. Interestingly, the signature block associated with this user indicates that they may have experienced issues with their infrastructure at one time.
+
+
+
+
+
+Ironically, the user also claims that they have never taken any money from anyone, but admits that they do not conduct business ethically. As some of the most common payloads dropped by exploit kits are ransomware and banking trojans, this claim is not accurate.
+
+
+
+
+
+We also observed this user attempting to solicit help in converting between bitcoin and Paypal. It appears that the user is attempting to set up an escrow service. They claim that they have 70 BTC in overall trade volume and are offering a 5% commission for conversions.
+
+
+
+
+
+As we've found in the past domains that host malicious activity often have some sort of webpage hosted on the root domain. This was also the case for this particular actor. They appeared to host some sort of default domain management page, shown below.
+
+
+
+
+
+Most of these links do not lead anywhere significant. Additionally, there is a phone number listed for 24/7 support. We began searching for this number and found it on a number of major domain registrar sites. It appears to be a technical support number for GoDaddy and its subsidiaries. 
+
+
+Sudden Shift
+
+While Talos was working with GoDaddy on the activity and working on getting the domains seized we observed a sudden pivot by the adversary. The activity from these accounts for Sundown effectively stopped and we noticed that the user had begun selling some of the domains they had previously registered using the same reselling techniques discussed above. 
+
+
+
+
+
+Upon further investigation we did find additional Sundown activity that was being hosted on domains that appeared to be purchased via the same technique as before, reselling. The primary differences were that they were no longer using any variants of Stivie Malone and had moved to full privacy protection mode. Additionally, they were no longer leveraging GoDaddy in anyway instead moved to a registrar based out of Europe. Finally the user accounts found on namepros were also no longer being used and there was no additional activity seen even related to the sale of the existing domains. There is no way to know why the adversary suddenly pivoted, but regardless the domains were remaining domains were shut down in collaboration with GoDaddy preventing the actor from being able to resell previously malicious domains to other users. 
+
+
+IP Infrastructure
+
+After gathering data on the domain infrastructure we began to analyze the IP infrastructure being used during this campaign. Typically we see exploit kit servers active for a relatively short window of time, usually no more than a couple of days at a time. This makes sense as servers are quickly identified and blacklisted as well as being shut down by providers. This doesn't seem to be the case with Sundown, they tend to have servers active for a substantial amount of time, in some cases weeks. 
+
+Additionally, this campaign showed a lot of the same characteristics we have seen from exploit kit campaigns in the past. Certain providers were heavily leveraged and there were blocks of IP addresses that appear to be contiguous blocks. This typically indicates an actor that purchased a block of servers and moved from one to the next as the servers were blocked or shut down. Early in the campaign it appeared that the adversary was heavily leveraging OVH, but since then has moved on to providers in Germany and Netherlands. Below is an image illustrating this rotation through IPs similar to what was commonly observed with the Angler exploit kit in the past.
+
+
+
+
+
+
+IOC
+
+Domains (Text File of all domains owned by registrant ~3000)
+
+IP Addresses (Note: Addresses are from Late December 2016 and on)
+
+
+
+93.190.143.211
+
+188.165.163.229
+
+188.165.163.228
+
+188.165.163.227
+
+188.165.163.226
+
+93.190.143.201
+
+88.99.41.190
+
+93.190.143.186
+
+93.190.143.185
+
+88.99.41.189
+
+93.190.143.82
+
+94.140.120.233
+
+109.236.88.87
+
+
+Conclusion
+
+Sundown is an exploit kit in transition, it has stopped using calling cards and other easily ways to identify its activity. It is one of the few exploit kits adding any new exploits to their arsenal, albeit stolen. At the same time they consistently steal exploits and technologies from other people and competitors. The exploit kit landscape has been struggling to find its footing since the major players have left. It still appears to be in transition with RIG and Sundown being the primary players left as an option for those looking to compromise random victims while browsing the web. 
+
+There are other aspects of this campaign that were important, including the use of domain resellers. This is an interesting change and something that we haven't seen commonly used by adversaries to gather domains. However, it does make sense, for someone who is only looking to use a domain for a short amount of time and doesn't want to use others domains this is a logical approach. It's cheap, relatively low risk, and allows you to leverage domains that have been registered for some time, defeating some methods used for blacklisting. Regardless the message is clear that we are always looking to stop these threats. If we can't stop you we are at least going to force you to spend more money. The end goal being to make the cost of entry outweigh the potential monetary reward for your activity. Shutting down these domains and killing the registrant accounts is not going to stop these individuals forever, but it will force them to change and spend additional capital setting up new infrastructure from which to host their malicious content.
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network
+
+
+

@@ -1,0 +1,102 @@
+
+POP POP RET: SEH Exploiting process
+
+
+
+
+This morning I want to talk a little bit about Structured Exception Handling (SEH) exploitation. Some readers, during a Skype meeting early last week, pointed me out that I never wrote about it, se lets talk a little bit about it.
+
+
+
+First of all SEH is a piece of code written in the application with the purpose of dealing with exceptions. Each exception is a special event that interrupts the "normal" program behavior, and it mostly happens during errors and/or unexpected behaviors. Writing exception handlers are  one of the "best practice" in software engineering. Each exception handler, once compiled from the favorite language,  is mapped into the stack in 8 Bytes divided into 2 pointers.
+
+
+
+Pointer to the next "exception registration" structure. This pointer is only used in case of the current handler is not able to catch the exception.
+Pointer to the actual code. This pointer points to the actual code of the current handler which tries to handle the happened exception.
+
+
+The following image (click on it to make it bigger) shows how the structured chain is build over the stack
+
+
+
+
+Image from Corelan
+
+
+
+Obviously from the attacker point of view, overwriting SEH pointers could mean hijacking control flow and/or executing arbitrary instructions. So the first question to be answered is: where is place the SEH chain in the stack layout ?  The following image (click on it to make it bigger) shows where SEH chain is placed.
+
+
+
+
+
+
+
+
+
+Image From openrce
+
+
+
+As you can note in (%EBP - 12) is placed the SEH Handler while in (%EBP - 16) is placed the Next SEH Frame. It seems pretty easy so far right ? But in the reality there are a couple of protections that must be investigated:
+
+
+
+XOR. Before the exception handler is called all the register are cleaned (xored each other) 
+DEP and Stack Cookies
+Stack Cookies or Canary words are setup.
+DEP or NX bit set to 0 (non executable area) 
+SafeSEH
+Saves and checks the original value of SEH. If it has been overwritten SafeSEH brings it back to the original value. 
+
+
+ Those actions make difficult the exploiting process to SEH chains. I am not going to talk about DEP, I've been widely discussed about it in these posts, so lets see what we have so far:
+
+Firstly we cannot jump to the stack, the registers are "XORed", so we cannot use the JMP to Register technique to point to our shellcode or to our PAYLOAD.
+BUT, we can overwrite SE Handler address.
+The OS knows the exception handling  routing so it will pass the control flow to the next SEH record. We need to make the pointer to "next SEH" bringing us to the injected Shellcode.
+
+
+
+In other words, the injected PAYLOAD should follow these steps: 
+
+
+
+Cause an exception. Without exception the SEH handler won’t start. 
+Overwrite the pointer to the next SEH with some jumpcode (to make it jump to the shell code).
+Overwrite the SE handler with a pointer to an instruction that brings the control back to next SEH executing the jumpcode. (The shellcode should be directly placed after the overwritten SE Handler)
+
+
+
+The following image (click on it to make it bigger) shows how to implement the SEH Exploiting process (from this image you can understand the post title)
+
+
+
+
+
+
+
+
+
+
+
+Again, the attacker needs to force an exception (by injecting the PAYLOAD). The exception causes the execution of the current SEHandler. The current SEHandler has been replaced by the attacker to make a short jump ( If DEP then Gadget to POP POP RET) to the pointer to the next SEHandler which point to the injected Shellcode. In the previous image it has been assumed an active DEP protection and for that the Current SEHandler points to a POP POP RET gadget which increments %SP and returns to the next SEhandler pointer which it points to the injected Shellcode. Before ending up I want to thank you corelan team which provides to me a lot of great material such as: images, ideas and from time to time good suggestions ! Thank you Corelan, you are doing a great job !
+
+
+
+That's all for today.
+
+
+
+
+
+
+
+
+
+
+
+
+
+

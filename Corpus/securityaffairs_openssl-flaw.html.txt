@@ -1,0 +1,21 @@
+
+					A severe flaw in OpenSSL allows hackers to decrypt HTTPS traffic					
+The development team at the OpenSSL has issued a security patch to fix a flaw, coded as CVE-2016-0701, that could be exploited by hackers to decrypt secure traffic.
+The flaw was reported on January 12 by Antonio Sanso of Adobe who elaborated an attack method based on a key recovery method described in a paper published in 1997.
+The developers have patched two separate vulnerabilities in OpenSSL, the most severe affects the implementations of the Diffie-Hellman key exchange algorithm presents only in OpenSSL version 1.0.2.
+The OpenSSL 1.0.2 includes the support for generating X9.42 style parameter files as required in RFC 5114, unfortunately, the primes in these files may not be “safe,” which allows in certain circumstances attackers to obtain the key needed to decrypt traffic.
+Let me remind you that the OpenSSL Project doesn’t support the versions 0.9.8 and 1.0.0 since December 31, 2015, and they don’t receive security updates.
+OpenSSL is widely used in applications for secure data traffic, most websites use the library to enable the Secure Sockets Layer (SSL) or Transport Layer Security (TLS) encryption.
+
+Connections that rely on TLS configured with parameters based on unsafe primes are open to eavesdropping because the attacker could obtain information to recover the private DH exponent.
+“If an application is using DH configured with parameters based on primes that are not“safe” or not Lim-Lee (as the one in RFC 5114) and either Static DH ciphersuites are used or DHE ciphersuites with the default OpenSSL configuration (in particular SSL_OP_SINGLE_DH_USE is not set) then is vulnerable to this attack.” states a blog post published by Sanso. 
+“It is believed that many popular applications (e.g. Apache mod_ssl) do set the  SSL_OP_SINGLE_DH_USE option and would therefore not be at risk (for DHE ciphersuites), they still might be for Static DH ciphersuites.” 
+OpenSSL usually uses short-lived DH exponents in TLS, namely SSL_OP_SINGLE_DH_USE, that is not enabled by default,
+There are various solutions to mitigate the risk, the developers of LibreSSL deprecated the use of the SSL_OP_SINGLE_DH_USE, meanwhile the developers at the OpenSSL Project added a check to detect attacks in the case of static ciphersuites and by enabling the SSL_OP_SINGLE_DH_USE option.
+This week OpenSSL also released the 1.0.1r version to fix a second low severity SSLv2 cipher issue coded as CVE-2015-3197.
+The new release also included other code developed to harden the systems against the Logjam attack.
+“Logjam vulnerability can be triggered through man-in-the-middle (MitM) attacks to downgrade connections to 512-bit export-grade cryptography. Logjam could be exploited on the servers that support the “Diffie-Hellman key exchange” cryptographic algorithm, which is used by protocols like HTTPS, SSH, SMTPS, IPsec to negotiate a secret key and establish a secure connection.” states my previous blog post“
+Once the attacker downgrades encrypted connections between a user and the web server to use weaker 512-bit keys which can be easily decrypted.”
+Summarizing, if you still use OpenSSL version 1.0.2,  upgrade to 1.0.2f, while if you are still using version 1.0.1 should install 1.0.1r.
+Pierluigi Paganini
+(Security Affairs – OpenSSL, encryption)

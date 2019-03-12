@@ -1,0 +1,94 @@
+Scammy App That Infects Phones for Ad-clicking and Info-Stealing Controls Over 60,000 Devices
+Also by Aaron Inness
+At RiskIQ, we observe thousands of scam web pages in all forms—everything from fake pharmaceutical ads to phony prizes to spurious tech support and label them accordingly. In the mobile ecosystem, popular scams include ‘your device is running low!’, ‘you need to update your device!’ or ‘you need to install this antivirus to save your device!’ In today’s post, we’ll take a look at one of these scams that surfaced in our crawl data.
+ Although the app these scam pages send users to does its advertised function, it also has a nasty secret—it infects victims’ devices and comes with a side of information stealing and ad-clicking.
+Many of the millions of scams we crawl at RiskIQ are relatively straightforward, but every once in a while we find something unique. Usually, scams point to other web pages, but in this case, we noticed one that redirects victims who click to Google Play, where they are served a malicious app. To get to the bottom of how the scam works from beginning to end, we pointed our investigative resources at it and outlined our findings below.
+It all started with this fake warning for mobile devices:
+Fig-1
+The code on the scam page is standard—there are no apparent attempts at obfuscation and the fingerprinting techniques. For instance, the source code checks for the user’s language through the following method:
+
+function changeLanguage() {
+            var type = navigator.appName
+
+            if (type == “Netscape”) {
+                var lang = navigator.language
+            } else {
+                var lang = navigator.userLanguage
+            }
+
+            var lang = lang.substr(0, 2)
+
+With the language variable declared, the page then checks if the browser is using one of thirty-eight given ISO 639-1 language codes. If none of the language codes are present, the page defaults to an English-language message. Once the language setting is completed, the page renders the following pop-up:
+Fig-2
+The pop-up text is customized towards the visitor’s device by parsing the user-agent server-side and embedding the processed brand and model information in the script that renders the pop-up. In this instance, the pop-up identified the user device as a Samsung SM-G925A.
+
+The code is indifferent to whether you press ‘install’ or ‘cancel,’ as both take you to the same Google Play Store app, which can be observed in the HTML:
+
+<div class=”buttons”>
+          <a class=”button exitpoint” href=”/click.php?lp=1″>
+              <span id=”b1″>Install</span>
+          </a> 
+          <a class=”button cancel” href=”/click.php?lp=1″>
+              <span id=”b2″>Cancel</span>
+          </a>
+
+If we hit the back button on the page, the page steps in with a pop-up warning the user that their device will remain slow:
+Fig-3
+As we can see in the screenshot above, the pop-up resulted from a manual visit to the page through a desktop Chrome user-agent. It shows that the user-agent fingerprinting fails on non-mobile visitors, as no model name is contained in browser user-agents. We are presented with a very generic pop-up when we hit the resource from a desktop browser:
+Fig-4
+When we click on the ‘install’ or ‘cancel’ buttons, we get sent to another server owned by the operators which forward us to the Google Play store:
+Fig-5
+We are taken to the Google Play page regardless of whether the code identifies us as a mobile or desktop user-agent, a catch-all approach which could suggest that a relatively unsophisticated group is behind the scam page. 
+What is alarming, however, are the permissions of the mobile app itself. For brevity’s sake, we’ll list only some of the more intriguing ones:
+It appears that most of the effort here went into making the mobile app while the page that redirects to it seems to be relatively low-effort. The lack of attention to detail on the redirector pages could signify that the group is less concerned with them than they are with the app itself, or that one group is creating the redirector pages while another is responsible for the mobile part of the campaign. 
+What’s interesting to note is that the app does actually perform the functions it mentions:
+However, as a little ‘bonus,’ for the user, they get a small ad-clicking backdoor with the mobile app. The functionality of the ad-clicker is hidden with the rest of the battery saver code. While it may seem benign, the ad-clicker also steals information from the phone, including IMEI, phone numbers, phone type/brand/model, location, and more.
+The ad-clicking module inside the app talks to a hardcoded C2 server over HTTP. The contents of the communication messages are encrypted using AES (in CBC mode with PCKS7) with a key hardcoded in the app. The key for the AES is the first 32 bytes from the sha256 digest of the text string “ABCDEFJHKSXYZXYZ”, and the IV used is zeroed.
+
+Check-in data is structured as JSON which is then encrypted using the above mentioned AES encryption settings and encoded using base64 before being posted to the C2 server. A Python implementation of the encryption looks like this:
+Fig-6
+There are two types of check-ins for the ad-clicker—a registration check-in (the first check-in it performs) and the ‘job get’ check-in, which is the bot asking for new ads to click. The registration check-in looks like this:
+Fig-7
+Here is a breakdown of the individual field values and how they are obtained:
+The response of the C2 server is another JSON blob containing several fields with metadata about the bot itself. Several fields echo back from the check-in:
+Fig-8
+There are a handful of interesting fields added to this response, a few of them in detail:
+An intriguing aspect of the id field is that it is an incremental field assigned by the C2 server. Odds are, this ID comes from the SQL backend the C2 server runs, which assigns IDs for its rows in an incremental way. We confirmed this behavior with our own python-implemented bots. After sending nearly 15 bots to the C2 server, we got sequential bot IDs for them. Based on those ID numbers, we can say with high certainty that the bot has had at least 60,000 android devices under its control.
+After the registration is successful and the bot is assigned an ID, the app will start polling for ‘jobs,’ as the operators call it. These jobs are simply ads to click to make the operators money. The first job check-in after registrations contains the additional fields called ‘par’—short for ‘params’—with the empty fields in the registration response. In our bot’s case, it looks like this:
+Fig-9
+Note that the “act” field now contains ‘get’ instead of ‘reg,’ which indicates the bot getting jobs. The par dictionary field contains the aforementioned fields the C2 did not have information on, as well as some additional metadata about the device. The response to this from the C2 server contains the clickable ad URLs in a list in a field named ‘c’. The ads a bot will click depends on its network, country, and other information the operators use to tune the clicked ads.
+Once a bot has taken on the ads and has received responses for it, ie., it will be able to perform ad clicking, the bot sends a message back to the C2. The act field is set to “accepted” and a field called “ids” is sent containing a list of the accepted ads it will click. Once it has finished the ad-clicking, the bot will send another message to the C2 with the act field set to “finished,” this time with a field containing the id of the ad, as well as a “result” field, which is hardcoded to always contain the string “ok.”
+One thing to note is that the operators added a large amount of logging functionality to the code, the execution of which we can follow quite clearly on ADB logs by filtering on the log names it uses (PROXXX, GETJOB, SENDJOB, LOGG, WEBB, UPARR, POSTJS or SMSREC):
+Fig-10
+Premium text messaging
+As mentioned in the permissions section above, the app also has permissions in the form of receiving text messages. There is, in fact, a callback for text messages, which are stored internally by the bot. The reason for storing text messages is quite interesting—it is part of the ad-clicking behavior of the bot and not actually stealing text messages.
+
+The text messages are used in combination with premium text messaging from some of the ads it will be clicking. The content of the text messages is used in the ad-clicking by mapping the IDs for the messages back to the IDs from the ads—another source of income for the operators.
+The good thing about Google Play’s transparency about app developers is that they always mention details about the developers (names or email addresses), which are a nice clue on which to hunt. We can do the same for this Advanced Battery Saver app we’ve analyzed:
+Fig-11
+We can find a bit more on the email address of the developer aveddikoa@gmail.com which used to have another app on the Play Store which was either removed by the developer him/her-self or Google we are not sure. The app used to be available at https://play.google.com/store/apps/details?id=com.cryptokit.cryptokitties. Sadly because it was taken down we only have an archived APK of it which is old and non-functional at this point. We did not see any of the ad-clicking behavior in that app, however, none of it was present.
+
+It could be this app was, just like the Advanced Battery Saver app, planned as first being a functional app and the ad-clicking would be added later. We aren’t sure but we’re keeping an eye on this developer at least!
+Our original hit was on the host aerowizard.me, which we can pivot on to the IP address 109.169.87.58. The IP has an interesting set of domains pointing to it which we have all observed running the same scam (only a small portion is shown below):
+
+Fig-12
+According to our data, all the above-shown pages have been observed running varieties of the mobile scams, but it reveals even more. If we look at the source code of one of our crawls, we can see the following:
+
+Fig-13
+The base href sets the base URL the links will use. Interestingly, it’s also used to template the message shown, in this case, one for a ‘slow device’. If we hit the URL for this lander directly, we get the following:
+
+Fig-14
+Note the template strings for {device_brand} and {device_model}. We can see more of this in the source as the offer URL for this impression template isn’t set:
+Fig-15
+One interesting thing that we noticed was the favicon in the previous screenshot:
+Fig-16
+This is the icon indicating this system runs Binom, an advertisement/tracking platform which you can use to run ad campaigns:
+Fig-17
+And interestingly enough, we can also find the Binom login page for these campaigns, as the VHOST isn’t correctly set in the Binom configuration, meaning any supplied hostname will work for serving up the authentication prompt on the host index page. Here is the Binom instance login shown on the domain from which we were served the scam originally:
+Fig-18
+Now, Binom in and of itself isn’t an indication of anything bad, its just a tracking instance for advertisements. However, we do see it most commonly in mobile or adult scams.
+
+You can find other instances of Binom in PassiveTotal by pivoting on the cookie name uclick, which surfaces around 25K hits already: https://community.riskiq.com/search/cookies/name/uclick
+We’ve made Binom available as a web component in RiskIQ PassiveTotal, which can be found here: https://community.riskiq.com/search/components/Click%20Tracking/Binom. Keep in mind that it was activated after our research, so it will only tag hosts from the latter half of June, and beyond. The cookie-name method is still the most promising if you need older data.
+The following IOCs are also available in a PT project for use in automatic ingestion: https://community.riskiq.com/projects/2cb919cd-15c6-c649-c677-35f118114532
+In this instance, we confirmed the blacklist resource as a part of a Fake Software scam, which could then be used to flag other similar ad campaigns. Additionally, the mobile app is available for review in our mobile app database (package name: com.advancedbatr.batsaver).

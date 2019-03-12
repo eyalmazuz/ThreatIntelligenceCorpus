@@ -1,0 +1,58 @@
+Mobile spyware uses sandbox to avoid antivirus detections
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 5 April 2017
+
+Mobile malware authors are once again trying to circumvent antivirus detections by using a sandbox.We recently came across mobile malware that uses a sandbox, like the malware that posed as dual instance and took advantage of VirtualApp, to steal user’s Twitter credentials. We suspect that cybercriminals are once again using a sandbox to try to avoid antivirus detection.   
+
+The malware, known as Triada (package name com.android.adapi), was discovered in China mid 2016, and uses an open source sandbox, DroidPlugin. DroidPlugin is designed to dynamically load and run an app, without actually installing the app, just like VirtualApp. Triada uses DroidPlugin, which was originally developed by Qihoo for their Android app store, to load malicious APK plugins, so that they can run without having to be installed on the device. This makes it harder for antivirus solutions to detect the malware, as its malicious components are not stored in the host app. The DroidPlugin project can be found on GitHub.
+Triada is spread using social engineering tactics, which are used to deceive people into downloading the malware. Once on a device, it hides its icon from the infected phone’s desktop and starts stealing personal information in the background, making it difficult for victims to even notice anything is happening, yet alone suspect that their personal information is being sent to cybercriminals.
+In the earliest variant of the malware, DroidPlugin was not involved, but based on our threat intelligence a new variant was detected in November and in that variant, DroidPlugin was integrated. The malware disguises itself as Wandoujia, a famous Android app store in China.
+
+Interestingly, the malware developer submitted an issue to DroidPlugin to report an out-of-memory problem around the time the new variant was released.
+
+The malware hides all the malicious APK plugins in the asset directory, for DroidPlugin to run.
+
+Each of these plugins has its own dedicated malicious action to spy on the victim, including file stealing, radio monitoring, and more. One of the plugins communicates with a remote command and control (C&C) server, which instructs which activities should be carried out. These are then carried out by the other APKs. The APK functions can be guessed from the package names:
+
+android.adapi.task
+android.adapi.file
+android.adapi.radio
+android.adapi.location
+android.adapi.camera
+android.adapi.update
+android.adapi.online
+android.adapi.contact
+android.adapi.wifi
+
+From the code hierarchy, we can see DroidPlugin is integrated.
+
+The malware “installs” the plugins using DroidPlugin, but remember they run in DroidPlugin, a sandbox, and are not actually installed on the infected phone. Then the spying begins.
+Why the malware developer started to use the DroidPlugin sandbox to dynamically load and run the plugins is interesting, as the malicious plugins could just be directly implemented in one app, without a sandbox. Based on our experience, we suspect this is done to bypass antivirus detections. If the host app doesn’t include malicious actions, and all the malicious actions are moved to plugins which are dynamically downloaded, it makes it difficult for antivirus solutions to detect the host app.
+So far we’ve seen two cases of sandboxes being used for malicious purposes, this one and the fake dual instance app. While it can be convenient to use a sandbox to run an app without installing it, sandboxes can also be used maliciously by malware. We will continue to observe this trend and blog about new findings.
+This malware has been detected by Avast as Android:Agent-MOK
+Sha-1 hash of the sample: e2b05c8fdf3b82660f7ab378e14b8feab81417f0
+
+Antivirus
+Malware
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+

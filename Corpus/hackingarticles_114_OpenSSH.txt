@@ -1,0 +1,41 @@
+
+OpenSSH User Enumeration Time-Based Attack with Osueta
+
+OpenSSH (also known as OpenBSD Secure Shell) is a suite of security-related network-level utilities based on the Secure Shell (SSH) protocol, which help to secure network communications via the encryption of network traffic over multiple authentication methods and by providing secure tunneling capabilities.
+OpenSSH was designed to evade various attacks like MITM , eavesdropping by encrypting all the traffic but an attack known as User-Enumeration Time Based Attack was discovered which helps in effectively increasing the brute force attack efficiency by guessing the usernames firsthand as in a Brute Force attack two fields are required Username and Password and we will be able to guess the Username correctly thus decreasing the time required for Brute Force Attack as of now only Password field is to be Brute Forced.
+Osueta a simple Python script was developed to exploit the OpenSSH User Enumeration Timing Attack.(found in 5.* and 6.* versions of the *nix systems)
+HOW THIS WORKS??
+When we want to connect to a SSH server we have to provide a Username and a Password so first it is checked if the Username exists or not then:
+1.) If the Username doesn’t exist the password is not compared to original one.
+2.) If the Username exist the password is compared to original one by comparing the hash of the given password , if it is correct you are granted access .
+3.) Now suppose a username exists and we are using a very long password suppose of length 40000 bytes which is the default length used by osueta  (like 40000 S) so the hash of the given password has to be generated to compare it with the original one as a result the system slows down and the time measurement is increased which is the key as it tells us that username exists.
+First clone the github repo with the terminal command:
+git clone https://github.com/c0r3dump3d/osueta.git
+
+Now change your directory to osueta and run the following command:
+python osueta.py –H 192.168.222.136 –U pp –p 22
+-H (Openssh server host i.e. victim IP –192.168.222.136 in my case)
+-U (any guessed username which can be present on the victim machine – pp in my case)
+-p (port no. of the running ssh service – 22 in our case )
+Firstly it checks if the given port  is open or not and then service banner is detected to know the version of the running ssh server.
+
+Now it generates 10 random usernames to try against the target server to test the time measurement of the server i.e. test the delay time of the server . After that it test the server with provided username and if there is delay in user authentication then the user exist as in my case the user pp exists on the target server.
+
+We can also pass a list of users as the input to check against all the usernames in the list with command:
+./osueta.py –H 192.168.222.136 –L users.txt –p 22
+-L (users input file –users.txt in my case)
+
+As in my case it has successfully enumerated the following username from the given list
+pp
+root
+him
+
+We can also create a DOS(Denial Of Service) like situation on the target server with the command:
+./osueta.py –H 192.168.222.1376 –p 22 –U pp –v no –dos yes
+–dos (if you want to create a DOS situation -yes)
+
+Now firstly it will detect if the given user exists if yes then it generates a lot of connections to the target server and when the number of sessions is reached the target server starts to reject the rest of the connections causing a DOS.
+
+As you can see the target server is denying any connection when i try to connect with it.
+
+Author: Himanshu Gupta is an InfoSec Researcher | Technical writer. You can follow him on LinkedIn .

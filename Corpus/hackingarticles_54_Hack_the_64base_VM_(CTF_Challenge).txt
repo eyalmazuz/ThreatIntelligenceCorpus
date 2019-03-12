@@ -1,0 +1,78 @@
+
+Hack the 64base VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as 64base. The credit for making this vm machine goes to “3mrgnc3” and it is another capture the flag where author has hidden flag for the attacker as a challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.118 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -p- sV 192.168.1.118
+
+We found that port 80 is open, so let’s open this ip in our browser.
+
+When we take a closer look at the source code, we found a long encoded string comment.
+
+It is hexadecimal encoded, after decoding it we found another base64 encoded string. Decoding the latter string we found our 1st flag.
+
+Now inside the flag is another base64 string, we decode it and find a username and password.
+
+Now we take a look around the site in the first post we find hint, using cewl we make a dictionary of this page and find that Imperial-Class directory exists.
+
+Opening the link, it will ask for password and username. We use the username and password that we found earlier to login. When we open this link we find a hint, so we take a look at the source code.
+
+Inside the source code we find another hint for a link.
+
+When we open this link we find a login page. When we look at the source code of the login page we find that when data is submitted a file called login.php is handling the login form. So we take a look at that page.
+
+Here we found a few strings that are encoded in hexadecimal, when we decode them individually we find they are part of a bigger string so we join the strings together and decode it.
+
+The string is in hexadecimal format, when we decode it we find a base64 encoded string. When we decode the base64 string we find our 2nd flag. Inside the flag is another base64 encoded string, when we decode it we find that it is a link to a youtube video.
+
+From this video we are hinted that we should use burp suite. So we start the burp suite to capture the request of the login page.
+
+After capturing the request we sent it to repeater, here in the response we get the 3rd flag.  Inside the flag we see a base64 encoded string.
+
+After decoding the flag we get a link.
+
+Here we don’t find anything, then we remember the hint what we found on the first page.
+
+So we replace exec with system and try to run our command.
+
+Here we find our 4th flag and we find that inside the flag contains base64 encoded string. After decoding it we find a username and password now we are going to use it to login into ssh After failing a few times, I encoded the password again in base64 format.
+
+Now we are going to login through ssh, we know from netcat that port 62964 is running openssh.
+
+Now that we are inside the shell, we list the files in the current directory.
+
+We open the file and get a random message, after trying a few commands it is possible that the functions of the commands have been changed. So we check the path of commands
+echo $PATH/*
+
+We find that path of the commands have been changed. We see that there is a command called droids, we run it to see what it does.
+
+After running the command we get a matrix screen, when we close it we get this message given in the above image. Earlier we weren’t able to change directory, now after running the command we were able to change directories.
+After going through the files we find a hint inside /var/www/html/admin. We find a folder called S3cR37/ we move into this folder and find our 5th flag.
+
+Inside the flag5 we find a base64 string when we decode it, it gave us a hint.
+
+Now cat command doesn’t work so we use strings command to find the strings inside the file.
+
+We find a hexadecimal encoded string, we copy it into a file on our local system and decode it and find it is an rsa key.
+
+We remove its permission using command:
+chmod 600 rsa_key
+Then we connect to root using this key
+ssh 192.168.1.118 –I rsa_key   
+When we try to login it ask for a passphrase, after a lot of searching we send the flag5 file to our system for more information.
+scp -P 62964 64base@172.16.0.19:/var/www/html/admin/S3cR37/flag5* \  > /root/Desktop/flag5.jpeg
+
+Now we open the file on the local system, inside the file we find another hint to use the force.
+
+After trying some passphrases, we found the passphrase is usetheforce
+Now when we can login through ssh.
+
+We find the final flag; inside the flag we find a hexadecimal string. When we decode the string we find a base64 string, again when we decode the string we find a hexadecimal string, when we decode the hexadecimal string we again find a base64 string. When we decode it we finally get a message that looks like a command.
+
+When we run this command on the VM, we get a congratulation message that we completed the CTF.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

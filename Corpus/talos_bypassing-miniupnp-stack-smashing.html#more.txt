@@ -1,0 +1,149 @@
+
+Bypassing MiniUPnP Stack Smashing Protection
+
+
+This post was authored by Aleksandar Nikolic, Warren Mercer, and Jaeson Schultz
+
+Summary
+MiniUPnP is commonly used to allow two devices which are behind NAT firewalls to communicate with each other by opening connections in each of the firewalls, commonly known as “hole punching”. Various software implementations of this technique enable various peer-to-peer software applications, such as Tor and cryptocurrency miners and wallets, to operate on the network.
+
+In 2015 Talos identified and reported a buffer overflow vulnerability in client side code of the popular MiniUPnP library. The vulnerability was promptly fixed by the vendor and was assigned TALOS-CAN-0035 as well as CVE 2015-6031. Martin Zeiser and Aleksandar Nikolic subsequently gave a talk at PacSec 2015 ("Universal Pwn n Play") about the client side attack surface of UPnP and this vulnerability was part of it.
+
+Talos has developed a working exploit against Bitcoin-qt wallet which utilizes this library. The exploit developed by Talos includes a Stack Smashing Protection (SSP) bypass, the details of which we will discuss here.
+
+The Vulnerability 
+The vulnerability lies in the XML parser code of the MiniUPnP library in the IGDstartelt function:
+
+
+
+Vulnerable XML parser code of the MiniUPnP library
+
+
+
+
+IGDdatas struct definition
+
+
+The buffer overflow is triggered by a call to memcpy function with an unchecked length parameter “l”. Since datas->cureltname is a fixed size buffer inside the IGDdatas structure, supplying a large length will result in a buffer overflow on the stack. In the above code the specified length is the actual length of the name string which comes straight from the XML element being parsed.
+
+A potential attacker has full control over the length and contents of the memcpy source argument that is being copied into a destination buffer of size MINIUPNPC_URL_MAXSIZE.
+
+
+
+The Target
+Most peer to peer applications try to negotiate port forwarding when behind a NAT device and they do so by using Universal Plug And Play (UPnP). On startup, the application performs network discovery by issuing an M-SEARCH request on a specific broadcast address over UDP port 1900:
+
+
+
+UDP1900 broadcast for UPnP network discovery
+
+The application is broadcasting to discover information about any UPnP Internet Gateway Devices (IGD) on the local network. The IGDs reply to this request with a HTTP reply which contains a description URL:
+
+
+
+HTTP reply from UPnP IDG on the LAN
+
+
+The LOCATION HTTP header in the packet pictured above specifies the location of the rootDesc.xml file which describes the capabilities of this particular[a] IGD. The client application then proceeds to fetch the specified XML:
+
+
+
+HTTP GET of the rootDesc.xml file
+
+
+After fetching the rootDesc.xml file, the MiniUPnP library starts parsing it and this is when the vulnerability can be exploited.
+
+
+Bitcoin-qt Wallet Attack
+Bitcoin-qt is the default bitcoin client and a reference implementation and was chosen as an interesting target to demonstrate the exploitability of this vulnerability. It too, being a peer to peer application, uses the same UPnP mechanism as described above.  The vulnerability can be triggered by setting up a fake UPnP server on the victims LAN that would serve an XML description file (rootDesc.xml) with overly long element names.
+
+As security is a vital requirement for an application like Bitcoin-qt, the official binary is compiled with a number of exploitation mitigation measures. We’re going to focus on the Stack Smashing Protection (SSP) that is present in the binary meaning that potentially vulnerable buffers on the stack are protected by a stack canary/cookie.  This can be observed when triggering the MiniUPNP vulnerability:
+
+ [user@localhost bin]$ ./bitcoin-qt
+*** stack smashing detected ***: ./bitcoin-qt terminated
+Segmentation fault (core dumped)
+
+This mitigation presents an obstacle for successful exploitation of this vulnerability.
+
+
+The Exploit
+Having exploited the vulnerability within the MiniUPnP library but being blocked by SSP within Bitcoin-qt, we decided to look at how we can actively exploit this to achieve an SSP bypass.
+
+Stack Smashing Protection Overview
+SSP is a compile time exploitation mitigation that can be enabled on modern compilers. Among other things, it makes sure that potentially vulnerable stack buffers are guarded by a random stack canary. Traditional stack buffer overflow exploitation requires a return address overwrite to achieve arbitrary code execution. In overwriting the return address, the stack canary will be overwritten too, which can be detected when the function returns, at which point the stack smashing protection kicks in and terminates the process. Details of SSP implementation are out of scope if this article. Readers can refer to a write up by Adam Zabrocki for additional details on this subject.
+
+
+
+Stack layout example
+
+
+In overwriting the return address, the stack canary will be overwritten too, which can be detected when the function returns, at which point the stack smashing protection kicks in and terminates the process.
+
+
+
+Stack canary check 
+
+In the above assembly listing it can be observed that if the stack cookie check fails, function __stack_chk_fail is called.
+
+What’s interesting is that, when the stack smashing is detected, the process isn’t terminated right away. A fair bit of code is executed first to notify the user and log the crash. This fact has been abused and exploited before to get information leaks and code execution. Notably, a post by Dan Rosenberg shows how this messaging along with overwriting process arguments array can be used for info leaks. Joshua Drake also wrote about an example of abusing an unlimited overflow to overwrite heap metadata thereby bypassing SSP to achieve code execution.
+
+To exploit this MiniUPnP vulnerability in Bitcoin-qt we take a similar approach of abusing SSP’s post detection behavior.
+
+
+System calls and ELF auxiliary vectors
+Mainly, when stack smashing is detected __stack_chk_fail will eventually try to output a message to the screen. Skipping over the rest of the code invoked by __stack_chk_fail, it will eventually do so by invoking a write system call. In modern Linux and libc implementations system calls are invoked by a __kernel_vsyscall function for performance reasons. A look at disassembly of a write system call illustrates this:
+
+
+System call via __kernel_vsyscall
+
+
+What we see above is a call to a function located at *%gs:0x10. Segment register gs is the location of Thread Control Block (TCB). The TCB is a structure typedef’d as tcbhead_t :
+
+
+
+
+At offset 0x10, there is a sysinfo pointer. During process runtime it points to the location of the  __kernel_vsyscall function which in turn invokes the syscall via sysenter mechanism.
+
+The sysinfo pointer in the TCB gets set by libc and is supplied to it by the kernel via the ELF loader. This is achieved by ELF auxiliary vectors, namely the AT_SYSINFO.
+
+ELF auxiliary vectors are used by the loader to pass certain information from the kernel to the process. They are placed on the stack right after the environment variables by the loader. They are defined in binfmt_elf.c. AT_SYSINFO auxiliary vector holds a pointer to the __kernel_vsyscall  function. The straightforward idea for a SSP bypass with a stack overflow using a large buffer is to overwrite the stack past argc, argv array and environment var pointers up to auxiliary vectors and overwrite the AT_SYSINFO with an address of our arbitrary code. Then, when the process tries to invoke a system call, instead of calling __kernel_vsyscall it would jump to the address of our choosing.
+
+This however won’t work in our case because __stack_chk_fail first parses the environment variables to determine how it should print the message before it invokes a system call. In order to jump to the address of our choosing, we’d have to overwrite AT_SYSINFO and in doing so, we’d also overwrite the environment pointers leading to a premature crash. This crash can be illustrated by a simple buffer overflow:
+
+
+Starting program: /home/user/tests/bof `perl -e 'print "A"x300'`
+
+Program received signal SIGSEGV, Segmentation fault.
+__GI_getenv (name=0xb7f5e5fd "BC_FATAL_STDERR_") at getenv.c:85
+85                  if (name_start == ep_start && !strncmp (*ep + 2, name, len)
+(gdb)
+
+The program above has crashed because the environment has been overwritten by the overflow. We could try to make our overflow overwrite the environment pointers in such way that the environment parsing code doesn’t crash but in case of Bitcoin-qt there is another path.
+
+POSIX threads and final exploit
+Bitcoin-qt is a GUI application that utilizes Pthreads. By following along the thread initialization code it can be observed that each thread will have it’s own copy of the AT_SYSINFO pointer. To achieve initial code execution in the Bitcoin-qt application, we overwrite this thread-local pointer which can be reached by making a large buffer overflow. Then we subvert the SSP’s error reporting mechanism which tries to invoke a syscall to redirect the execution to a location of our choosing.
+
+A couple of problems arise from this overwrite. Mainly, the  __kernel_vsyscall function pointer is now invalid and any system call our ROP chain or shellcode tries to execute would again jump to the overwritten address and eventually fail. This would be bad for the exploit so we have to fix it.
+
+So the first order of business is to repair the overwritten pointer. Since NX protection is in place, we have to resort to a ROP gadget to achieve this.  First we will return our stack pointer to a controlled location. The following gadget achieves this:
+
+
+
+
+It will add 0x13ec to the stack pointer thereby returning somewhere inside our
+overflowed buffer. It then rather usefully pops 4 values from the stack into ebx, esi, edi and ebp before doing a return. Since we now have control over esi and edi, we can use the following gadget to write back the original pointer to __kernel_vsyscall to the appropriate place:
+
+
+
+
+Note: the above gadget requires two readable addresses to be at esp+0x14 and esp+0x18.
+
+When the __kernel_vsyscall is restored, the exploit can continue as usual. We use mprotect() to change the memory containing our shellcode to executable and then jump to it. The complete exploit can be found here.
+
+Note: this exploit doesn’t address the issue of ASLR and thus contains a number of hardcoded addresses.
+
+Conclusion
+Here we demonstrated an interesting side effect of SSP when combined with Pthreads. It illustrates how a seemingly hard to exploit issue can still be exploited due to unforeseen consequences arising from the complexity present in modern process execution chain. 
+
+
+

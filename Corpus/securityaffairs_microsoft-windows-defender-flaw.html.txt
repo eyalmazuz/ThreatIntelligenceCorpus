@@ -1,0 +1,18 @@
+
+					Google Hacker found a new way to bypass Microsoft Windows Defender					
+The popular Google Project Zero hacker Tavis Ormandy has discovered a new bug in Windows Defender that allow attackers to circumvent the Microsoft anti-virus tool.
+Ormandy publicly disclosed the news of the vulnerability in Windows Defender on Friday after Microsoft released a for its software. Ormandy reported the vulnerability to Microsoft on June 9th.
+The vulnerability resides is in the non-sandboxed x86 emulator Windows Defender uses.
+The expert explained that “apicall” instruction can invoke internal emulator APIs running them with system privilege, unfortunately, it is exposed to remote attacks by default.
+The hacker discovered a heap corruption issue in the KERNEL32.DLL!VFS_Write API.
+“I discussed Microsoft’s “apicall” instruction that can invoke a large number of internal emulator apis and is exposed to remote attackers by default in all recent versions of Windows. I asked Microsoft if this was intentionally exposed, and they replied “The apicall instruction is exposed for multiple reasons”, so this is intentional.” wrote Ormandy.
+“This full system x86 emulator runs as SYSTEM, is unsandboxed, is enabled by default and remotely accessible to attackers. I took a quick stab at writing a fuzzer and immediately found heap corruption in the KERNEL32.DLL!VFS_Write API, I suspect this has never been fuzzed before.”
+
+
+After the disclosure of the bug, Ormandy published a minimal testcase to exploit the bug:
+MpApiCall(“NTDLL.DLL”, “VFS_Write”, 1, Buf, 0, 0xffffffff, 0);
+MpApiCall(“NTDLL.DLL”, “VFS_Write”, 1, Buf, 0x7ff, 0x41414141, 0);
+“The first call extends the length of the file to nOffset, but because the numberOfBytes parameter is 0 no space is allocated. Then you can read and write arbitrary data to an arbitrary offset to the MutableByteStream object buffer. This is a very powerful exploit primitive, and exploitation does not seem difficult.” he added.
+Microsoft released a fixed version of the Malware Protection Engine, version 1.1.13903.0.
+Pierluigi Paganini
+(Security Affairs – Microsoft Windows Defender,  hacking)

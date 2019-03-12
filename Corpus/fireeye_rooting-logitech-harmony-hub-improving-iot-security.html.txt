@@ -1,0 +1,59 @@
+Rooting a Logitech Harmony Hub: Improving Security in Today's IoT World
+FireEye’s Mandiant Red Team recently discovered vulnerabilities present on the Logitech Harmony Hub Internet of Things (IoT) device that could potentially be exploited, resulting in root access to the device via SSH. The Harmony Hub is a home control system designed to connect to and control a variety of devices in the user’s home. Exploitation of these vulnerabilities from the local network could allow an attacker to control the devices linked to the Hub as well as use the Hub as an execution space to attack other devices on the local network. As the Harmony Hub device list includes support for devices such as smart locks, smart thermostats as well as other smart home devices, these vulnerabilities present a very high risk to the users.
+FireEye disclosed these vulnerabilities to Logitech in January 2018. Logitech was receptive and has coordinated with FireEye to release this blog post in conjunction with a firmware update (4.15.96) to address these findings.
+The Red Team discovered the following vulnerabilities:
+The Red Team used a combination of the vulnerabilities to gain administrative access to the Harmony Hub. This blog post outlines the discovery and analysis process, and demonstrates the necessity of rigorous security testing of consumer devices – particularly as the public places an increasing amount of trust in devices that are not just connected to home networks, but also give access to many details about the daily lives of their users.
+Publicly available research indicated the presence of a universal asynchronous receiver/transmitter (UART) interface on some of the test points on the Harmony Hub. We soldered jumper wires to the test pads, which allowed us to connect to the Harmony Hub using a TTL to USB serial cable. Initial analysis of the boot process showed that the Harmony Hub booted via U-Boot 1.1.4 and ran a Linux kernel (Figure 1).
+
+Figure 1: Initial boot log output from UART interface
+After this point in the boot process, the console stopped returning output because the kernel was not configured with any console interfaces. We reconfigured the kernel boot parameters in U-Boot to inspect the full boot process, but no useful information was recovered. Furthermore, because the UART interface was configured to only transmit, no further interaction could be performed with the Harmony Hub on this interface. Therefore, we shifted our focus to gaining a better understanding of the Linux operating system and associated software running on the Harmony Hub.
+The Harmony Hub is designed to pair with a companion Android or iOS application over Bluetooth for its initial configuration. We created a wireless network with hostapd and installed a Burp Suite Pro CA certificate on a test Android device to intercept traffic sent by the Harmony mobile application to the Internet and to the Harmony Hub. Once initial pairing is complete, the Harmony application searches for Harmony Hubs on the local network and communicates with the Harmony Hub over an HTTP-based API.
+Once connected, the Harmony application sends two different requests to Harmony Hub’s API, which cause the Harmony Hub to check for updates (Figure 2).
+
+Figure 2: A query to force the Harmony Hub to check for updates
+The Harmony Hub sends its current firmware version to a Logitech server to determine if an update is available (Figure 3). If an update is available, the Logitech server sends a response containing a URL for the new firmware version (Figure 4). Despite using a self-signed certificate to intercept the HTTPS traffic sent by the Harmony Hub, we were able to observe this process – demonstrating that the Harmony Hub ignores invalid SSL certificates.
+
+Figure 3: The Harmony Hub checks for updates to its firmware
+
+Figure 4: The server sends a response with a URL for the updated firmware
+We retrieved this firmware and examined the file. After extracting a few layers of archives, the firmware can be found in the harmony-image.squashfs file. This filesystem image is a SquashFS filesystem compressed with lzma, a common format for embedded devices. However, vendors often use old versions of squashfstools that are incompatible with more recent squashfstools builds. We used the unsqashfs_all.sh script included in firmware-mod-kit to automate the process of finding the correct version of unsquashfs to extract the filesystem image (Figure 5).
+
+Figure 5: Using firmware-mod-kit to extract the filesystem
+With the filesystem contents extracted, we investigated some of the configuration details of the Harmony Hub’s operating system. Inspection revealed that various debug details were available in the production image, such as kernel modules that were not stripped (Figure 6).
+
+Figure 6: Unstripped Linux kernel objects on the filesystem
+Investigation of /etc/passwd showed that the root user had no password configured (Figure 7). Therefore, if we can enable the dropbear SSH server, we can gain root access to the Harmony Hub through SSH without a password.
+
+Figure 7: /etc/passwd shows no password is configured for the root user
+We observed that an instance of a dropbear SSH server will be enabled during initialization if the file /etc/tdeenable is present in the filesystem (Figure 8).
+
+Figure 8: A dropbear SSH server is enabled by /etc/init.d/rcS script if /etc/tdeenable is present
+During the initialization process, the Harmony Hub queries the GetJson2Uris endpoint on the Logitech API to obtain a list of URLs to use for various processes (Figure 9), such as the URL to use when checking for updated firmware or a URL to obtain information about updates’ additional software packages.
+
+Figure 9: The request to obtain a list of URL endpoints for various processes
+We intercepted and modified the JSON object in the response from the server to point the GetUpdates member to our own IP address, as shown in Figure 10.
+
+Figure 10: The modified JSON object member
+Similar to the firmware update process, the Harmony Hub sends a POST request to the endpoint specified by GetUpdates containing the current versions of its internal software packages. The request shown in Figure 11 contains a sample request for the HEOS package.
+
+Figure 11: The JSON request object containing the current version of the “HEOS” package
+If the sysBuild parameter in the POST request body does not match the current version known by the server, the server responds with an initial response containing information about the new package version. For an undetermined reason, the Harmony Hub ignores this initial response and sends a second request. The second response contains multiple URLs pointing to the updated package, as shown in Figure 12.
+
+Figure 12: The JSON response containing URLs for the software update
+We downloaded and inspected the .pkg files listed in the response object, which are actually just ZIP archives. The archives contain a simple file hierarchy, as shown in Figure 13.
+
+Figure 13: The .pkg archive file hierarchy
+The manifest.json file contains information used to instruct the Harmony Hub’s update process on how to handle the archive’s contents (Figure 14).
+
+Figure 14: The contents of the manifest.json file
+The Harmony Hub’s update process executes the script provided by the installer parameter of the manifest if it is present within the archive. We modified this script, as shown in Figure 15, to create the /etc/tdeenable file, which causes the boot process to enable the SSH interface as previously described.
+
+Figure 15: The modified update.sh file
+We created a new malicious archive with the appropriate .pkg extension, which was hosted on a local web server. The next time the Harmony Hub checked for updates against the URL supplied in the modified GetJson2URIs response, we sent a modified response to point to this update. The Harmony Hub retrieved our malicious update package, and after rebooting the Harmony Hub, the SSH interface was enabled. This allowed us to access the device with the username root and a blank password, as shown in Figure 16.
+
+Figure 16: The SSH interface was enabled after a reboot
+As technology becomes further embedded into our daily lives, the trust we place in various devices unknowingly increases exponentially. Due to the fact that the Harmony Hub, like many IoT devcies, uses a common processor architecture, malicious tools could easily be added to a compromised Harmony Hub, increasing the overall impact of a targeted attack. However, Logitech worked with our team to quickly address the vulnerabilities with their current firmware, 4.15.96. Developers of the devices we place our trust should be vigilant when removing potential attack vectors that could expose end users to security risks. We also want to share Logitech’s statement on the research and work by the Red Team:
+"At Logitech, we take our customers’ security and privacy very seriously. In late January 2018, security research firm FireEye pointed out vulnerabilities that could impact Logitech Harmony Hub-based products*.
+If a malicious hacker had already gained access to a Hub-users network, these vulnerabilities could be exploited. We appreciate the work that professional security research firms like FireEye provide when identifying these types of vulnerabilities on IoT devices.
+As soon as FireEye shared their research findings with us, we reviewed internally and immediately started to develop firmware to address it. As of April 10, we have released firmware that addresses all of the vulnerabilities that were identified. For any customers who haven’t yet updated to firmware version 4.15.96, we recommend you check the MyHarmony software and sync your Hub-based remote and receive it. Complete directions on updating your firmware can be found here.
+*Hub-based products include: Harmony Elite, Harmony Home Hub, Harmony Ultimate Hub, harmony Hub, Harmony Home Control, Harmony Pro, Harmony Smart Control, Harmony Companion, Harmony Smart Keyboard, Harmony Ultimate and Ultimate Home."

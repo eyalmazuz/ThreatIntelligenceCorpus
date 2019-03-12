@@ -1,0 +1,124 @@
+
+My Cousin VIMmy: A Journey Into the Power of VIM
+
+
+By Melissa Augustine Goldsmith.
+
+I was cleaning up some YARA rules we have in the office. I am, if anything, a bit OCD about tabs and spacing.  I came across this rule from Contagio Exploit pack... 
+<snippet>
+ $a41 = {  7d 40 4e 55 05 54 51 4d 46 52 7e 73 3d 7f 7a 74 77 77 63 36 77 71 33 60 64 7e}
+ $a42 = {  7e 41 41 54 06 55 56 4c 45 53 41 72 3e 7e 7d 75 74 76 6c 37 74 70 34 61 67 7f}              
+ $a43 = {  7f 42 40 5b 07 56 57 4b 44 50 40 4d 3f 7d 7c 72 75 75 6d 38 75 73 35 66 66 7c}
+    $a44 = {  78 43 43 5a 08 57 54 4a 43 51 43 4c 00 7c 7f 73 72 74 6e 39 7a 72 36 67 61 7d} 
+ $a45 = {  79 44 42 59 09 58 55 49 42 56 42 4f 01 43 7e 70 73 73 6f 3a 7b 7d 37 64 60 7a}   
+ $a46 = {  7a 45 45 58 0a 59 5a 48 41 57 45 4e 02 42 41 71 70 72 68 3b 78 7c 38 65 63 7b}
+</snippet>
+
+
+
+So if it was only this happy little bit of code I would have just grinned and fixed it by hand. However, there were 255 variables with tabs in the wrong place, and gaps in places where there should not be gaps. There was no way I was going to waste time to do this by hand. 
+
+So I thought... could vim do the heavy lifting for me??
+
+For those not drinking the vim Kool-Aid, “Vim is a highly configurable text editor built to enable efficient text editing. It is an improved version of the vi editor distributed with most UNIX systems.”  .  It’s a text editor... so what? Oh but it is so much more! To the linux machine!
+
+There are a ton of awesome commands with VIM, but I am going to focus on the ones I used to solve my issues.
+Varying Levels of Tab-dom/Space-ness
+
+How does one remove the tabs in a document. Well, a search replace of course! Most text editors can do this, but with linux its even easier to search for tab (\t), whitespace (\s) or newline (\n) and replace it with whatever. 
+
+So let’s crack on with the regex! I entered the following command and hit Enter.
+:%s/\t//g
+
+
+
+So lets go through this line to figure out its meaning:
+: -> short for “execute”, this goes back to the history of VI and VIM
+%s -> run the substitute command across the entire document, if you omit the ‘%’ it searches only on the current line where your cursor is
+/ -> start of the regex
+\t -> what you are searching for, this is [TAB]
+/ -> the next item will be what VIM will substitute [TAB] with, if there is nothing, then it just replaces it with nothing
+/ -> end of the regex
+g -> replaces ALL occurances in the line, if this is omitted, only the first occurrence in the line is substituted
+
+
+This is a snippet of output.
+
+
+Success! Mostly! A quick scroll up shows me some lines have spaces at the beginning.  It’s hard to see here, but the line starting with $a249 has a space! Totally unacceptable!
+$a248 = {  ac 9f 9f 86 d4 83 80 9e 97 9d 8f 80 cc 88 8b 87 86 88 92 c5 86 86 c2 93 95 b1}  
+$a249 = {  ad 90 9e 85 d5 84 81 9d 96 82 8e 83 cd 8f 8a 84 87 87 93 c6 87 81 c3 90 94 8e}  
+$a250 = {  ae 91 91 84 d6 85 86 9c 95 83 91 82 ce 8e 8d 85 84 86 9c c7 84 80 c4 91 97 8f}  
+
+(table 1)
+
+
+I will show it! Back to the VIM:
+:%s/^\s//
+
+
+
+So this is similar to by first substitution but I will explain the differences:
+^ -> only search for hits that occur at the beginning of a line. This means it will ignore all other whitespaces on the line
+\s -> whitespace
+
+Why did I not add the /g? Well the ^ says I am only looking at the beginning, so adding the /g does not matter no other “hit” would match the criteria of being at the beginning. 
+
+Let’s try something else and also show you another VIM command. Let’s say you make a mistake and you want to revert back to the original before you made the subsititution. Just hit ‘u’ and your last changes will be undone! Think of it as CTRL+Z.
+
+So what would be the difference in Table 1 if I omitted the ^ from the regex? This is the result:
+$a248= {  ac 9f 9f 86 d4 83 80 9e 97 9d 8f 80 cc 88 8b 87 86 88 92 c5 86 86 c2 93 95 b1}
+$a249 = {  ad 90 9e 85 d5 84 81 9d 96 82 8e 83 cd 8f 8a 84 87 87 93 c6 87 81 c3 90 94 8e}
+$a250= {  ae 91 91 84 d6 85 86 9c 95 83 91 82 ce 8e 8d 85 84 86 9c c7 84 80 c4 91 97 8f}
+(table 1)
+
+I told regex to basically find me the first white space on the line and remove it-- So now there is a space discrepancy on some lines between the variable and the equal sign. This just shows you the power of regular expressions!
+My Desire for Balance
+
+If you notice, there are two space between the first curly bracket and the first hex character. However, there are no space between the last hex character and the closing curly bracket. There must be equilibrium!
+:%s/{  /{/
+
+
+
+So this is saying, for every line in the document, the first instance (hence the lack of ‘g’) you see “{  “ (that’s two spaces), replace it with “{“ (just curly brace). Then move on to the net line. 
+My Hatred of Blank Lines
+
+So it’s hard to see in the screen shots due to the size of the window, but in the copy and paste items there are clearly blank lines between most variable declarations. I do not enjoy this. It is time for them to go!
+:%s/\s\+$//
+
+
+
+
+Oh man so what did THIS do? Lets go through the new ones:
+\+ -> matches the preceeding character (in our case a white space) one or more times
+$ -> to the end of the line
+$a251 = {af 92 90 8b d7 86 87 9b 94 80 90 9d cf 8d 8c 82 85 85 9d c8 85 83 c5 96 96 8c}       
+$a252 = {a8 93 93 8a d8 87 84 9a 93 81 93 9c d0 8c 8f 83 82 84 9e c9 8a 82 c6 97 91 8d}
+$a253 = {a9 94 92 89 d9 88 85 99 92 86 92 9f d1 93 8e 80 83 83 9f ca 8b 8d c7 94 90 8a}
+
+Uniform Tabs
+
+So you know how I got rid of the tabs? Well I actually want a tab, just… I also just wanted them all to be uniform. So now that all of that is done, I can now add a tab and be happy with my output! How to do that? Well VIM again! :
+
+First off I need to know how many lines I want to indent.  When you open a file in vim it actually tells you but as we made some changes thing may now be a bit different. So lets see how many lines we got:
+:echo line('$')
+254
+
+
+
+This also makes sense as we start counting at ‘1’ and we have what seems to be 255 variables being declared :) 
+
+So now to indent all 254 lines, first I made sure I was at the top of the file, then I typed this in:
+254>>
+
+
+
+
+
+
+Success! Uniform tabs! I could of course run the command again if I wanted to double tab. 
+
+So now I have a much cleaner (happier) YARA rule. This shows the power of regular expressions paired with VIM. 
+
+
+

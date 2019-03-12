@@ -1,0 +1,41 @@
+
+4 ways to SMTP Enumeration
+
+We can also find out version and valid user of SMTP server using telnet. Execute following command and find out its version and valid user.
+telnet 192.168.1.107 25
+From given image you can observe that it has successfully shown “220 mail.ignite.lab ESMTP Postfix” has been installed on target machine.
+You can guess for valid user account through following command and if you receive response code 550 it means unknown user account:
+vrfy raj@mail.lab.ignite
+If you received message code 250,251,252 which means server has accept the request and user account is valid.
+But if you received message code 550 it means invalid user account as shown in given image
+vrfy admin@mail.ignite.lab
+
+The SMTP service has two internal commands that allow the enumeration of users: VRFY (confirming the names of valid users) and EXPN (which reveals the actual address of user’s aliases and lists of e-mail (mailing lists)). Through the implementation of these SMTP commands can reveal a list of valid users.
+use auxiliary/scanner/smtp/smtp_enum
+msf auxiliary(smtp_enum) > set rhosts 192.168.1.107
+msf auxiliary(smtp_enum) > set rport 25
+msf auxiliary(smtp_enum) > set USER_FILE /root/Desktop/user.txt
+msf auxiliary(smtp_enum) > exploit
+From given image you can read the valid username found in targeted server as well as it also grab SMTP banner.
+
+ smtp-user-enum is a tool for enumerating OS-level user accounts on Solaris via the SMTP service (sendmail). Enumeration is performed by inspecting the responses to VRFY, EXPN and RCPT TO commands. It could be adapted to work against other vulnerable SMTP daemons, but this hasn’t been done as of v1.0.
+ Type following command to enumerate username using dictionary of usernames:
+ smtp-user-enum -M VRFY -U /root/Desktop/user.txt -t 192.168.1.107
+ -M: mode Method to use for username guessing EXPN, VRFY or RCPT 
+ -U: file File of usernames to check via smtp service
+  -t: host Server host running smtp service
+From given image you can see out of total 7 queries only 5 names are valid and exist in smtp server.
+
+Type following command to verify user email address on mail server:
+smtp-user-enum -M VRFY -D mail.ignite.lab -u raj -t 192.168.1.107
+-D:  dom   Domain to append to supplied user list to make email addresses; Use this option when you want to guess valid email addresses instead of just usernames.
+From given image you can see it has shown raj@mail.ignite.lab is valid email ID for user raj.
+
+iSMTP is the kali Linux toolw which is use for testing SMTP user enumeration (RCPT TO and VRFY), internal spoofing, and relay.
+Type following command to enumerate valid email ID of targeted server:
+ismtp -h 192.168.1.107:25 -e /root/Desktop/email.txt
+-h <host>       The target IP and port (IP:port)
+ -e <file>   Enable SMTP user enumeration testing and imports email list.
+From given image you can see blue color text refer to valid email account and red color text refer to invalid account.
+
+Author: Sanjeet Kumar is a Information Security Analyst | Pentester | Researcher  Contact Here

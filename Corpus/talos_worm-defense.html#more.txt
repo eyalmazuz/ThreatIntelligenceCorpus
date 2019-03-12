@@ -1,0 +1,85 @@
+
+Back to Basics: Worm Defense in the Ransomware Age
+
+
+This post was authored by Edmund Brumaghin 
+
+"Those who cannot remember the past are condemned to repeat it." - George Santayana
+
+
+The Prequel
+
+In March 2017, Microsoft released a security update for various versions of Windows, which addressed a remote code execution vulnerability affecting a protocol called SMBv1 (MS17-010). As this vulnerability could allow a remote attacker to completely compromise an affected system, the vulnerability was rated "Critical" with organizations being advised to implement the security update. Additionally, Microsoft released workaround guidance for removing this vulnerability in environments that were unable to apply the security update directly. At the same time, Cisco released coverage to ensure that customers remained protected.
+
+The following month, April 2017, a group publishing under the moniker "TheShadowBrokers" publicly released several exploits on the internet. These exploits targeted various vulnerabilities including those that were addressed by MS17-010 a month earlier. As is always the case, whenever new exploit code is released into the wild, it becomes a focus of research for both the information security industry as well as cybercriminals. While the good guys take information and use it for the greater good by improving security, cybercriminals also take the code and attempt to find ways to leverage it to achieve their objectives, whether that be financial gain, to create disruption, etc. 
+
+
+Ransomware Worms
+
+Computer worms are not a new concept. Worms are different from other malware in that they self-propagate within and between systems; for example, Conficker is a computer worm that used a Windows vulnerability to propagate (MS08-067) and dates back to 2008. In fact, Conficker is still floating around the internet spreading from vulnerable system to vulnerable system almost 10 years later. What the past has taught us is that whenever exploit code is released in the wild for vulnerabilities that are "wormable", worms will be created and distributed. While this doesn't happen often, when it does, the impact worms can have around the world is significant. In 2017, we have seen this twice so far. What is new, however, is the use of computer worms to spread ransomware and other destructive malware. Enter WannaCry and Nyetya.
+
+WannaCry
+
+Moving forward in time, in May 2017, we saw the introduction of WannaCry into the threat landscape. WannaCry was created as a ransomware worm, meaning that it leveraged vulnerabilities in Windows to spread itself and infect additional systems without requiring explicit user interaction. WannaCry leveraged the vulnerability addressed two months prior (MS17-010) to perform this propagation. Once systems were infected, ransomware would be installed and their system would be used to propagate the attack to other systems. This quickly lead to a snowball effect with more and more systems becoming infected and actively attempting to spread the malware. The damage created by WannaCry was global, with many organizations around the world either directly affected due to infections, or indirectly due to issues caused elsewhere by the malware.
+
+Nyetya
+
+Fast forwarding to June 2017, a second, more sophisticated attack leveraged the same vulnerabilities, for which security updates had been released months prior. This particular attack can be labeled as more sophisticated for a number of reasons. First, it leveraged what's known as a "supply-chain attack" as the initial vector for compromising organizations. In supply-chain attacks, the attackers take advantage of a trusted relationship between an organization and a vendor or supplier. In this case, the attackers behind Nyetya compromised a software update server used extensively by businesses and organizations in Ukraine. They leveraged the compromised server to deploy backdoored versions of the software under the guise of software updates. Once backdoored, the attackers could distribute their malware directly into the targeted environments. In this particular case, the malware caused significant system impact and leveraged multiple methods for propagating throughout the network in compromised organizations. In a similar fashion to WannaCry, this resulted in many organizations facing significant operational disruption, however in this case, the damage was mainly focused within Ukraine.
+
+
+WannaCry vs. Nyetya
+
+There are significant differences between these two pieces of malware. As previously mentioned, Nyetya can be considered significantly more sophisticated for a number of different reasons, which are detailed in the following sections. One example of the difference in sophistication between these two worms lies in the code itself. WannaCry featured multiple bugs (including a broken scanning function) which might be indicative of differences in the skill level of the attackers who created WannaCry versus those who created Nyetya. The major differences between these two worms can be characterized by how malware was delivered, the methods of propagation used by the malware, as well as the mission objective of the attackers who distributed them. 
+
+Delivery
+
+The delivery mechanism used by the two malware families was significantly different. WannaCry was simple: find or build a vulnerable SMBv1 server and infect it causing it to scan the internet and propagate. Nyetya was significantly more advanced. The attackers behind the Nyetya worm were able to successfully compromise a server used to distribute software updates for a piece of software used extensively within a specific geographic region. As mentioned in our blog post here, it is possible that the reason the attacker chose to expose, or make known that they had this level of access to systems within the targeted geographic region is due to them having additional comparable capabilities that may be used in the future.
+
+Propagation
+
+The propagation mechanisms used by Nyetya, featuring similar capabilities as WannaCry, included several additional methods that were available to Nyetya, and included credential compromise. Rather than simply relying on the SMBv1 vulnerability, Nyetya also featured the ability to leverage PSExec and WMI. Additionally, while WannaCry was programmed to spread across both internal and external networks and contained code level issues with the scanning functionality leading to performance deficiencies, Nyetya only propagated internally within compromised environments. It is possible that this was done to limit the impact of the malware to only the specific region or organizations being targeted.
+
+Mission Objective
+
+The suspected mission objectives for both of these cases were also different. With WannaCry, it seems reasonable to conclude that the malware was simply a poorly executed attempt to generate revenue through the mass deployment of ransomware. The inclusion of what is referred to as a "killswitch", a single domain designated to control the malware spread, made it easy for security researchers to stop the spread of this malware and indicates how unsophisticated the programmer(s) really were. The attacker's later movement of the bitcoins from the WannaCry bitcoin wallets also seems to further support that hypothesis. With Nyetya, the mission objective appears to have been causing operational disruption within a targeted environment. Nyetya wiping portions of the hard drive of infected systems and providing no mechanism for reversing that process also seems to support this hypothesis.
+
+
+What Could Have Been Done Differently?
+
+Getting back to the basics of information security would have been an effective means of either preventing or seriously limiting the impact of both of these threats. 
+
+Patching
+
+WannaCry was easily avoidable for most organizations. Simply installing the security update associated with MS17-010 would have prevented a successful WannaCry infection. There have been several arguments made about whether or not this was possible on older systems still being actively used in some organizations. WannaCry's implementation of the exploit code targeting the MS17-010 vulnerability did not even run properly on most of these systems. Microsoft eventually released updates for MS17-010 for these older operating systems as well. 
+
+As has been emphasized by the security community for many years, effective patch management is a vital security control that organizations simply must implement within their environments. We have seen many attacks become successful simply because an organization failed to patch their environments. Reliable exploits for 0-day vulnerabilities are often very expensive for attackers, while patched public exploits are very cheap. Attackers simply will not typically utilize a 0-day vulnerability if they can find a cheaper means to achieve their mission objective. As an organization, in most cases if a system within your environment is compromised due to a 0-day vulnerability being exploited, that is a good indicator that you are doing everything else effectively because it means that the attacker likely could not find another cheaper avenue to breach your defenses. 
+
+Least Functionality
+
+Only implement system functionality that is required for systems to perform their intended role or function. Microsoft recommends disabling SMBv1 if it is not required. Likewise, limiting access to systems and services is another vital security control. Even if SMBv1 is in use on a system, it is rare for it to be required to be exposed to hostile network environments like the internet. Leveraging host-based firewalls, like the one built into the Windows operating system even on internal network segments is another way to control access to these services. 
+
+Least Privilege 
+
+Limit the use of administrative tools like WMI and PSExec to only those systems from which system administrators are performing system management functions. Monitoring for the use of these tools across an organization's network, while not necessarily a preventative security control, can be used to quickly identify compromised systems and enable organizations to initiate appropriate incident response processes.
+
+System and Network Monitoring
+
+Computer worms typically propagate very quickly, making them extremely loud in most environments. In both of these cases, the worm would initiate a scanning function to identify new hosts to propagate to. Monitoring the environment for service sweeps, or attempts to connect to many systems by a single system on a network within a short period of time could allow for early identification of compromised systems so that the issue can be addressed before it causes a larger organizational impact.
+
+Network Segmentation
+
+Even in environments where it was simply not possible to install the security update associated with MS17-010, network segmentation is a good way to either prevent a successful attack or limit the possible impact of a successful attack to the rest of the organization's environment. Creating "choke-points" in communications pathways is a great way to not only limit the impact of a successful compromise, but also provides an ideal location to deploy network-based security controls that can be used to prevent a successful attack from occurring in the first place. As was previously described, the principle of least functionality would dictate that at each of these choke-points, access controls would be deployed to limit communications to only what is actually required for systems to serve their role within the business. Flat networks, while easy to manage and maintain, afford little in the way of mitigating the impact of an attack like WannaCry or Nyetya. 
+
+Processes and Policies
+
+It is essential that organizations have established policies and processes in place to ensure that they are prepared to respond appropriately and effectively when the unexpected happens. Disaster Recovery and Business Continuity Plans enable organizations to recover from unplanned system outages or disasters. In order for these processes to remain effective over time, organizations must not only have the plans in place, but they must be tested and validated over time to ensure that they continue to meet the needs of the organization. Can your organization recover from a system outage quickly enough to meet its business needs? Is your backup strategy working (i.e. can you recover using your backups alone?) These needs change over time and testing these processes will help ensure they remain effective before an outage or disaster occurs. Incident Response is another example of a process that should be in place and tested periodically through the use of hunting exercises, tabletop exercises, and walkthroughs. This is the only way to truly ensure that the incident response team has the knowledge and tools necessary to effectively respond when security events occur within an environment.
+
+
+Conclusion
+
+WannaCry and Nyetya are two examples of events that resulted in many organizations around the world being significantly impacted by malware. These events underscore the need to get back to the basics from an information security perspective to ensure that organizations are adequately protected and ready to respond to disruptive events that may occur within their environments. Computer worms are nothing new, they have been around for decades. Having a sound, layered, defense-in-depth strategy in place will ensure that organizations can prevent widespread system outages, and detect and respond when system compromise occurs within their environments to minimize the impact these events may have. 
+
+The National Institute of Standards and Technology (NIST) has released Special Publication 800-53 "Security and Privacy Controls for Federal Information Systems and Organizations" which provides comprehensive guidance regarding recommended best practices and the selection of security controls that can be implemented to establish a sound defensive architecture within networked environments. This guidance is available here. 
+
+
+

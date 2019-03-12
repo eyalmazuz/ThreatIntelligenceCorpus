@@ -1,0 +1,116 @@
+
+Forwarding SMS to Email on [Jailbroken] iOS
+
+
+by KrishnaChaitanya Yarramsetty.
+
+As with most ideas, this one also took shape out of necessity to reduce manual work and dependencies in various scenarios. This blog post shows one of the many ways to read SMS messages from a jailbroken iPhone and send it as an email. There are ways to do this using a few Cydia Apps but they usually require you to register for an account or pay for the service which was less than ideal for me. 
+Requirements
+
+iOS 5.1.1 (9B206) - Other versions may work as well
+Python 2.7.3 to 3 via Cydia (cydia.radare.org)
+SQLite 3.x via Cydia (cydia.radare.org)
+adv-cmds via Cydia (apt.saurik.com)
+
+SMS Storage
+iOS stores a lot of data in sqlite databases which, in most cases, can be identified by their “.db” extension. SMS messages are stored in the following files:
+ /var/mobile/Library/SMS/sms.db
+ /var/mobile/Library/SMS/sms.db-shm
+ /var/mobile/Library/SMS/sms.db-wal
+
+
+
+The sms.db-wal is a "Write Ahead Log" which is responsible for transactional behavior, while the sms.db-shm is an "Associate File" which is required to read sms.db-wal and the original sms.db.
+sms.db is the main file that retains most data, however these files are temporary in nature.  The last received SMS message will go into sms.db-wal file.  sms.db-wal uses a different format on top of the standard sqlite structure as the sms.db.  All three files  are read with a single connect() function call from the sqlite API.
+Reading the SMS Database
+
+First task at hand is to read sms.db file and analyze the database to find out how iOS is storing SMS messages. For whatever reason many of the sqlite3 utilities seem to have problems opening the file. 
+Sqlite3.exe and SQLite Database Browser
+Although the initial import worked using sqlite3.exe on Windows, attempts to query the sms.db file failed. I also tried SQLite Database Browser which resulted in the below error.
+
+Cydia’s sqlite3 binary
+We also tried to read the database file from within iOS using the sqlite3 binary that came with Cydia which proved to be futile:
+
+Text Editor
+
+With all of the utilities having problems reading the file, I decided to just open the file using a text editor to determine if there was something wrong with it. Everything looked fine, so I ran through the file looking for CREATE statements to determine where messages were stored which produced the following structure:
+ CREATE TABLE message (ROWID INTEGER PRIMARY KEY AUTOINCREMENT,
+ address TEXT, 
+ date INTEGER, 
+ text TEXT, 
+ flags INTEGER, 
+ replace INTEGER, 
+ svc_center TEXT, 
+ group_id INTEGER, 
+ association_id INTEGER, 
+ height INTEGER, 
+ UIFlags INTEGER, 
+ version INTEGER, 
+ subject TEXT, 
+ country TEXT, 
+ headers BLOB, 
+ recipients BLOB, 
+ read INTEGER, 
+ madrid_attributedBody BLOB, 
+ madrid_handle TEXT, 
+ madrid_version INTEGER, 
+ madrid_guid TEXT, 
+ madrid_type INTEGER, 
+ madrid_roomname TEXT, 
+ madrid_service TEXT, 
+ madrid_account TEXT, 
+ madrid_account_guid TEXT, 
+ madrid_flags INTEGER, 
+ madrid_attachmentInfo BLOB, 
+ madrid_url TEXT, 
+ madrid_error INTEGER, 
+ is_madrid INTEGER, 
+ madrid_date_read INTEGER, 
+ madrid_date_delivered INTEGER);
+
+
+
+With a potential idea of where SMS messages might be stored, I decided to use Python’s sqlite API to query the database directly. 
+smsDBQuery.py
+smsDBQuery.py uses the standard SQLite API to connect to the sms.db and fetch all the unread messages using the below query: 
+ SELECT text from message where read=0 order by date desc
+
+
+
+To use the smsDBQuery.py, copy it to your device’s /var/mobile/Library/SMS/ directory and run it as follows:
+
+
+What’s interesting to note is that the sms.db contains even very old messages that aren’t displayed on the device. This is because sms.db-wal retains the latest state for the device’s UI - so only a subset of messages are shown. 
+Catching New Entries and Sending Email
+We can use the SQL TRIGGER statement to catch insert events on the message table when new SMS messages are received.  Then our python script will take that message and send an email. We've created the following github repo for all the code:
+https://github.com/OpenSecurityResearch/smsios
+
+
+To accomplish everything, our program works as follows: 
+
+Create a temporary message2 table in the original database that is a subset of the main table
+Write a TRIGGER on insert event of the database and attach it to the main SMS table. The TRIGGER should read the latest message and insert it into the message2 table without with altering any content in the original message table
+Have a secondary script regularly monitor the message2 table and send an email containing the message contents when a new entry is added. We’ll use the emailsent flag to track state
+
+smsCreateTrigger.py
+smsCreateTrigger.py will create the database trigger and the message2 table. You’ll only need to run this once to get the database set up. I’d recommend backing up your sms.db just in case and if you get any errors thoroughly inspect them. If you have any problems you can uncomment the DROP statements (and comment the CREATE) to clean up the sms.db.
+smsWatcher.py
+smsWatcher.py should be run in the background and will poll the message2 table for new entries. Once it sees one, it’ll take the message and send out an email via SMTP. You’ll need to manually set the following variables within the script to the variables applicable to your setup. 
+ fromaddr   : 'abc@gmail.com'
+ toaddrs    : 'xyz@gmail.com'
+ username   : 'abc'
+ password   : '****'
+ server     : smtplib.SMTP('smtp.gmail.com:587')
+ smsfromaddress :('AXARWINF','6564567890',)
+
+
+
+Note that we’re only forwarding messages from a specific address. If you’d like to forward all messages simply modify the SELECT statement to not use the address field.  
+
+With all your variables set up, you can run the smsWatcher process, be sure only one smsWatcher process is running at a time:
+ python smsWatcher.py &
+
+
+
+
+

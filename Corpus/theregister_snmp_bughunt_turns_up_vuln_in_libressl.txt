@@ -1,0 +1,13 @@
+Bug-hunt turns up vuln in LibreSSL
+Updated Code reviewers looking over a mail daemon have turned up a couple of reasonably serious bugs in the Libre SSL code base – and along the way provided a handy illustration of the deep interdependencies between software.
+What they've found is that there's a companion memory leak (CVE-2015-5333) and buffer overflow (CVE-2015-5334) in the SSL replacement candidate.
+The researchers from Qualys (their notice published here) said they were trying to see if a remote code execution attack is feasible against vulnerabilities they've turned up in OpenSMTPD (which earlier this month hit version 5.7.3).
+“Because we could not find one in OpenSMTPD itself, we started to review the malloc()s and free()s of its libraries, and eventually found a memory leak in LibreSSL's OBJ_obj2txt() function; we then realized that this function also contains a buffer overflow (an off-by-one, usually stack-based).”
+The memory leak provides a path for an attacker to cause a denial-of-service attack, and also permits triggering of the buffer overflow.
+The buffer overflow exists because of a change to OBJ_obj2txt() which can write a null terminator out of bounds, and the resulting crash might provide a path for remote code execution.
+As the code reviewers note, however, because it's stack-based it's “probably not exploitable on OpenBSD x86, where it appears to always smash the stack canary”.
+The LibreSSL team has released fixes for OpenBSD. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

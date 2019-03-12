@@ -1,0 +1,61 @@
+
+Debugging Android Applications
+
+
+By Naveen Rudrappa.
+
+Using a debugger to manipulate application variables at runtime can be a powerful technique to employ while penetration testing Android applications. Android applications can be unpacked, modified, re-assembled, and converted to gain access to the underlying application code, however understanding which variables are important and should be modified is a whole other story that can be laborious and time consuming. In this blog post we'll highlight the benefits of runtime debugging and give you a simple example to get you going!
+
+Debugging is a technique where a hook is attached to a particular application code. Execution pauses once a particular piece of code is reached, giving us the ability to analyze local variables, dump class values, modify values, and generally interact with the program state. Then when we're ready, we can resume execution. 
+Required Tools
+
+If you have done any work with Android applications, you shouldn't need any new tools:
+
+The application's installationation package
+Java SDK
+Android SDK
+
+
+Reverse engineering has got prominent role while, penetration testing the android applications. Reversing android applications is helpful in below 2 scenarios:
+Debuggable
+
+The AndroidManifest.xml contained within the application's .apk actually has a android:debuggable setting which allows the application to be debuggable. So we'll need to use the APK Manager to decompress the installation package and add android:debuggable="true". 
+
+
+Attaching
+
+We'll need to attach the debugger to our application in order for us to debug it. Using adb jdwp, we can list all of the running applications and as long as the target application was the last to be loaded, we can reliably guess that the last process ID on the list is ours.
+
+
+
+Next we'll need to forward our debugging session to a port we can connect to with our debugger: 
+ adb forward tcp:8000 jdwp:498 
+
+
+Finally we can attach the debugger with:
+ jdb -connect com.sun.jdi.SocketAttach:hostname=localhost,port=8000 
+
+
+
+With the debugger attached, we can set breakpoints at the required functions and analyze the application behavior at runtime. To identify function names, you can decompile the application to dex and use that code to guide your debugging session. 
+
+
+Some the useful JDB commands for debugging:
+
+stop in [function name] - Set a breakpoint
+next - Executes one line
+step - Step into a function
+step up - Step out of a function
+print obj - Prints a class name
+dump obj - Dumps a class
+print [variable name] - Print the value of a variable
+set [variable name] = [value] - Change the value of a variable
+
+An Exercise for You!
+https://github.com/OpenSecurityResearch/AndroidDebugFun/raw/master/runtime.apk
+
+This application is a pretty simple one. Upon entering correct PIN, that is 1234, application responds with message “correct PIN entered”. Upon entering any value apart from 1234 application responds with message “Invalid PIN”. Bypass this logic via debugging so that for any invalid PIN application responds with message “correct PIN entered”.  For solution refer below image it summarizes all the command need to complete the challenge.
+
+
+
+

@@ -1,0 +1,232 @@
+
+Proxying Android 4.0 ICS and FS Cert Installer
+
+
+By Paul Ambrosini.
+
+The first step to testing Android applications is to inspect the application’s traffic. If the application uses SSL encryption, this requires forcing the app to use an intermediate proxy that allows us to grab, inspect, and possibly modify this traffic. Before Android 4.0 (Ice Cream Sandwich or “ICS”) was released, proxying an application was painful; the emulator was a better solution than a physical phone due to SSL certificate issues.  Now that ICS is out and many devices have a working build (either from the manufacturer or third-party), it has become much easier to use an actual phone to test Android applications.
+
+While testing Android applications, it quickly becomes apparent that the OS doesn't proxy traffic easily.  Since most developers don't use the emulator and code must be specifically written for the emulator, proxying on the emulator can pose additional challenges- namely that the application simply might not work at all, or might not work properly.  The --http-proxy setting used for the emulator tends to only work for the stock browser application; other applications generally ignore this setting.  The second challenge is that a rooted emulator image is needed, which is possible but yet more effort. It’s ironically easier to root most physical devices than it is to root the standard emulator images (let alone to produce a new pre-rooted image.)
+
+There are multiple solutions to this problem, but the best solution I've come cross is using the “ProxyDroid” app directly on a rooted ICS phone.  This allows a tester to easily forward all traffic from the real application through a proxy; the only problem becomes SSL certificates, since the proxy will need to use its own SSL certificate, which Android will not recognize as valid.
+
+For reference, here’s my phone setup (today - Kernel and ROM are regularly updated):
+
+Phone: Galaxy S II i777 (AT&T Model)
+ROM: CyanogenMod 9 Nightly build 07/02/2012
+Kernel: Siyah Kernel v3.4.3
+Rooted:  Yes
+
+
+The rooting process is out of the scope of this article, but documentation can usually be found online. The process varies wildly from phone to phone.  A good place to start would be the XDA Developer Forums; most devices have a forum dedicated to them, with a General section that usually contains a rooting guide. Rooting your device is your choice- I can't help with (or be held responsible for) issues that arise from a rooted phone.
+
+
+In Android, unlike iOS, there is no setting for proxying traffic.  Android 4.0 (ICS) added some tweaks to the wireless settings that are (slightly) hidden behind a long press on the currently-connected Wi-Fi network and then a check box for advanced options as seen below. (The “beware of Leopard” sign was dropped early in the Beta process.)
+
+
+
+
+Unfortunately, this proxy setting is just like the --http-proxy setting of the emulator, which means it is completely useless for the actual proxying of applications.  This leaves testers with the best option being a rooted phone with ProxyDroid running, which will force all traffic to use the proxy.  Install the application from Google Play or from the developer’s XDA Developers thread. This will not solve all cases, but applications will happily comply.
+
+An intercepting proxy running on a computer on the same network (or accessible via the Internet, but this is probably a bad idea). This article uses the free version of Burp Suite running on a BackTrack 5 VM, but if you have a preferred intercepting proxy, it should work, too.
+Initial proxy setup
+
+A backtrack VM has all the needed tools in this case, so Burp was started from the BT5 VM.  The VM was set to bridged mode as to be on the same network as the phones wireless.  The Burp proxy options were as shown here:
+
+
+
+Take note of the IP address on the VM as this will be needed soon.  Pay particular attention to Burp’s server SSL certificate option, as these are particularly important.
+
+Next, start ProxyDroid on the mobile device and allow it root privileges when asked.  ProxyDroid requires root, since it uses iptables (the Linux firewall) to modify packet routing on the device.  Set ProxyDroid’s Host to the Burp IP and the configured port (default 8080) and then enable the proxy.
+
+
+
+
+Finally, test proxying with the basic browser on the phone.  Browse to something simple like http://www.google.com and the traffic should show up in Burp.
+
+
+
+
+If there is no traffic showing, ensure the proxy is configured to listen on all interfaces (i.e., that “loopback only” is disabled) and that the IP/port settings in ProxyDroid are correct.  If these settings seem correct, verify that the phone’s Wi-Fi is set to the same network as the machine running Burp.  ProxyDroid should also be checked to make sure the IP/port settings are correct and that the app is enabled.  When ProxyDroid is enabled, a cloud icon will show in the top left of the phone to let you know that it’s running.
+
+With the phones browser now set to proxy through Burp, let's test what happens with an SSL encrypted connection to Google; navigate to https://www.google.com. 
+
+
+
+Pressing OK and then Continue will allow the browser to ignore the certificate warnings and load the page.  Now we can see the browser’s SSL traffic, but what happens if an application attempts to access an HTTPS site?
+Application Proxying
+
+In order to test application proxying, we need an application.  I've created a very simple app that creates an HTTPS connection to Foundstone’s website.  The app will attempt to connect; if it succeeds, it will change the text in the app to the html response source.  If not, the application will print a debug message to the log.
+
+The application can be downloaded from here, which will require that your phone allows non-market apps (Settings > Security > Unknown Sources) to be installed be enabled on your device:
+
+https://github.com/Foundstone/FS-SSL-App-Test/raw/master/fs-ssl-app-test.apk 
+
+
+ The source code can be seen here (in case you don’t trust me):
+
+https://github.com/Foundstone/FS-SSL-App-Test
+
+
+To fully understand how this application works, I would suggest loading the source code in Eclipse (with the ADT Plug-in and running the code from there.  For this test, it’s helpful to be able to view the phone’s system log, either using an attached computer with the Android SDK installed, or a specialized application on the device (for which there are many options).
+
+First, let's start ‘adb logcat’ with a filter for “FS”.  A debug log tag is commonly used to find specific log messages that are sent by the application.  The test app uses the tag “FSFSFSFSFSFSFSFSFS”, so filtering for FS will do.
+
+Windows command:
+adb logcat | findstr FS
+
+
+
+Linux command:
+adb logcat | grep FS
+
+
+
+
+Here's what the install result looks like when using Linux:
+$ adb logcat | grep FS
+W/ActivityManager( 3841): No content provider found for permission revoke: file:///data/local/tmp/FS SSL App Test.apk
+
+
+
+In another terminal, install the application. This command should be the same in either Windows or Linux, as long adb is in the path.
+$ adb install FS\ SSL\ App\ Test.apk
+239 KB/s (10513 bytes in 0.042s)
+ pkg:/data/local/tmp/FS SSL App Test.apk
+Success
+
+
+
+
+With the application installed and logcat running, let's first turn off ProxyDroid and test the application. The application should produce several log messages in the logcat window.  These messages are for debug purposes to help step through testing of the application.  The application will also change its text to the response received from the server, as shown below.
+
+
+
+Now that we can see the application working, it's time to figure out how to insert our proxy in front of the application.  Go back and enable ProxyDroid once again. Attempting to run the application again with ProxyDroid turned on causes an SSL error:
+$ adb logcat | grep FSFS
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting application...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting HTTPS request...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Set URL...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Open Connection...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Get the input stream...
+D/FSFSFSFSFSFSFSFSFS(31187): [-] EXCEPTION: javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found.
+
+
+
+The detailed error is:
+EXCEPTION: javax.net.ssl.SSLHandshakeException: java.security.cert.CertPathValidatorException: Trust anchor for certification path not found.
+
+
+
+“Trust anchor” in this instance is referring to a pre-accepted CA certificate that can be used to validate the SSL certificate. In other words, the certificate is not signed by a valid CA. This is not unexpected- Burp Suite has generated the certificate and signed it using its internal, randomly-generated CA certificate.
+
+By configuring Firefox to use Burp as its proxy, we can easily see what the certificate chain looks like. Navigate to an SSL-protected page, select Tools -> Page Info, and click the ‘Security’ icon in the top row, and click the ‘View Certificate’ button. You should be presented with a screen like that below.
+
+
+
+
+As the image shows, “PortSwigger CA” is the signing authority for the certificate for “www.foundstone.com”. The phone doesn't have this CA (not least because it’s randomly generated on first run by Burp Suite), so we need to add it, which allow us to decrypt SSL traffic sent by our Android apps.
+
+Still in Firefox, switch to the details tab select “PortSwigger CA” is selected in the “Certificate Hierachy” tree and then click “Export”.  Export the file as an X.509 Certificate (DER) file and set the filename to PortSwiggerCA.cer.  Android only reads files X.509 Certificates with a .CER extension when loading certificates from the SD card.  
+
+
+
+
+Finally, push the .CER file to the phone’s SD card using adb push, just like with any other file:
+$ adb push PortSwiggerCA.cer /sdcard/
+30 KB/s (712 bytes in 0.23s)
+
+
+
+With the certificate file saved on the phone, install it into the certificate pool navigating to Settings -> Security -> Install from SD card.  The install process will prompt you for the device lock code, as this is what Android uses to help secure the certificate.  If there is no lock code or pin currently configured, you will be asked to create one.
+
+
+
+
+
+Now that the CA certificate is installed on the phone, attempt to run the test application again, and observe the output in logcat.
+$ adb logcat | grep FSFS
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting application...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting HTTPS request...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Set URL...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Open Connection...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Get the input stream...
+D/FSFSFSFSFSFSFSFSFS(31187): [-] EXCEPTION: java.io.IOException: Hostname 'www.foundstone.com' was not verified
+
+
+
+The detailed error is:
+EXCEPTION: java.io.IOException: Hostname 'www.foundstone.com' was not verified
+
+
+
+Your first thought might be to go back to Firefox and grab the “www.foundstone.com” certificate from the detail tab, in the same manner that we obtained the PortSwigger CA certificate, but that actually won't work.  It appears that the default HttpsURLConnection in Android can sometimes cause an exception when using the default HostnameVerifier.  Searching for this issue I found some info here which talks about just using a different HostnameVerifier.  Depending on the application this could cause an exception or be completely ignored, in my case my application used the default verifier and I would have to install a site certificate as well.
+
+The easiest fix from the tester perspective is to reconfigure Burp to use a fixed certificate.  Go back to Burp and edit the settings for the proxy listener. In the “server SSL certificate” section, select the option “generate a CA-signed certificate with a specific hostname.” The specific hostname for this test will be “www.foundstone.com”. Be sure to click “edit” prior to making the change and “update” afterwards.  Just prior to clicking “update,” Burp should look similar to the image below.
+
+
+
+
+Return to Firefox and refresh the https://www.foundstone.com page; a new certificate error should appear. Follow the same process as above to export the certificate, except that this time be sure to export the “www.foundstone.com” certificate instead of the “PortSwigger CA” certificate. Remember to change the format to X.509 Certificate (DER) and to save it with a .CER extension (for example, www.foundstone.com.cer).
+$ adb push www.foundstone.com.cer /sdcard/
+11 KB/s (616 bytes in 0.051s)
+
+
+
+
+As before, navigate to Settings -> Security -> Install from SD card and install the www.foundstone.com certificate.
+
+
+
+Finally, double-check that ProxyDroid is still running then run the test application again.
+$ adb logcat | grep FSFS
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting application...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Starting HTTPS request...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Set URL...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Open Connection...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Get the input stream...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Create a buffered reader to read the response...
+D/FSFSFSFSFSFSFSFSFS(31187): [+] Read all of the return....
+D/FSFSFSFSFSFSFSFSFS(31187): [+] SUCCESS
+D/FSFSFSFSFSFSFSFSFS(31187): [+] SUCCESS
+D/FSFSFSFSFSFSFSFSFS(31187): [+] SUCCESS
+
+
+
+
+The Android application should display the HTML loaded from the page after being run successfully.
+
+
+
+
+Burp will show the site being connected to by IP, as shown below.
+
+
+
+Success!
+Some notes
+Where do we go from here? We were able to successfully proxy traffic for this test application, but actual applications may present other difficulties. When testing any application some key points of information will be required- most important being which URL the application talk to.  In the example case, we've used “www.foundstone.com” and, thus, created a specific host certificate for this site.  For each new application and URL, Burp will need to be re-set to generate a site-specific certificate for the URL in use.
+
+One other way to deal with this proxying issue is to decompile the application and do code replacement before recompiling the application.  Foundstone provides an example application, part of its Hacme series, and also some documentation on performing class replacement.  Performing class replacements like this can be tedious and frustrating, however, so it should be considered only in cases where the application cannot be coerced to proxy via more usual means.
+A Better Way - FS Cert Installer
+After going through this a couple times I didn’t want to deal with installing the certificates over and over so I wrote a small application to handle installing them. The application takes the URL, proxy IP and proxy port and then will allow the user to install the CA or site certificate.  For the “hostname was not verified issue” Burp will still need to be changed before the certificate is installed.
+
+
+
+Download:
+https://play.google.com/store/apps/details?id=com.foundstone.certinstaller
+
+Usage instructions:
+
+Install the application using the market or the apk file from github.
+Set the URL, proxy IP and proxy port.
+Install the CA certificate which will most likely be the Burp certificate.  Name it anything and enter the lock pin or pattern used on the phone.  The pin or pattern is used here by the KeyChain activity not the installer app.
+Change the certificate on Burp to generate a certificate with a specific hostname. Install the site certificate.
+Test your application!
+
+
+One large issue I ran into making this application deals with testing the certificate chain.  The test certificate chain button will run the test with or without a proxy (if the IP and port are blank).  I set up the application this way because a user might be testing or installing certificates with ProxyDroid running and the application should handle that just fine.  The issue arises when a user wants to test the certificate chain after installing the CA certificate.  The application will also tell the user the site certificate is installed and the full certificate chain is working.  This is due to the fact that the class HttpsUrlConnection.openConnectiong(proxy) does not cause the same IOException Hostname Verifier issue as it would without a proxy set.  Unfortunately there isn’t a fix for this issue, as far as I’m aware.  The code is part of the JDK in javax.net.ssl.  I am purposely using this class because it was recommended by the Android developer blog here, the apache HttpClient doesn’t throw the error anyway.
+
+As a final note to remember, some applications won’t need the site certificate and watching logcat will be the best way to figure out what’s happening.  Stack traces are your friend!
+
+

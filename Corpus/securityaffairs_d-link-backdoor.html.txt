@@ -1,0 +1,28 @@
+
+					A backdoor present in many D-Link devices allows to bypass authentication					
+Today I decided to propose an interesting backdoor analysis published on the blog “/dev/ttyS0” specialized on the embedded device hacking.
+The researcher Craig demonstrated the presence of a backdoor within some DLink routers that allows an attacker to access the administration web interface of network devices without any authentication and view/change its settings.
+The author of the post found the backdoor inside the firmware v1.13 for the DIR-100 revA. Craig found and extracted the SquashFS file system loading firmware’s web server file system (/bin/webs) into IDA.
+
+ 
+Giving a look at the string listing, the Craig’s attention was captured by a modified version of thttpd, the thttpd-alphanetworks/2.23, implemented to provide the rights to the administrative interface for the router. The library is written by Alphanetworks,  a spin-off company of D-Link, analyzing it Craig found many custom functions characterized by a name starting with suffix “alpha” including the alpha_auth_check.
+The function is invoked to parse http request in the phase of authentication.
+“We can see that alpha_auth_check is passed one argument (whatever is stored in register $s2); if alpha_auth_check returns -1 (0xFFFFFFFF), the code jumps to the end of alpha_httpd_parse_request, otherwise it continues processing the request.”
+Analyzing the parameters passed to the function the researcher was able to reconstruct the authentication flow, the function parses the requested URL and check if it contains the strings “graphic/” or “public/”. “graphic/” or “public/” are sub-directories under the device’s web directory, if the requested URL contains one of them the request is passed without authentication.
+Another intriguing detail has been found by Craig, the above function ends with a comparison with the specific string “xmlset_roodkcableoj28840ybtide”.
+
+ 
+If the code “xmlset_roodkcableoj28840ybtide” is part of the http_request_t structure the check_login function call is skipped and alpha_auth_check returns 1, meaning that the authentication is OK.
+Craig decided to search the code “xmlset_roodkcableoj28840ybtide” on Google and discovered traces of it only in one  Russian forum post from a few years ago. Going deep in its analysis Craig was able to piece together the body of the alpha_auth_check:
+Resuming the reverse engineering for the D-Link Backdoor, if attacker browser user agent string is xmlset_roodkcableoj28840ybtide, he can access the web interface of the D-Link device bypassing authentication procedure and view/change the device settings.
+Try to read the string xmlset_roodkcableoj28840ybtide backwards …. it appears as “Edit by 04882 joel backdoor“, very cool.
+ 
+
+ 
+Craig extended the results of its discovery to many other D-Link devices affected by the same backdoor, the author searched for the code present in the HTML pages on the entire Internet with the Shodan. He searched for the word “thttpd-alphanetworks/2.23”, the modified version of thttpd, retrieving following search results:
+
+after a series of test Craig concluded that the following D-Link devices are likely affected:
+The researcher discovered also that Planex routers, based on the same firmware, are affected by the flaw.
+Very intriguing … What do you think about?
+Pierluigi Paganini
+(Security Affairs –  D-Link, backdoor)

@@ -1,0 +1,429 @@
+
+Cryptomining Campaign Returns Coal and Not Diamond
+
+
+
+
+Executive summary
+
+Soon after a launch of a new cryptocurrency, Bitvote, in January, Talos discovered a new mining campaign affecting systems in India, Indonesia, Vietnam and several other countries that were tied to Bitvote. 
+
+Apart from the fact that the attackers have chosen to target the new bitcoin fork in order to gain the early adoption advantage, this campaign is notable for its usage of a kernel-mode driver to manage command and control (C2) infrastructure, configuration management, download and execute functionality, as well as payload protection. It is quite uncommon to implement this functionality in kernel, apart from the payload protection, and points to a moderate to high level of technical knowledge behind the attack. 
+
+The payloads and the configuration were embedded in specially modified animated GIF files and published as parts of web pages hosted on free blogging platforms. 
+
+The campaign was active in February and March, and so far, it has brought limited returns for attackers. 
+
+
+
+
+Introduction
+
+One of the benefits of open-source projects is the ability for other people to create so-called "forks" — copies of the original source code repository and to essentially split (fork) the development process in two by creating a separate project with a new development team and a separate development process. 
+
+Forks also happen with cryptocurrencies. Since the initial release of bitcoin, there has been more than 18,000 forks of bitcoin code on the hosting service GitHub, although only a few of them have successfully been launched as alternatives to bitcoin. 
+
+While some, such as Bitcoin Cash, Bitcoin Gold or Litecoin have been fairly successful, most new forks die out without being noticed by a significant number of users.
+
+A frequent reason that forks are created is to improve on the so-called "one-CPU-one-vote" principle, which prescribes rules on how the network decides on a transaction's validity. In the original plan laid out by Bitcoin creator Satoshi Nakamoto, the miner is awarded proportionally to the amount of computing resources they invested, without explicit mention of the type of hardware that should be used for mining. However, some people took the "one-CPU-one-vote" principle — quite literally — to mean that desktop CPUs should exclusively be used for mining.
+
+Nevertheless, the original practice of bitcoin mining has moved away from using standard desktop system CPUs and GPUs, and into the realm of specialized ASIC-based hardware systems, requiring a significant up-front investment to achieve notable returns for miners. 
+
+This development has seen many home users moving away from mining bitcoin into mining other currencies such as Monero, which is specifically designed to make mining using ASIC more difficult. Monero also increasingly became the currency of choice for malicious mining botnets, which we already covered in one of our recent blog posts.    
+
+On Jan. 20, an unknown group of developers launched a new bitcoin fork called Bitvote, with their own view on how to improve on the "one-CPU-one-vote" principle, and give desktop users a fairer chance to successfully mine a cryptocurrency. 
+
+Bitvote uses the Cryptonight algorithm for its proof of work, which is also used by Monero. The algorithm is designed to allow standard desktop CPUs to be equal participants in the mining process. 
+
+As cyber criminals move farther away from ransomware, and closer to cryptocurrency mining,  it comes as no surprise to find out that a malicious actor decided to take a gamble on Bitvote, and developed a malicious campaign that resulted in the infection of hundreds of systems with a modified version of the cpuminer mining software, recruiting the affected systems into a Bitvote mining pool. 
+
+This post is focused on the driver functionality of Bitvote, although we briefly describe the dropper, as well as the final cryptocurrency mining payload used in this campaign.
+
+
+Calculator with unexpected functionality: The dropper
+
+A driver dropper, purporting to be a calculator application was found by investigating AMP for Endpoints product telemetry. The dropper was spotted in the wild, and blocked on Feb. 6. It is likely to have been a part of a (potentially) unwanted application installer published on sites hosting an alleged version of Microsoft Toolkit, which should allow the user to activate different versions of Microsoft Office and Windows without owning a valid license. 
+
+A Microsoft Toolkit bundler installs many potentially unwanted applications (PUAs), but it also installs a file calculator<nnnn>.exe that drops a randomly named kernel mode driver. Earlier calculator dropper variants have been around at least since the last quarter of 2017. 
+
+Typically, the malicious functionality of the dropper (written using MFC framework) is to install the driver in the <Windows>\system32\drivers folder with eight random characters' base filename (eg. djkeuihk.sys), or with the original name of the driver, which is DrToolKrl.sys. After creating the driver, the dropper creates a Windows service with the same name, as the driver file loads the driver into the kernel memory by starting the service.
+
+Before dropping the driver, the dropper checks if it is executing in a virtual machine environment, under a control of a debugger or in a sandbox. If a virtual machine environment is detected, the malicious driver is not dropped, and the execution continues with a calculator functionality. 
+
+
+
+
+Trojanized Calculator GUI
+
+The dropper checks for the following environments:
+
+
+
+Parallels
+
+VMWare
+
+VirtualBox
+
+JoeBox
+
+GFI Sandbox (CWSandbox)
+
+Anubis
+
+Sandboxie
+
+Debugging Tools for Windows
+
+
+
+If a debugging or analysis environment is not detected, the dropper checks the version of the operating system in order to drop an appropriate, 32- or 64-bit version of the rootkit driver. It also attempts to communicate with the driver in order to make sure that the driver is not already loaded.
+
+
+
+
+Check for the bitness of the operating system and prepare to drop a driver
+
+
+Main culprit: The driver
+
+The driver is signed with a certificate belonging to "Jiangsu innovation safety assessment Co., Ltd." with expired validity period. This means that it will not be loaded by Windows Vista and later versions of 64-bit Windows, which enforce valid driver signatures. On the one hand, this seems like a failure of the attacker's process, as the attack can only target older Windows versions, likely executing on less capable CPUs. On the other hand, it may prove to be an advantage for the attacker, as it is more likely that older systems are not fully up to date and protected with the latest security software. Therefore, this attack is less likely to be discovered if only older CPUs are affected. 
+
+The driver contains the functionality to: 
+
+
+
+Manage configuration of the C2 infrastructure
+
+Parse configuration files hosted on free blogging platforms to decode the information hidden in animated GIF files published as part of the C2 blogs.
+
+Download and execute the final payload (in our case, the Bitvote pool miner agent)
+
+Protect the driver from deletion
+
+Protect the driver registry entry from third-party access (read and write)
+
+Protect payload processes and threads from termination
+
+Download and install new driver versions 
+
+Disable the User Account Control (UAC)
+
+
+
+Apart from the core driver's ability to protect itself and its payload, the driver somewhat unusually contains the download and execute functionalities, which is rarely implemented in kernel mode by well-known malware downloader families. 
+
+This indicates an increased level of proficiency of the author of the driver, who might also be the actor behind this Bitvote mining operation. 
+
+However, it is also possible that the driver is created by a generic third party toolkit, which would allow an actor to specify configuration and payload URLs in a simple way. Once the configuration is specified, the toolkit might be used to build and sign the driver, which could also explain the fact that the driver samples were signed with an expired certificate. However, we were not able to find generator samples that would confirm this theory. 
+
+
+Configuration management
+
+The driver initially contained several hardcoded URLs pointing to free blogging platforms, such as Blogspot (Blogger) and Russian blogging platform LiveJournal. Before the hardcoded URLs are accessed, the dropper attempts to download a GIF file from a special URL hardcoded in the dropper body. 
+
+The downloaded GIF file contains an encrypted data blob at offset 0xA0000, with a driver configuration block including the new command and control locations, as well as updated URLs for downloads of payloads. The configuration data block starts with a header containing a magic double word 'lKTD' ('DTKl'), followed by a double word containing a simple addition-based checksum of all bytes in decoded configuration, a static double word XOR decryption key and a double word count of configuration records within the block. 
+
+
+
+
+Download and decode driver configuration
+
+Each configuration record size is 407 bytes long, and contains a type of the record, which may indicate a payload record, a driver update record or C2 record, followed by a URL, as well as pointers to HTML parsing functions, the local file paths and arguments that should be used when they are launched.
+
+The configuration is decoded and loaded into the DeviceExtension block of the device object created by the driver in the DriverEntry function. The device extension block is the most important data structure associated with a device object. Its internal structure is driver-defined, and it is typically used to maintain device state information and provide storage for any kernel-defined objects. In our case, the DeviceExtension also stores the in-memory configuration of the malicious driver.
+
+
+
+
+The GIF containing the driver configuration
+
+The IP address of any host is resolved by querying Google's DNS resolver 8.8.8.8. Defenders are advised to block direct traffic from standard internal network endpoints to external DNS resolvers, which would prevent the driver from downloading and executing payloads, as well as connecting to the botnet C2 servers, internally referred to as the "Heart servers."
+
+The host used as the Heart server in this campaign was cdn[.]rmb666[.]me. At the time of the analysis, the domain name resolved to 185.180.14.16, which is also associated with other malicious domains. The domain was registered on Dec. 20, 2017, and it seems to have been used specifically for this campaign. The IP address is hosted in the Czech Republic. The domain has now changed the provider,and it points to 91.213.8.57, an IP address hosted in Ukraine. 
+
+The country graph taken from the Cisco Umbrella Investigate tool indicates that the campaign was the most active in Indonesia with many other countries, such as India, Algeria and Vietnam being affected. 
+
+
+
+
+The top affected countries are Indonesia and India
+
+The driver uses fairly specific User-Agent string 'Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/520.16 (KHTML, like Gecko) Chrome/61 Safari/517' when posting the initial data to the C2 server, which may be a good network detection indicator. 
+
+
+
+
+Initial Heart server post request example
+
+
+Download and execute functionality
+
+Once the configuration is uploaded, the driver loops over the records and attempts to access the specified URLs. If a URL hosts an HTML file, the driver will parse the page to find an image URL which satisfies a criteria set in the associated HTML parsing function. 
+
+If a target image URL is found, the driver will download the image file. The downloaded image files were GIF images with a PE executable payload simply appended to it. The driver then extracts the payload from the image, saves the payload into a destination path set by the configuration record and executes it by changing the process context into Windows Explorer (explorer.exe) and launching the downloaded file using the standard WinExec Windows API function.
+
+The driver finds Windows Explorer process identifier (PID) by calling the ZwQuerySystemInformation API to obtain an array of SYSTEM_PROCESS_INFORMATION structures, one for each process in the system.
+
+
+
+
+Execute the payload in the context of "explorer.exe"
+
+
+Driver protection 
+
+Apart from the core 'download and execute' functionality, the driver implements several protection techniques to protect the driver's file, its own in-memory configuration, its service and the payload process.
+
+To protect itself, the driver stores its own image and the configuration records within a registry key, and if the original driver is removed from the disk or modified, the modified file is replaced by the original driver, or a new driver copy is created.
+
+If the driver is not able to restore itself into the old location, it generates a new eight-character long base random name, saves the original version of the driver into the newly generated path and creates a new service to point to it. 
+
+The configuration is stored in the DataInfo value of the registry key used by the driver service. For example: \HKLM\System\CurrentControlSet\Services\kemamiti\DataInfo. The service registry key is protected by the driver, and the access to it is not allowed as long as the driver is active in memory.
+
+
+
+
+Access to the driver services registry key is denied by the driver
+
+
+Hiding the driver
+
+The driver attempts to hide by removing itself from the InLoadOrderLinks linked list of loaded modules. The driver accesses its own _DRIVER_OBJECT object DriverSection pointer, which points to an area with a _LDR_DATA_TABLE_ENTRY structure, used to keep the information about the loaded module. 
+
+The driver is removed from the InLoadOrder linked list by modifying both the Flink (forward link) member of the previous list member and Blink (backward link) of the next list member. 
+
+The driver also zeroes out the DriverName field of the _DRIVER_OBJECT object as well as FullDllName field in the _LDR_DATA_TABLE_ENTRY structure. 
+
+
+
+
+The driver zeroes out its name but BaseDllName still remains
+
+This way, the name of the driver module is not displayed when the loaded module lists are examined by many utilities. For example, if we use the WinDbg extension SwishDbgExt, developed by Matthieu Suiche, to display kernel callbacks, the driver module name will not be displayed, although we can still follow hyperlinks to disassemble and analyze the callback code. 
+
+
+
+
+The driver module name is not assigned to callbacks after zeroing out
+
+
+Payload process protection
+
+Apart from protection of the module and its registry entries, the driver protects the payload process from termination and respawns the process if all of its threads are terminated. This is achieved using one of the documented kernel mechanisms and registering object callbacks, allowing the user to supply functions, which will be called by the kernel when the registered kernel event, such as opening a process, is triggered. 
+
+The protection of the process is implemented by calling the ObRegisterCallbacks for process objects. When the kernel initiates a callback, the rootkit changes the DesiredAccess mask in order to prevent other processes from terminating the payload. 
+
+There is some additional filtering, and if the process creating a handle to the payload is not explorer.exe or csrss.exe, the process will be unable to terminate the payload. 
+
+
+
+
+Access to the payload process is denied by the driver
+
+
+System callbacks
+
+When Windows kernel mode rootkits appeared, they used to hook undocumented operating system structures and tables such as System Service Dispatch table (SSDT) or Interrupt Descriptor table (IDT) but today, they typically use documented interfaces, such as system callbacks, in order to avoid detection by Windows kernel security mechanisms. 
+
+Our driver sample is also aware of Windows protection mechanisms, and it uses documented callbacks in order to register functions for its own protection. 
+
+The list of used functions for registering callbacks is:
+
+
+
+CmRegisterCallback - Registry callback for protection of registry values
+
+PsSetCreateProcessNotifyRoutine - respawning the payload if the payload process is terminated
+
+PsSetLoadImageNotifyRoutine - to disable User Account Control
+
+PsSetCreateThreadNotifyRoutine - registry and driver file protection
+
+ObRegisterCallbacks - to protect the payload from termination
+
+
+Final payload - the miner
+
+The final payload is a modified cpuminer application downloaded into <Windows>\winserv,exe. The miner is modified to automatically connect to a btv.vvpool.com site using TCP port 5700 and join a Bitvote mining pool. The application seems to be a minor modification of an open-source cryptocurrency miner cpuminer, and it does not warrant further investigation.
+
+
+
+
+The miner connects to the pool at TCP port 5700 and sends its address
+
+At the time of writing, we could see that the mining operation has been able to earn just over 4,400 BTV, close to $1,500. This is easily checked using Bitvote block explorer ,and searching for transactions to the address 1C9BLDgbx8geYzc5sNPDUhpHWFqAEqHRHB, belonging to the botnet.
+
+
+
+
+Despite the moderate botnet size, the attackers earned more than $1,500.
+
+The top hash rate of 340 Khash/s indicates around 2,500 bots participating in the mining activity, considering an average hash rate of 125 hashes per second that can be, on average, generated by an average CPU. It seems like attackers were betting on BTV, but the payback would be much higher if they attempted to mine another, more established cryptocurrency such as Monero. 
+
+
+
+
+After a high initial hashrate the activity quickly dropped to 12Khash/s
+
+The mining activity started its operation on Feb. 16, which can be seen in the stats available on the vvpool.com website.
+
+
+Conclusion
+
+With the the difficulties and unpredictability associated with the recent widespread ransomware attacks, it is not surprising that cyber criminals are turning toward mining cryptocurrencies. Besides well-established cryptocurrencies such as Monero, malicious actors are also becoming early adopters of newly created cryptocurrencies. Bitvote is just one of these, created as a bitcoin fork and launched on Jan. 20. The attackers created trojanized calculator applications with an intention to create a large pool of infected machines to mine Bitvote.  
+
+Apart from targeting a newly created cryptocurrency, this campaign is notable for using a kernel mode driver deployed in order to provide the complete infrastructure for the final payload, ranging from downloading the payload, reloading the malware configuration, as well as hiding and protecting the malicious modules from detection and removal. 
+
+Using a kernel mode driver is quite an unusual method for everyday malware campaigns, and requires at least a moderate technical knowledge on the part of the developers. The fact that the certificate used to sign the driver has an expired validity period, points to a possible intention of attackers to target geographic regions with a smaller proportion of the latest operating systems in the user base.
+
+Although this newly created cryptocurrency provided only limited returns, we can expect attackers to continue this trend in the future as more cryptocurrencies opt to allow mining with commodity desktop CPUs.
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+Open Source Snort Subscriber Rule Set customers can stay up to date by downloading the latest rule pack available for purchase on Snort.org.
+
+
+
+
+
+IOCs
+
+
+Drivers
+
+d90ebf52ad16db60949af988c24a9aaf59994836998ddefb7eadb7b26cecf05c
+7dc5f6e0296213b95ac6bbf07812987f681e933de8c41fef43789d01a410e320
+b2c497662c1fd004ad97173c95740ee89490dfe34cfae5c898461c108f6539cd
+87cdfc90ded55e83948e54ef2d20d78c1ef9d78a8a018c01aa80645fb7eb33ce
+838d62a9d978ca5dfbeef50636df6a05ac0377d245b3b9df931a2c2ddb8b9f28
+ea828b2250825e3530fa6a889b71aba5fe52bf1aa70cc240b5208fcd57490912
+9c45bf161947c7dd7aead23c2de4e806a7e260bd61be99eda0ce674f831c414f
+6e9bc99005f7070acd58c873caddcd3fe256bd281f1e7dfb81fbcc4fcdafeddd
+19f42d8d1a2b57058f38d62246cb1b7128c43060d2c504d2a52f4ef62e63e1fe
+a7c7f4b1751857c4e44b4a81666e10e73808294b9bdbfd9be18865b4612a370e
+f514319a8677fa29f0b2179d91fd7b190402de5bc87aca48b1ed2e96ab56905a
+d81c1d5f21e66f8fc49123dffb11d23c3d7531a922a7e060dc9455c92cdb8008
+d3c30f7339374d96c99df11cb4bbd944f11593a416cb5a67188c0f87e30d6054
+0e92454df699cea60df2ca1620ced9ca8e0bec8c6f4424df62b1b8c5e4b2167f
+cb48cefc8cdd4856f800b80ab7bb2dd98a5f3e2e83ec11d89f138ef259c324db
+d2323e3e850733b32cc72d6f9527181af1e1f13d24fa2bc4e2c2cc14bf148d70
+962c723b17d35b83ec52801be82bce4c2ce936c2bc57c82112958b0d32c9db97
+ab0b53890ecc5c85f050b18564b953895daec8db75652100639da49a71e538ff
+708db4511cb78329caaa50b69ed07ec28208a3bd05aea25f47fe5fe0ae5e2592
+c81d032fba5e178b7a264b301aec4399375067fa22ca85a0ab3eef4d06f3cdb0
+fff7ba34752cf2ed8e934b826235ea66a701b6a79f15c4e88e692c91e12941fa
+934b7cce2c370b5bfcd462e33e55aa45cc25c588361fdb32e7a2670a3acef0e2
+ec37f13a40eac500eece7904885ace72ca66fa015293159bba2a33992d2d2a6e
+28ed8326bb1c4099e2bd88973e73c4464a46bb35952b4490f7be165491b40da6
+0d8969db5bda666b92de13bc0033344ee489c340e02c2667e6fd5a924d52d20c
+
+
+Droppers (CalculatorXXXX.exe)
+
+66908c744a11db8d72ad0b95c41de9fa13cc996c17884a3b39e8fdcd4fee20ee
+f98f23c223a498c5687af84cd6c17b853a0abb0458d5606e5b62a3e75b1dbab6
+019426698cb1cc733024c38d0d09ff5dcac1ad9cf81d26c092a278f72f131e59
+04de0bcd0f61a38f7ffd59c8fb369616a1648e65ea717994dbbef7db1bb6df1d
+051825abb810183939cc00055eb841ba4c319c46fbacf30cc2b6ac60fb3305f8
+0ace52b5d1847f2fea1f6db75e69215176017d98d113fd7860eab89607e6c955
+1648ee9890f17f19b45c751f3bcf898267c7b8a3bb5188138f65b1857e8c9985
+1f634c71be6f0615facd7364ed2edb50b388d75ff26e486addafc40ee0f95d89
+3163a93a00d5e6c6de4d2d57a4badab0f33c5f27016f3685e5cfd83d0de759dd
+32e2f73faf2f8acb68b373ae61cdcb0a72d168be85102e520690bfd64840bb59
+4eeb22623b78909c1b6179ce47d1c5130b88d381ba86dc51886b78c03476c2dd
+551fd86f19d1980696622dd4cf2535573b8a66f3e4fb0155f8dac919f1f50488
+6bde69fb7d35fac40d6e108ce610401eb08c5fc69a481d4cb03483ee3cd9705e
+76d419d9a9d047ef19058496bb64c8caf2456a8d76f45a0523b7a5fdce21dd40
+7e41a9427e27e980578e59698d4f7f88c649e355eb26bbd549973f1ca7355828
+806742372cb0f4fc8a64b15b186e78cea1459f970b5620e2bcfdcd73db2d6fa6
+a94a8cbe146fb4f66ba907c1d40fdda916c8ecd0fa0d7114814a25565ac96aa2
+d6fce2bd96498333feb43404a34ce826ee915fa30785a18ec3c7b15b6ae924a9
+db25a7265029188d4d39cb5654c9ca558302fb0ddb3de081e53300122c8a3c2c
+e2da5b82da75be16640774128af067ac608515bd7a3c32082ae89c3967048c20
+e4c0c999af4abf99f6afa21c991357aff3c1eae1f424df3a2c307bb578fdbbf0
+ea6226fcb7adf1ad57f2e64c99d735e7cb54063b5bed970c5fd75a9e55f7bf1a
+
+
+Dropper Toolkit
+
+
+8185b8a3629dc1fb5090a12f0418ce91ee1908117487e3316f96ba17fa64a5db
+
+
+Modified Bitvote cpuminer
+
+
+87c27f08d1eaa1ad2addd6af381829c037d55186ceded7249d5af0a62e464032
+
+
+Domains for configuration downloads
+
+
+hxxp://image.bcn2018.com/
+hxxp://image.cheap2019.com/
+hxxp://image.docu2018.com/
+hxxp://image.gxb2018.com/
+hxxp://image.japchn2018.com/
+hxxp://image.pply2018.com/
+hxxp://image.succe2018.com/
+hxxp://image.yyxp2019.com/
+hxxp://img.rmb777.me/
+
+
+Hardcoded Urls for downloads of payloads and newer driver versions (may be superseded by the new configuration downloaded from configurations sites) 
+
+hxxp://1022k.blogspot.com/2018/02/1022s.html
+hxxp://7mlftakc3qt48.livejournal.com/721.html
+hxxp://bbx2018.blogspot.com/2018/02/1026i.html
+hxxp://bct2018.blogspot.com/2018/02/1027i.html
+hxxp://btv2018.blogspot.com/2018/02/blog-post.html
+hxxp://check2018.livejournal.com/517.html
+hxxp://earthjor.livejournal.com/721.html
+hxxp://gba2019.livejournal.com/767.html
+hxxp://hbrhzuds1199.livejournal.com/799.html
+hxxp://hrb2019.livejournal.com/620.html
+hxxp://iphone2019.livejournal.com/635.html
+hxxp://kawakaw.livejournal.com/594.html
+hxxp://livegoogle.livejournal.com/546.html
+hxxp://lovejoin2019.blogspot.com/2018/02/1031.html
+hxxp://myinsterschool.blogspot.com/2018/02/1032.html
+hxxp://myqnewworld.blogspot.com/2018/02/1030.html
+hxxp://nha2019.livejournal.com/749.html
+hxxp://talkto2018.livejournal.com/518.html
+hxxp://tpshadow66655.livejournal.com/545.html
+hxxp://xabx2019.livejournal.com/559.html
+hxxp://xmr1022.livejournal.com/763.html
+hxxp://xmr1022x.livejournal.com/656.html
+hxxp://xmr2019.blogspot.com/2018/01/1021s.html
+hxxp://xmr2019.blogspot.com/2018/01/my-sister.html
+hxxp://xmr2019.livejournal.com/1165.html
+hxxp://xmr2019.livejournal.com/748.html
+
+
+URLs for C2
+
+
+hxxp://down.rmb666.me/dr.php
+
+
+

@@ -1,0 +1,73 @@
+
+What's Really Open? Nmap Tips for an Accurate Port List
+
+
+by Josh Bealey
+
+Anyone who has done lots of port scanning over the internet will know that Nmap often identifies certain ports as filtered. In this blog post, we'll look at alternative scans that can help truly identify the state of a particular port.
+Filtered State
+
+Before we continue, let's just hit on what filtered actually is. Nmap's man page gives us details:
+Filtered means that a firewall, filter, or other network obstacle is blocking the port so that Nmap cannot tell whether it is open or closed.
+
+And just for completeness, there is also open|filtered so let's just see that description:
+Nmap reports the state combinations open|filtered and closed|filtered when it cannot determine which of the two states describe a port. The port table may also include software version details when version detection has been requested.
+
+So let's say we've come up filtered, what can we do? Nmap has a few different types of scans and scan options that may help.
+Null scan (-sN)
+
+The Nmap Null scan (-sN) works by sending a TCP packet not having the RST, SYN or ACK bits set, which as per the TCP standard should result in a receiving packet with the RST packet set to try and reset the connection. Most firewalls will filter out these types of scans, but on occasion it can still yield results.
+
+The format of the Null scan is:
+ root@kali:~# nmap –sN –p $ports $hosts –o output.txt
+
+
+FIN scan (-sF)
+
+A similar scan to the Null scan is the FIN scan, which sets just the FIN bit in a TCP packet. Like the Null scan this should also result in a response packet with the RST bit set if sent to an open port, while a closed or filtered port should simply drop the packet.
+
+The format of the FIN scan is:
+ root@kali:~# nmap –sF –p $ports $hosts –o output.txt
+
+
+Window scan (-sW)
+
+On certain older systems, a window scan can also be used to determine if a port is open or not. The window scan works by examining the window segment of a TCP packet with the RST bit set. A window scan will consider the port as open if the window value is positive, and closed if it is negative. This scan isn’t generally reliable as most systems will simply report as closed, but as a last resort scan type it may give some direction to investigate further. If a scan shows all open ports but a few as filtered, they may actually be open.
+
+The format of the Window scan is:
+ root@kali:~# nmap –sW –p $ports $hosts –o output.txt
+
+
+Timing (-T)
+
+Another technique that can be used with Nmap is to scan very, very slowly. Using the –T parameter with Nmap, which allows you to specify the frequency with which Nmap sends packets probing for open ports. Nmap has 3 settings that are slower than just a normal scan, named paranoid, sneaky and polite. The main differences between these are the time Nmap waits between sending probes, with paranoid mode (-T0) waiting five minutes between sending each probe, and polite mode (-T2) waiting 0.4 seconds.
+
+Depending on the amount of hosts, ports and time available, different options will be suitable. Other parameters can also be passed to Nmap relating to how long Nmap should wait for a response, or how many times it should send a packet.
+Scanning 100 for 100
+
+If I was scanning 100 hosts and checking the top 100 ports, a command like the following would be useful:
+
+
+ root@kali:~# nmap –sS –T1 --max-rtt-timeout 2000ms --max-retries 3 --host-timeout 10m –top-ports=1000 –iL hosts.txt
+
+
+
+
+The -–max-retries option limits the amount of retransmissions Nmap sends, the -–max-rtt-timeout option ensures Nmap won’t wait too long for a port to respond and the -–host-timeout option ensures Nmap won’t waste time on hosts that are not responding at all. In the example above I set those options to a 2 seconds timeout for each port, 3 retransmissions and to wait no more than 10 minutes per host. 
+
+Against certain firewalls and/or older types of hardware, these options or some variation can often yield an accurate open ports list. In rare cases none of these techniques will work and a syn/ack will be sent for each port, showing the port as open. In such cases more extensive manual testing to investigate the actual response being sent, and determine if there is actually a service listening or not.
+NmapAutoAnalyzer
+The above techniques are primarily useful when you know a host is alive and need to retrieve an accurate list of open ports. What about in a situation where you are unsure if a host is alive or not because all ports are coming back as filtered and ICMP traffic is blocked? In such cases a firewall or IPS will still generally grant “normal” access to actual open ports. 
+
+The above scan types are still useful for this purpose, as if a port is genuinely open and listening the scan will indicate as such although it may be lost in the noise of other ports being falsely reported as open. To determine which hosts are actually alive, the port scan data can be processed to show any hosts with at least one open port which would indicate the host is alive.
+
+There is a script that is very useful for this purpose called Nmap Auto Analyzer, obtainable here. Nmap Auto Analyzer is a ruby script that will sort through Nmap files, and report a list of open ports for each host. 
+
+The format is to run Nmap Auto Analyzer is:
+ root@kali:~# nmapautoanalyzer.rb –f nmapoutput.xml –r report
+
+
+
+The report generated by Nmap Auto Analyzer will show’s hosts us up if they have at least one port open as well as showing why the port is considered open based on the TCP traffic, which can be useful when sorting through scans that included many hosts.
+
+

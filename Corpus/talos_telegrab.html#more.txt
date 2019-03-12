@@ -1,0 +1,331 @@
+
+TeleGrab - Grizzly Attacks on Secure Messaging
+
+
+
+
+
+
+This post was written by Vitor Ventura with contributions from Azim Khodjibaev
+
+
+Introduction
+
+
+Over the past month and a half, Talos has seen the emergence of a malware that collects cache and key files from end-to-end encrypted instant messaging service Telegram. This malware was first seen on April 4, 2018, with a second variant emerging on April 10. 
+
+
+
+While the first version only stole browser credentials and cookies, along with all text files it can find on the system, the second variant added the ability to collect Telegram's desktop cache and key files, as well as login information for the video game storefront Steam.
+
+Talos intelligence research allowed the identification of the author behind this malware with high confidence. The author posted several YouTube videos with instructions on how to use the Telegram collected files to hijack Telegram sessions and how to package it for distribution.
+
+The operators of this malware use several pcloud.com hardcoded accounts to store the exfiltrated information. This information is not encrypted, which means that anyone with access to these credentials will have access to the exfiltrated information.
+
+
+The malware is mainly targeting Russian-speaking victims, and is intentionally avoiding IP addresses related with anonymizer services.
+
+
+
+Telegram desktop disclaimer
+
+The malware is not breaking or exploiting any vulnerability on Telegram. It affects the desktop version of Telegram, which does not support Secret Chats and has weak default settings.
+
+
+https://core.telegram.org/tsi/e2ee-simple#2-why-are-there-no-secret-chats-on-desktop-apps
+
+
+The snippet was taken from the telegram.org website and clearly states that Secret Chats are NOT supported on desktop and web versions of Telegram. These versions are cloud-based, so there are no assumptions over the local storage contents. The malware abuses the lack of Secret Chats which is a feature, not a bug. Telegram desktop by default doesn't have the auto-logout feature active. These two elements together are what allows the malware to hijack the session and consequently the conversations.
+
+
+
+This does not mean that Telegram is broken or that this technique is applicable to the Secret Chats done using mobile platforms.
+
+
+Telegram desktop data value
+
+The malware is gathering all Telegram cache data, and zipping it before it exfiltrates the files. 
+
+
+
+
+Code used to prepare data for exfiltration
+
+
+Through our investigation, we were able to find a tutorial video on how to access and use this information to hijack Telegram sessions. In summary, by restoring cache and map files into an existing Telegram desktop installation, if the session was open. It will be possible to access the victims session, contacts and previous chats. Talos believes with high confidence the author of the video and the author of the malware are the same. 
+
+
+
+This is rather unusual, however. To the best of Talos' knowledge, there is no tool to decrypt the cache information. In the GitHub TelegramDesktop repository, there is a discussion [here] that suggests that it would be possible to develop a tool to decrypt this cache information.
+
+
+
+The keys used to encrypt the files on Telegram desktop data are store in the map* files, which are encrypted by the password of the user. 
+
+
+
+
+GitHub.com TelegramDesktop repository
+
+
+Assuming that the attacker does not have the password for these files, it would not be hard for them to create a brute-force mechanism that could allow them to get into these files. The code above shows how it can be done just by using components already built. Since Telegram uses the AES for its encryption, achieving high performances should not be a problem by using OpenCL, or even creating an addon for HashCat.
+
+
+
+The attacker would only have access to the local cached data. It's important to understand that, there is no assurance about what is stored locally. The only assurance is that the chats are stored in the cloud.
+
+
+The malware author
+
+
+The analysis of the various variants of the malware  allowed us to link the malware to a user that goes by the name of Racoon Hacker, also known as Eyenot (Енот / Enot) and Racoon Pogoromist (sic).
+
+
+
+The  cursory analysis of the video indicates that Racoon Hacker is a native Russian speaker and has an advanced understanding of the Python programming language. Despite not having many posts or videos, all of their material relates to other account hijackers or development of payload loaders. The videos often mention the similar platforms/techniques has the ones used by the variants of the malware.
+
+
+
+
+
+ Cyrillic based user path 
+
+
+The focus of the author in Cyrillic-based languages is clear in the first line of the code on the previous image. The decoding of the user home directory is done using the CP-1251 character encoding scheme, which is mainly used for languages like Russian or Ukrainian. 
+
+
+
+Racoon Hacker posted the YouTube video (referenced above), which shows how to steal Telegram sessions. Taking a closer look at the video, we can see that there are two references to the enot user.
+
+
+
+
+Enot references
+
+
+On lolzteam.net, a mid-level Russian hacking forum, where he has been active since the fall of 2017,Racoon Hacker, now under the name Racoon Progoromist, posted an article entitled "Telegram breaking in 2018" that outlines the process of customizing the malware.
+
+
+
+
+
+Blog post about Telegram session hijacking tool
+
+
+In another mid-level hacking forum sft.st, the same software is being advertised, and this time referenced a GitHub link to the Python script and other tools in order for users to be able to duplicate his demonstration. 
+
+
+ 
+
+sft.st forum article with GitHub reference 
+
+
+
+The GitHub account belonging to Enot272 does not have the python script anymore, however Talos was able to retrieve the content list. 
+
+
+
+ 
+
+GitHub Stealer_for_Telegram_Desktop repository content 
+
+
+The repository content contains the same file names as the video further and the link to the same video. This constitutes a stronger link between the Racoon Hacker and the enot272 user. Even though the Stealer_for_Telegram_Desktop was deleted, the account enot272 is still active at the time of this post on GitHub.  Looking into the account details, we found two additional links to Racoon Hacker and the variants of the malware.
+
+
+
+
+Enot272 GitHub.com account details
+
+
+The icon for this user is the same used in the YouTube account that published the video, and the account only has two stars, one of which is the same API used by one of the variants of the malware to exfiltrate data into pcloud.com cloud storage service. This API is not very popular, having only eight stars in total.
+
+
+One video in particular provides the strongest link between the malware samples and Racoon Hacker. The video describes the usage of a loader created with AutoIt. 
+
+
+
+
+
+tesytest1enot.ucoz.net file manager content
+
+
+In minute 3:06 of the video,  the content of the website testytest1enot.ucoz.net is shown. Here, we can see two file names (dist1.txt and sdadasda.txt) that are an exact match to two of our samples, matching the exact URLs found on the droppers.
+
+
+
+
+
+Complete URL for one of the variants.
+
+Although the credits of the loader are attributed to another user, this Telegrab is also being distributed using this particular loader/dropper.
+
+
+
+
+
+Reversed code from enotproject.exe
+
+
+
+The same user enot272 is also found inside as part of the URL used by 
+the malware to download the list of IP it should not contact. 
+
+
+Malware details
+
+This campaign is being distributed using various downloaders written in different languages. Talos has found at least three different languages (Go, AutoIT, Python) and a prototype for a fourth one (DotNet), one of which is a AutoIT script compiled into an executable. 
+
+
+
+
+
+
+After decompiling the AutoIT script, it was possible to confirm the download of the finder executable under the name whiteproblem.exe, which is only one of the names found (see IOCs section).
+
+
+
+Once downloaded, the malware has two variants based on the executable finder.exe, which is written in Go. The first variant only uses the finder.exe. The second variant is distributed in a RAR self-extractable file, which aside from the finder.exe, it also has a Python stub executable, with the names enotproject.exe or dpapi.exe. 
+
+
+
+
+
+Self-extracting RAR header
+
+
+Once decompressed, finder.exe is started up, as per the setup variable that can be seen above.
+
+
+
+The finder.exe is responsible for searching the hard drive for Chrome browser credentials and session cookies for the default user. While searching the hard drive, it will also collect all text files (.txt) on the system. The second variant, during its execution, will launch the second executable, enotproject.exe or dpapi.exe, accordingly.
+
+
+
+This executable is also responsible for the exfiltration of the collected information. The data is uploaded to the pcloud.com website using an open-source library available on GitHub [here].
+
+
+
+
+
+Call to pCouldClient.Login()
+
+
+The authentication is done using credentials that are hardcoded into the finder.exe itself. Talos has identified five pcloud.com accounts on the finder.exe samples. The analysed code did not reveal any encryption applied to the exfiltrated data. This means that whoever has these credentials will be able to access this information, making it even more dangerous.
+
+
+
+The second one is called enotproject.exe or dpapi.exe, and is written in Python and uses pyinstaller to wrap it into an executable. The dpapi.exe timestamps are generically older than the enotproject.exe, and the code itself is also simpler, demonstrating clear evolution on this malware. 
+
+
+
+To the latter, it was adding code to harvest Telegram and Steam data. The code was also responsible for checking if the victim's IP address is part of a list, which is downloaded from https://enot272[.]neocities[.]org/IPLogger-output.txt. The malware will exit if the victim's is on the list. This list contains Chinese and Russian IP addresses, along with anonymity services in other countries.
+
+
+
+The version that's responsible for collecting the information about Steam and Telegram was first seen seen in the wild on April 10, 2018. 
+
+
+
+A third version of the Python code was also found wrapped in a py2exe executable. This code is similar to the enotproject.exe found on the second variant, but it was found as a standalone. Since there is no exfiltration code on this variant, it is unknown how the malicious actors are collecting this information. The timestamps on this variant seem to indicate that this is the newest variant being deployed.
+
+
+
+The malware does not have a persistence mechanism, so it seems like the malicious operators are only concerned about collecting information. 
+
+
+Conclusion
+
+
+Notably, the Telegram session hijacking is the most interesting feature of this malware. Even with limitations, this attack does allow session hijacking, and with it, the victim's contacts and previous chats are compromised. Although it's not exploiting any vulnerability, it is rather uncommon to see malware collecting this kind of information. This malware should be considered a wake-up call to encrypted messaging systems users. Features which are not clearly explained and bad defaults can put their privacy in jeopardy.
+
+
+
+When compared with the large bot networks used by large criminal enterprises, this threat can be considered almost insignificant. However, this shows how a small operation can fly under the radar and compromise thousands of credentials in less than a month, having a significant impact on the victim's privacy. These credentials and cookies allow the malware operator to access the victims information on websites such as vk.com, yandex.com, gmail.com, google.com, etc. The malware samples analyzed are not particularly sophisticated, but they are efficient. There are no persistence mechanisms, meaning victims execute the malware every time, but not after reboots.  
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella,
+ our secure internet gateway (SIG), blocks users from connecting to 
+malicious domains, IPs, and URLs, whether users are on or off the 
+corporate network.
+
+Open Source Snort Subscriber Rule 
+Set customers can stay up to date by downloading the latest rule pack 
+available for purchase on Snort.org.
+
+ 
+
+ 
+
+ IOCS
+
+
+URLS
+
+# if current IP on this list exit.
+https://enot272[.]neocities[.]org/IPLogger-output.txt
+
+#Distribution point
+http://testytest1enot[.]ucoz8[.]net/dist4.txt
+http://testytest1enot[.]ucoz[.]net/sdadasda.txt
+http://testytest1enot[.]ucoz[.]net/dist1.txt
+http://testytest1enot[.]ucoz[.]net/wolf.txt
+http://enotal1f[.]beget[.]tech/new/whiteproblem.exe
+http://enotal1f[.]beget[.]tech/123Vlades925.zip
+http://enotal1f[.]beget[.]tech/new/uraura.exe
+http://enotal1f[.]beget[.]tech/new/sergejbatalov.exe
+http://enotal1f[.]beget[.]tech/nickky5.zip
+
+
+SHA256
+
+4ebf3e5afa85a48a34cf0e344c685c9f97d59c002d54eb3ee19d6b79bae9e4dd
+a5dbbbc7996967cf7f16f998fab6dbc09a087082a0d17287418b8ffc2b6228f3
+2be87bc7e1cee08a3abc7f8fefcfab697bd28404441f2b8ee8fafba356164902
+683aca7614f51d52e2121e240dd2d5fc72858d7dbc6e27f97be83a987f9c5103
+da0d0bc24c204e5771f4d7334b322caed6cb0021b719741900b94d91fe01a7c4
+c0b505299214d21c5f89aea4d381dbd76ef5ce9a38770b693578d4647e61a471
+005bdb6b31dc26406694749f1de59d5cce330de603e8b407c80e8ff7dddda4a3
+cb5abc9a8ef7936892e4627fe4d94d28120bb653002c1fd6f1a449ce86d9e909
+8b8b7d5da95a731f699ccc5c81f410f7d3b48b4986d5be2dee084cb269931151
+6344f5fe0081dcff6345055d2f90e163ec8eb214edfff44fe56fc2d1ed14d322
+04235dc68d798863ca1177864c7dba300cf1def2c6eb79885338fc8279b8aa49
+e6fa65c97244ff34348b958bb53c2046897d4c5137d06a9dff327597f5b5430f
+4ebf3e5afa85a48a34cf0e344c685c9f97d59c002d54eb3ee19d6b79bae9e4dd
+2b73bdabd16316804a9f175b7078769bdced003dbe7ee944088abae67a0a5fee
+2c365caa7c41a871c5a32c357ffb832ef9fa1cf72f0033c84e9a4a4bdaeae992
+b8cd344fd7d8dd400db31f981b8a11b0aabe6b118d9aa498aa269144b441eb96
+2e608a18562ad0427b02cc225db8703eb55be189bf2bccc9250b3b30022fdd90
+2a990c1e97b0329b2c4f75766314d1fe91f554b3ac524d4229b6068d007c8e33
+5bc214d0bf18ded3bd18595e96b609137207aeeb0786778f86191fbdfdbc0522
+286b7bf5ab74a5ed919b2caff250084e35ace2df1ed1b1c9e4ea556ba73f9e1b
+831b7b91b48c5c745b04731949c1ed32a2e9e68df66b6cc7f9e0b1fb0c6df5eb
+31dd4401c496ceaa8c5d75bc0e8f7f5a1b648f5e5942e074fbb5c683d9eaf408
+0f44cbc19862c6a2208d506564c3a3676e22c8203d2f3055a88c00c00ebf1c1e
+c9c46a0f78abc1de95af1f26dd7c357146ce8ce462bd450617c138a81c2e119d
+3e6044de4c65c6e4290d22a03c8c67c18dbc264de0b8da0f4a8711415073fe15
+3e5dea4055b80ba3903b5ef0a4ad6130775337d3a068b721671e982ae4effda1
+6d728e557152d8f5613ca8ea06329f1a08e8e13923ed0fa0a5142c3dd7cb0155
+57bdbb582ad09382aa3d4e015269eddd56f7d712d11cde58cf0debac9fcd1829
+a9822090b68066332178fcd8fbaaf706ad478e0a7a5b50e1b99bda52bc6ab081
+a9e4d7aa5b6d83943aa4845dc467040ae4cd223ef603a5ab2d1896d9c2573932
+bb3219959f1e25a415adf56481be96da1145c03e347d8852de310070256a09cc
+
+
+

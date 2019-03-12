@@ -1,0 +1,28 @@
+WoSign and StartCom Caught Red-Handed Issuing Weak-Cipher SSL Certificates
+Mozilla reported Monday that CAs WoSign and Startcom have been backdating SSL certificates to bypass mandatory security deadlines requiring CAs to stop issuing SHA-1 SSL certificates by January 1, 2016. 
+RiskIQ’s current global index shows 762,649 website locations using certificates belonging to the two CAs and roughly 20,000 with a notBefore date in December 2015. If you are a RiskIQ Enterprise Digital Footprint customer, log into your Insights Dashboard to review usage of WoSign and Startcom SSL certificates for potential impact to their many disclosed issues. 
+If you are a PassiveTotal user, you can query your individual domains in PassiveTotal to review certificate ciphers. Jump to the end for instructions.
+Why is this a big deal?
+SHA-1, as many security and crypto engineers have known for a long time, is dangerously computationally weak. Back in 2012, Bruce Schneier shared how Jesse Walker (from Intel) provided rough calculations showing how organized crime adversaries would be able to afford the computational power via Amazon cloud to force collisions (and thus Man in the Middle) SSL connections using SHA-1 in real-time, by 2018. 
+But it’s only 2016…
+First off, according to Netcraft, there’s still over a million SHA-1 certs around, so forcing an upgrade of these needed to start a long time ago to make non-security folks aware and give them time to update their certs. Google, for example, began sunsetting SHA-1 in Chrome over two years ago, and Apple recently outright banned WoSign certs in their products.
+Secondly, the estimates above on when SHA-1 could be brute-forced were made before Amazon started offering GPUs in the cloud for $0.20/hour. GPUs can be 800 to 3500 times faster at password cracking, and in general have a 3:1 speed ratio over CPUs at floating-point math (crypto cracking), meaning these attacks could be feasible, and affordable, right now—today.
+Additionally, besides the obvious security risks, there is an immediate negative business impact when end users are confronted with warnings from top web browsers stating “Secure Connection Failed,” which can erode their confidence in your websites.
+Anything else I should know about this advisory?
+Yes. Additionally, Mozilla lobbed two more bombs in the notes:
+1. It turns out WoSign has repeatedly been lying to Mozilla about backdating SHA-1 SSL Certificates, and the fact they acquired full ownership of StartCom CA:
+“The representatives of WoSign and StartCom denied and continued to deny both of these allegations until sufficient data was collected to demonstrate that both allegations were correct. The levels of deception demonstrated by representatives of the combined company have led to Mozilla’s decision to distrust future certificates chaining up to the currently-included WoSign and StartCom root certificates.”
+2. Mozilla cryptically announced that they will “No longer accept audits carried out by Ernst & Young Hong Kong.” At this point, we can only speculate on the reason behind this, but maybe E&Y audits related to one or both CAs haven’t been doing their job (at minimum).
+How do I assess if this impacts me?
+Audit all WoSign and Startcom certs with a notBefore date of December 2015 to determine if they issued you a new SSL certificate for your website that supports SHA-1 ciphers. While you’re auditing your SSL Certs, you might as well put replacing all of your SHA-1 certs on your to-do list, since they are all deprecated next year.
+To check your domains or hosts, log in to PassiveTotal and search by domain or IP address. For example, if I want to view SSL cert details for ‘down.gaoheit.com,’ I would run a search on ‘down.gaoheit.com’:
+Fig-1 Passive DNS heat map for ‘down.gaoheit.com’ inside the enhanced PassiveTotal
+I would then click on the IP address resolution which will then run a query against that IP address:
+Fig-2 Pivoting on the resolving IP address in the enhanced PassiveTotal
+The certificate details (bottom of the page) will list the certificate Cipher. In this case, ‘down.gaoheit.com’ is running a weak WoSign SHA-1 certificate, which should be deprecated:
+Fig-3 When I pivot on the certificate history in the enhanced PassiveTotal, you can see a deprecated SHA-1 cert
+In RiskIQ Enterprise Digital Footprint, login and pull up your Insights Dashboard, and you will find a new widget for aggregating WoSign and Startcom SSL certs in your enterprise. You are looking for certs from both CAs issued in late 2015, that are still using SHA-1:
+Fig-4 The WoSign/Startcom widget inside RiskIQ
+Select the WoSign and Startcom widget, and review the listed certs. Here is an example of what an acceptable Startcom cert should look like (note this is a newer certificate using SHA-256 with RSA keysigning. If you see any of these SHA-2 or SHA-3 variants, you are A-OK:
+Fig-5 A healthy cert
+Happy hunting! For more on WoSign and Startcom certs, visit our External Threats Management blog. 

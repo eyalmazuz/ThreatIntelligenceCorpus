@@ -1,0 +1,32 @@
+
+Antivirus Terminators
+
+
+
+
+Antivirus terminators are specific malware able to terminate antivirus engines without the consciousness of the users in order to install themselves in the target system. This post is about specific techniques to terminate Antivirus.  Let describe what kind of terminator techniques could be used by common malware.
+
+
+
+
+One of the most used technique, during the past years is the so called: "DebugActiveProcess". Its names comes from the Windows API used to achieve its goal. DebugActiveProcess API allows a generic process to attach itself to another process as a debugger. Debugging a process often means to control it. Since no controller has been implemented on Antivirus engine once an external process becomes its debugger it will crash immediately. Goal reached: Antivirus has been terminated!
+Another way to terminate an Antivirus is through the Windows API  ZwUnmapViewOfSecion. This API unloads the described .dll. For example a process could unload important Antivirus .dll such as ntdll.dll. Once the Antivirus engine invokes a function wrapped on unloaded .dll it will crash. Goal reached: Antivirus has been terminated!
+Another great trick is by getting the handle of an Antivirus engine. Let assume the Antivirus terminator call the Windows API OpenProcess passing to the function the Antivirus process Identification. Now Antivirus terminator can use APIs such as: NtTerminateProcess or ZwTerminateProcess to terminate the Antivirus engine at kernel level. Goal reached: Antivirus has been terminated!
+
+
+
+
+
+
+
+
+Different techniques come from graphic user interfaces. Antivirus terminator can use the Windows API FindWindow to select the window to terminate. Through this API the terminator looks in the opened windows set for the exact window matching with the name of the Antivirus engine (such as: antivir, kaspersky, avguard, etc.. etc..). Once the terminator found the right window it terminates the Antivirus engine by sending messages such as WM_CLOSE or WM_QUIT through the respective SendMessage or PostMessage API. Goal reached: Antivirus has been terminated!
+Another "graphic" way to terminate an Antivirus engine is by exploiting the function SendInput. Manipulating this API the terminator could stimulate mouse events clicking on the "close button". Through FindWindow API the terminator finds the desired icon, through SendInput it opens up the the desired window and finally it clicks on the close ("x") icon. Goal reached: Antivirus has been terminated!
+Antivirus terminators could modify registry so that a NULL debugger is attached once the Antivirus engine starts its execution. For example by using ZwOpenKey and ZwSetValueKey the terminator could open a registry key and modify it to the desired value. Goal reached: Antivirus has been terminated!
+Nonetheless the terminator could simply use the API TerminateThread to terminate some threads of an Antivirus engine. Again, Goal reached: Antivirus has been terminated!
+
+
+These techniques are only some of the used techniques from malware writers, but they are still very used and effective.
+
+
+

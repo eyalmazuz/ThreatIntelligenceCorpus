@@ -1,0 +1,21 @@
+
+					‘Illusion Gap’ attack method bypasses Windows Defender and executes malware					
+Researchers from security firm CyberArk have devised a new technique dubbed ‘Illusion Gap’ that allows attackers to bypass Windows Defender.
+The technique leverages on the fact that Windows Defender detection can be bypassed by tricking the antivirus into scanning a different file than the one actually executing.
+The technique affects the scanning process over SMB shares, the experts explained that Antivirus solutions use to detect the execution of an executable file by a kernel callback (nt!PspCallProcessNotifyRoutines and nt!PsCallImageNotifyRoutines) and then scan the file, usually with a user-mode agent.
+The Illusion Gap attack may possibly affect other antivirus and defense solutions that the experts have not yet tested.
+If the executable file is already present on disk, the Antivirus will not scan it on process creation because it has already scanned it on file creation. However, running an executable from an SMB share trigger the Antivirus scan the file even on process creation.
+The researchers demonstrated that a possible attack method consists into tricking the antivirus into scanning a different file than the one actually executing.
+To ensure that one file is served to the Windows PE Loader and another to Windows Defender,
+Researchers used a custom implemented SMB server to ensure that one file is served to the Windows PE Loader and another to Windows Defender.
+“We want to serve different files, one for Windows PE Loader and another for the Windows Defender Antivirus over SMB. We can achieve that using a custom implemented SMB server.” reads the analysis published by the experts. “When a process creation is made by Windows PE Loader, a request will be made to the SMB server for the executable file, and we will serve file A, which is malicious. When Windows Defender requests the executed file, we will serve file B, which is benign. This way, file B will be scanned while file A will be executed. But at first, we have to identify which request is made by whom.”
+
+To bypass the Windows Defender, an attacker would need to implement the SMB protocol and create a “pseudo-server” that is able to discriminate between Windows Defender requests and normal ones.
+“In order to abuse Windows Defender, an attacker would have to implement the SMB protocol and create a “pseudo-server” that can differentiate Windows Defender’s request from normal requests. For instance, decline the oplock request and return STATUS_OPLOCK_NOT_GRANTED. This will fail the scan and the malicious file will just execute without any interruptions:”
+
+It is possible to have the same effect by blocking all handle creation requests with the impersonation level SEC_IDENTIFY.
+
+CyberArk reported the ‘Illusion Gap’ attack to Microsoft, but the Tech giant doesn’t consider it as a security vulnerability.
+“Based on your report, successful attack requires a user to run/trust content from an untrusted SMB share backed by a custom server that can change its behavior depending on the access pattern. This doesn’t seem to be a security issue but a feature,” reads the Microsoft’s Response on CyberArk Labs findings on Illusion Gap.
+Pierluigi Paganini
+(Security Affairs – Illusion Gap attack, security breach)

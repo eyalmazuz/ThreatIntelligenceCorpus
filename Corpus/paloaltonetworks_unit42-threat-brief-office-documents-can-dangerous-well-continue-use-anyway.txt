@@ -1,0 +1,45 @@
+Threat Brief: Office Documents Can Be Dangerous (But We’ll Continue to Use Them Anyway)
+
+Nearly all of us have a use for Microsoft Office documents. Whether they are work documents, e-receipts, or a lease on a new apartment – Office documents are useful to all of us, and this is part of the reason we’re very likely to open an office document we receive as an attachment in e-mail. Armed with the knowledge that many people will open nearly any document, even those from an untrusted source, adversaries commonly choose these files in attacks to compromise a system.
+In this threat brief we show you five different ways that Office documents can be subverted and abused to attack and compromise a Windows endpoint, some we’ve already posted about before, and some are new.
+ 
+Macros
+Macros are the most straight-forward way for an attacker to weaponize Office documents. Office applications have a built-in script engine that can run VBA (Visual Basic for Applications) scripts. These scripts can execute immediately as the document opens, without any user interaction (assuming the user has previously enabled macros) and run malicious code on the system. If the user has not enabled macros, a popup window will appear asking the user to click to do so. The pop-up is one of several security mechanisms added by Microsoft to mitigate the security risk that macros pose. Microsoft will also force a different file extension (.docm instead of .docx for new documents containing macros). Despite these measures, users still choose to open these files and enable their content, thus allowing macros to continue be a common attack vector – both in wide and simple attacks to deliver ransomware such as Emotet, as well as for sophisticated attacks like this Sofacy campaign.
+
+Figure 1. The Sofacy document before & after the content is enabled
+As you can see in this example, attackers try to convince users to disable the security mechanisms added by Microsoft using social engineering, convincing the user to enable content for them to be able to see the full document. In the Sofacy example, the attackers had simply made the font color white, so the text was present prior to the user enabling macros, just not clearly visible.
+ 
+Embedded Flash files 
+In addition to built-in capabilities, like macros, Office documents can also be embedded with external objects, such as Adobe Flash files. These objects are passed to the appropriate software for handling, thus any vulnerability that the software has can also be exploited by embedding it within the Adobe Flash content in the Office document. An example for such attack vector being leveraged by attackers is CVE-2018-4878, an Adobe Flash Player Zero-Day exploited by embedding malicious SWF files in Excel documents. In these types of attacks, the malicious Excel contains embedded Adobe Flash content which can trigger the Flash vulnerability and execute embedded shellcode.
+ 
+Microsoft Equation Editor
+In a similar way to embedding Adobe Flash files into an Office document, you can also embed equations in documents that will be parsed by Microsoft Equation Editor – a program that lets you easily write mathematical equations:
+
+Figure 2.  Microsoft Equation Editor
+As in our previous example, vulnerabilities in the equation editor can be exploited by leveraging malicious Office documents. We’ve seen examples of this just recently, when CVE-2017-11882 was exploited in the wild, paving the way to other exploits like CVE-2018-0802, both of which exploit flaws in the equation editor, enabling attackers to get from the user opening an Office document to remote code execution. While still not seen in the wild, similar exploits in Microsoft Equation Editor, such as such as CVE-2018-0807 and CVE-2018-0798, were identified by Unit 42 researchers.
+Note that since the Microsoft Equation Editor runs as its own process (eqnedt32.exe), protections specific to Microsoft Office such as EMET and Windows Defender Exploit Guard are not effective by default, as they only protect Microsoft Office processes (such as winword.exe).
+ 
+OLE Objects & HTA Handlers
+OLE Objects & HTA Handlers are mechanisms Office documents use to make references to include other documents in their content. They can be used to compromise an endpoint in the following way:
+
+A Microsoft Word document is embedded with an OLE2 embedded link object
+Once the document is opened, the Word process (winword.exe) sends an HTTP request to a remote server to retrieve an HTA file with a malicious script
+Winword.exe will then look up the file handler for application/hta through a COM object, which causes the Microsoft HTA application (mshta.exe) to load and execute the malicious script
+
+This functionality was leveraged in exploitation of CVE-2017-0199 – a Microsoft Office/WordPad remote code execution (RCE) vulnerability patched by Microsoft in September 2017, and was used in multiple campaigns, like this OilRig campaign.
+
+Figure 3. RTF files will look exactly like regular Word documents
+In addition to the previous OLE & HTA exploit, attackers discovered RTF files can also execute ‘text/html’ mime-type OLE objects using the MSHTML. This means that RTF documents expose the same attack surface as Internet Explorer!
+Leveraging this logical vulnerability, known as CVE-2018-8174, allows attackers to execute arbitrary HTML/JavaScript/VBScript. While code executed in this way is ‘sandboxed’ (where it cannot run new processes or write to the filesystem etc.), like other code running from Internet Explorer, this flaw can be used to leverage other vulnerabilities, such as a memory corruption UAF vulnerability in the VBScript engine, to gain arbitrary code execution in the context of the Word application (winword.exe), allowing them to gain control on the system.
+ 
+Conclusion
+While document-based attacks have been a common attack vector for over a decade, we’re seeing a recent rise in their popularity and complexity. This rise may be a result of browser exploits becoming more difficult to use, due to the hardening done by browser developers. No matter the reason, it is important that organizations know how to defend against these common techniques.
+ 
+Prevention
+Palo Alto Networks Traps advanced endpoint protection offers multiple methods of malware and exploit prevention to protect against these threats:
+
+Macro examination – Traps examines every Office document for the existence of malicious macros by leveraging both the WildFire threat intelligence cloud as well as local machine learning based capabilities and can prevent malicious files from even being opened by the user.
+Exploit prevention – Traps extensive exploit prevention capabilities allows preventing any of these exploitation attempts from succeeding running the malicious shellcode on the attacked endpoint.
+Traps is monitoring Office applications by default, ensuring that legitimate built-in processes are not leveraged for malicious flows.
+
+

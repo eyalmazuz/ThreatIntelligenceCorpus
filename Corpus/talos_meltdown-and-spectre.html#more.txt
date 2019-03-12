@@ -1,0 +1,87 @@
+
+Meltdown and Spectre
+
+
+Cisco Talos is aware of three new vulnerabilities impacting Intel, AMD, Qualcomm and ARM processors used by almost all computers. We are investigating these issues and although we have not observed exploitation of these vulnerabilities in the wild, that does not mean that it has not occurred. We have observed publicly available proof of concept exploit code being developed to exploit these vulnerabilities. 
+
+These issues have been assigned the following CVE entries:
+
+
+
+Meltdown: An attacker can access kernel memory from user space
+
+
+
+
+Rogue data cache load (CVE-2017-5754)
+  
+
+
+Spectre: An attacker can read memory contents from other users' running programs
+
+
+
+
+Branch target injection (CVE-2017-5715)
+
+Bounds check bypass (CVE-2017-5753)
+
+
+
+
+These issues involve side channel and cache attacks that enable an attacker to steal sensitive information from memory space they should not be able to normally access. Google Project Zero published a blog providing technical details regarding these vulnerabilities. An example attack scenario would be an attacker stealing credentials from the memory space of another process. Two criteria must be met in order for these vulnerabilities to be exploited.
+
+
+
+
+The device being targeted must utilize an affected Intel, AMD, Qualcomm, or ARM processor (most processors from the last 10+ years fall into the category of "vulnerable").
+An attacker must be able to execute their own code (this includes 
+Javascript) on the device. Depending on the vulnerability, the code may 
+be executed as unprivileged code, or in others, as privileged ("root" or
+ "SYSTEM") code.
+
+
+
+ There are three likely scenarios where attackers may attempt to leverage these vulnerabilities.
+
+
+Spectre could be leveraged to launch attacks against virtualized hosting environments. Given that it is possible to read host memory from within a guest, this could result in an attacker gaining access to the host OS.  This sort of attack scenario mainly impacts cloud hosting providers such as Amazon, Azure, Google, etc. These providers are working to ensure customers are not impacted by these vulnerabilities. Check with your specific hosting provider for additional details. It is important to note that successfully exploiting these vulnerabilities in this scenario is not trivial.
+
+It is important to note that Spectre is accessible from within the web browser on affected devices which could allow malicious web sites to read arbitrary data from other browser tabs. Mozilla has confirmed this on their blog here. This could allow a remote attacker to obtain sensitive information, such as session or cookie data for other active sessions. It is important to note that this sort of an attack would likely only work under specific conditions. This attack would also require an attacker to convince a user to visit a malicious website in order to execute the code required to steal data.
+
+
+Meltdown could enable attackers to exploit additional vulnerabilities more easily. Meltdown allows for the defeating of Kernel Address Space Randomization (KASLR).  This means that any vulnerability that wasn't previously exploitable due to KASLR is now potentially exploitable if chained together with Meltdown.  This would be specific to the vulnerability the attacker is attempting to leverage, but from an attacker perspective it does remove some of the hurdles and problems encountered during the creation of their exploits. 
+
+
+
+As with all vulnerabilities, applying published patches is a crucial step to preventing an attacker from successfully exploiting these vulnerabilities. Microsoft, Linux and Apple have released patches for Meltdown. Other affected products are listed here. Applying the Microsoft patch may result in incompatibility issues with existing security software running on your system. To verify your patch status you can use the PowerShell modules provided by Microsoft. For affected Cisco devices please refer to the PSIRT advisory. Currently no patches are available for Spectre. As soon as Operating System patches are available for Spectre, we recommend that you apply them to your system as soon as possible. 
+
+As with all attacks, it is also critical that the initial infection vector be blocked whenever possible as each of these vulnerabilities require an attacker to be able to execute code on an affected system. 
+
+Some examples of blocking the initial vector include:
+
+
+
+Using ad blocking and script disabling software can minimize the risk of Javascript-based browser attacks.
+
+Cisco Umbrella can be used to block access to known malicious sites that may be launching attacks targeting these vulnerabilities.
+
+Web Security Appliance (WSA) can be used to block access to known malicious sites.
+
+FirePower NGFW can be used to block network based attacks leveraging these vulnerabilities.
+
+AMP for Endpoints and Networks can be used to block known droppers that may be used to infect systems with malware that leverages these vulnerabilities.
+
+AMP's exploit prevention engine covers multiple techniques that would be used after a successful Meltdown or Spectre memory read, that would be necessary for gaining code execution.
+
+
+Coverage
+
+Snort SIDs: 45357-45368 
+
+AMP Compatibility is documented here. AMP's exploit prevention system is documented here.  
+
+These signatures cover the specific PoC's and sample code outlined in the Spectre and Meltdown whitepapers. While these signatures have the potential to detect variants, they may not work for all cases. We still recommended that affected organizations install the OS and firmware patches to protect against this class of attacks. Talos is continuing to monitor the situation and will provide updated information as soon as it is available.
+
+
+

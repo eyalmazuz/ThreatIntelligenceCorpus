@@ -1,0 +1,28 @@
+Unpacking Dynamically Allocated Code
+ 
+Today, most malware is obfuscated to make it more difficult for traditional antivirus engines to detect the malicious code and to make it more arduous for analysts to understand the malware’s functionality. Although many automated tools exist for deobfuscating (or “unpacking”) malware, they have their limitations and analysts often need to manually unpack malware.
+Analysts typically follow three steps when unpacking malware:
+For this blog post, we’ll be working with a file with MD5 hash 65EE9D8CB2ACB1F95CDA5F66F4591918; it’s a rogue antivirus program packed with ASProtect.
+Although tracing to the OEP for this sample is out of the scope of this blog post, suffice it to say that on a given run of this sample, the OEP was found to be at Virtual Address 0x011B1038. However, this OEP address is below the executable module’s base address of 0x03000000:
+Since the DOS header for our module begins 0x01E4EFC8 bytes after the OEP, even if we could reconstruct the Import Table, we can’t just dump the unpacked code to create a working binary. Furthermore, since the unpacking stub has already applied relocations, we can’t just copy & paste the OEP’s memory region after the main module’s sections, dump it all, and hope to get a working executable even after PE header patching.
+Note that although some packers’ stubs such as MEW‘s will leave the original DOS header and PE header in-place at the beginning of the unpacked code’s dynamically allocated memory region, ASProtect does not persist this information; as such, we cannot simply dump just the OEP’s memory region to create a working executable.
+How then can we dump this process’s unpacked memory to create a valid executable?
+As mentioned above, most unpacking tools expect the code to be unpacked into an existing PE section. Therefore, we’d ideally like to “trick” the unpacking stub to unpack the malware’s code into an existing PE section instead of into dynamically allocated memory. Let’s start by creating such a section in the malware’s executable.
+We can use a tool such as LordPE to create the new section. We begin by opening a copy of the file in LordPE’s PE Editor:
+We then click the Sections button to open the Section Table window:
+We then right-click anywhere in the Section Table window and choose “add section header”:
+The new section header will be added at the end of the Section Table as “.NewSec”. We scroll down to it, right click on it, and choose “edit section header…”:
+Note that LordPE set the Relative Virtual Address of the section to be 0x003CB000; we’ll need to use that address later. If we refer to the OllyDbg screenshot earlier in this blog post, we see that the size of the OEP’s memory region (beginning at Virtual Address 0x01170000) is 0x0005A000 bytes. Since our goal is to get the OEP’s code unpacked into this new section we’re creating, we set the Virtual Size of “.NewSec” to 0x0005A000 bytes:
+LordPE already set the characteristics (“Flags”) of “.NewSec” to 0xE00000E0 (readable, writable, executable), so we click OK to apply the section size changes. We then close the Section Table window and in the main PE Editor window we set the Size of Image field to (0x003CB000 + 0x0005A000) = 0x00425000, in order to account for our newly added section:
+We now click the Save button to save our changes.
+Now that we’ve modified the file such that that we have an existing PE section into which the unpacking stub can unpack the malware’s code, we need to trick the malware to unpack into this section.
+If we look at the OEP’s memory region (beginning at Virtual Address 0x1170000) with VMMap, we can see that its Type is “Private Data”:
+According to VMMap’s help file, “Private memory is memory allocated by VirtualAlloc and not suballocated either by the Heap Manager or the .NET run time.” This indicates that the OEP’s memory region was allocated by the process’s unpacking stub via VirtualAlloc(…). Additionally, we know from our analysis above that the size of this allocated region is 0x0005A000 bytes. We can thus run the new version of our target with the added section in a debugger, set a breakpoint on VirtualAlloc(…), and wait for it to be called with a requested size of 0x0005A000 bytes.
+If we set a logging breakpoint on VirtualAlloc(…), we see it called twice with a size of 0x0005A000 bytes:
+
+We now restart the process, set a breakpoint on VirtualAlloc(…), and the second time it’s called with an allocation size of 0x0005A000 bytes we change the return value in EAX to actually point to the Virtual Address of our new section:
+This causes the unpacking stub to treat our new section as the 0x0005A000 bytes that would have been returned by VirtualAlloc(…), causing the unpacking stub to unpack the malware’s code into our new section instead of a dynamically allocated region of memory. We can now trace to the OEP, successfully dump the memory, and reconstruct the Import Table:
+We can now analyze the unpacked file.
+This blog post demonstrates that reverse engineering is not just a reliance on tools. A professional reverse engineer requires knowledge of the hardware, the underlying operating system, and a good deal of creativity in order to solve challenging problems.
+No matter what the bad guys do to make our work more difficult, we will always persevere, outsmart them, and in the end, use our skills to bring pain to the adversary.
+Want to make reverse engineering easier? Try CrowdRE!

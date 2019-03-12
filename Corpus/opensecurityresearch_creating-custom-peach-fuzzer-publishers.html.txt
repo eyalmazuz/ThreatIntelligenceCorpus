@@ -1,0 +1,228 @@
+
+Creating Custom Peach Fuzzer Publishers
+
+
+by Brad Antoniewicz.
+
+Peach is arguably the most established, freely available fuzzer out there. It has tons of built in functionality to support a huge range of features. While you can data model even the most complex protocols, you can only go so far with a PeachPit before you realize that you just need a custom publisher. In this blog post we'll show how to write and compile a custom publisher so you can spend all your CPU cycles fuzzing the stuff that matters.
+When Is It Time?
+
+Since you can do so much with a DataModel and a StateModel, identifying when it's time to transition from a PeachPit to a custom publisher can be tough. To me, it all depends on what you're looking to fuzz. The most common case is your target protocol or file format has multiple levels of encapsulation. Sure, you could easily DataModel this encapsulation, but then you're stuck manually excluding higher level encapsulated data. And in some cases, the encapsulation creates a situation that the DataModel just can't handle.
+
+Here's a sort interesting example I've recently come across. The application implemented it own custom protocol within a TLS tunnel. The tricky part here is that it was all over UDP. So there had to be another layer of encapsulation (XYZ Proto) above TLS but below UDP to keep state of the TLS tunnel, since UDP is stateless. Here's what the encapsulation looked like from a high level: 
+
+
+Now if we're just looking to fuzz XYZ Proto then a DataModel here using the UDP Publisher would do just fine. However, since we're looking to fuzz Custom Protocol, we have a bit of work to do. Establishing a TLS tunnel is beyond the purpose of the DataModel - and the only way for us to get at the important part, is to buld a custom publisher. 
+
+If you're just dealing with file formats, this same idea still applies, but its more likely you can build out the DataModel for the entire file format, rather then hitting the TLS brick wall. That being said, it might not be necessary to build the DataModel for the higher level file formats if a custom publisher can be written.
+Compiling Peach
+Technically, you don't have to compile Peach from source. A little later on I'll walk you through compiling your custom Publisher without the entire Peach source code. But the reality is that when you're building your Publisher, you'll need to look at the source of other Publishers to get better understanding of how everything works, so you might as well learn to build everything from source anyway.
+
+Download the source package from Peach's sourceforge page. I'd recommend downloading the latest Beta source code, rather then the stable source so that you can take advantage of bug fixes, etc..
+
+
+To compile from source is as simple as it gets due to a handy install script:
+root@kali:~/peach-3.1.53-source# ./waf configure
+root@kali:~/peach-3.1.53-source# ./waf build
+root@kali:~/peach-3.1.53-source# ./waf install
+
+
+Peach will install the compiled binaries into output/linux_x86_release/bin and output/linux_x86_debug/bin. 
+Publisher Structure
+Publishers are located within the Peach.Core/Publishers directory of the source package. There are a number available for you to use a reference. Basically every publisher inherits from the Publisher class (Peach.Core/Publisher.cs) and should override a few key functions that are tied back to the corresponding Action Types referenced in the PeachPit. The following table provides a summary of those functions (all are of type protected virtual void unless otherwise noted and descriptions are from the Publisher.cs source)
+
+
+Function
+Description
+
+
+OnStart()
+Called when the publisher is started.  This method will be called once per fuzzing "Session", not on every iteration.
+
+
+OnStop()
+Called when the publisher is stopped.  This method will be called once per fuzzing "Session", not on every iteration.
+
+
+OnOpen()
+Open or connect to a resource.  Will be called automatically if not called specifically.
+
+
+OnClose()
+Close a resource.  Will be called automatically when state model exists.  Can also be called explicitly when needed.
+
+
+OnAccept()
+Accept an incoming connection.
+
+
+OnInput()
+Read data
+
+
+OnOutput(BitwiseStream data)
+Send data
+
+
+protected virtual Variant OnCall(string method, List args)
+Call a method on the Publishers resource
+
+
+OnSetProperty(string property, Variant value)
+Set a property on the Publishers resource.
+
+
+protected virtual Variant OnGetProperty(string property)
+Get value of a property exposed by Publishers resource
+
+
+
+Depending on the purpose of the Publisher, some of the above functions are more important then others. For instance, if we're only concerned with modifying the output of data right before its sent, then we'd just override OnOutput().
+Getting Started
+
+From here on out we'll demonstrate everything else you need to get started by building a simple example that adds a layer of encapsulation within the UDP protocol. This example would be trivial to add to a DataModel, but for the sake of this example, we'll implement it in a Publisher.
+
+ First up we'll start out by making a copy of the UdpPublisher which extends the SocketPublisher class:
+root@kali:~/peach-3.1.53-source/Peach.Core/Publishers# cp UdpPublisher.cs MyCustomPublisher.cs
+
+
+We'll set the name for our Publisher that will be referenced in the PeachPit by replacing "Udp" with "MyCustomPublisher on line 35:
+[Publisher("MyCustomPublisher", true)]
+
+
+And name the class of our publisher by replacing "UdpPublisher" with "MyCustomPublisher" on line 43:
+ public class MyCustomPublisher: SocketPublisher
+
+
+and line 49:
+ public MyCustomPublisher(Dictionary%lt;string, Variant> args
+
+
+And that's it! We have our custom publisher all done! Granted, its really a waste at this point since its exactly the same thing as the UdpPublisher, but nonetheless it's still custom :)
+Extending Functionality
+To make this example a little more interesting, lets add that layer of encapsulation, something like this:
+
+
+Here we care about fuzzing Custom, but not ABC Proto. So we'd create a custom Publisher to handle ABC Proto and a DataModel for fuzzing Custom. Let's say ABC Proto is structured this way:
+
+
+
+First thing we'll need to do in our new Publisher is override the OnOutput function so that we can modify the data before its sent. So we'll add a new line after line 72 and insert:
+protected override void OnOutput(BitwiseStream data)
+        {
+
+        }
+
+
+Now comes our program body, we'll need to build a new packet with the ABC Proto's header and length fields. Header is a 2 byte static value of 1234, and length is a 2 byte value for the length of the data field in network byte order. Since the length field is only 2 bytes, we first need to put in some intelligence that ensures the length of data does not exceed the maximum value of that field. 
+int totalPktLen = (int)data.Length + 4;
+
+if (totalPktLen > 65535) {
+    Logger.Debug("ABC Proto Max Packet Length Reached, capping at 65535");
+    totalPktLen = 65535;
+}
+
+if ( totalPktLen <= 0 ) {
+    Logger.Debug("ABC Proto Min PacketLength Reached, just setting to 4 to account for header and length fields");
+    totalPktLen = 4;
+}
+
+
+This can be an controversial move and its an important note to make about custom publishers. Our intention is to fuzz the heck out of Custom Protocol and as part of that fuzzing, we should be trying really long strings and other values. By implementing this limitation we are effectively limiting our test cases. It might be worthwhile just to forget about an accurate value in the ABC Proto Length field as it might lead to more vulnerabilities.
+
+That being said, let's leave that option up to the end user of the publisher. We'll do that via a parameter that we'll implement a little further down below. 
+
+Next we'll create our ABC Proto Start Header which is just a constant 1234:
+byte[] abcProtoHdr = { 0x12, 0x34 } ;
+
+
+
+Our final product will be a buffer containing the original data packet encapsulated within ABC Proto, so here we'll create that buffer:
+var buffer = new byte[totalPktLen];
+
+
+Now we'll build our packet by first copying the ABC Proto Header into the buffer:
+Array.Copy(abcProtoHdr, 0, buffer, 0, abcProtoHdr.Length);
+
+
+Next we'll handle the length field. It needs to be in network bit order, so we'll do with Array.Reverse() after we copy it to the output buffer:
+Array.Copy(BitConverter.GetBytes(totalPktLen - 4), 0, buffer, abcProtoHdr.Length, sizeof(ushort));
+Array.Reverse(buffer, abcProtoHdr.Length, sizeof(ushort));
+
+
+To wrap up the buffer we'll just copy over the original data:
+data.Read(buffer, abcProtoHdr.Length + sizeof(ushort), buffer.Length - 4);
+
+
+At this point we've built-in that ABC Proto layer of encapsulation, since that's all we really needed to do, we can pass that data to the original OnOutput() function that SocketPublisher implements to send:
+base.OnOutput(new BitStream(buffer));
+
+Passing Parameters
+Ok back to that ABC Proto Length issue we ran into earlier on. We could either restrict the data length and limit our fuzzing or just ignore it. The best approach might be to allow the user make that decision via a Parameter passed to the publisher. To do this we'll need to create a new parameter by inserting a new line after line 51 and providing:
+[Parameter("StrictLength", typeof(bool), "Enforce the ABC Proto Length Restrictions (may limit fuzz cases)", "true")]
+
+
+Here we have StrictLength as a boolean option, set to true by default. Next we'll need to create local variable for it by inserting a new line after line 62:
+public bool StrictLength { get; set; }
+
+
+And now we can wrap our length adjustment code into an if statement:
+ if (StrictLength) {
+    if (totalPktLen > 65535) {
+        Logger.Debug("ABC Proto Max Packet Length Reached, capping at 65535");
+        totalPktLen = 65535;
+    }
+
+    if ( totalPktLen <= 0 ) {
+        Logger.Debug("ABC Proto Min PacketLength Reached, just setting to 4 to account for header and length fields");
+        totalPktLen = 4;
+    }
+}
+
+
+Alright! Our custom ABC Proto publisher is written! On to compiling.. 
+Compiling with dmcs
+We could recompile the entire Peach source code as per the instructions above, or using a standard Peach binary release, we can save time by compiling only our new custom publisher. Peach runs on Linux with the help of the mono framework which allows .Net applications to run on a number of different platforms. The dmcs utility is a compiler within mono which we'll use on our Kali installation.
+
+Enter the peach binary release directory with your MyCustomPublisher.cs copied into it, and compile with:
+ dmcs MyCustomPublisher.cs -out:MyCustomPublisher.dll -target:library -r:Peach.Core.dll,NLog.dll
+
+
+If all went well, you should should have a MyCustomPublisher.dll!
+Calling from the PeachPit
+The last thing we need to do is call our custom publisher from a PeachPit via the <Publisher> tag within our Test definition:
+ <Test name="Default">
+        <StateModel ref="CustomProtocolOutput"/>
+
+        <Publisher class="MyCustomPublisher">
+            <Param name="Host" value="192.168.1.1"/>
+            <Param name="Port" value="12345"/>
+        </Publisher>
+    </Test>
+
+
+The full PeachPit for this project can be found here.
+Testing with Wireshark
+
+We'll run a single instance of our fuzz case and use Wireshark to inspect output on the wire:
+ root@kali:~/peach-3.1.53-linux-x86-release# mono peach.exe MyCustomPublisherDataModel.xml -1
+
+[[ Peach v3.1.53.0
+[[ Copyright (c) Michael Eddington
+
+[*] Test 'Default' starting with random seed 5136.
+
+[R1,-,-] Performing iteration
+
+[*] Test 'Default' finished.
+
+
+Now Wireshark doesn't have have a plug-in to parse for our ABC Proto (WTH wireshark dev team?!) - but if we look at the raw data we can see our ABC Proto header, length fields, and included within the data is the content of our DataModel.
+
+Source Code
+
+If you'd like to reference the source code for this project, head over to Github: 
+https://github.com/OpenSecurityResearch/CustomPeachPublisher
+Got any tips for creating publishers? Share below in the comments!
+
+

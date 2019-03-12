@@ -1,0 +1,15 @@
+GitLab Patches Command Execution Vulnerability
+Developers with GitLab this week fixed a critical vulnerability in the open source repository management software that could have led to command execution and allowed an authenticated user to gain access to sensitive application files, tokens, or secrets.
+HackerOne cofounder Jobert Abma unearthed the vulnerability last week and reported it to the company through GitLab’s bug bounty program. GitLab addressed the issue (CVE-2016-9086) when it rolled out version 8.13.3 of the software late Wednesday.
+
+
+The issue, an arbitrary file read vulnerability, existed in GitLab’s import/export feature, and stemmed from a combination of error handling, the way the JavaScript function JSON.parse behaved, and the ability to mention symbolic links in GitLab imports, according to Abma. Symbolic links, also known as symlinks, are shortcuts that point to other files, folders, or directories.
+It took some hunting around, but Abma found that because of the problems he could get the contents of a file to be decoded in an error message.
+
+From there, an attacker could leverage the bug to read secrets from a GitLab Rails project, shell tokens used to authenticate GitLab users, or even trigger a remote code execution, according to a back-and-forth between Abma and GitLab around the vulnerability on HackerOne.
+“With this issue, the secrets of the GitLab rails project can be read, too. This results in an RCE because cookies can be marshaled and resigned again. It seems to also give access to the internal GitLab shell tokens, which give access to all repositories,” Abma wrote in a disclosure made public Wednesday.
+The import/export feature, which GitLab added in version 8.9, was only recently made available to all users in version 8.13. In a write up of the vulnerability on Wednesday, the company corroborated Abma’s report and said that the feature’s Achilles heel was that it didn’t check for symbolic links in user-provided archives.
+“This feature did not properly check for symbolic links in user-provided archives and therefore it was possible for an authenticated user to retrieve the contents of any file accessible to the GitLab service account. This included sensitive files such as those that contain secret tokens used by the GitLab service to authenticate users,” GitLab said.
+The company first informed users of the impending fix on Monday through its security newsletter and a post on its blog.
+GitLab, which also fixed the vulnerability in similar builds 8.12.8, 8.11.10, and 8.10.13 for GitLab Community Edition (CE) and Enterprise Edition (EE), is encouraging all users running an affected version to upgrade immediately.
+

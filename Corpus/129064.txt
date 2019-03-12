@@ -1,0 +1,19 @@
+Flaw Found In Dirty COW Patch
+A flaw in the original patch for the notorious Dirty COW vulnerability could allow an adversary to run local code on affected systems and exploit a race condition to perform a privilege escalation attack.
+The flaw in the Dirty COW patch (CVE-2016-5195), released in October 2016, was identified by researchers at the security firm Bindecy. On Wednesday, they released details of the vulnerability (CVE-2017-1000405) found in the original Dirty COW patch, affecting several Linux distributions.
+The scope of affected products is significantly smaller than the original Dirty COW bug, which impacted many more Linux distributions and the Android operating system.
+“In terms of scope, the difference is just that the current bug is not applicable to Android and Red Hat Enterprise Linux. All other distributions – Ubuntu, Fedora, SUSE – suffer from the issue. So, the scope is still large. We estimate that millions of machines are vulnerable,” said Daniel Shapiro, researcher at Bindecy, credited for finding the flaw along with colleague Eylon Ben Yaakov.
+The vulnerability, CVE-2017-1000405, is rated “Important” and scores 6.1 on the CVSS scale.
+Red Hat Software notified customers of the flawed patch on Thursday noting the issue does not affect the Linux kernel packages as shipped with Red Hat Enterprise Linux 5, 6, 7 and Red Hat Enterprise MRG 2, according to Red Hat’s customer portal.
+Dirty COW was patched in October 2016 after it was discovered in public exploits. The vulnerability was found in the copy-on-write (COW) feature in Linux and could be used by an attacker with local access to obtain root privileges on a Linux or Android device.
+The flaw, which was introduced in 2007 in version 2.6.22 of the kernel, allows an attacker to elevate privileges by taking advantage of a race condition and gain write-access to read-only memory.
+The flaw allows an attacker with a local system account to modify on-disk binaries, bypassing the standard permission mechanisms that would prevent modification without an appropriate permission set.
+Copy-on-write manages memory resources and allows for more than one process to share a page until a user writes to it, known in programming as marking a page dirty. The vulnerability allows an attacker to exploit the race condition to write to the original page before it’s marked dirty.
+The October 2016 patch addressed the Dirty COW vulnerability for both regular pages and transparent huge pages (supported since kernel approximately 2.6.38), according to Shapiro.
+“There is a code flow that wasn’t taken into account that breaks the logic of the patch for transparent huge pages,” he said.
+“In the original vulnerability the exploit targeted pages backed by read-only files, with the new bug we could write to a read-only special huge-page called ‘zero page’. It is assumed to be initialized with zeroes and some software rely on that assumption (including privileged processes),” Shapiro said.
+A more detailed description of the flaw can be found in a technical write-up by Yaakov here.
+According to the disclosure timeline, researchers reported the vulnerability to the Linux Kernel Organization on Nov. 22. A CVE was assigned the same day and a patch was committed to the mainline kernel Nov. 27. The vulnerability was officially made public on Friday.
+Immediate mitigation includes disabling the use of “zero page”.
+“It is possible to prevent the zero page from being mapped as a huge page, by modifying a configuration tunable in the /sys directory… This prevents the flaw from being exercised in this method. # echo 0 > /sys/kernel/mm/transparent_hugepage/use_zero_page Disabling huge pages: It is possible to mitigate this flaw by disabling hugepages on a system,” according to a description of mitigations steps.
+“The real deal here is the astonishing fact that such a hyped vulnerability was patched incompletely,” Shapiro said.

@@ -1,0 +1,441 @@
+StegBaus: Because Sometimes XOR Just Isn’t Enough
+
+This past week, our team has identified a group of malware samples that matched behavioral heuristics for multiple known malware families.  These samples all displayed their typical respective malware characteristics and contacted known command and control (C2) servers from those families. However, initial static analysis revealed that all of these samples appear to be identical on the surface, leading us to believe that we had discovered a new loader.  The malware families identified at this time are DarkComet, LuminosityLink RAT, Pony, ImmenentMonitor, and some multiple variations of shellcode.  We are calling the malicious loader StegBaus based on its use of custom steganography and a PDB string, which was found in an embedded DLL.
+Because of the large number of infections that the aforementioned malware families have previously been involved in, any new loading techniques that could make it easier for an attacker to execute these malware families on a victim computer should be taken seriously and an attempt at identifying it pre-infection should be treated as a high-priority.
+This loader is unique in numerous ways, most notably the steganography that is being used to hide the loader configuration, as well as the final payload.  These features will be discussed in the analysis section below.  The loader also uses common techniques, such as the RunPE method, to load final payload into memory as a new process.  This method has been seen in the wild for a number of years and typically involves utilizing a host process, threading contexts, and memory allocation.  Although these steps appear to be relatively static within the loader, there are slight differences we were able to identify based on the time of deployment.  One such case is a sample that appears to have been used for testing at least 6 months before the majority of samples were seen in the wild.
+UPDATE: The domains tags[.]bkrtx[.]com and sg[.]symcb[.]com were erroneously included in the list of domains below. On February 20, 2017, this blog post was updated to remove those domains from that list.
+Distribution
+The .NET executables with a code-base similar to the StegBaus loader were originally seen being tested in mid-2016 with much less obfuscation and the addition of testing phrases and strings.  While hunting for related samples with the same characteristics, we were able to identify similar features in the KazyLoader .NET packer.  KazyLoader provides a means for data hiding in BMP files and similar encryption schemes as well, and although these similarities exist, the increased sophistication in StegBaus and the limited visibility into the KazyLoader code-base makes linking these two families together very difficult.
+The first known instance of StegBaus that Palo Alto Networks was able to identify was seen on December 30, 2016, with numerous samples being encountered since then.  It should be noted that the malware families being distributed by StegBaus are all commodity malware and many of them have had their source-code leaked online in the past.  This fact makes it difficult to determine if the author of StegBaus is generating his/her own custom samples, reusing samples found in the wild, or has a connection to the groups that use these malware families for criminal activities.
+The most common filenames used to deliver StegBuas in the wild are:
+
+image44.scr
+barbiure.exe
+image56.scr
+image.scr
+corben.exe
+picture.scr
+Netsparker.exe
+
+The most common HTTP connection information is as follows:
+
+Kimki[.]ru , POST , /chamber/panelnew/gate.php
+kimki[.]ru, POST, /nelson/panelnew/gate.php
+kimki[.]ru , POST , /emeka/panelnew/gate.php
+oxylala[.]gdn , POST , /emeka/panelnew/gate.php
+oxylala[.]gdn , POST , /charly/panelnew/gate.php
+oxylala[.]gdn , POST , /asaba/panelnew/gate.php
+oxylala[.]gdn , POST , /victor/panelnew/gate.php
+oxylala[.]gdn , POST , /mandela/panelnew/gate.php
+oxylala[.]gdn , POST , /asaba/panelnew/gate.php
+minecon[.]co, POST, /Panel/gate.php
+informer.pe[.]hu , POST , /Server/
+
+The most common DNS queries are the following:
+
+custom[.]generatione[.]tech
+goodluckjayjay[.]duckdns[.]org
+slyopeznetwr[.]ddns[.]net
+11live[.]zapto[.]org
+goodluckyugo[.]duckdns[.]org
+akudon[.]chickenkiller[.]com
+informer[.]pe[.]hu
+files[.]catbox[.]moe
+minecon[.]co
+kimki[.]ru
+oxylala[.]gdn
+
+Analysis
+StegBaus is originally distributed in a .NET-compiled executable that uses Confuser v1.9.0.0 obfuscation.  Initial static analysis of the sample reveals multiple portable network graphics (PNG) image files that are embedded as .NET resources.  These can be seen in the figure below.
+
+Figure 1 PNG resource files
+Upon execution, StegBaus loads a new DLL into its memory space and execution is transferred to the DLL’s main function, which in later samples has been renamed to a singular letter (A, K, or Q).  This DLL is completely deobfuscated and its internal name was found to be A.dll in each variation that we analyzed.  The functions contain no obfuscation and can be clearly read, as shown in Figure 2.
+
+Figure 2 Function list
+As can be seen from the function list above, StegBaus contains a number of functions that appear to do relatively simple things.  After analysis of these functions, it is clear that the functions actually do exactly what their names suggest.  Full anlaysis of each of these functions will not be provided, but some of the most interesting ones will be discussed throughout the explanation of the data hiding techniques.
+After analyzing the original, heavily obfuscated, executable and finding the embedded resources, we chose to investigate this DLL for any resources as well.  It turns out that the author used this resource section to embed numerous blobs of base64-encoded data as seen below in Figure 3.
+
+Figure 3 Embedded base64-encoding
+The resources seen in Figure 3 both contain base64-encoded data, which each decode into a separate DLL. These DLLs are named img2data.dll and CreateShortct.dll respectively.  The CreateShortct.dll file is used to locate the current users Startup folder and creates a shortcut to the original executable using a random 8 character name.  The img2data.dll, however, is a little more interesting and will be discussed in the Data Hiding section.
+The CreateShortct.dll contains the following PDB string that was used in naming the malware:
+
+
+
+
+c:\users\braus\desktop\createshortct\createshortct\obj\release\createshortct.pdb 
+
+
+
+
+1
+
+c:\users\braus\desktop\createshortct\createshortct\obj\release\createshortct.pdb 
+
+
+
+
+
+
+Data Hiding
+The img2data.dll file contains custom functionality to convert images into a data stream by using numerous libraries included in the .NET Framework.  The actual code for the function can be seen below:
+
+Figure 4 ImagesToData function
+The reimplementation of this code is provided here and can be compiled as C# in Visual Studio by adding a library reference to System.Drawing.  The provided decoder will take a directory name that contains all of the PNG resource files with their original names and provide a binary output file that can be used to continue analysis.
+The img2data.dll is utilized by the ConvertImagesToData function in A.dll.  This function simply loads the DLL into memory via .NET module loading techniques and creates a buffer for data storage.  Essentially, the img2data.dll will locate the resources in the original executable and read all of the raw bytes into a memory stream before being manipulated.  After this data has been converted into a usable data stream and stored in the global buffer, it is then decrypted multiple times, as discussed below.
+Encryption
+Although data hiding with steganography is unusual, it is an extremely effective means of concealing information, the malware authors found it necessary to also use AES encryption.  Specifically, the RinjndaelManaged function that belongs to System.Security.Cryptography is used to decrypt data using AES-128.
+While debugging the malware and stepping through the crypto routines, we can easily identify the initial password that is used to generate the key and initialization vector (IV) for the AES routine.  The password is gathered by identifying the timestamp from the STARTUP_INFORMATION structure of the original executable and this value is then run through a sequence of arithmetic operations. This information is then used to create a new GUID, which in turn is truncated to 8 characters, and then used as the password.  The password for the sample analyzed is “d1ee1095”, which is easily identifiable during debugging and execution.  This value is then run through the Password-Based Key Derivation Function 2 (PBKDF2) and we can hex-encode this result for both a 32-byte and 16-byte value.  The return value for the 32-byte value is the key and the 16-byte value is the IV.
+Once the key and iv are produced, the decryption proceeds by using AES with CBC.  The following script can be used to decrypt the data once the password has been identified:
+
+
+
+
+from PBKDF2 import PBKDF2
+from Crypto import Random
+from Crypto.Cipher import AES
+import sys,binascii
+
+with open(sys.argv[1], mode='rb') as file:
+	data = file.read()
+	
+password = sys.argv[2]
+p = pbkdf2.PBKDF2(password, password[:8])
+key = binascii.hexlify(p.read(32))
+iv = binascii.hexlify(p.read(16))
+
+mode = AES.MODE_CBC
+e = AES.new(key, mode, iv)
+f = open('outputDecrypted.bin', "wb")
+f.write(e.decrypt(data))
+f.close()
+
+
+
+
+123456789101112131415161718
+
+from PBKDF2 import PBKDF2from Crypto import Randomfrom Crypto.Cipher import AESimport sys,binascii with open(sys.argv[1], mode='rb') as file: data = file.read() password = sys.argv[2]p = pbkdf2.PBKDF2(password, password[:8])key = binascii.hexlify(p.read(32))iv = binascii.hexlify(p.read(16)) mode = AES.MODE_CBCe = AES.new(key, mode, iv)f = open('outputDecrypted.bin', "wb")f.write(e.decrypt(data))f.close()
+
+
+
+
+
+After decrypting the data, the results are not as we expected…there is no human readable data.  This leads us to further debugging to identify any other techniques being used.  In this case, the authors decided that using steganography and AES encryption wasn’t enough they had to encrypt the data twice using the same AES implementation.  Using the same script as above and the decimal representation of the previously returned timestamp, “1484648550”, we are able to determine the key and IV for the second iteration of decryption.  This time we are provided with what appears to be a human readable configuration file, which contains the following data:
+
+Emulation
+Install
+Notify
+Options.Compress
+Options.CheckVM
+Options.CheckSandbox
+Options.DelayTime
+Options.MonitorPackage
+Options.MonitorRegistry
+Options.MonitorSelf
+Options.HostIndex
+Options.UACBypass
+Files.Main
+Files.Count
+
+
+
+
+
+
+00000000  1c 0c 09 45 6d 75 6c 61  74 69 6f 6e 00 01 0c 07  |...Emulation....|
+00000010  49 6e 73 74 61 6c 6c 00  00 0c 06 4e 6f 74 69 66  |Install....Notif|
+00000020  79 00 00 0c 10 4f 70 74  69 6f 6e 73 2e 43 6f 6d  |y....Options.Com|
+00000030  70 72 65 73 73 00 01 0c  0f 4f 70 74 69 6f 6e 73  |press....Options|
+00000040  2e 43 68 65 63 6b 56 4d  00 00 0c 14 4f 70 74 69  |.CheckVM....Opti|
+00000050  6f 6e 73 2e 43 68 65 63  6b 53 61 6e 64 62 6f 78  |ons.CheckSandbox|
+00000060  00 00 0c 11 4f 70 74 69  6f 6e 73 2e 44 65 6c 61  |....Options.Dela|
+00000070  79 54 69 6d 65 07 00 00  00 00 0c 16 4f 70 74 69  |yTime.......Opti|
+00000080  6f 6e 73 2e 4d 6f 6e 69  74 6f 72 50 61 63 6b 61  |ons.MonitorPacka|
+00000090  67 65 00 00 0c 17 4f 70  74 69 6f 6e 73 2e 4d 6f  |ge....Options.Mo|
+000000a0  6e 69 74 6f 72 52 65 67  69 73 74 72 79 00 00 0c  |nitorRegistry...|
+000000b0  13 4f 70 74 69 6f 6e 73  2e 4d 6f 6e 69 74 6f 72  |.Options.Monitor|
+000000c0  53 65 6c 66 00 00 0c 11  4f 70 74 69 6f 6e 73 2e  |Self....Options.|
+000000d0  48 6f 73 74 49 6e 64 65  78 07 00 00 00 00 0c 0a  |HostIndex.......|
+000000e0  46 69 6c 65 73 2e 4d 61  69 6e 02 fa dc 01 00 00  |Files.Main......|
+[TRUNCATED]
+0001dde0  fc e8 f9 d1 f3 b3 f5 fc  3f 0c 0b 46 69 6c 65 73  |........?..Files|
+0001ddf0  2e 43 6f 75 6e 74 07 00  00 00 00 0c 11 4f 70 74  |.Count.......Opt|
+0001de00  69 6f 6e 73 2e 55 41 43  42 79 70 61 73 73 00 00  |ions.UACBypass..|
+0001de10  10 10 10 10 10 10 10 10  10 10 10 10 10 10 10 10  |................|
+0001de20  9b 35 e8 28 ca 4c ed be  43 38 0e 85 ec f4 ac 12  |.5.(.L..C8......|
+
+
+
+
+123456789101112131415161718192021
+
+00000000  1c 0c 09 45 6d 75 6c 61  74 69 6f 6e 00 01 0c 07  |...Emulation....|00000010  49 6e 73 74 61 6c 6c 00  00 0c 06 4e 6f 74 69 66  |Install....Notif|00000020  79 00 00 0c 10 4f 70 74  69 6f 6e 73 2e 43 6f 6d  |y....Options.Com|00000030  70 72 65 73 73 00 01 0c  0f 4f 70 74 69 6f 6e 73  |press....Options|00000040  2e 43 68 65 63 6b 56 4d  00 00 0c 14 4f 70 74 69  |.CheckVM....Opti|00000050  6f 6e 73 2e 43 68 65 63  6b 53 61 6e 64 62 6f 78  |ons.CheckSandbox|00000060  00 00 0c 11 4f 70 74 69  6f 6e 73 2e 44 65 6c 61  |....Options.Dela|00000070  79 54 69 6d 65 07 00 00  00 00 0c 16 4f 70 74 69  |yTime.......Opti|00000080  6f 6e 73 2e 4d 6f 6e 69  74 6f 72 50 61 63 6b 61  |ons.MonitorPacka|00000090  67 65 00 00 0c 17 4f 70  74 69 6f 6e 73 2e 4d 6f  |ge....Options.Mo|000000a0  6e 69 74 6f 72 52 65 67  69 73 74 72 79 00 00 0c  |nitorRegistry...|000000b0  13 4f 70 74 69 6f 6e 73  2e 4d 6f 6e 69 74 6f 72  |.Options.Monitor|000000c0  53 65 6c 66 00 00 0c 11  4f 70 74 69 6f 6e 73 2e  |Self....Options.|000000d0  48 6f 73 74 49 6e 64 65  78 07 00 00 00 00 0c 0a  |HostIndex.......|000000e0  46 69 6c 65 73 2e 4d 61  69 6e 02 fa dc 01 00 00  |Files.Main......|[TRUNCATED]0001dde0  fc e8 f9 d1 f3 b3 f5 fc  3f 0c 0b 46 69 6c 65 73  |........?..Files|0001ddf0  2e 43 6f 75 6e 74 07 00  00 00 00 0c 11 4f 70 74  |.Count.......Opt|0001de00  69 6f 6e 73 2e 55 41 43  42 79 70 61 73 73 00 00  |ions.UACBypass..|0001de10  10 10 10 10 10 10 10 10  10 10 10 10 10 10 10 10  |................|0001de20  9b 35 e8 28 ca 4c ed be  43 38 0e 85 ec f4 ac 12  |.5.(.L..C8......|
+
+
+
+
+
+Finally, after the aforementioned decryption is finished, the StegBaus configuration options become visible as we see in the figure below.  These options dictate which additional functions are going to be called in A.dll.  As shown before, there are a number of additional functions, but they are not used unless the configuration has the options enabled.  Along with the configuration options, the decrypted data also contains the final payload and is represented in two different forms in the samples we analyzed.
+
+Figure 5 Decrypted data forms (plaintext vs. zlib)
+As seen in the figure above, the two different data representations in the decrypted data buffer are plaintext and a zlib-compressed data blob.  In some of the first samples identified, the decryption stage mentioned above is actually the final stage of data hiding and this executable is then loaded into memory via the RunPE method.  The newest samples analyzed utilize zlib compression to further hide the final payload within the decrypted data buffer.  The decompression is completed in the Decompress function, which can be seen in Figure 2 as part of A.dll.  When the final payload is decompressed, it is loaded into memory as a new process via the RunPE method as well.
+Conclusion
+The StegBaus loader that was identified contains many advanced data hiding techniques and has been seen delivering numerous different commodity malware families.
+Currently, the loader itself is being identified as malware by WildFire and can be seen in Autofocus as well.  Palo Alto Networks is detecting this malicious loader via behavioral identifiers and is also identifying the malware families being delivered by these measures.
+I would like to thank threat analyst Brandon Levene for bringing this unique malware family to my attention.  The characteristics identified within the analyzed samples led to the discovery of more than 250 samples utilizing the StegBaus loader, all of which were identified as malware in WildFire.
+Appendix
+SHA256 Hashes
+1678e719a18eabf552cd54f763f401959fccb47fa3ef035c1f5b49c440dc0ddd
+4233a707e1772c6399776dd563dfb315b59cd2bd685bc78802958065a871817a
+440e31eac26692e8cdfc357f2b66fb371a4d3601961cae3082a2d3f3855d4a0c
+2f43238efb23e00c8413cc4c203bfd29b17e846dedd613c86d9edc8b20dc2600
+a5a8addaec02c0a7849adbf6125e6d41315b3c6e40deb31ec605aa083f5dcd56
+f70bf0d2f14da3f677986c90b68c576aa5f9bd543a585b8b3072524ae0560272
+5a56042607f463ff286a16537c6ae8ffe78d3c2258674dc095d4818ce9552198
+c33b2d07872354cc87206b886143bb3e250fc49a260a67276564b258cb67c290
+b97c36f7d7118ab964ac7e7337dd3de0ab86cb286e724f3787b358aef5f2a5f1
+4dc9edcce2e78405c9301057a39b6a5e7fdca60b6f11b35e4467312d459dce14
+658d455f574cbf59c4398fdaf68a9d93a250e85812ed7557b9a5d589440d11b5
+8ef803d8e1f2d6221bc1d562b6ee6b1f6886baa0a46a0758677f423eaf4b4e72
+f482c2201e13573e6dc93cab302683f7e8fa677673a14ba9f0cc7199feb94b85
+773a8cd7becf55e4a8fb56896253d1408def916a405252439fb5e4d541b5bffb
+a2e36d4102b6be41cbeb16a8627b913f19c0cabb9c828359ecb41d50122a6df2
+64aafb17ca136e56678c7321313894fa0b2331d42b16054be5a3d57c8fd3a312
+6b0edf8e9dce9f137aa92fc7cd25f8148c1efcd0a418dc35035d025510b18cba
+9cd0af91e0cbe55db3b2a444941378802879a78db6484d4449ceca1f3b6862c5
+10888258eb6136ae1cc7ad6e3dd9ec8ada384365c71932c15273e0027577bdc4
+a9dc85927b32af2a40cbce1866a76cd67d7b329fc775ad09bfbe5cb6ea463c65
+2b631fa0cfabfb9d96460ac800219b324c69a7f7e54f84ec37a378e0bad54992
+e43b1e25e4a4d19babed4b25a9a2547efb6843eb128d5e50ef80a871a8a7ed0d
+d43814e12d945f21076748ff1695dbb977854db2ff0b44b32c59dd1ecbb120e0
+4be05fd94f7c7f42a2f711184d1b67eaebbdbb3c77b9ff626c1f41c39cf0974f
+7f1ba131992a21c1c9e7c300fe4a0e58b1554f27ab8b9a804f802c9f92ab411d
+950078b915e0ab5c9238d0ecaf6b0b6392ae8c74f8a731a3bfc02015ecbf06df
+dff0de34c5579339210709bd0f1ed9050a67d14233f7098ad76e302fabb047f2
+a0ed357c96b0f17a3f45bd9926c381dab2d86bbb0dc7915f4294d24fbbd90694
+0f5c982ba2789fc5dc45f1bcc8b97a8338026e8e6a4a897c7a9598f7c822198f
+cd193bf66b4a0859524e3c87cbd677986270916fd520de6a90776e375f22def8
+3fa229f1a014f04975f6f25aa81a657daeb583e22bd7a5ace47d63ec392cc7f4
+269e74ef268dd0c5537b7154538bfba3cc23b3e0a8338a920f44f3f16d5e141d
+04ca2140616cb9ff7d417ddc1924f2812d03b0b67dc197cd26d0b69981c9f55e
+e8aedfd0addbb2ba395c23f39a17b962e5861dd1df020e8f134a19042ef38552
+3ef998f62f696bc1677f78f3a356d95f9c56ca71e58759c5830c3c6f64e0f1ef
+67ad00d6ca060b6c6ad7263b32aa105bceac3c3bd78db45021b8df6d10e0c996
+0a9ecc4953983197d0369ae6ee383c4da3ed26a1b557ae0214b3d834a219083f
+669e80679707bd00bf48994cf9d4fee5b58f6b87534cf7da5aefe71c0bee3d34
+72c8b6c8219d7ae1b99165428c77855e8e4001d2217e369f156192e8c0afc276
+ee4704cbe11ff52e6a4e33100dce375e0098d09919402246390706d0b4e4a19a
+17530ed17699da87a3f4e64af69a78bfa525d80b1c1e5b0c61b48282c231b32e
+7a457ced31004aeccbbdc169b66a02a55a38bd1934c0ed54d97a69980945f487
+2c821b1aadd0b0606a480d66790700bf77229aeb9a540fdc989667a61c38be05
+97ac4c6f670374b849fdbdf43a2f1cbd1807fc0b419073e757c0ec429da51182
+b6ddcd352d4345186b9537f12cc82c9aa85697e681858c8b686b18c3b9f66b56
+c4c5fdc968d350ad7646a988e768bf275a2484296042590378288e5b955942be
+380a1a709b01c3f3b7f0198e9a06faa6918c6d14dc52f7f75a5384f71ade30a6
+920287016bf31fab721b67c4be8c181655701f56a6f54c0e52dcba58b5922f50
+17fb1bdebf607fd0db97785f4c5fecf6625d528cbae5f0535dd575294ec63a15
+67597bc132585a083f946a8853004a5cca9a215f15122b2969f0e3f27af06974
+b782000fbb86bd69a8f67d4fe58526e1e2cb0ac6f92ecb52ca3ff8ad754eadc3
+784e60507721c12f9d7cb20edd8d874a5ac29cbb6eec33629b16e49e0a564f51
+2d11f5fafb07a3e1b311572c4ccce87a4a6615d8912929857d8ac07a632e1719
+6d2c31e412f07246975eab4a15a8ad7829966efc8f638b25c64e504accaa7b93
+db81b258a9eff00a892a8cec7409983d84ea04baa0fdc1fe9589ebf3f8636704
+f9c54e8dffff277aea04447cfaf18e0255c27b4e5fc9606389c133795379f52c
+20f83cdd0f35ff5d0d39241893370801a8206eb22cb85f34e3749ae8edaf778a
+6f51b8555fb5f959dcbac46aca02106f1affdacba29988682b69eb5a6c9ce973
+b6d06b8d03dbafbabf59b2b96b6d66fd0f754034770e80c9aee312a7270b30c3
+241180a7c31bfeaec07210e348cbf860c87adc2340c6bd25cf41f82fbd6cd994
+0da8134694f67efcf5ca82d638f48734b09a53d52b791abfcae29521989ecc28
+d8890b413e9708ac7fce71f076cac0c96302d3af27edea66c36ea072bf14e1a2
+23c0d83e04199229a0b0f98d1767cce992a9aa847f957d8d0a5bb045f92315d2
+b789a5df1f5ebe997870323ad3802f691c83e19bc8a22bca82edccce17f5b57c
+62f23d89d1876eef9d109392b4637450a2f87b7ccb02d7433a1dbcd4c1edf946
+dc5d64bf089add373a24abc24a9185d93cf29edee7907ba3460712945b4d28dd
+55ca978a8831c4a483c4dc88637edac5dfe050ebbd6f2e0d5e8c16669dc60a2b
+c805f6fcc78ebcbb3170580626ea8616f4e06b9d4936e2fb6aae79a4410f1e0d
+18bf92b767562e63326cf142481bc0c33a8650c80f20d611feb7a3de82de51a4
+8c91edcc3541869bab5a2466fa0a8c075f9acac3badc8534c221a019ffe3ad7a
+aae8a273f9bae5bf187ce9b3ba3ad945386bb38286ebcba38b7ccc1e8ad00c18
+4f8d5b7c4e5cd429b1a27bf8b8c67ca6b7dcecf728b9362836633b5f46ecbf22
+675e79744c4fffded353b45271638cc5cedeeb745597547f5ea029d14909772c
+eae0fc7c52b8b5d9919129fdeeb5f59908d41873583a8f4169dfdb156afac5e6
+59a46a335f8750210eada0aca256fab1d5cbec5c5f8563acdae58ba04ed4e0ce
+639b095a360b75903d6fe72a0bb20efc0f15ed8ddafa92bcf16c3520f53990b9
+b9c54dc17605268687f4ed80d2e52d888754d6d28dcaf62e6702b1711e5323ba
+65e3121018d6bd04e28dd56e4dae9b11537a47368288ba8dd049be7642dd5460
+009d1be4c0a33202ba87e12ac83f584560f19c7bbc1eccfe5a16636055f896b9
+7a87a72e31e05662bbe20f3c38e4dec0ec798cd474564f1889240be80c970038
+4cd730d8ed2a4d5b0f09707da83ee832187e6c13e243fdda777962cbb5830df8
+bebdc8401979bd414a19a94dd599f2c5971f184f825350ca3647eb22c8e5c341
+4f5c2e75bd0d4751a80770877f4f669e214b3b3047f9f9b623bacd2301e924a4
+8e38d194a3aee0534afaf0297751d7e22e50477a1b0b265fb80763db58423a7d
+e67806d0be3d3b44d3128691c08acbc5e19f8b4d07fc107327c4df013a2af57c
+31aedd2a097552a9cbe8cd982e5bb5835d62c331f50663d1376c09566cc9f600
+5a75141e0f3c941f36195ed0c59962c1bfc1d169167df6a398f3db097e497873
+cafa05a6910d5d2e810837fae1af4d2f6b8fb665b2f4d60ae6a2c83c38560798
+ad5795f71bb5935f5b13cebf2a09a066c14e919e9c2d92b52b4e91b4ea1e528d
+27f7724ccffdb639199f48b1074d2961abb54cbd40afb1c14cdd9e9b85cc9bdf
+e9408418e2f6f80b02372301b0f576a953d6b207a95727f4d6201ae3385a29bd
+2d9be2fd8a918e7b651271f74f33d739f659cc5bf20bb96f55aabd71297427ba
+14f284d7354499fd9a73d5725e74da849422d9f1cc823cbdb128146853bb385a
+a6493a668482aaea9201522a8571ef4edd4c635c45be38d49c2d53043d16d3d4
+62b7e5c327522e113d61665c513a5af78fb63269bb58df942f2a43f97168b7cf
+29860b49473c93b9c1e57cfb96f1374605a49f9434f2479aaafb61e82afbcf57
+de4f8b7a945a46d4fe73003a1e610414dbf5c3f167ad38077b7c531fd9d10fb2
+203c70380046fbde35be55b58f06d3ef87fbc81f50f6401baf608aa2ee0db07d
+f5e814538cc1dedb24af16e8a151c753fa68b09e3e9285692cd436fe8dbc6c0f
+8c24a7af9c071c9a39d9dfe3f7b7bf31d715a52d3336129f15fa2b8e14c06137
+b0f6656abadeb6505c6ff3eb92ad23f61806c31502676774c36813774b673f49
+c70f80d7d7f2e992b427c198b578b3fd907848ee07611f2f1bc3b90986dd2b7d
+e2a572fdf9b8b7a76509037c100d53c5895797f87d1be609377f4d2986649df1
+fcd166f89653f3084685c9e85e4950aa22b24287b4fe9a12c5c35ea80dabfcab
+d2ee9df1a46e752c77a828151105f8326617bbce7f100eec5caa1a98f0dd604d
+a52149e5fa5ea0acf12b426c0efe4feec1c54d85071fd3dc8eea2e0eb18086ab
+a7cf7a4381740369e87692315dbe1f3f74ee96a5bced002c03f0d14335e87268
+9a385073ccd80f962a710fcc686b6e8fd2af39ee6b3d2404711e159ed6709ad3
+b3063cadbc6dcbfa7e7b84e1785ce083566db1db453ce6d9dd5b03251c946b75
+351e6001e8df4e0f0ffbb8875064da7cb4c00a46c7e78e5e5a329c301326cb19
+0ee2ce7ccb2456ae34dec2422ce417b1ac212b00b02411cf14621fa1402356dd
+522f6e19972574a0c33d1c2950c27b4d0a8950333643d0d026971b9b303faa3b
+d4b39c83c3e343b8d4a889e346492e40dae52417088f191c06a8755d985a4c57
+fcaf94a7b8350a467e486a992e69060e088c00614a0f5a4f5641fcd39bb79e9a
+b5fc369daf027150ed929b4f3937e955160b7e329b6fcb8ddb4e3a8133024128
+4f728cb4446b9afda12090edf32963b750d621050038000548171cc004c5a749
+b4497e296fd82f24ecdbfda1c562e5f35ec8fbd9d505a764c44e0a9025b321f5
+0f84fd9cbc611c42bd22ddaabb3787eda0699e9de42835fed483c92b47f84d2c
+edd01dd32b53fa6c218a93dc192ace1e6a68b0b6ddc51371b0c70cb2ad41c897
+41773222c470e282a914a2ced7b396a278d74f04721d45281b570ce4d218c87e
+9e42f49eb246b6441d68299cd93e7ca3670084a21c277c09f46b8585dedda4a5
+018dd2616adb9d2019c3bfe9d57f2c6665dc29dc891df55e0f55a28004419440
+2e1713ea9af114c9b96df64719094fa9f039334ee7adc84998510a5b41637574
+6b6caf9025252a01c0e7b39fce91e7080b6702c4c37e90238569dedd3a1c9812
+b982c7ccbd44b5966435677cf192b32288856809f64756dd0310e407b30b233f
+5c3f5b20b9cc11e2a2e4490f1bad87038604160b6af963dd7d8a15bcbba8bde2
+e8d8883c83b157f9d63725fe47eb37adfc1bf2d930c051d79f46882a1e48ddde
+51d1a97beaa356625f1f08968d53c5bdb038d2f5ba2c2f3e4708b31a0324cc79
+90d6b756d1e96f2ee6f155cdc1fb9c446bae49bccb647465ed939cdb0c2a529e
+8066e1c172af6e66dfa291bd8b3adb82dbadf973f2979e5ec9c49af3e1fc19ad
+87f9117daa3177726633374a72701243d30b472016031fb32422012ae665fc42
+c4470c8510e3e26b34650be4b4e8e8b22f3d41a6a2eabf2b2100a8f8be3cd06e
+18dd3231fbbfb2e97195cf04b29a05a3d6c540a78ee9830388b50e31e877c682
+d48682110e84327dbe367e533f33f339577c8a8988290e4fb3a5fc5a4ffe18e7
+62bdf2b515f9ee512b85eccbbd0676e4e772994870c513e4afb6a550dbe85b96
+115f70d230b097b1a3136394b4075594aacd5a1f225ba237cd5707adbe28a862
+8d7a4fd6f9bedcedd9b7722703132295e56fa9b36e76e5f41b633708e011f3d7
+f219a70c67907160a375718aca0ddd141a5a0d36b2c5a77e2a5b88ee4940a9c7
+d12457bc48670045141423bd344745f93119948a1bbaf212dbdafb3c2f1b4250
+04c25d5af8ebe51308d78d8787240c7d4057b7d26b755196892bd0b19a6a0387
+b259ea6a57a02f15e05b07d18ff278a3db52e2fcc78bd0b0ed3f790d051b4740
+05bf4501e024484235d8fe783e02069586547f05aaf22500a4ce887f0b97e77c
+037bd77ad772e41d74c7bc15e89af0095a9792680950edfccb6e06c97a521e2e
+c24a470f25ce17f9e2657b2fecfd650afb03e17e18acabd7f60f9456bfcf7781
+bee5d3c44a17abd07157e195d0ee0480cc7e47232f3edbc6f333b0b03418de0a
+8e2fa7dde4fe36b949508d51ffcc7b4e99495ffc93ab4728a18ced93ce04450b
+f0d3981462a3f293fb0029d8db1da2a8151bec7fabf7d515d303d77d4ee60c99
+3174d2ede7e0385f25b5b10b395c12c3c640dfd84e18efed2a76c9325e053c20
+afb4dd18d0b858e073741b2c329994960aabcf0058bda3255c6aec626c81bff2
+bf8b00eda1f6b5152ae09acfb98026ce2acbd0b28c42aa0968ee2b98348ca9ba
+8f79bff125b98c5865c23e8ec907672e14f93744189f1b4ffe816805072a4281
+649b46f0c7c55e3c04feee6c155cad11856cb51676a14d6466810b3c3b3c5929
+223b4732a0d8d51c7286b06fbddba76b3dbe85731870c7480b054267a427882c
+bf3d9397916eaa3330d71a201bc7babc63a9bc959c55445425e0074129e086ec
+075c7fdce6c1c75c8862819c4ce67f28fa5e136b7fce8ca581aaa0fa722cd6ad
+7a54fe769e7e761bc48a6cc6aa0454a46934514d3f14b899f2a369037d9e8868
+88389b0f935a993515a45555ec4d93672402dff10abedf44b8fc51b173e65869
+50349613c6fbac2b344f5b7753a165620be112a674763153a6de497df43589af
+e6c1861f51231eaa33e6c6e3dd0fc0168ced641af811b29b30ce6ebeeb681c40
+115dd4bc7ad38c95b0fc2e62cee716f13169762a27d74fe2b8cf8514e3d0847e
+6a6b275ebd34ddd8e7273b0d8ba81f5a47154e559816625595ec1c16f16ad1cf
+47f72151463862d863bb2bca5aad869cf07056a190e3b419f319d0d1ed48f42f
+36c850d42c69534d156c9cbfb6d742c3174d61adf870edbdba4e510e34039c49
+6f7970f6831a647da4ab9727535a599e602d94623a295209c3248aafe84c5ee0
+f705eb07b29abd9de90843dabf7f44593d34f1065cd622885fa885e1877bb90e
+2217da4c3df09c9b675e8904ee51d7cd791469d4ebaf985bf6a2800e6145a948
+1a796b42fc43e5a646f619319f9fe5d53aaa4c8c59b147d523eadd03846baca5
+78b3a73fb8b29a0f06117f386546fd97e6dfea06ad7ede29ae1ba212b0befc46
+987667455144351324f3081a80751cf43fd562437c88026bb6dbb11f3c8737a7
+093555823e8e1fd7463637a151ab4a3df461b6c8a25223ba209c0b42310c7398
+7d5496e7d40ab1c2893b54a3bfcd3acac447a0e031e762b2149c53560e1675df
+5f72291e2b93e2ba00da91c39704db98414c8e102d95d6ee5eb5cd3fa0951160
+28e8bf1314d1c481cbb47b44364d3b9f6219e73943879b26251f15113c47bce4
+ba31d49658e1dae50d656cf066503187f4b7ef30a2a0891f44a92c548bdd17f1
+76978f754001b1888d9f3ad235639dafa5cdf63f08a47a260831b68adb951769
+cdf0f9967a7d7fd574d291b3377632350d3c049b6a0fa10d4af6d4abe67b5266
+153d6d64d4f03687be35f694ad5a71b110d26c8d54ac1b213ad00a9c2689c2bc
+dce2b7c9b0d0ea08eab5911ba20c299e91063ee3e10112b78cf414165d875f1b
+de2b2e025c205479f412453290c35b63c6e94655de559e243c65dcd6b6aad1d7
+7ca569d5d4f9936e31faabfe00dd02064ecc00121957959117f875f60b11922f
+6397208c697a0541d7fa79a9a3e7f8d32223c20c85858fbefa96ecd675945ff6
+3c6337b597a847c68269a447d8fb716c9ef79bd35cdca2342efa74f4915192ad
+14387e3ff0ca651eb05025ca05c1ddd17bac0639be39c505b9dbed71fe9b3137
+76b313b8906a9a19af67cbedac5c109bd0d036560a97aa7f345eaf9c90db5c53
+b65bde1984d76466d6da12059aad5213c6b1de61f7f6e694b35ba15bbcc0dc98
+6109f63d8cc209bee8b57ee7a35cc5fde8823fd37177ef775757f726798520db
+219edd89942ce23bcb3a139759ba19c099084c93d301700f40b7fef414d8ca3a
+5b1de6e0679534abb19fb3f7b5c4df4ae900e903cec6b4e2ec651ce3ca6d247a
+57a841c491c7c4f702a4a3fb0814754018aa7d22c3f192acf19475156e8285b6
+c3701090514fb846a83587301a2e63ff63632029b9a1779a25783cc73976c92a
+b14d8eeb74ef1998ab0810dba152b3b055a6164d0c7d53461d6b8d6d55648699
+a262614704b19ea9bf58266cc3bd17408e4979d4fd7483b6d96244966078a010
+619c3847cdf9b2a7a3f13bd2be8af1b56e6df39c2424cdbe7d9b8962ddbb4e16
+c964cf49374d5001a0d8e94b4981e3997a898c4e4a9adf9293fd872359ebe34d
+18c2d3ddb4f937f580ac4b04edc969ffba27647c5feed84a20cd69a99753d088
+3241f26a263314754cfc83bae912699f0c25f1f66110f715f2b3056f43705143
+1f79ac7f0201584d6ea7d6b0c96d2285572ed4a191e765a20f5ccae6ebb2f34d
+39b7ce2df93eb2e0b9f2ce26a3fb75841585005a9ee2da3b1285c3c942347015
+43fbede2d81121935a2b186885a017c300d547b51e62c4d8f4e8abb736b1a248
+49fdb3e17fe1abe377efccf40dfd33b81ba4e1f7eb71cff20ce384baa80536a2
+e295759d8b341f2439c0c8fe649cab6b789b59cf02a370eab901bd97e9edf39c
+bebc952556088b9e9181ac27b268f0bd68f973d1d9ee193a928d6fda8e4bd09d
+13d69010410bc20918f5d126efecc497d98d675ca714815652a28b7dc8a6f4ea
+65758d6ed0aa38a46c67dd1f5e6b5b4e683a24866f9b74964c64ac40b6438596
+b790ea9f8a4c66fa606fe9588e6a6b530222928f95d0f24013b01d2ccb4f529b
+5d24d262b62c3024f511f03334d0ecb38fe2b9430650c295ee34aecfe5e21b4e
+50e57d18cdc240d5c6c86dd34d7a7377d1dd27a261d0d9e6e2fc9a1e2c40d1d7
+209426520c8057c26a6ece290272b0c8ae43143ac50ae8d0b5d7c8f5bd6b84fe
+517e653ef19bdb890d0e5ef463883a4a07b1fc80cc744be118ac1aa9ee7ec387
+a10687e18624b2892356e76c50e35c3694a02232d6cf38d4ddd7b7179334b60b
+a72e9f99c9a974b331daefc28ccc0d7abdc677b4a36ac5e7656715868019c5f4
+767a721e1bab73766a3f8effd34335d88a5c056ab3bf2d4149ee357d1242ad4b
+54d3ca5af4380eeefef22bbe1d616ddd2e271ee530b06f290c5b0cda5f6b406a
+cc45029445077d8d97b56e082656ab5419d822923977e483deca7754fb02e964
+37b8555c0f25645850081a7d9333fac1ee551ae46b9352dc5b51b3af699dc226
+528e5b4ab20745d773da1e14be0da5e466ab48e9f6028650a25701315e074a70
+0b7857fde5312af28a68621fed4ac095aa4b5b21fe90426fad692b1bc97de517
+f5ab96680a2f21c1f5a8d68ea563e0dae9576363fc55ee4ef636efb0f96305f4
+3793ff12755d90dfd26a955fc0400f59d83bfe0b60f69ccbaba068deb0fcf80b
+96e55f5d545c074c4033fbc1cbd2f158e23fe4d9f17bc44a8bc62b9452e7301e
+c3e1bf7be1780bf38e61d552379f832c8d1e1ebdb3420237d9374d2c9d9b40c3
+c58ab8c4fc460263768452711e9f3e18aa95f41373f965f23c86a7175189d040
+02779a9dbb4d79e5f82c6055e509596f9476615a085ef39170c77b64f446b5ad
+7dafa710e0cdbfb09ec7e2a12930a14e229478d3fa07337ec568dfc154f1bee2
+5a9d754c87c03f39f829cf77323dc8c3e18a581d4b6efff798653f5e0bcf400b
+2bf1481d37b2c91ab46676e63ef261fa968ac67a27e9eaff4773202a415d1024
+70051995172e84b35b8251786c0c7dd9cd93ee44860e8384376e5491a55ece57
+86f630a78192c157ff9fdfc8a3e99de4d61d227154efd19b90f91ad4bf8d5d8c
+da2625c72a7d295dfdc731573681f7572443c546dff650ef21df09f16fd78aea
+ded4bbe722f2f0a3c123f4221e88a36d6cbbb8c7d5bd84e2a019b82999b90021
+7d7cb8b750fd51e73749fc50b93f73bf6242076c0df5702e96f1d29fad3208d2
+4c225e8059a6abd6724120733da19b07ba7672e32e3dc58d1cf2d8f3df757feb
+5dd97af794eadaa6955ecbec604a43977ae4f5484590d7da6ddcf13c77baaff1
+1103fc1fc384ce3caaf4efe98e99cfa9d6ee6c3317572165756bbab6535d9b0f
+8a65215c55495de5701a3f644141449d7519c41d61a5921aad4c33074c8b99c2
+d7d2fe407f19187fdb699fb2cb118891e82d9cf61e69ea9779028b8ce33ddfee
+5a93affe27209627f978c4df1f7285734e8f17597aa404ddc993c340671a4be5
+e1fdd18455a4b256616f450af719721596804987a5fed0f8ef8fb0a96ab3b45e
+edaccdde124eadfed40f072d4c19b62a787c2efea9a67248efef60df8759602d
+13cc6b6c6d77cfd95f6b7e08e279cc6cb7cd149cf99260a4ab1889df30867d97
+18cfec8bcfecdfcd1f705ebe0eac73bf9fc37ae23023c40b5145a55960951213
+986d86973ce80e22ccf3225b74c9e029abcce5a70c2977e841abdf1a92cf590c
+6dc9e636ae0df8adf9ca10aed0b2d730970f5cd08d9689711ce8a0a2b037f1a3
+86b53caf1eb03bbbb79d242ad84b47f66a9653781a20734e6616edb7aea6145a
+944f0e4c1596ebdd0a2be10909cfa694d0b0ef8c7780ac2cfcbd47783b3412dd
+f105d49f51b58d5933fa473fb0ad0ff4defaf99a49f9acc6f4d62ff5140c5f3b
+024e1ebab660c8ab023fe17ecd181ad59032094da4f38f5056af0255291c24e0
+6af78d42f3bcf34872f6f6de66364d7e8d352cfabe2622c412ddbb1e87886a7c
+532a729c6f7587c68e8e69b2e5e93ef980ee310e19f8fd10a611e0e03608bb80
+177d447145d70a354521949cd50509efa12f7a2f9fa7735fd98beac8c610de7a
+1562995de8d09b7413299362a8f2dbed7c87148177628a247c20fa935fab82a6
+1bcb5b03ca5fed28cfdedd995c2721f1d7e384b72e970c861f46acbaf6fdf0a8
+effc998acf696bd9a660bfcfebd5c9204b1941ea60ad2897fa11e229b083d6da
+

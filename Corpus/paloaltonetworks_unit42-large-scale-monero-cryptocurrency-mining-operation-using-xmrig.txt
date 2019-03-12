@@ -1,0 +1,509 @@
+Large Scale Monero Cryptocurrency Mining Operation using XMRig
+
+Summary
+Palo Alto Networks Unit 42 has observed a large-scale cryptocurrency mining operation that has been active for over 4 months. The operation attempts to mine the Monero cryptocurrency using the open-source XMRig utility.
+Based on publicly available telemetry data via bitly, we are able to estimate that the number of victims affected by this operation is roughly around 15 million people worldwide. This same telemetry provides insights into the most heavily targeted areas involving this campaign, which impacts southeast Asia, northern Africa, and South America the most.
+However, it’s important to note that the actual number of victims is likely much higher because less than half of the samples we identified in this campaign leverage bitly. If we postulate that the bitly telemetry is typical for this operation, we can extrapolate to speculate that as many as 30 million people have been affected by this operation. While the actual number could be more or less, this does serve to give an idea of the possible size and scope of this large scale operation.
+The attackers make heavy use of VBS files and use various online URL shortening services to install and run the XMRig payload. Additionally, the attackers mask the wallets used by leveraging XMRig proxy services on the hosts to which they are connected.
+ 
+Delivery
+
+To date, we have observed over 250 unique Microsoft Windows PE files in this Monero cryptocurrency mining campaign. Over half of these samples were downloaded from the 4sync online cloud storage provider. Unfortunately, current telemetry prevents us from knowing what initiated these downloads for the malware samples.
+However, we are provided clues when looking at the original filenames.
+
+
+
+Original Filename Prefix
+Overall Percentage
+Examples
+
+
+[File4org]_
+11.6%
+[File4org]_421064.exe
+
+
+[Dropmefiles]_
+5.2%
+[Dropmefiles]_420549.exe
+
+
+[RapidFiles]_
+16.8%
+[RapidFiles]_48905.exe
+
+
+st_
+5.2%
+st_531094.exe
+
+
+drive_download_
+9.2%
+drive_download_4814756.exe
+
+
+
+Table 1 Percentage of observed original filename prefixes
+
+As we can see, the attackers were looking to make the files appear to have both generic names and also appear to originate from popular looking file sharing services. The filenames also provide clues in other ways, as the prefix of ‘[File4org]’ is unique to this particular malware campaign. Looking online provides a few reports of individuals downloading these files due to malicious Adfly redirects. Adf.ly is an advertising service that pays its users when their URLs are clicked. In essence, it’s a common advertisement payout service for customers. Based on the reports below, it appears that individuals were presented with these Adfly advertising URLs, clicked the provided link, were redirected, and found themselves downloading this cryptocurrency malware onto their computers. Figure 1 shows a Reddit user describing an experience like this. Figure 2 shows a YouTube user also discussing their experience. Finally, in Figure 3 we see a user describing a download of the malware from Adfly.
+
+Figure 1 Reddit user complaining that they downloaded the cryptocurrency malware due to a malicious Adfly advertisement
+
+Figure 2 YouTube user explaining how they downloaded and ran the cryptocurrency malware
+
+Figure 3 User explaining that they downloaded the cryptocurrency malware when attempting to download a counter-strike: Go cheat using an Adfly URL. Translated from gutefrage.com, a German question/answer website. 
+ 
+It should be noted that in Figure 2, the victim clicked an Adfly advertisement link believing it to be a download for files mentioned within a video. However, instead of downloading the files in question, they were instead redirected to the Monero mining malware.
+We also see overlap with our telemetry of samples being downloaded via the 4sync cloud storage service in Figure 1. It seems likely that these samples are being at least partially distributed via malicious advertisements via the Adfly advertising service.
+Malware Analysis
+
+The malware observed in this Monero mining campaign shares a number of characteristics:
+
+Execute XMRig mining software via VBS files
+Uses XMRig proxy services to hide the ultimate mining pool destination
+Uses Nicehash
+
+Nicehash is a popular marketplace that allows its customers to buy and sell hashing processing power. A number of various cryptocurrencies are supported, and customers who choose to sell their processing power are paid via the Bitcoin currency.
+In the past 4-5 months, Unit 42 has observed changes in how these attackers deploy their malware.
+Up to October 20, 2017, the attackers behind this campaign relied heavily upon the Windows built-in BITSAdmin tool. This tool allowed the attackers to download scripts and the XMRig mining tool from a remote location. The typical workflow of these malware samples is shown below:
+ 
+
+Figure 4 Execution workflow for the oldest malware encountered in this campaign
+ 
+The initial sample that drops the VBS and LNK file is a self-extracting executable (SFX). These executables contain a standard comment within their extraction scripts in the Russian language. The VBS files used for downloading an additional sample were small and concise, as seen in the example VBS file below:
+
+Figure 5 Example VBS file observed in the oldest malware encountered in campaign
+ 
+The final payload is primarily installed with the filename ‘msvc.exe’. Some exceptions included a few that had the filename ‘winmsvc.exe’ or ‘onedrive.exe’. These payloads are dropped in a subdirectory within the victim’s %APPDATA% folder. The most common sub-folder name we observed was ‘msvc’.
+This first round of samples identified up to October 20th, 2017 exclusively connected to the same XMRig proxy service via ports 80, 443, 8443, 8080, 1725, or 123:
+
+a.pool[.]ml
+
+After October 20, 2017 the attackers began experimenting with changes to how their malware operated. They no longer made use of the BITSAdmin service for downloads, and began experimenting with the use of HTTP redirection services. They continued to use SFX files to download and deploy their malware during this period.
+
+Figure 6 Execution workflow for the second phase of malware encountered in this campaign
+Starting with this batch of malware samples, the attackers began to supplement their mining queries with a username, likely to distinguish between specific attack waves distributed. An example of how the miner is run during this period can be seen below:
+“C:\Users\Administrator\AppData\Roaming\mnxz\msvc.exe” -o 144.76.201[.]175:8080 -u x3 –nicehash –max-cpu-usage=20 –keepalive
+These usernames continue throughout the remainder of the campaign, and are still in use as of this writing. The full list of usernames observed are as follows:
+
+x3x2
+x3
+x2
+x7x2
+x7x3
+x
+x6
+x7
+x4
+x5
+
+During this time period, the attackers also began making obfuscation attempts within the VBS files to avoid detection, as seen below:
+
+Figure 7 Obfuscated VBS file used by attackers
+The redirection services chosen by the attackers typically includes a mixture of bitly and one of the following:
+
+clicklinkredirect[.]com
+clck[.]gg
+99lnk[.]com
+1395867912[.]pw
+browge[.]com
+lnkredirect[.]com
+
+In some instances, only bitly is used. It should be noted that all of the domains listed above are all hosted on the same IP address, 144.76.155[.]139, which is hosted in Germany. While bitly is heavily used for benign activity, the redirection services hosted on the 144.76.155[.]139 IP look to be used exclusively for malicious purposes, and appear to be specifically used for this particular cryptocurrency mining campaign.
+Like the original malware samples encountered, the attackers normally drop the payload with the filename ‘msvc.exe’. Some exceptions included instances where it was instead named ‘ErrorCheck.exe’ or ‘CleanError.exe’. The sub-folder names that these samples are dropped into are primarily ‘msvc’, ‘mnxz’, or ‘mnaxz’.
+During this period, up until present, the following XMRig proxies have been used by the malware for connections:
+
+5.101.122[.]228
+144.76.201[.]175
+b.pool[.]gq
+f.pooling[.]cf
+
+Beginning on November 16, 2017, the attackers yet again changed tactics regarding their malware. They no longer made use of SFX files, but instead transitioned to using an executable file compiled in Microsoft .NET Framework that would write a VBS file to disk and modify the victim’s Run registry key to ensure persistence.
+
+Figure 8 .NET dropper file used by the attackers writing the VBS file to disk
+This dropper malware is typically dropped with a filename of either ‘msvc.exe’ or ‘mingc.exe’. Additionally, a unique PDB string is found in a number of these samples, which always use the same username for the user that compiled it. The following PDB strings were found across all of the observed samples:
+
+
+
+
+C:\Users\роаипроаип\Desktop\MingC_Installer\MingC4\WindowsFormsApplication1\obj\x86\Debug\WindowsApplication.pdb
+C:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\Inst.pdb
+C:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication2\WindowsFormsApplication2\obj\Debug\WindowsFormsApplication2.pdb
+C:\Users\роаипроаип\Desktop\MingC_Installer\MingC4\WindowsFormsApplication1\obj\Release\[File4org]_421058.pdb
+C:\Users\роаипроаип\Desktop\MingC3\WindowsFormsApplication1\obj\Debug\[File4org]_421058.pdb
+C:\Users\роаипроаип\Desktop\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\Oal.pdb
+C:\Users\Роман\Desktop\MingC2\WindowsFormsApplication1\obj\Release\[File4org]_421058.pdb
+C:\Users\роаипроаип\Desktop\MineCor\WindowsFormsApplication1\obj\Debug\[Dropmefiles]_421057.pdb
+C:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\65453.pdb
+C:\Users\роаипроаип\Desktop\MineCor\WindowsFormsApplication1\obj\Debug\[File4org]_421057.pdb
+
+
+
+
+12345678910
+
+C:\Users\роаипроаип\Desktop\MingC_Installer\MingC4\WindowsFormsApplication1\obj\x86\Debug\WindowsApplication.pdbC:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\Inst.pdbC:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication2\WindowsFormsApplication2\obj\Debug\WindowsFormsApplication2.pdbC:\Users\роаипроаип\Desktop\MingC_Installer\MingC4\WindowsFormsApplication1\obj\Release\[File4org]_421058.pdbC:\Users\роаипроаип\Desktop\MingC3\WindowsFormsApplication1\obj\Debug\[File4org]_421058.pdbC:\Users\роаипроаип\Desktop\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\Oal.pdbC:\Users\Роман\Desktop\MingC2\WindowsFormsApplication1\obj\Release\[File4org]_421058.pdbC:\Users\роаипроаип\Desktop\MineCor\WindowsFormsApplication1\obj\Debug\[Dropmefiles]_421057.pdbC:\Users\роаипроаип\documents\visual studio 2015\Projects\WindowsFormsApplication1\WindowsFormsApplication1\obj\Debug\65453.pdbC:\Users\роаипроаип\Desktop\MineCor\WindowsFormsApplication1\obj\Debug\[File4org]_421057.pdb
+
+
+
+
+
+Readers will notice the heavy presence of the ‘роаипроаип’ username, which roughly translates from Russian to the meaningless ‘roaiproaip’. Additionally, there is a single observed instance of the ‘Роман’, which roughly translates from Russian to the English word ‘Novel’.
+The last changes we’ve seen took place in late December 2017, when the attackers yet again changed the dropper that was used to deploy the malware. Moving away from .NET, they instead create the necessary VBS file using a dropper compiled with Borland Delphi. Unlike the .NET droppers, this particular dropper will place the VBS file in the victim’s startup folder in order to obtain persistence. Otherwise, the flow of execution remains the same.
+
+Figure 9 Latest malware dropping the VBS file
+It should be noted that the latest samples observed using this dropper have been using the following new IP address for XMRig communication:
+
+5.23.48[.]207
+
+
+Victim Telemetry
+As we explained prior, between late October and late December, the attackers relied heavily upon the bitly URL shortening service to download and subsequently execute the XMRig Monero mining process. A full list of all malicious bitly redirects is in the Appendix. Bitly provides generic statistics surrounding a particular shortened URL, which allows us to garner insight into how many victims actually downloaded these samples over time. Overall, roughly 15 million victims were observed connecting to these bitly URLs.
+
+Figure 10 Malicious bitly downloads over time
+While most countries were affected by this campaign, it would appear as though southeast Asia, northern Africa, and countries in South America were hit the most.
+
+Figure 11 Malicious bitly downloads by country
+The most commonly hit countries and their download counts are as follows:
+
+Thailand – 3,545,437
+Vietnam – 1,830,065
+Egypt – 1,132,863
+Indonesia – 988,163
+Turkey – 665,058
+Peru – 646,985
+Algeria – 614,870
+Brazil – 550,053
+Philippines – 406,294
+Venezuela – 400,661
+
+As we’ve stated previously, only a subset of the overall observed samples made use of the bitly URL shortening services. In fact, only roughly 100 of the 250 samples witnessed used them. This leads us to believe that the actual number of victims in this cryptocurrency mining campaign is much higher than the 15 million observed instances.
+Conclusion
+
+Monero mining campaigns are certainly not a new development, as there have been various reported instances recently. However, it is less common to observe such a large-scale campaign go relatively unnoticed for such a long period of time. By targeting random end-users via malicious advertisements, using seemingly innocuous names for the malware files, and using both built-in Windows utilities and scripting files, the attackers are able to gain a foothold on victim systems at large scale.
+As we’ve seen, the attackers have made iterative updates to their malware toolset over time, changing their tactics every month or so. Based on clues provided via the initial SFX and .NET droppers observed, there is marginal evidence that the attackers may be located in eastern Europe based on the languages witnessed.
+To date, a low-end estimate of 15 million users have been made victims of this campaign. These victims are spread across the globe, but the heaviest targeted areas include southeast Asia, northern Africa, and South America.
+Palo Alto Networks customers are protected against this threat in the following number of ways:
+
+All URLs used by the malware have been flagged as malicious
+All samples observed have been classified as malicious within WildFire
+Traps is able to block this threat via WildFire integration
+
+Thanks to Bitly, who were able to take down the malicious links shortly after being made aware of them.
+A special thanks to Brian Baskin of Carbon Black TAU for providing additional insights into this research.
+ 
+Appendix
+XMRig Proxy Connections
+5.101.122[.]228:8080
+5.23.48[.]207:7777
+144.76.201[.]175:80
+144.76.201[.]175:8080
+f.pooling[.]cf:80
+b.pool[.]gq:80
+a.pool[.]ml:8080
+a.pool[.]ml:123
+a.pool[.]ml:443
+a.pool[.]ml:8443
+a.pool[.]ml:80
+a.pool[.]ml:1725
+ 
+Malicious Bitly Redirects
+
+hxxp://bit[.]ly/2j3Yk8p
+hxxp://bit[.]ly/2hxuusK
+hxxp://bit[.]ly/2C7caP6
+hxxp://bit[.]ly/HSGADGFDS
+hxxp://bit[.]ly/2yV0JNa
+hxxp://bit[.]ly/2Algzhc
+hxxp://bit[.]ly/2zA08wz
+hxxp://bit[.]ly/2hcsSUN
+hxxp://bit[.]ly/2hr6KGb
+hxxp://bit[.]ly/2xOVfPH
+hxxp://bit[.]ly/2BoFNMr
+hxxp://bit[.]ly/2xlWVQl
+hxxp://bit[.]ly/2kEApR6
+hxxp://bit[.]ly/2AkVK8t
+hxxp://bit[.]ly/2yyUhLX
+hxxp://bit[.]ly/2AkyUvs
+hxxp://bit[.]ly/2zXRI6r
+hxxp://bit[.]ly/2jjXmbJ
+hxxp://bit[.]ly/2hzW6Rb
+hxxp://bit[.]ly/2mkHzdP
+hxxp://bit[.]ly/FSJKHJK
+hxxp://bit[.]ly/2gB0ZW0
+hxxp://bit[.]ly/2ixSCPu
+hxxp://bit[.]ly/FSFSAASA
+hxxp://bit[.]ly/2A5rxKB
+hxxp://bit[.]ly/2xbUmjC
+hxxp://bit[.]ly/2EHv415
+hxxp://bit[.]ly/2Aq3gja
+hxxp://bit[.]ly/2Bhr1tv
+hxxp://bit[.]ly/2ynGl7o
+hxxp://bit[.]ly/SOURCETXT
+hxxp://bit[.]ly/2zGXAQx
+hxxp://bit[.]ly/2hEhF3i
+hxxp://bit[.]ly/2y3iGnG
+hxxp://bit[.]ly/2ic2mvM
+hxxp://bit[.]ly/2itoMrG
+hxxp://bit[.]ly/2yvqOSU
+hxxp://bit[.]ly/2zCj1n2
+hxxp://bit[.]ly/2jEqYks
+ 
+SHA256 Hashes
+9854509ff8fab00e37fe07260a467b9520f3c0c6a0051b34a928258717e65b38
+27bd82de7b2532a954fdcd12ecd791be8bbdb402466902865e257e537bc3268a
+211ece6a0cc084f1253abe5d74e8d5faef5b7a9d2acafcaa5bbc53fe7d6f815c
+760eaa1dced0c000853a5dd01756c63b358e3894e9c8b1e7416538dd1858761e
+ffa7cd55b76a87153b50f4cb23cd03f2a9726e0b77cd8ced478794869877f8c8
+99ad9f17956fb69b9d8f1d69c66337fb1f53e4b94870296e5e4a32c4f5c0f609
+b1f40ea5ea6eca96a30dc5ab198f0e6904cf18de43d80595483d938292fa1717
+51deb82ed3d442f0c2c96b63cf3ac87781cf703367228bbcf066202ff74d67b5
+0a4377fbb8bb66cd80a48c9b9b407c9d2f1eaa2cab70c12121370f3ebacc5f41
+e7aa5ded306d2ae02deaeb08e8d7ceb73ac2e77a2fff2dba35d42605ce9a9b0d
+378d5d5bdf1cc7b91c59c1a839b57d5b2468097cf45ff078391bf3f1d95e6197
+c65654eba008243779ea54fb18cf1c7f1c70edd2a0933dea19bbfabe12f74131
+cbd16230248ac12c710d6e645864154fe23f33f5214f28e5dfb4e65728f4a95a
+b7b5b255b7a668c9d5c287516e553ad1a33160d52804fd357a8d413fd2a9cd46
+6e96ae1a7ba02486e0c31b840b32620405073131b9c9dc56f17de1cf4866d51e
+1c4e7388809d71a7fc021c55532a30949031474f4f3b147b0c468a1b27c9ff74
+a67572e6427b76d73bca63357d716748263beb5cbf7edf923ac3c7f6f214733f
+2ce678eb7d35d60b4c4b4f73d63b3a4fce1b4da1c39160cb78040577ae16c1c9
+8ac42287623d4be135daeaa9b8d906b017fd565549793666cab98defb3474639
+65c7ef9acd5382b2f29d08593bfb84b2e774d9290afae1591b1d1c81b6b9dea2
+a9861f341ad5a6ea0514d217ba43aa91d6014111846bc3d902c3256427a13031
+a00d71047066cd2c1be2e5ab1ce1e5d107f2ac7a11f64ec6a04c093674bdd542
+7c758b903654313928bec9929477a6d859de97ee42b3aa4c3ff278ec3faa07e4
+198cd118351f15d24b584e7b91bed2f23af210c54df65859d29814899e64e87f
+4ad4f390d252b9dc636fb2d423d15d4f4a89d4a2ffbaf2c0ab4667640fae61b1
+92f66ba544616079d811930510ff5df1f0969f1818ecb3f5313ad1e9b0ae04e3
+efa20de096ba6342b9af0369ec92bdc2659b7c81aba28f2c115b09c5f64280a3
+28aa000367fe83cae1bbc3bde608fa8e9bfb1e55d219bdcdfd30a2979825fed3
+9c6adb5026e152307f4a8f194d09554cde725cb17f9bb5259fac8083ffc00f62
+56f7c101d2abffcfae91509950da7fe243d74b292947ae7f8075fd9b6221ebbd
+0e1f82ac5acca3f826a2e5d9b5a3ba43431990aa0d0165c88ac5e0c7c84232ed
+534b54cea7b3c337f40ac5b0cf29cd4a0d9fd66369773f670a8192f85b008f2f
+483960f8f44f2f2d1467d3c7621063664e5f3ad43716db55d69f5c60bcda6b3c
+c786bd8ce1c856df4ebd52814f92b525e0a33af8abd86a246ee66c6ae88d38fd
+530871bd6a19a34e98fbb94e5c63d252f47345ed143cebb597d0389fbf239194
+db55fd8a332b0495b678c513b9013b34d09e3281d6b594a8b2cb290cd264f456
+d73ee4bdd3d6cbe3f68b0b11f8d74ac9b1d32bd9ae7dcf7ff7c5b4723ed5f3c4
+42804cdf893b5087872081dbcc1bf1c9346ed624e5eddcb0638cce61f351907a
+bbf3674ebe1948bfccb4de3b604b0bd052c1340e754ee7b81df697e16cdefd7a
+96a62130df62ccb19a1a31264fdf379431e98859de63f5bf01773d51774ab275
+
+f0f88095dc0e9a4b848f44e866937e70552a195804b867682453bc38abfb0359
+273ce573ecf145687d494e040e548b5f2a954b34a3cd87d495f7a9418f540d29
+b014dda9d7772d25ad82a3b7d63baea562883262e59d2cae5190fdd8b7c2ea8e
+a268ddaa57470ca20556641c5072d15d8e06e8f359af31ae39d75c280276bb3f
+d80493e4aa95dd3a524b8feed7bc1c183d5aa666fea4d761658ace23b4083db6
+743e3615e3c70a71026a304e8139644eb3080c2d703083a1f543fb329079b9c5
+6ba40196d339a5b73679ef8239db823d7111e07e812a9048c44381e2561599e1
+8d779ad637a1d8c42a8c73736eff1eed0f493cba437566f3b78f080c05709aee
+b6227e13e57676c7452b744051db22de7bc5517ca64d2cff04324181be64ebad
+e0134955c1bc512f46fd90c37ca4e2946e4c00ca105de4ffb465e6d3efcf2fe5
+5bdb864363a02ef1c39192fc5941d08e5637c8d3ff88f2d1548c886cf154d11d
+6489cddbc414ccf8b7fb52d4b73260c48c51d92d403a937c919007d8b189f721
+56406274e20c548f794044e25613c21108da55adc72252bb4e94d2d4e3aa0997
+c1b5a8ab1d3aa78372fa90fa49fe4a9271362ae3e82eb601336dc9035b9ca078
+5eb5a96c67c61badcbe1d2bcc733f0b667224eab9943ead7f3b6409c3cecaab2
+9641386a29614f5cca303e2088ab00c720dfcd41b6a3f162548804e028ce86e8
+0ef8d930b4bcc1c5aeda5d7fad73adbadc8f0b9187d2f25ec9cf8cbc271fdfd8
+2da27931fabf48bd3661bad99289d7f218aa758f581bbc213235915809c6c79f
+1b2ffb7f06d04f5417d272ca55627e4000dfa4371234856100023016bfa2fbde
+de04f1b184e9658829273c0d6922864e87f7a62b395b69a0e616be53701508d9
+0fd91e64a0b9fc0e8ed915c5f574f08ee276edc2b6cb5c374e7db6faa748dedf
+b008f2dac98e54ca82d468063fb2df957ef3f08082409ab57279b37a46f862c8
+0dc32454909f48fcbcd0460da9b22fe43ce7a816eb032e38780aeca993f288ff
+90fdf62ed73ba9e264be72804d7c4325219eb8576f552b283d2c2f88d39994c3
+e4df13b4f31f2505a82340b60d144d8bda03075fdd12be6f66baf38c6dfc78f3
+60c439d6d025bf948a447d9223763a255cc15cb2df2db7a8dab6a5a27242feb0
+5aa2a88bd729232acf4bb350ca1801755fcd562a5297b41a70f81c98f0e3c27f
+24031b60c0485eaa11eaee1a5799503927799042d373bfef7d6aa23b1f9e1076
+86b2f50b9e5ccadedbb2a2114538947a01dea49e3b20cc79cf249a0f1b3cc130
+ffa7c9701d1b4f4f00da45652403cac843276cc72138d7d1a30dcac660bd45a8
+1eafcb280df27d39c19b325366804c602a8f70f655d9fda227b5ff69768f30cc
+dbb0d7c2bf65d46d7c61f71e977d077959e8ec926a540b12043ed78de50a3d83
+1d1e2c6acedb17730f104fc1c1a1154ef312a99ed1dab65bb33aaf587e9ca3b7
+2369f3250fa52d53d7a8f8d0b3b7addad0757d642fa9303f830944d1e27b862d
+fda651a5fba8558677d9647bb0938c10b4c16b6b7b311402c96d59f4efbbeeea
+447da9f937cae3841d397166b24586d88d48f6de44ad953b7c5243cb8f0fc150
+7b5b9c9528358db7012f6f9ae607f8792124de1b8dce8a4b0710238e9f5179c6
+bb8827a6cad2fa45de912cdb6ea8b8bc9b5d0403476d73eb2f38dc7c4ccc5c6d
+126b36eb3aab62a03671fe5364cfb7c4b290e77d189fb4c86a37a570977375b7
+dee1ee50d2f77ba6382c8270c8dd832815571c547cb48dcadb0a420ddbf9b4a4
+f0082fe2399772d2045244cd0539f85d3a8b2414be4a020c78d8bcf072576f93
+f5eaec6491ffbbd8a02a6e0316362b4ebea73cc71407704cdc7dfa027d882554
+8629c3b7383dcfff1cb191692f374c5aff01b9ee0ba4810843c7e23c3af7716e
+0e4212a85ec0213dd749fa8355a0d48fdbd02cfc2a35191c8eadd4f8195a52c2
+d30e033ec02b84fbc350dbb01a708e1258c212d58316f49318ee86da05b22e88
+268ff015b20542c5052c5623a6b9e432f0d344a1cfc275500f6a882496aa6928
+c53f1e93859cd171cf8ba0639520d32a73ca26a9bf924b00d586b36be47dea9e
+a76c23385d806d85544d1b653253f7d0dac9f737c4520179ff5ced5922237da0
+3d100a7cd2dbc5ee1fb556f40f7a3c4d29284d8a009c0804e632e0c42307d85e
+7de0bb6673f010338fe4f0c55538fc7f47d92cfcd37c0dbecdc311cc2b55f1cd
+538ce967ae115fb5ffb090f4c133f20c0c6ceb5c67c8aeadc59e47cb498fd819
+804c730864ef674e696cdb915701889a3b8a11abc46f14580cb710d25d86401a
+cfcd15c6c2ca6f0f7b9c3eab9af99bcb846af2b0f352620f9c4b80852b548c17
+bad5e8953ca0ee8c06027680af71c30d1785d0741e23360c352f622274d51a72
+b043e53213e141f8988537a9e315563079bb6c0ddd339b05db36590e187f4d2e
+4bde85795a657460b9d99e3b3c9d120be27f645f828cb97f6929ea8dc44e2791
+9e39850693851da2317f49aa4df5727929c852f27ada6d69ce0323f5374ac181
+8cfce10bb4e5b84731bc14e7100433744b126d3d5272bf754a5f95c17549a712
+3111c755bc0fc2428873b7ad6272078cea863a2304f6388ca65e598bc2de7190
+c90c33a40180c5aa3b514ca41cb3dc4615bed1bdc8c0572482f7a8766316dd2d
+b22573436f1f6f1dc5c023a4c72b497a3ad219d801fd569d3fda9ced7e9d66c2
+43942883332d09ea48b6926d5e670a86cdb9e09bff8928f40c93095f4fcb796d
+220ba3c2d8f5638c44005866e814a4f6ba502b8f01b8db7218a87bc1e7700c8b
+f2ada4133eb79c78207935a9a27d657480489953cfe93c8b0f88147117b47c33
+170e8484ddebfe84dfe4b80cf0cf3ee03b03a15898a567f07b0382e76c0b433b
+81aca5cfe7f8476a49aa51ce4f7b71faef7b3b8e208f5b77e7209fc0391ad2a2
+ba0779de750bd1a2cd8879de506778e1b36589f91cb37aaf7e9913d7cd27431d
+261d731390a9a73495f2fd772b0e28ef68c3450db51bf9948a8b4fe32592c36c
+9babfee6e12d17545db3cd6968a1fb61bf548cf0204b90ef2c1ebcd66e20aef0
+344a5d9864baf9e274f2d65600f717881c034dd9156167bfd8654c7e732d12d1
+5cd5cba3a11ba6102d9086795561376412fc201e2d49ec00039f1a553f7a32f5
+d05b329848fc939f6a3fb4f2e40bead858b4994b681648c09ae30587e5a2b8b3
+c6a8cf482cc79a40c0f48f48ffd8ebf992328f73210f246f0dc64661eec04901
+e773dfa365a33ae4159ad179de58288910d4f785f6ac72f805f305ffcb85e709
+66e2575f658ffb972dfb76768031f6a8998ea71c6c758c872631b5ec6e7f3010
+4350ff8266535c9258f24af86502e7e06c88fd67c3936c688f270c9f42d731fd
+c94b77e2810b6e41e6168bf7cf78f6aea29391fb616f36ecb66ab5b1b3038240
+ec3e601df45cffb358766ec849abda6562ac67323366e906779196d19e1344e6
+b89d221fdc999f18db022522e3e987868414e11ed96e0d3b135a23d99895303d
+948679b70c888c8e2d63f09abbd59c26fe6740779d76f2f72e97938ef232c1f4
+d525b9c49914a2779478fb327fe8c57b5e17fa8f583c50528f1a19262ee73f4d
+45848953386219205bd0c9a580c54ee102d5915bcd7fe882306c8051ea182580
+f2ffac424ac0b9d85fb723862cabb6bcc70133777ec6811eb52f47743dcf273a
+d8884912854923e55fa0b850e3370389aeccff171f7c3207bb1d60a98cf6f767
+88bca86065e047293dbf41c37e9ba764b616f083304473abfd0e9b5b80d1231b
+2c1ca4772dcbf8cdba3a4515d0f4f0ae1a29b6d2816dd1743a919da89eb2fc40
+811e01073c90f68b22d7fbfb4f91ac95f0574b815900d179b9ac73005bc9d90a
+d3128c20d87ae111a5817832ef09007411b2f62b1482e58ad5b5c4ec72282edd
+b8a09a6b3ef56898c433caf67b7a11f2ed9b3409b36a6796e40c9357897f6949
+644ebe7161c16f5a3d104c35d7a8827c50917e2a35c4eeb78cb46c13303cb633
+85c2caeffcefe6e08efac133e804b12c4c7151bb349dbddc4a4cadd3b577f95e
+dcdca2fb3a9185863abcea0c677b0a77de365ce1caba4c87dd68b59ca5c297b5
+218dc474e7a8e92af183b39a3485eee08168d3449b55baf022d3afa86ba9c83d
+e8ff1d3dead4572734f34048fc572d12190296c4877b777585e969a9391a2ffa
+13dca944708497bf99137b5c1182d74d9c6a2be5015a3ac9bdf901ba55317ce7
+1cf15ed88bb4b60237c569f50f97de8a72595d8a4dc58fdcba64216ee8994a7a
+94959177e4def7047c01b9f6e6c56419be9effd59d5845104b399fdee4056d1b
+fa171b9a49104b870d0e486a9f3c6f74f01adba346d7e65e20160567c2ad2fae
+92c4b122cbbb308e1e8f4f3850a647ae0d8e337ab069f9f87da7c09542519928
+af6f8d89faae26fd019380ca20c97bb706d2ed8935e31d81e1e4ddea9c309472
+a7f41a5ee7cc229cb5a13fb5dc8c62f94901d3a59bac9b6efe071832d52578e9
+07b4ed5b3a19e34d0c630f21b767595ec118d1b42c71ea9733db5f063d5c98dd
+5e6aebf5d8aecbd82be5b097e5afb5d5b1dd71134b6866a76e87f0a713119f9e
+567975dfd24f8348b7107d64068dade9dc9ee948a7ef6c2f744e3456f9c7737a
+0bb3c079d88048f608a1a14f068dcd9ad63676d7f5ae502a8a08d1dd025b4ead
+437ac582c3a6d2e4295934a63547c32e5531760c37ffbc3ee29e8707b90f3640
+e3bc8b1c10595bcce2124ed9fa0268ee0d15a7299d4a191e960a17a811a7ac9d
+2eea3e9af7528b6167fac3ca95d06fa6e4d02fbe6b7fdb06e535453ce402f897
+7b3f0bfdb7c3a409793735aab5d580ae74eaecc41d0ee727b973ed3003f0236e
+1dea7c7ea0df9cfc04c6426afa6078071f6525cd0fccd811b035fce6dccb0154
+a45d9885e55df09f3ee6bf88d6fddd7f19ebbd27a4c37965ae4bdf0c8acd0db0
+e5710cbfee54d44584f87213083c0f27cbf6aea9af8469dae499ef91f65369e3
+7aa72bb663ef93e7a3f16282d9d92035ea16438667eddfaad1c827118234ebd8
+9099b4035d74f956ab663890fa90289808fea035f94b154ca6aa83bbc1cba086
+9103f81cff1eee4f8be2365ef297c805f9eb1da291dccba2c7c5d196dc733c1d
+76ab3968e9f2efcac9ebda4d25d43f9b164e3c3ceb9566f32354348a6a778421
+97885d7f96c49be81d449610c9b7e38358a9c1d87bdb67962cc2864e006f2317
+72f46ba7a00d2cc821cc9d2dcc16c51cde627441beebd1eb2baeadeb01c96801
+996200d9b836a7875482e4ab603588558e66e59372c492c0a1d65be602d59c32
+d197faa8571bc0152347a9c30cd4c41660260088ee6cab1895ead0268386fec9
+54df2208b4db06cf6a523e355a57c68b4b147578af51c07db40245ae450b1fce
+4ca46d1ca6de1d7a8774b7208e4df73d318c3dfbd4b840d1fbcbc603006eaede
+9a2204fc87495b2d0328ed9a84bf9d439048961e9bde8b31a83be492046673d1
+d5cb52bceca5f416a638259e66fcab597e1030c7987f9fc3b15d94a8aecb4013
+8853b9a4e271a77124ba50eb003827a14c8907597eea79c6f467e4c858e16621
+4b562edbbb1413ca90c3419b79417c8a91f530cd49bc38beb8e46c194dc1fd52
+ceae7114ea292f10b348c0d3999ae9a058b2afdb8da981568b0bd36cf02067ff
+e75df0f0e1cb541bc3ec429b6f30dde96af4cb2a4bb30104229dbc65991ba559
+66fdcb4db024195ab457ef3411deff8cd12e7a3550e3e17a052480e93ed29aca
+a809027b2ef10d2c8142da021e04c3786163bef6358be33659264720ae1b0ffa
+970a54440ad3359a1c2dc923f73a8ae76d96ad414883c1476ba1ff21b45eced8
+6f22578e341560c200ed42e171f027998bdd8c0f8677a48e049c11b4c2f318d5
+0a71033379e732e9d549a69af21140dc1c37020b9348d31ce08ad3f44b132952
+d7c9d68a91c1c4c227f057d1e193688dd05f5ac122269f69acdf8e47e45ce194
+d5a61eb9e44e0ffde85d9abcfc868e922285a7b57bc7a6033a7c00e561ebed7a
+8288e43ded03dab13c4d2a76407057457f86a3df63ef06bbd47db7199d1dbea7
+f2bc9d426383f07d3811bc631650f3a1bb53d2e7ccb2797d172a63e6e58c9b42
+3d4a43dfdea230383b5fa600036a9688d96a8b41925dc8d91c1d2b2b6e381c73
+fce319e35144b7acad954e031d653717dbe7b4c23bedade7e3f129e994a915ad
+45dbd08bf2d2b1d47301d73ef9c0d6af241a1f0e9bd28a72e540edafe51877a2
+39f46b22f75fab5e64a0210d6c9f903438d46bf0b2c95b10070533bc9f45ed69
+cdb8231dff80be7c1245aa7dfd8cca6d0daa4da7b3a4dc0090dcc5aab04dd84b
+bc97485d5f54ad1f857e11e080fb9b37641c4305d119d01ae661ef71ae2debf6
+7de19a5a9ba37c09a6e31ea6bfbe8ec6f93e0f9262e195283963d8936a017069
+a8130f3175d8b44b3a4c746943aa777da5fa9c7ebdcda3d3265966e7c16c572d
+e777b56b1df9d2700498bcabce9377eb9a9bfd02855e937ef276d85f6db89337
+719aeb6ac772f8865be5b61039cee4807b70f3c71a50ddb63d49e162c6b75ba3
+2145205c19ca8c19463b2d7609e18860e420b4ce3d07d5056fd23a5a19226d0e
+739ac745213d964efda914b78badf2eafc6e0cc1c5ff1bff0b5df4ed012805fd
+7b7ea86146e33e1b7fc208a97df05a8c94dbc9eda750933400b41d85fb49dac4
+3591d1b731bb29ba48822514a3f4e809f2416f8ad9033d0876bc0f2c3250bdd0
+cc38e022de7264db020d6efe2f1830e178ccff7eff2b04acd32b46d23a96b943
+6644b75c29c4f8905820fec631dc9dadc11fa013e52dfa1b37200691c1112de0
+4bc8a426f3798f305d6830c30693468bbd8e01ae54402a72b25848cc663ad798
+f9d81b4164307045fadfbdf5fae722043f62ca37704756c5b18b7662a5ae6fbb
+188005a44a27eb3c37e52df5db570b781896f91be5c4de16a801dc51753a0d1e
+2b8375072fbd65f76eaf8d02370145eeb2141f94a1e0d9ae71545ba571f0c805
+82ca64cfc7e9daf4d0a82c21624930b869c6676313ae194e77d922565486acdd
+5054985cf6d26c01d85c0d2ead6503ad02079d116c42cb1c24c0aa1d96323d54
+1af63b20514ea992ddd6a50dca19cd0e70eda653e2832583185002c47f0ef20a
+c89e2e05f46da001a5778e306d79f8ae62b1291c422fb0b795684df722626387
+c089422dabac4c9b0613355fa0ccc1ea8619c757eb6e68041135662e4b3916c5
+420c10ca1dc8bd246b88b5feef6a151dc1f063fa04cafc6e9cc9721f0b32428f
+32552469d69c6d7a62cc9dc5552d3817ac760d2c17a183cf66b1503a02c9d234
+d89f3317721e4a445e52156e82eac9bb9a6d91323f8ebbad1bc2312f5af48eff
+a5aae3bbfcc6d9ab63ada620802c8b9ff55b2a0209fd74d302ff5ff6192fe766
+2802837f671f6849e1b23d72e6107066c895a09168f555d45becab12e4143e1b
+ece29d78f39c2c0b0d058516fd6cdd24776c559c07424b387e62ca1c1a6f885e
+70512f06506124df1fbc29990e60a345302c36512ae870c447390afa2bd84449
+2a90010931e0b00709027a148c10743346d7fbeaf70a68ce7b23e4b9cd261bc9
+d1f2edb6be9527238390bda76da63cfab949c44d7c929fb2e36f1c92aa192669
+6789c77e40944d6a58cf30a7c83f9e84a8bda3fa76d50669dfef7bce3f1992d9
+ee876a1c1ad35f40881a9039dd9c69f80a530993d08ed3dfdb4c2db17ae8d8ba
+85f4bc20d534b4df024b6d8a26643c278236d842b6418d45f4268e1278d30135
+b23681cfd3db73a239a8ab37d0bc790324c1a06189ede9c7a9515c783b2bc278
+3831cbe5b966a8a14677e6ef05ad137157e9c87d330ad57e09201946b4b48d16
+af7d6d3eba7c25d6579475efaebd9517471560bd62ee5feee3145744d2b35ba4
+443af7373d3cf0da600260273b6bf1db49a87a4ad5dd0e90db7acb2abc2e3534
+84ec77121ec96212811c0e4f203ec90996959107883442e96291eddaf7656c24
+29688e1282de66811977097d9a3bfd123c3aab6dd7f434f59505abfddf1c9c1a
+c6caa296441b4ab2b7a9ce792b529ea5007e7df7a566d93d198472c65a756241
+6b605f275565a93fee360806c433f7be9c099106782f07d245c2cf60bc6835f5
+81c7735bf199732fe2bc8fd47cd8f97ddab1ce889d59a62f8b5a944fba76e173
+45cd50b40f2b1739fea5cd3d0fbc0e561e9acf611ba60c960029e362e8761e17
+9ff0d43a24333e655658ca5bb100adf04c757128292c91710c26fb602b859f82
+f2237bc1b547e7af9899e5f87ce0283e8c40c4b3609167185d8cbcb57bbf68cc
+f577d33d917f3a89d34641d5bb9de8e8d856e271b68464870034379acfbb01e0
+0914f9fbdac67cd59ac172649b6261af2d02aa71b29da9de960aadb7a218ad59
+32c06dfdb627ba638dd93e3c9174becd94dfde66d09901f2d6b298a03d8724eb
+bcf2e01eed27f2011d953e6552757f26d463134e887790610b0bdae90421b49f
+8a30f64ebb55404f9d05dacf7f27b182f9cdfeaa2ca8f203982c1f6794bc74f2
+1761784ac0d711143c231567444be4be8921bdc80e94d8b6c44199a7bba316c4
+a815c3e075c768934af1a599b458f5d44a9a30366fd44a2e936cdcfb9238529e
+d229b953c0fca4e43ffbf1a2cb3fc24df913e54569ae90c2942d411d4e83fad2
+5e492ec6f48c205cb30bc77ca5f597e192e5813dd89eb6692a60e8b3cb86c636
+df8f747f906bf05cb877b294218a83a8300d72c68445d9c142b583f9310b8e4d
+08b6f6c6d4a0070621e359929b5900b37073c0cab0069d69093240c415f6aa83
+56b82cd47598f5a40d6c6f81f66606cf9b2f36e53d5291ecde9a83815ba556e0
+18a16f79d44a948a3ef69b742d0c3398e2dac29bf33cdf3a5c94b0f06e75dbc3
+5bdf05fb6c6a200de5ab19e5ec14cd9dc3f30d1a3b6affea5e38e3caa6e4a964
+4d39a720b89ce1551cad19ee751a3a37159204bf2bdb31def53b69abe3a83298
+58e4e756fc27f97cefacc16441cbd5d68ed17cc62bc4c59d205c02e538e5d77e
+50834e6c0632d393a862e7a21734f6be2cb94a96d6f332aaa00d084bdad5d7ed
+2f613d3d1c962106c1c7191c6f084702bb33f21100ac427f331ffe0d6a8ee9d1
+7a428f6a12125b88c6878934c683da9d9bb1aaf16d1ddc682ddce17589fc0f2d
+ed7b0d037c07aa0654aa74eb1ddd26e9933367270427e426beadcdf8825f77df
+5380dd337c93e09bd663ec9ae408d271fdf455a1bd8c830020c1d295b9f80a6a
+b7fa85f2eaca94e99f5ea8d9baf24bace903fc04321f26629298b4a2f59c21d7
+4421d7c5228b55555703bc3c125ade2f613573a81947e4df999d2743dbf919fb
+db694674c7bfaf016906138ef02008904d08b3033ba2a56ade72850d6d7cd2a1
+6b8cdc31532f368af6041eb9990bd96c8b9114e06a009e4aa5a30e783a7cebd4
+da546aa2d52d540cf5fb1a2568649f7235f4d922c2c50d29c503cf8b178e59a0
+d75be032a2cd66e9bde4bd74ba7e74f1190b007736017b4cabbeba5eb93d6276
+2b6bd11dde33afd408746bb993c2840bd750769ad4caef5e541c6d2d2ac1cf8f
+

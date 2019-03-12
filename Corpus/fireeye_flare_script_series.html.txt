@@ -1,0 +1,57 @@
+FLARE Script Series: Querying Dynamic State using the FireEye Labs
+Query-Oriented Debugger (flare-qdb)
+This post continues the FireEye Labs Advanced Reverse Engineering (FLARE) script series. Here, we introduce flare-qdb, a command-line utility and Python module based on vivisect for querying and altering dynamic binary state conveniently, iteratively, and at scale. flare-qdb works on Windows and Linux, and can be obtained from the flare-qdb github project.
+Efficiently understanding complex or obfuscated malware frequently entails debugging. Often, the linear process of following the program counter raises questions about parallel or previous register states, state changes within a loop, or if an instruction will ever be executed at all. For example, a register’s value may not become interesting until the analyst learns it was an important input to a function that has already been executed. Restarting a debug session and cataloging the results can take the analyst out of the original thought process from which the question arose.
+A malware analyst must constantly judge whether such inquiries will lend indispensable observations or extraneous distractions. The wrong decision wastes precious time. It would be useful to query malware state like a database, similar to the following:
+SELECT eax, poi(ebp-0x14) FROM malware.exe WHERE eip = 0x401072
+FLARE has devised a command-line tool to efficiently query dynamic state and more in a similar fashion. The following is a description of this tool with examples of how it has been used within FLARE to analyze malware, simulate new scenarios, and even solve challenges from the 2016 FLARE-On challenge.
+Drawing heavily from vivisect, flare-qdb is an open source tool for efficiently posing sophisticated questions and obtaining simple answers from binaries. flare-qdb’s command-line syntax is as follows:
+flareqdb "<cmdline>" -at <address> "<python>"
+flare-qdb allows an analyst to execute a command line of their choosing, break on arbitrary program counter values, optionally check conditions, and display or alter program state with ad-hoc Python code. flare-qdb implements several WinDbg-like builtins for querying and modifying state. Table 1 lists a few illustrative example queries.
+Experiment or Alteration
+Query
+What two DWORD arguments are passed to kernel32!Beep? (WinDbg analog: dd)
+-at kernel32.Beep "dd('esp+4', 2)"
+Terminate if eax is null at 0x401072 (WinDbg analog: .kill)
+-at-if 0x401072 eax==0 "kill()"
+Alter ecx programmatically (WinDbg analog: r)
+-at malwaremodule+0x102a "r('ecx', '(ebp-0x14)*eax')
+Alter memory programmatically
+-at 0x401003 "memset('ebp-0x14', 0x2a, 4)"
+Table 1: Example flare-qdb queries
+The usefulness of flare-qdb can be seen in cases such as loops dealing with strings. Figure 1 shows the flareqdb command line utility being used to dump the Unicode string pointed to by a stack variable for each iteration of a loop. The output reveals that the variable is used as a runner pointer iterating through argv[1].
+
+Figure 1: Using flareqdb to monitor a string within a loop
+Another example is challenge 4 from the 2016 FLARE-On Challenge (spoiler alert: partial solution presented below, full walkthrough is here).
+In flareon2016challenge.dll, a decoded PE file contains a series of calls to kernel32!Beep that must be tracked in order to construct the correct sequence of calls to ordinal #50 in the challenge binary. Figure 2 shows a flareqdb one-liner that forwards each kernel32!Beep call to ordinal #50 in the challenge binary to obtain the flag.
+
+Figure 2: Using flareqdb to solve challenge 4 of the 2016 FLARE-On Challenge
+flareqdb can also force branches to be taken, evaluate function pointer values, and validate suspected function addresses by disassembling. For example, consider the subroutine in Figure 3, which is only invoked if a set of conditions is satisfied and which calls a C++ virtual function. Identifying this function could help the analyst identify its caller and discover what kind of data to provide through the command and control (C2) channel to exercise it.
+
+Figure 3: Unidentified function with virtual function call
+Using the flareqdb command-line utility, it is possible to divert the program counter to bypass checks on the C2 data that was provided and subsequently dump the address of the function pointer that is called by the malware at program counter 0x4029a4. Thanks to vivisect, flare-qdb can even disassemble the instructions at the resulting address to validate that it is indeed a function. Figure 4 shows the flareqdb command-line utility being used to force control flow at 0x4016b5 to proceed to 0x4016bb (not shown) and later to dump the function pointer called at 0x4029a4.
+
+Figure 4: Forcing a branch and resolving a C++ virtual function call
+The function pointer resolves to 0x402f32, which IDA has already labeled as basic_streambuf::xsputn as shown in Figure 5. This function inserts a series of characters into a file stream, which suggests a file write capability that might be exercised by providing a filename and/or file data via the C2 channel.
+
+Figure 5: Resolved virtual function address
+flare-qdb also exists as a Python module that is useful for more complex cases. flare-qdb allows for ready use of the powerful vivisect library. Consider the logic in Figure 6, which is part of a privilege escalation tool. The tool checks GetVersionExW, NetWkstaGetInfo, and IsWow64Process before exploiting CVE-2016-0040 in WMI.
+
+Figure 6: Privilege escalation platform check
+It appears as if the tool exploits 32-bit Windows installations with version numbers 5.1+, 6.0, and 6.1. Figure 7 shows a script to quickly validate this by executing the tool 12 times, simulating different versions returned from GetVersionExW and NetWkstaInfo. Each time the script executes the malware, it indicates whether the malware reached the point of attempting the privilege escalation or not. The script passes a dictionary of local variables to the Qdb instance for each execution in order to permit the user callback to print the friendly name of each Windows version it is simulating for the binary. The results of GetVersionExW are modified prior to return using the vstruct definition of the OSVERSIONINFOEXW; NetWkstaGetInfo is fixed manually for brevity and in the absence of a definition corresponding to the WKSTA_INFO_100 structure.
+
+Figure 7: Script to test version check
+Figure 8 shows the output, which confirms the analysis of the logic from Figure 6.
+
+Figure 8: Script output
+Next, consider an example in which the analyst must devise a repeatable process to unpack a binary and ascertain the locations of unpacked PE-COFF files injected throughout memory. The script in Figure 9 does this by setting a breakpoint relative to the tail call and using vivisect’s envi module to enumerate all the RWX memory locations that are not backed by a named file. It then uses flare-qdb’s park() builtin before calling detach() so that the binary runs in an endless loop, allowing the analyst to attach a debugger and resume manual analysis.
+
+Figure 9: Unpacker script that parks its debuggee after unpacking is complete
+Figure 10 shows the script announcing the locations of the self-injected modules before parking the process in an infinite loop and detaching.
+
+Figure 10: Result of unpacker script
+Attaching with IDA Pro via WinDbg as in Figure 11 shows that the program counter points to the infinite loop written in memory allocated by flare-qdb. The park() builtin stored the original program counter value in the bytes following the jmp instruction. The analyst can return the program to its original location by referring to those bytes and entering the WinDbg command r eip=1DC129B.
+
+Figure 11: Attaching to the parked process
+The parked process makes it convenient to snapshot the malware execution VM and repeatedly connect remotely to exercise and annotate different code areas with IDA Pro as the debugger. Because the same OS process can be reused for multiple debug sessions, the memory map announced by the script remains the same across debugging sessions. This means that the annotations created in IDA Pro remain relevant instead of becoming disconnected from the varying data and code locations that would result from the non-deterministic heap addresses returned by VirtualAlloc if the program were simply executed multiple times.
+flare-qdb provides a command-line tool to quickly query dynamic binary state without derailing the thought process of an ongoing debugging session. In addition to querying state, flare-qdb can be used to alter program state and simulate new scenarios. For intricate cases, flare-qdb has a scripting interface permitting almost arbitrary manipulation. This can be useful for string decoding, malware unpacking, and general software analysis. Head over to the flare-qdb github page to get started using it.

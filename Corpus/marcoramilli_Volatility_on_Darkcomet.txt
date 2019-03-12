@@ -1,0 +1,82 @@
+
+Volatility on Darkcomet
+
+
+
+
+Let's assume you've got a friend who asked you to have a look to his computer because he feels like something wrong is happening. What would you do? 
+
+
+
+Option 1: "I have no idea about how to investigate on 'computer stuff', please contact your reseller "
+
+Option 2: "Ok, Let me access to your computer, I will see what I can do"
+
+
+I's raining a lot and my friend was pretty serious about it so I decided to choose the option number 2... :O
+
+
+I've been starting by downloading DumpIT by MoonSols which is a "single click" Windows memory dumping tool. After a few command line answers I've got a fully dumped memory in one file. I downloaded it on my MAC and started the volatility analysis hunting the "something wrong".  By running imageinfo, volatility analyses the memory layout getting back the memory profile used by identify the analyzed machine.
+
+
+
+Volatility imageinfo
+
+
+Understanding what are the processes running on the analyzed machine is a foundamental step to grab the eventually "unwanted software". The following image shows the volatility psxview. Few processes are suspicious to me but the most weird is the one named runddl32.exe. It 's suspicious (at least to me) because the name mispelling and because it tries to evade "deskthrd" detection (not common at all). Psxview is a nice volatility plugin which compares the following different proces' searches in order figure out hiding techniques. The implemented process searche techniques follows:
+
+ PsActiveProcessHead linked list 
+ EPROCESS pool scanning
+ ETHREAD pool scanning (then it references the owning EPROCESS) 
+ PspCidTable 
+ Csrss.exe handle table 
+ Csrss.exe internal linked list  
+
+
+
+
+Volatility Psxview
+
+
+Let's have a deep look into runddl32.exe by running a dlllist on such a pid. Dlllist returns the memory location and the location path of each used DLL. This information is useful to recognazie malicious patterns in file locations. Malicious files are used to be located into TEMP directories due to dir rights. QED (See the following image) !
+
+
+
+Volatility dlllist
+
+
+Volatility dumpfiles helps researchers to dump pieces of memory and saving them into files. The following image shows how I used dumpfiles to obtain the physical supicious files. Having them means to be able to perform static analysis (It wont run... no dyno) on the samples figuring out what they do and if they might be the cause of the "weird behavior".
+
+
+
+Volatility dumpfiles
+
+
+
+Just few steps into static analysis to discover the sample is actually doing something very bad such as: keylogging, selfupdate, drop and download,  shllcoding etc etc...
+
+
+
+AntiDebug functions
+
+
+Looking into the sample's memory page -- for sure -- something strange is happening ! Page EXECUTE_READWRITE is found. VAD Tree (ref: here) is used to check for injections with a super positive result! We can know assert tha the PC was infected.
+
+
+
+VAD Tree search on volatility
+
+  
+Let me try to search the file on Virustotal to se if I get more on it.... Here it goes, VirusTotal identifies the sample as Darkcomet... a simple opensource Remote Aadministration Tool (RAT).
+
+
+
+VirusTotal DarkComet
+
+
+
+
+Weird things were happening to my friend's PC and he was right. Actually Darkcomet is only one of the suspicuous file indentified on the psxview, for example I saw a notepad.exe child of explorer.exe and an cmd.exe child of explorer.exe as well. It was a nice hunting saturday night !
+
+
+

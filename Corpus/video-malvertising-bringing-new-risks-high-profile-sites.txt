@@ -1,0 +1,53 @@
+Video Malvertising Bringing New Risks to High-Profile Sites
+[Editor’s Note - This post has been updated to reflect new activity and additional information identified by Proofpoint researchers between March 19th and 21st.]
+Exploit kits are powerful tools for cybercriminals, downloading malware onto vulnerable PCs whenever users surf to a compromised or malicious site. Usually this happens transparently without the user even knowing they’ve been infected.  Proofpoint researchers have been tracking the first known instance of video malvertising leading to an exploit kit. The campaign, which involved both banner and video ads, hit high-profile sites including MSN.com, foxnews.com, and theguardian.com, among many others, as well as large ad networks, potentially putting millions of users at risk of infection.
+On March 13, 2016, Proofpoint researchers observed a large malvertising campaign hitting many highly-ranked websites including MSN.com, foxnews.com and many others. We also surmised (and later confirmed) that there was a video malvertising involved in this campaign.
+While such campaigns aren't new, this appears to be the first documented instance of such a campaign leading to an exploit kit. The threat of exploit kits in video malvertising creates another layer of potential problems for consumers and advertisers alike.
+Parts of this activity have already been documented by our colleagues at Trend Micro [6]. We have uncovered new details about the infection chain and can provide key historical context on the attacker behind it.
+This campaign is notable for several reasons:
+Static malvertising component
+The full list of websites that we observed unwittingly participating in this malvertising campaign—displaying the malicious advertisements and driving traffic to the exploit kit— appears below. Some other websites were also involved as referrers via YahooAds, Aol, and GoogleSyndication.com.
+After investigating alerts related to this event on March 13, we determined that all of these redirects lead to an Angler instance that was infecting victims with Bedep (build-id 1940). Bedep's secondary payloads were both the Evotob dropper Trojan and an instance of the Reactorbot banking Trojan.
+
+Figure 1: Angler EK (from start[.]lenovo[.]com) on March 13, 2016 loading Bedep 1940 in memory and then pushing Evotob and Reactorbot.
+Notably, the same malware (sharing the same command-and-control (C&C) infrastructure) was dropped by Bedep 1967 from the Angler instance fed by another malvertising campaign being run by an actor we are tracking as GooNky [7] [8] (the name is a contraction the attacker’s past https redirectors, goo.gl and nky.be).
+
+Figure 2: Another group (GooNky - using Domain Shadowing [7] and a Let’sEncrypt certificate [8]) sending traffic to a different instance of Bedep dropping the same malware tuple. This group is not tied to the spike from March 13. Even so, the common dropped malware illustrates how in some cases, groups in charge of the traffic are providers to what appear to be load sellers.
+As seen in Figure 1, the large-scale malvertising attack that took place on March 13, was not dropping ransomware as originally reported.
+The confusion resulted from mixing up two campaigns [17] [18]. The campaign covered by Spiderlabs [13] is not tied to this spike. Instead, we connected the ransomware campaign to the "VirtualDonna" group [11].
+Despite receiving a large amount of traffic since at least February 23 (when we saw it and flagged the new redirector pattern), the traffic volume driven by this actor did not change on March 13. We are also seeing VirtualDonna spreading Teslacrypt (id52) directly from Angler.
+
+Figure 3: VirtualDonna chain to Angler EK dropping Teslacrypt ID52 (1e18d9c07d7c86c102003a2f4310f1eb) on the 2016-03-06 
+or via Bedep (600x) :
+
+Figure 4: "VirtualDonna" redirecting to Angler loading Bedep 6006 (not illustrated here: the first stream contains Teslacrypt ID=52 among other things) on March 12, 2016.
+A list of associated redirector patterns (as of March 8) is available here.
+Video malvertising component
+A separate video malvertising campaign on March 13 raised an alarm. As we can see in Trend Micro’s post [6], the pattern, registrant information, and methods are to be connected with a group dubbed “SadClowns" by our friends at RiskIQ.
+Before we dive into this event, however, a little history is in order. We’ll start by illustrating some of their past activities:
+
+Figure 5: XHamster hit by a malvertising campaign operated by “SadClowns” on September 25, 2015, abusing TrafficHaus.
+ 
+
+Figure 6: "SadClowns" redirecting to Nuclear Pack spreading Evotob - 2015-10-03.
+
+Figure 7: EngageBDR abused and “typo-mimicked” by “SadClowns” on 2015-11-29 (Not illustrated: Bedep 1922 then Vawtrak).
+The same day:
+
+Figure 8: EngageBDR abused and “typo-mimicked” by “SadClowns” on 2015-11-29 redirecting to Neutrino pushing Evotob.
+On the March 16, we captured a video malvertising campaign embedding a “SadClowns” redirector and driving victims to an instance of Angler EK. As we noted, video malvertising is not new [14]. But we believe this is the first documented case in which a campaign redirects to an exploit kit.
+
+Figure 9: Full chain caught on 2016-03-16 for a Video malvertising (using VAST) operated by “SadClowns”. Click for full size image.
+Another chain unrelated to SpotXchange might have been in use on March 13. But based on information received from a large ad agency higher in the kill chain, we know that SpotXchange was involved.
+We have contacted SpotX (formerly known as SpotXchange) about this issue.
+Conclusion
+Malvertising and ad fraud in general have become pervasive problems in the industry. This campaign stands out because of its scale, the rank and status of involved sites, and the presence of video malvertising redirecting to an exploit kit.
+We will continue to monitor the different actors and threats covered here and will share notable new developments. The use of exploit kits with video malvertising is just the latest feature in a constantly evolving threat landscape.
+Users and organizations should ensure that browsers are fully up to date, along with any browser plugins like Flash and Java. Wherever possible, plugins should be disabled as these are common sources of vulnerabilities that exploit kits use to infect PCs.
+UPDATE 3/22/16
+This SadClowns video malvertising restarted early morning on Saturday March 19th, with activity on some of the same large, high-profile referrers. For example, we were able to isolate the activity on:
+Based on the patterns and infrastructure involved, it appears that the same actors were involved. We see two payloads in the first chain:
+00b7496a1c56645290a482fe5f15489e - 327168  - Evotob 
+e2bbc57872824e69f987fb4d1b328dca – 221184 
+As shown below, we were also able to observe the complete chain, with Google Ads used in the delivery. We contacted CloudFlare, DoubleClick, and SpotX and noticed that the activity ended much sooner than during the first malvertising campaign, suggesting that referrers or parties involved in the malvertising chain were able to block the activity once they were alerted.
+

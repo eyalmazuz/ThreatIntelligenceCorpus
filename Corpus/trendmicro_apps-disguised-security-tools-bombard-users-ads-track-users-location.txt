@@ -1,0 +1,40 @@
+Apps Disguised as Security Tools Bombard Users With Ads and Track Users’ Location
+In early December 2017, we found a total of 36 apps on Google Play that executed unwanted behavior. These apps posed as useful security tools under the names Security Defender, Security Keeper, Smart Security, Advanced Boost, and more. They also advertised a variety of capabilities: scanning, cleaning junk, saving battery, cooling the CPU, locking apps, as well as message security, WiFi security, and so on.
+The apps were actually able to perform these simple tasks, but they also secretly harvested user data, tracked user location, and aggressively pushed advertisements.
+
+Figure 1. Malicious apps found on Google Play, detected by Trend Micro Mobile Security
+We notified Google of these apps, and at the time of writing all the apps have been removed from Google Play.
+Technical Analysis
+After first launching, the apps will not appear on the device launcher’s list of applications, and shortcuts will also not appear on the device screen. Since the apps are hidden, users will only see the notifications sent by the app. They typically push alarmist security warnings and pop-up windows to the users.
+
+Figure 2. Code snippet showing how icon is hidden
+After manual inspection, we found that this action is conditional. The “hide” function of the malware is explicitly designed not to run on specified devices, as seen in the code below:
+
+Figure 3. The malware code showing how specific devices are excluded from the “hide” behavior
+The excluded devices are: Google Nexus 6P, Xiaomi MI 4LTE, ZTE N958St and LGE LG-H525n. It is possible the malware developers knew that this tactic would not work on these devices, or they wanted to avoid being checked by Google Play during inspection periods.
+Once the app is running, the user will be bombarded with “security” notifications and other messages from the malware. After checking the original code, we found that most detection results from the notifications are false. For example, if the user installs another app, then it will immediately be reported as suspicious. Or the user will be sent notifications like “10.0 GB files are being wasted,” which will prompt some kind of action.
+But the data shown in these messages are fake — they are just used to add a layer of legitimacy to the app.
+ 
+
+Figure 4. The many notifications with fake data being pushed by this app
+The developers of these apps go far to make their notifications believable. For an example, see the figure below. If the user clicks the button to resolve the detected “Fraud SMS Broadcast Vulnerability,” then the app will just show a simple animation illustrating that the problem has been ‘resolved.’ This way, the user will think the app is working and will not be suspicious of it.
+ 
+
+Figure 5. The detection result about System Vulnerability
+
+ 
+
+ 
+
+Figure 6. Code snippet for the RESOLVE button
+But as the app sends these notifications, it is also able to collect the victim’s private data, including specific location details, and send them to a remote server.
+
+Figure 7. Code snippet showing how the app collects private data of user
+Also, when the user is bombarded with all these notifications, many different advertisements appear. The aggressive ads show up during many different scenarios — for example, after the app sends notices to unlock the device screen or if the user is told to connect to a charger. The user is bombarded with ads with almost every action. It is clear that one of the main focuses of the app is ad display and click fraud.
+Users are actually asked to sign and agree to a EULA (end-user license agreement) which describes the information that will be gathered and used by the app. But we can still say that the app abuses privacy because the collection and transmission of personal data is unrelated to the functionality of the app.
+The app is able to upload user data information, installed app information, as well as attachments, user operational information, and data on activated events to a remote server. We can see in Figure 7 how user information and the user’s operational events can be uploaded.
+
+Figure 8. The leaked privacy data of user operation
+The apps can also collect private data like the Android ID, Mac address, IMSI (which identifies the network operator the user is subscribed to), information about the OS, brand and model of the device, device specifics (like dots per inch and screen size), language, location information (from the city the device is in to the longitude and latitude), and data on installed apps like Google Play and Facebook. The app also notes what permissions are granted or not, specifically, usage stats, accessibility, and read notification bar.
+To secure mobile devices and protect valuable data, there are certain steps you can take. Here are some tips:
+Our appendix lists the indicators of compromise (IoCs).

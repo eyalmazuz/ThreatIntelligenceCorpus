@@ -1,0 +1,86 @@
+Maikspy Spyware Poses as Adult Game, Targets Windows and Android Users
+By Ecular Xu and Grey Guo
+We discovered a malware family called Maikspy — a multi-platform spyware that can steal users’ private data. The spyware targets Windows and Android users, and first posed as an adult game named after a popular U.S.-based adult film actress. Maikspy, which is an alias that combines the name of the adult film actress and spyware, has been around since 2016.
+Our analysis of the latest Maikspy variants revealed that users contracted the spyware from hxxp://miakhalifagame[.]com/, a website that distributes malicious apps (including the 2016 adult game) and connects to its C&C server to upload data from infected devices and machines. Multiple Twitter handles were found promoting the adult game called Virtual Girlfriend and sharing the malicious domain via short links.
+
+Figure 1. Tweets that mention Virtual Girlfriend and the short link of hxxp://miakhalifagame[.]com/
+Maikspy on the Android platform
+
+Figure 2. Infection chain of Maikspy Android variant
+Based on the analysis of samples that were last seen in the wild in March 2018, the Maikspy variant (detected by Trend Micro as AndroidOS_MaikSpy.HRX) that runs on Android poses as Virtual Girlfriend to lure users into visiting the attackers’ malicious domain. When users open the short link version of the domain shared on Twitter, a page that shows gender option buttons will appear followed by a page that will let users choose their “first girlfriend” and lead them to the download page.
+
+Figure 3. Virtual Girlfriend’s option buttons (first and second screen from the left) and download page (third screen)
+When the downloaded APK file is installed and launched, it will send the infected device’s Unix timestamp to 0046769438867, a phone number containing Sweden’s code. This is presumably used for the device’s ID registration:
+
+Figure 4. Code snippet of the device’s Unix timestamp being sent to 0046769438867
+Subsequently, the Maikspy-carrying app will display “Error: 401. App not compatible. Uninstalling…” as an attempt to deceive the user into thinking that the app is already removed from the device. However, the spyware just hides itself and runs in the background. There, the malicious app first checks the required permissions and then proceeds with its routine:
+The stolen information will be either written into .txt or .csv formats before being uploaded to the C&C server.
+After fetching and uploading the abovementioned stolen data, the malicious app will check the command (CMD) from the C&C server every 60 seconds. The following are the supported commands:
+In the first launch of Virtual Girlfriend, the malicious app will use a combination of the Unix timestamp, the device’s Bluetooth adapter name, and the name of user’s Twitter account as device identification name: Timestamp_BTAdapterName_TwitterAccount. If the user doesn’t have the Twitter app, it will just be a null string (“”).  If the user has multiple Twitter accounts, the spyware will use the account where the user is logged in.
+
+Figure 5. Code snippet of the process where the Unix timestamp, the device’s Bluetooth adapter name, and the name of user’s Twitter account are combined to produce a device identification name
+Additionally, the spyware will open hxxp://miakhalifagame[.]com/get_access2[.]php when first installed. It will display the page below.
+
+Figure 6. The spyware displays the online dating scam website upon the installation of the malicious Virtual Girlfriend app
+What will be shown is the registration page of an online dating site, which will lure users into giving out their credit card information. When users register, their credit cards will be charged. This happens when the data is uploaded with the hidden iframe found in the bottom right part of the page (underlined in red). As a result, the attackers behind the scheme will not only obtain the credit card information of the victim, but also steal any money charged to the credit card, so long as the user doesn’t request a chargeback.
+Maikspy on the Windows platform
+
+Figure 7. Infection chain of Maikspy Windows variant
+
+Figure 8. These buttons greeted users who clicked the Twitter short link of hxxp://miakhalifagame[.]com/
+In the case of the Windows variant (WORM_INFOKEY.A) of Maikspy last seen in April 2017, the user will be tricked into downloading a MiaKhalifa.rar file, which contains the files seen in the screenshot below:
+
+Figure 9. Content of the MiaKhalifa.rar file
+README.txt provides instructions teaching the user how to turn off the anti-virus software and how to turn on the network, which the attacker needs to steal and upload data to its C&C server.
+
+Figure 10. Content of README.txt
+register.bat is used to gain administrator privilege.
+
+Figure 11. Code snippet of register.bat
+Uninstall.exe is a copy of the open-source hacking tool Mimikatz (https://github[.]com/gentilkiwi/mimikatz). It has the ability to extract plaintext passwords, hash, PIN code, and Kerberos tickets from memory. Here, Uninstall.exe is used to get the Windows account and password, and then writes the result to C:\Users\%username%\AppData\local\password.txt.
+Setup.exe is the core module used to steal data. Like the Android Maikspy, it first sends a notification to its C&C server to register the device.
+
+Figure 12. Code snippet of notification being sent to the C&C server to register the device
+After that, it fetches .jpg, .jpeg, .png, .txt, .wav, .html, .doc, .docx and .rtf files from the following directories: C:/Users/%username%/Desktop, C:/Users/%username%/Pictures, C:/Users/%username%/Documents, and C:/Users/%username%/Downloads. File lists of the directories are also stolen. Subsequently, it writes them into files before uploading it to the C&C server.
+
+Figure 13. Code snippets of the scanning, fetching, and uploading of .jpg, .jpeg, .png, .txt, .wav, .html, .doc, .docx and .rtf files (left). It also steal information about the machine’s system i.e. default browser, OS version, Firefox version, Chrome version, IE version and Network configuration (right).
+We also stumbled upon a Chrome extension plugin (VirtualGirlfriend.crx) that Windows users can contract upon visiting hxxp://miakhalifagame[.]com. When the extension plugin (BREX_INFOSTEAL.A) is downloaded, the victims will be instructed how to load it into the browser. After that, the malware will collect the username and password inputs from web pages and sends it to hxxps://miakhalifagame[.]com/testinn[.]php.
+
+Figure 14. Instructions given to the user on how to load the malicious Chrome extension
+
+Figure 15. Code snippet of the malicious extension plugin
+Connection between Round Year Fun and Maikspy
+We looked into one of the Twitter accounts (seen in Figure 1) that promoted Virtual Girlfriend. The name of the Twitter account is Round Year Fun (hxxps://twitter[.]com/RoundYear_Fun), and its homepage is full of tweets that promote games from hxxp://www[.]roundyearfun[.]org.
+
+Figure 16. Twitter homepage of Round Year Fun
+hxxp://www[.]roundyearfun[.]org is a portal that promotes games on Twitter. As seen in the figure below, it also has other games aside from Virtual Girlfriend. Upon checking the cached version of the page, we discovered that it was also used to distribute the adult game first used by the attackers behind Maikspy.
+
+Figure 17. Virtual Girlfriend in the list of games advertised by hxxp://www[.]roundyearfun[.]org
+
+Figure 18. The adult game first used by the attackers was also found in the list of games advertised by hxxp://www[.]roundyearfun[.]org
+Our analysis revealed that hxxp://www[.]roundyearfun[.]org was also used as a C&C address to save victims’ data. The malware also shares the same certification with Virtual Girlfriend. One of the samples was sourced from hxxp://roundyearfun[.]org/noavi/MiaKhalifa[.]apk. Interestingly, we discovered an image that shows the logo of Round Year Fun, found at hxxp://miakhalifagame[.]com/img/ryf[.]jpg.
+
+Figure 19. Round Year Fun logo found at Maikspy’s malicious domain
+Based on these findings, it’s possible that the attackers behind Maikspy operate //www[.]roundyearfun[.]org/ and hxxp://miakhalifagame[.]com/.
+Another thing that we discovered about the games offered by Round Year Fun is that if you authorize it to use your Twitter account, the author can use the account to promote games using automation tools. The author used the other Twitter handle in Figure 1, rifusthegr8, to tweet about Virtual Girlfriend and retweet Round Year Fun’s own Twitter promotion of the game.
+History of Maikspy from 2016 to 2018
+The first variant of Maikspy appeared on the Windows platform in December 2016. It disguised itself as the adult game named after an adult film actress. It has the ability to update itself from hxxp://fakeomegle[.]com/, and steal .jpg, .jpeg, .png, .txt, .wav, .html, .doc, .docx and .rtf files located in the Desktop, Picture, Documents, and Downloads folders, as well as information about the machine’s Internet Explorer, Chrome, Firefox or default browsers, OS, and network configuration. The spyware connects to 107[.]180[.]46[.]243.
+Meanwhile, the first Android variant of this spyware family appeared in January 2017. It was also under the guise of the previously mentioned adult game and still connects to the aforementioned C&C server. It was capable of recording phone calls and stealing information such as the device’s location, SMS, contacts, WhatsApp database, and record sound around the affected device. The next variant appeared quickly, and it added the following abilities to its routines: Steal information about the device’s clipboard, phone number, installed app list, and accounts. Meanwhile, the ability to steal the WhatsApp database was removed. It also changed its command format.
+In March 2017, another new variant appeared with the ability to steal photos when users take them using the camera. The code structure and package name also changed, as well as its C&C address: 198[.]12[.]155[.]84.
+It was in April 2017 when the last Windows variant of Maikspy appeared with the following changes: The C&C server was changed to 198[.]12[.]155[.]84, password theft is added, as well as the theft of .doc, .docx, and .rtf files.
+Between June and December 2017, the Android variant had the following alterations: C&C server was changed to 192[.]169[.]217[.]55, the ability to record phone calls was removed, and the C&C server was again changed to 198[.]12[.]149[.]13.
+In January 2018, the Android variant’s app label changed to Virtual Girlfriend. Two months later, the C&C server was changed to hxxp://miakhalifagame[.]com. The attackers were found using the HTTP protocol to transfer data. The ability to steal location and pictures was removed from its routine.
+Relationship between variants and C&C servers used by Maikspy
+The attackers behind Maikspy have changed domains and IP addresses over the years, but all were found hosted in a publicly traded internet domain registrar and web hosting company in the U.S. The following figures show how Maikspy variants from 2016 to 2018 are connected to C&C servers (found in this appendix, along with the Android and Windows hashes) used by the attackers:
+
+Figure 20. The connection of Maikspy variants to 198[.]12[.]155[.]84, hxxp://roundyearfun[.]org/, and 192[.]169[.]217[.]55. Note: The green nodes represent Android samples, while the blue nodes represent Windows samples.
+
+Figure 21. Connection of Maikspy variants to 107[.]180[.]46[.]243 and hxxp://fakeomegle[.]com
+
+Figure 22. Connection of Maikspy variants to 198[.]12[.]149[.]13and hxxp://miakhalifagame[.]com/
+Countermeasures
+Downloading only from legitimate app stores like Google Play can prevent Maikspy from compromising computers and mobile devices. It is also important to be aware of what apps are allowed to access, and to understand the risks before accepting any terms or granting certain permissions to apps.
+Trend Micro’s Mobile App Reputation Service (MARS) already covers Android and iOS threats using leading sandbox and machine learning technology. It can protect users against malware, zero-day and known exploits, privacy leaks, and application vulnerability.
+End users and enterprises can also benefit from multilayered mobile security solutions such as Trend Micro™ Mobile Security for Android™ which is also available on Google Play. For organizations, Trend Micro™ Mobile Security for Enterprise provides device, compliance and application management, data protection, and configuration provisioning, as well as protects devices from attacks that leverage vulnerabilities, preventing unauthorized access to apps, as well as detecting and blocking malware and fraudulent websites.
+The Trend Micro™ Deep Discovery™ threat protection platform enables companies to detect, analyze, and respond to modern threats such as sophisticated malware, targeted attacks, and APTs.
+Trend Micro™ Smart Protection for Endpoints with Maximum XGen™ security infuses high-fidelity machine learning into a blend of threat protection techniques to eliminate security gaps across user activity and any endpoint—the broadest possible protection against advanced attacks.

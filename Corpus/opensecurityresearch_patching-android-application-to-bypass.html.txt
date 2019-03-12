@@ -1,0 +1,52 @@
+
+Patching an Android Application to Bypass Custom Certificate Validation
+
+
+By Gursev Kalra.
+
+One of the important tasks while performing mobile application security assessments is to be able to intercept the traffic (Man in The Middle, MiTM) between the mobile application and the server by a web proxy like Fiddler, Burp etc… This allows penetration tester to observe application behavior, modify the traffic and overcome the input restrictions enforced by application’s user interface to perform a holistic penetration test. 
+
+Mobile applications exchanging sensitive data typically use the HTTPS protocol for data exchange as it allows them to perform server authentication to ensure a secure communication channel. The client authenticates the server by verifying server’s certificate against its trusted root certificate authority (CA) store and also checks the certificate’s common name against the domain name of the server presenting the certificate. To proxy (MiTM) the HTTPS traffic for mobile application, web proxy’s certificate is imported to the trusted root CA store otherwise the application may not function due to certificate errors. 
+
+For most mobile application assessments you can just setup a web proxy to intercept mobile application’s SSL traffic by importing its certificate to device’s trusted root CA store. To ensure that the imported CA certificate works fine, its common to use the Android’s browser to visit a couple of SSL based websites and you should see that the browser accepts the MiTM’ed traffic without complaint. Typically, the native Android applications also uses the common trusted root CA store to validate server certificates, so no extra work is required to intercept their traffic. However, for some applications that could differ - let's take a look at how to handle those apps.
+Analyzing the Unsuccessful MiTM
+
+When you launch the application under test and attempt to pass its traffic through the web proxy, the application will likely display an error screen indicating that it could not connect to the remote server because of no internet connection or it could not establish a connection for unknown reasons. If you're confident in your setup, the next step is to analyze the system logs and SSL cipher suite support.
+logcat
+logcat is Android’s logging mechanism that is used to view application debug messages and logs. First run "adb logcat" to check if the application under test creates any stack trace indicating the cause of the error but there was none. The application may also leave debug logs indicating that the developers did a good job with the error handling or write debug messages that could potentially expose application internal working to prying eyes.
+Common SSL Cipher suites
+When a web proxy acts as a MiTM between client and the server, it establishes two SSL communication channels. One channel is with the client to receive requests and return responses, the second channel is to forward application requests to the server and receive server responses. To establish these channels, the web proxy has to agree on common SSL cipher suits with both the client and the server and these cipher suites may not be the same as shown in the image below.
+
+
+You may see SSL proxying errors occur in one or both of the following scenarios which lead to failures while establishing a communication channel.
+Android application and the web proxy do not share any common SSL cipher suite. 
+The web proxy and the server do not share any common SSL cipher suite. 
+
+In both scenarios, the communication channel cannot be established and the application does not work. To analyze the above mentioned scenarios, fire up Wireshark to analyze SSL handshake between the application and the web proxy. If you don't see any issues in wireshark between the application and the proxy,  issued a HTTPS request to the server within the web proxy to see if you have any issues there. If not, then you know the web proxy is capable of performing MiTM for the test application and there is something else going under the hood.
+Custom Certificate Validation
+
+
+At this point you should start to look into the possibility of the application performing custom certificate validation to prevent the possibility of MiTM to monitor/modify its traffic flow. HTTPS clients can perform custom certificate validation by implementing the X509TrustManager interface and then using it for its HTTPS connections. The process of creating HTTPS connections with custom certificate validation is summarized below:
+
+Implement methods of the X509TrustManager interface as required. The server certificate validation code will live inside the checkServerTrusted method. This method will throw an exception if the certificate validation fails or will return void otherwise.
+Obtain a SSLContext instance.
+Create an instance of the X509TrustManager implementation and use it to initialize SSLContext.
+Obtain SSLSocketFactory from the SSLContext instance.
+Provide the SSLSocketFactory instance to setSSLSocketFactory method of the HttpsURLConnection.
+Instance of HttpsURLConnection class will then communicate with the server and will invoke checkServerTrusted method to perform custom server certificate validation.
+
+
+So, if you can decompile the code and search through it, you'll likely reveal the X509TrustManager implementation in one of the core security classes of the application. The next step is to patch the code preventing the MiTM and deploy it for testing. The image below shows two methods implemented for X509TrustManager from an example application.
+
+Modifying checkServerTrusted Implementation
+
+The example image above shows implementation for two X509TrustManager methods, checkServerTrusted and checkClientTrusted. At this point it is important to point out that in the example above, both the methods behave in a similar way except that the former is used by client side code and the latter is used by server side code. If the certificate validation fails, the methods will throw an exception, otherwise they return void. 
+
+The checkClientTrusted implementation above allows the server side code to validate client certificate. Since this functionality is not required inside the mobile application, this method can be empty and return void for the test application; which is equivalent to successful validation. However, the checkServerTrusted contains significant chunk of code performing the custom certificate validation which needs to be bypassed.
+
+To bypass certificate validation code inside the checkServerTrusted method for this example, I replaced its Dalvik code with the code from the checkClientTrusted method to return void, effectively bypassing the custom certificate check as shown in the image below.
+
+Recompiling and Deploying the Modified Application
+Once you have all the checkServerTrusted invocations from set up to be successful, recompile the application with apkTool, sign it with SignApk and deploy it on the device. If you did it all right, the web proxy MiTM will work like a charm and you will be able view, modify and fuzz application traffic.
+
+

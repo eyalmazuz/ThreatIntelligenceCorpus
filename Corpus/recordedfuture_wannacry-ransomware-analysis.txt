@@ -1,0 +1,58 @@
+What Is WannaCry? Analyzing the Global Ransomware Attack
+By John Wetzel on May 15, 2017
+In an attack predicted by cyber security experts for months, a yet unknown actor or actors integrated the EQUATIONGROUP APT exploits leaked by ShadowBrokers in a worldwide ransomware worm attack, infecting tens of thousands of endpoints in a matter of hours.
+On Friday, May 12, a new ransomware, called WannaCry, began circulating throughout the United Kingdom and Spain, rapidly infecting over 45,000 exposed servers at healthcare, financial, and other business sectors. This ransomware stood out for several reasons, including being the largest ransomware attack in history, and the first widely spread ransomware worm.
+The ransomware infection is Version 2.0 of WanaCypt0r (also known as WCry, WannaCry, and WannaCryptor). Unlike previous instances, this version takes advantage of the SMB vulnerability outlined in Microsoft Security Bulletin (MS17-010). This vulnerability was first exploited by the ETERNALBLUE malware, revealed by the ShadowBrokers leak in March, and targeted the Microsoft MS17-010 SMB vulnerabilities. SMB (Server Message Block) is a protocol primarily communicating on port 445 and is designed to provide access to shared resources on a network. Last fall, Microsoft propounded system administrators to disable SMB Version 1 on systems.
+According to a FBI FLASH Alert (TLP:White) received by Recorded Future, the WannaCry ransomware infects initial endpoints via a phishing campaign or compromised RDP (remote desktop protocol). Once the ransomware gets into a network, it spreads quickly through any computers that don’t have the patch applied. The worm-like capabilities are the new feature added to this ransomware.
+During the May 12 attack, two of the most significant targets were Telefonica, the Spanish telecommunications giant, and the United Kingdom’s National Health Service. In the United States, the shipping firm FedEx was hit by the ransomware. Infections of the new version of WannaCry started in Spain early on May 12, but quickly spread to the United Kingdom, Russia, Japan, Taiwan, the United States, and many more. In total, almost 100 countries were affected by the attack.
+New instances of this ransomware worm dramatically decreased following the activation of a “kill-switch” in the ransomware. A security researcher going by the Twitter handle @MalwareTechBlog noted an unregistered domain (www.iuqerfsodp9ifjaposdfjhgosurijfaewrwergwea[.]com) in a sample of the malware. WannaCry checked to ensure non-registration of the domain at some point prior to infection. According to the researcher, this was likely intended as a way to prevent analysis of the malware in a sandbox. If the domain is registered, WannaCry exits the system, preventing further infection. While this doesn’t benefit victims already infected, it does curb further infection. Additionally, according to security researcher Didier Stevens, WannaCry isn’t proxy aware, so enterprises utilizing a proxy won’t benefit from the “kill-switch.”
+Further, researchers have been registering a new variant of WannaCry on VirusTotal:
+SHA256 – 07c44729e2c570b37db695323249474831f5861d45318bf49ccf5d2f5c8ea1cd
+This variant appears to have patched the domain “kill-switch,” and was seen actively propagating throughout the weekend, according to our private conversations with security researchers.
+
+Starting on March 27, 2016, a security researcher named Karsten Hahn reported the updated version of WannaCry ransomware, and linked to a VirusTotal hash analysis on Twitter:
+ca29de1dc8817868c93e54b09f557fe14e40083c0955294df5bd91f52ba469c8
+Interestingly, reviewing this Intel Card, we can see it’s identified as Spora ransomware.
+
+Spora ransomware, which began circulating in January of this year, is a ransomware noted for its sophistication, including top-notch customer support to victims, and was likely created by professional malicious actors.
+Research in Recorded Future identified an early warning bulletin on WannaCry published on May 5, 2017 by the Spanish CERTSI (Computer Emergency Response Team for Security and Industry). The CERTSI bulletin cited numerous ransomware attacks using WannaCry targeting on equipment.
+On May 12, 2017, around 11:00 AM UTC, reports of the attack began circulating on Twitter. The first mentioned companies were Spanish-based companies, including Telefónica, Vodafone, and Banco Bilbao Vizcaya Argentaria.
+
+It appears Russian cyber criminals were equally perplexed by the WCry campaign as the rest of the world. One of the members of the popular underground community complained about the recently purchased Virtual Private Server (VPS) which was almost immediately infected by ransomware even before the system update was completed.
+At least three separate Bitcoin wallets, controlled by unknown criminals were identified as part of the ransomware campaign.
+As of this writing, little over 15 Bitcoins or approximately $26,000 were deposited to wallets controlled by unknown criminals.
+Identified WannaCry 2.0 Bitcoin Wallets
+Bitcoin Address Linked to WannaCry 1.0 Campaign
+
+Link analysis of ransom transactions related to three wallets controlled by criminals.
+Reviewing the Recorded Future Intel Card for WannaCry, we can rapidly identify any associated IP addresses and hashes.
+
+The most prominent hash appears in early reports on May 11, according to the AlienVault extension on the Intel Card:
+ed01ebfbc9eb5bbea545af4d01bf5f1071661840480439c6e5babe8e080e41aa
+
+
+In the Reference section of the WCry Intel Card, we see this factsheet posted towards a GitHub page where security researcher Mark Lee helpfully wrote a running compilation of information on WannaCry ransomware. Early identification of these types of resources during an evolving situation can greatly assist a security analyst gain insight to the nature of the threat and crowdsource solutions.
+
+The GitHub page cites Malwarebytes, claiming the WannaCry worm loops through every RDP session on a system to run the ransomware as that user, and also installs the DOUBLEPULSAR backdoor. This is an interesting observation. According to Cisco’s Talos security research team, WannaCry appears to scan the system to identify if the DOUBLEPULSAR backdoor is present. Only when it’s not present does it use the ETERNALBLUE SMB vulnerability to infect the host.
+Recorded Future recently reported on the rapid weaponization of the DOUBLEPULSAR payload, a kernel-level exploit which can inject arbitrary DLLs into user land processes. From the Insikt Group note (exclusive to Recorded Future customers):
+
+MS17-010 is a known vulnerability which was patched by Microsoft in March 2017. Additionally, Microsoft released an emergency patch for systems in custom support only, including Windows XP, Windows 8, and Windows Server 2003.
+For now, the best advice is to update your antivirus on endpoints, to ensure that all Windows systems are fully patched, to configure firewalls to block access to SMB and RDP ports, and to educate users to watch out for suspicious emails.
+It’s notable that WannaCry installs the DOUBLEPULSAR exploit on to any infected system. This is a kernel mode payload which can arbitrarily inject DLLs into user land processes.
+Due to the success of this ransomware, and the ease of patching the code, we have likely not seen the last of this malware. Further monitoring in Recorded Future is advised to stay abreast of the latest changes.
+IDS/IPS Rules
+Using Recorded Future, we were able to identify a shared SNORT rule for MS17-010:
+
+Additionally, Recorded Future surfaces multiple SNORT and Yara signatures for the malware:
+
+Indicators
+Open source intelligence indicates the following list of ransomware controllers, as well as the domain which led to the rapid decline of the ransomware infection, which has been sinkholed:
+On the MS17-010 bulletin, Microsoft states the following vulnerabilities are related:
+It’s likely we haven’t seen the last of these large scale attacks, however the speed of remediation by security teams around the globe is impressive. Microsoft released a patch for no longer supported Windows XP, Windows 8, and Windows Server 2003. Meanwhile, global security teams scrambled to patch vulnerable systems, or close the exposed ports. As of this blog posting, Shodan reveals approximately 230,000 Windows hosts worldwide with exposed SMB ports.
+
+Shodan scan of open SMB ports on Windows machines.
+We expect to see further attacks from variants of this malware, due to the ease of using the exploits. Notably, the ETERNALBLUE exploit of SMBv1 wasn’t the only exploit involved in this attack. The use of DOUBLEPULSAR as an infection vector shows the actors were eager to gain access to exposed systems. The use of nation-state exploits in a fairly pedestrian attack gone large reveals the lack of sophistication of the criminals behind these attacks.
+A part of carefully planned large-scale ransomware attack requires a separate Bitcoin address for each victim, guaranteeing that the miscreant controlling the operation would later be able to identify the payment and decrypt the correct system.
+However, in the case of WannaCry 2.0 campaign, only a handful number of wallets were used, with ransomed funds remaining untouched by criminals. Such unusual behavior suggests the current epidemic was never planned by criminals, and resulted from targeted attacks going horribly wrong. As of this blog publication, all ransomed funds remain untouched by the criminals. We believe this inaction indicates awareness of the intense scrutiny by law enforcement investigators around the world, and fear of identification or capture, which further supports our theory.
+Unintended or not, the scale and scope of damage in this attack is unprecedented. Criminals will utilize any method available in their pursuit of monetary gain. While the gain in this attack was limited, the damage was massive, and possibly avoidable.
+Microsoft has advocated migration away from SMBv1 since September 2016, and patched the vulnerabilities in MS17-010 in mid-March 2017. This attack occurred in the 90 to 180 day window, demonstrating the importance of patch prioritization in the security lifecycle. Threat intelligence monitoring of emerging and imminent threats against your business, including escalation of security priorities, is vital to defending your enterprise from all threats.

@@ -1,0 +1,43 @@
+
+Fiddler and NTLM authentication
+
+
+By Neelay S Shah.
+
+I was testing a web application recently that used NTLM (over HTTP) to authenticate users. I was using Fiddler to test the web application and ran into the following problem which was hampering / slowing down my testing. I could not use the “Composer” tab to send manual requests from within Fiddler or use the “Replay Request” option from within Fiddler. In either of those 2 cases, the server would respond with “401 Unauthorized” and Fiddler would not prompt me to enter credentials and just stop. So it was really limiting my testing and reducing my efficiency. I love Fiddler and as far as possible I did not want to switch to another HTTP proxy.
+
+As I was researching a solution/work around for this, I came across this excellent post - Fiddler and Channel Binding Tokens Revisited by Eric Law, wherein Eric suggests a workaround to problem you may encounter while using Fiddler to test web application using NTLM over HTTPS. Now in my case, the web application was not using SSL and performing NTLM authentication over clear text HTTP however I was able to make changes to the workaround Eric suggests so that it works in this scenario.
+
+Following is the script that I added to my FiddlerScript Rules file. I strongly recommend installing the Syntax Highlighting extension - http://fiddler2.com/redir/?id=SYNTAXVIEWINSTALL before attempting to modify the FiddlerScript Rules. Once you install the Syntax Highlighting extension, launch Fiddler and you should see a new tab “FiddlerScript” (between the Composer and the Filters tab). Click the “FiddlerScript” tab and that should open the Rules file. Then you can add the following code appropriately and click “Save Script”. 
+
+
+You will most likely already have an OnPeekAtResponseHeaders() function in which case simply add the following code to the beginning of the OnPeekAtResponseHeaders() function. You will also have to modify the web site address and the test user credentials within the script before using it.
+
+ // NOTE – Do NOT use this in production environment. Only use in test  
+ // environment with test user credentials. All connections passing  
+ // through Fiddler and directed at the concerned web application  
+ // will automatically be authenticated using the embedded test user  
+ // credentials  
+    
+ static function OnPeekAtResponseHeaders(oSession: Session) {  
+    
+  // To avoid problems with Channel-Binding-Tokens, this block allows  
+  // Fiddler itself to respond to Authentication challenges from the  
+  // web site  
+  if ((oSession.responseCode == 401) &&  
+   // Only permit auth to sites we trust  
+
+   // CHANGE .web.site.url.address to whichever you're testing
+   oSession.host.EndsWith(".web.site.url.address"))   
+
+  {  
+
+   // CHANGE enter the appropriate creds here:
+   oSession["X-AutoAuth"] = "domain\\username:password";    
+   oSession["ui-backcolor"] = "pink";  
+  }  
+   
+
+Once you add this code and save the Script Rules, the rule will be in effect and Fiddler will start using the same. Now, if you make a manual request using the Composer tab or Replay/Reissue requests, Fiddler will automatically handle the server “401 Unauthorized” response and authenticate using the test user credentials that are embedded in the script code. Additionally, the request session will be highlighted in faint pink color within the Fiddler “Request Response/Session List” so that simply by viewing the list you can identify which requests were hit by the rule.
+
+

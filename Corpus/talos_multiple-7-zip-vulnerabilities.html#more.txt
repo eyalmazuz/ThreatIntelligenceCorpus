@@ -1,0 +1,147 @@
+
+Multiple 7-Zip Vulnerabilities Discovered by Talos
+
+
+7-Zip vulnerabilities were discovered by Marcin Noga.Blog post was authored by Marcin Noga, and Jaeson Schultz.
+
+Update 2016-05-12: Related advisories for the 7-Zip issues covered in this blog can be found here:
+http://www.talosintel.com/reports/TALOS-2016-0093/
+http://www.talosintel.com/reports/TALOS-2016-0094/
+
+7-Zip is an open-source file archiving application which features optional AES-256 encryption, support for large files, and the ability to use “any compression, conversion or encryption method”. Recently Cisco Talos has discovered multiple exploitable vulnerabilities in 7-Zip. These type of vulnerabilities are especially concerning since vendors may not be aware they are using the affected libraries. This can be of particular concern, for example, when it comes to security devices or antivirus products.  7-Zip is supported on all major platforms, and is one of the most popular archive utilities in-use today. Users may be surprised to discover just how many products and appliances are affected.
+
+
+TALOS-CAN-0094, Out-of-Bounds Read Vulnerability, [CVE-2016-2335]
+An out-of-bounds read vulnerability exists in the way 7-Zip handles Universal Disk Format (UDF) files. The UDF file system was meant to replace the ISO-9660 file format, and was eventually adopted as the official file system for DVD-Video and DVD-Audio.
+
+Central to 7-Zip’s processing of UDF files is the CInArchive::ReadFileItem method. Because volumes can have more than one partition map, their objects are kept in an object vector. To start looking for an item, this method tries to reference the proper object using the partition map’s object vector and the "PartitionRef" field from the Long Allocation Descriptor. Lack of checking whether the "PartitionRef" field is bigger than the available amount of partition map objects causes a read out-of-bounds and can lead, in some circumstances, to arbitrary code execution.
+
+
+
+Vulnerable code:
+CPP\7zip\Archive\Udf\UdfIn.cpp
+Line 898    FOR_VECTOR (fsIndex, vol.FileSets)
+Line 899    {
+Line 900      CFileSet &fs = vol.FileSets[fsIndex];
+Line 901      unsigned fileIndex = Files.Size();
+Line 902      Files.AddNew();
+Line 903      RINOK(ReadFileItem(volIndex, fsIndex, fs.RootDirICB, kNumRecursionLevelsMax));
+Line 904      RINOK(FillRefs(fs, fileIndex, -1, kNumRecursionLevelsMax));
+Line 905    }
+(...)
+Line 384        HRESULT CInArchive::ReadFileItem(int volIndex, int fsIndex, const CLongAllocDesc &lad, int numRecurseAllowed)
+Line 385        {
+Line 386          if (Files.Size() % 100 == 0)
+Line 387                RINOK(_progress->SetCompleted(Files.Size(), _processedProgressBytes));
+Line 388          if (numRecurseAllowed-- == 0)
+Line 389                return S_FALSE;
+Line 390          CFile &file = Files.Back();
+Line 391          const CLogVol &vol = LogVols[volIndex];
+Line 392          CPartition &partition = Partitions[vol.PartitionMaps[lad.Location.PartitionRef].PartitionIndex];
+
+This vulnerability can be triggered by any entry that contains a malformed Long Allocation Descriptor. As you can see in lines 898-905 from the code above, the program searches for elements on a particular volume, and the file-set starts based on the RootDirICB Long Allocation Descriptor. That record can be purposely malformed for malicious purpose. The vulnerability appears in line 392, when the PartitionRef field exceeds the number of elements in PartitionMaps vector.
+
+
+TALOS-CAN-0093, Heap Overflow Vulnerability, [CVE-2016-2334]
+An exploitable heap overflow vulnerability exists in the Archive::NHfs::CHandler::ExtractZlibFile method functionality of 7-Zip. In the HFS+ file system, files can be stored in compressed form using zlib. There are three different ways of keeping data in that form depending on the size of the data. Data from files whose compressed size is bigger than 3800 bytes is stored in a resource fork, split into blocks.
+
+Block size information and their offsets are kept in a table just after the resource fork header. Prior to decompression, the ExtractZlibFile method reads the block size and its offset from the file. After that, it reads block data into static size buffer "buf". There is no check whether the size of the block is bigger than size of the buffer "buf", which can result in a malformed block size which exceeds the mentioned "buf" size. This will cause a buffer overflow and subsequent heap corruption.
+
+
+Vulnerable code:
+7zip\src\7z1505-src\CPP\7zip\Archive\HfsHandler.cpp
+Line 1496        HRESULT CHandler::ExtractZlibFile(
+Line 1497                ISequentialOutStream *outStream,
+Line 1498                const CItem &item,
+Line 1499                NCompress::NZlib::CDecoder *_zlibDecoderSpec,
+Line 1500                CByteBuffer &buf,
+Line 1501                UInt64 progressStart,
+Line 1502                IArchiveExtractCallback *extractCallback)
+Line 1503        {
+Line 1504          CMyComPtr inStream;
+Line 1505          const CFork &fork = item.ResourceFork;
+Line 1506          RINOK(GetForkStream(fork, &inStream));
+Line 1507          const unsigned kHeaderSize = 0x100 + 8;
+Line 1508          RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize));
+Line 1509          UInt32 dataPos = Get32(buf);
+Line 1510          UInt32 mapPos = Get32(buf + 4);
+Line 1511          UInt32 dataSize = Get32(buf + 8);
+Line 1512          UInt32 mapSize = Get32(buf + 12);
+(...)
+Line 1538          RINOK(ReadStream_FALSE(inStream, tableBuf, tableSize));
+Line 1539          
+Line 1540          UInt32 prev = 4 + tableSize;
+Line 1541
+Line 1542          UInt32 i;
+Line 1543          for (i = 0; i < numBlocks; i++)
+Line 1544          {
+Line 1545                UInt32 offset = GetUi32(tableBuf + i * 8);
+Line 1546                UInt32 size = GetUi32(tableBuf + i * 8 + 4);
+Line 1547                if (size == 0)
+Line 1548                  return S_FALSE;
+Line 1549                if (prev != offset)
+Line 1550                  return S_FALSE;
+Line 1551                if (offset > dataSize2 ||
+Line 1552                        size > dataSize2 - offset)
+Line 1553                  return S_FALSE;
+Line 1554                prev = offset + size;
+Line 1555          }
+Line 1556
+Line 1557          if (prev != dataSize2)
+Line 1558                return S_FALSE;
+Line 1559
+Line 1560          CBufInStream *bufInStreamSpec = new CBufInStream;
+Line 1561          CMyComPtr bufInStream = bufInStreamSpec;
+Line 1562
+Line 1563          UInt64 outPos = 0;
+Line 1564          for (i = 0; i < numBlocks; i++)
+Line 1565          {
+Line 1566                UInt64 rem = item.UnpackSize - outPos;
+Line 1567                if (rem == 0)
+Line 1568                  return S_FALSE;
+Line 1569                UInt32 blockSize = kCompressionBlockSize;
+Line 1570                if (rem < kCompressionBlockSize)
+Line 1571                  blockSize = (UInt32)rem;
+Line 1572
+Line 1573                UInt32 size = GetUi32(tableBuf + i * 8 + 4);
+Line 1574
+Line 1575                RINOK(ReadStream_FALSE(inStream, buf, size)); // !!! HEAP OVERFLOW !!!
+
+
+During extraction from an HFS+ image, having compressed files with a "com.apple.decmpfs" attribute and data stored in a resource fork, we land in the above code.
+
+Compressed file data is split into blocks and each block before decompression is read into "buf", as we can see in Line 1575. Based on the "size" value ReadStream_FALSE, which under the hood is really just the ReadFile API, reads a portion of data into "buf" buffer.
+
+The buffer "buf" definition and its size we can observe from ExtractZlibFile’s caller, the CHandler::Extract method. As you can see, its size is constant and equal to 0x10010 bytes.
+
+Line 1633        STDMETHODIMP CHandler::Extract(const UInt32 *indices, UInt32 numItems,
+Line 1634                Int32 testMode, IArchiveExtractCallback *extractCallback)
+Line 1635        {
+(...)
+Line 1652          
+Line 1653          const size_t kBufSize = kCompressionBlockSize; // 0x10000
+Line 1654          CByteBuffer buf(kBufSize + 0x10); // we need 1 additional bytes for uncompressed chunk header
+(...)
+Line 1729          HRESULT hres = ExtractZlibFile(realOutStream, item, _zlibDecoderSpec, buf,
+Line 1730            currentTotalSize, extractCallback);
+
+Going back to the ExtractZlibFile method, Line 1573 sets the block "size" value read from tableBuf. tableBuf in Line 1538 is read from the file, meaning that the "size" is just a part of data coming from the file itself, so we can influence its value. Setting a value for "size" bigger than 0x10010 should achieve a buffer overflow and as a result achieve heap corruption.
+
+Before Line 1573, the value of the "size" variable is read in a loop included in lines 1543-1555. This block of code is responsible for checking whether data blocks are consistent, which means that:
+   - the data block should start just after tableBuf, Line 1540
+   - the following data block should start at previous block size + offset, Line 1549
+   - the offset should not be bigger than dataSize2 (size of compressed data) Line 1551
+   - "size" should not be bigger than the remaining data, Line 1552       
+
+As we can see there is no check regarding whether the "size" is bigger than "buf" size. The constraints described above don't have influence on it either.
+
+
+
+Conclusion
+Sadly, many security vulnerabilities arise from applications which fail to properly validate their input data. Both of these 7-Zip vulnerabilities resulted from flawed input validation. Because data can come from a potentially untrusted source, data input validation is of critical importance to all applications’ security. Talos has worked with 7-Zip to responsibly disclose, and then patch these vulnerabilities. Users are urged to update their vulnerable versions of 7-Zip to the latest revision, version 16.00, as soon as possible.
+
+
+TALOS-CAN-0093 is detected by sids 38323-38326.
+TALOS-CAN-0094 is detected by sids 38293-38296.
+
+

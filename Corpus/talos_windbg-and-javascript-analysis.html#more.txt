@@ -1,0 +1,289 @@
+
+WinDBG and JavaScript Analysis
+
+
+This blog was authored by Paul Rascagneres.
+
+
+Introduction
+
+JavaScript is frequently used by malware authors to execute malicious code on Windows systems because  it is powerful, natively available and rarely disabled.  Our previous article on .NET analysis generated much interest relating to how to use WinDBG to analyse .js files. In this post we extend our description of using WinDBG to describe the analysis of JavaScript using the 64 bit version of wscript.exe. It is strongly recommended to read our previous article first.
+
+
+
+Object Loading on Windows Systems
+
+JavaScript often needs to load external objects, in order to obtain access to additional features not included by default in the Windows interpreter. This can be achieved by using the ActiveXObject() API (to load ActiveX objects) or WScript.CreateObject() API (to load COM objects). The mechanisms behind these 2 API are the same: loading an external library to enable access to new objects. Here are 2 examples:
+new ActiveXObject("Shell.Application");
+WScript.CreateObject("Wscript.Shell");
+
+The first point is to understand which library is behind these two objects. This information is stored in the registry. First we need to get the CLSID associated to the object name in the following registry name: HKEY_CLASSES_ROOT\OBJECT_NAME\CLSID. 
+
+
+Here is an example for the Shell.Application object name:
+
+
+
+This shows that the CLSID is {13709620-C279-11CE-A49E-444553540000}. With this information we are able to get the dll path of the object in HKEY_CLASSES_ROOT\CLSID\{THE_CLSID}:
+
+
+
+In this case, the library in which the Shell.Application object is located is shell32.dll. With this information, we are able to start WinDBG in order to analyse object loading and execution.
+
+
+WinDBG Analysis
+
+The analysis of JavaScript execution is performed by debugging the wscript.exe binary. This can be executed with the following command:
+"C:\Program Files (x86)\Windows Kits\10\Debuggers\x64\windbg.exe" C:\Windows\System32\wscript.exe c:\Users\User\to_be_analysed.js
+
+The technique is often the same:
+
+
+Breakpoint when the object library is loaded;
+
+Identification and breakpoint on the wanted function;
+
+Get arguments of the function
+
+
+Case Study #1: ActiveX Object
+
+Consider the following code:
+var oShell = new ActiveXObject("Shell.Application");
+var commandtoRun = "calc.exe";
+oShell.ShellExecute(commandtoRun,"","","","1");
+
+The first task is to find where the "Shell.Application" library object is located in the registry:
+c:\Users\user> script.py Shell.Application
+Object Name: Shell.Application
+CLSID: {13709620-C279-11CE-A49E-444553540000}
+Description: Shell Automation Service
+dll: %SystemRoot%\system32\shell32.dll
+
+This tells us that we should analyse shell32.dll. Let's execute this script and introduce a breakpoint when the library is loaded:
+0:000> sxe ld shell32 ; g
+ModLoad: 00007fff`c6af0000 00007fff`c7f27000   C:\WINDOWS\System32\SHELL32.dll
+ntdll!NtMapViewOfSection+0x14:
+00007fff`c8e658a4 c3              ret
+The next step is to identify the ShellExecute function:
+0:000> x shell32!ShellExecute
+
+Unfortunately, the function does not have the same name in JavaScript and in the library. However, we can search for it using a regular expression:
+0:000> x shell32!ShellExecute*
+00007fff`c6b13dd0 SHELL32!ShellExecuteExW (void)
+00007fff`c6b13e44 SHELL32!ShellExecuteNormal (void)
+00007fff`c6cb1630 SHELL32!ShellExecuteExA (<no parameter info>)
+00007fff`c6fa8d58 SHELL32!ShellExecuteRegApp (<no parameter info>)
+00007fff`c6bef560 SHELL32!ShellExecuteW (<no parameter info>)
+00007fff`c6cb15a0 SHELL32!ShellExecuteA (<no parameter info>)
+00007fff`c6fa9058 SHELL32!ShellExecuteRunApp (<no parameter info>)
+
+In our case, we can add a breakpoint for ShellExecuteNormal:
+0:000> bp shell32!ShellExecuteNormal
+0:000> g
+Breakpoint 0 hit
+SHELL32!ShellExecuteNormal:
+00007fff`c6b13e44 48895c2408      mov     qword ptr [rsp+8],rbx ss:00000029`cb56c7a0=00000029cb56cc90
+
+We can now retrieve the argument directly via the RCX register:
+0:000> r $t1=poi(rcx+0x18);du $t1
+000001ee`350d055c  "calc.exe"
+
+At first glance, it's not obvious why there is an offset of 0x18. This is due to the argument being passed to ShellExecuteNormal() is a pointer to a SHELLEXECUTEINFO structure. The Microsoft documentation describes than in these cases, the structure is located with the offset 0x18.
+
+Case Study #2: WScript Shell Object
+
+Let's consider a second example:
+var shell = WScript.CreateObject("Wscript.Shell");
+var command = "calc.exe"; 
+shell.Run(command, true, false);
+
+As previously, the first task consists of finding the library where Wscript.Shell is located:
+c:\Users\user> script.py Wscript.Shell
+Object Name: Wscript.Shell
+CLSID: {72C24DD5-D70A-438B-8A42-98424B88AFB8}
+Description: Windows Script Host Shell Object
+dll: C:\Windows\System32\wshom.ocx
+
+Let's try to identify the function name:
+0:000> sxe ld wshom
+0:000> g
+ModLoad: 00007fff`b5630000 00007fff`b5657000   C:\Windows\System32\wshom.ocx
+ntdll!NtMapViewOfSection+0x14:
+00007fff`c8e658a4 c3              ret
+0:000> x wshom!*Run*
+00007fff`b5640930 wshom!CUnknown::InnerUnknown::`vftable' = <no type information>
+00007fff`b563d530 wshom!CUnknown::InnerUnknown::QueryInterface (<no parameter info>)
+00007fff`b5648084 wshom!_IMPORT_DESCRIPTOR_ScrRun = <no type information>
+00007fff`b563d570 wshom!CUnknown::InnerUnknown::Release (<no parameter info>)
+00007fff`b5643d30 wshom!ScrRun_NULL_THUNK_DATA = <no type information>
+00007fff`b563bbb0 wshom!CWshShell::Run (<no parameter info>)
+00007fff`b5631000 wshom!CUnknown::InnerUnknown::AddRef (<no parameter info>)
+00007fff`b5644518 wshom!LIBID_IWshRuntimeLibrary = <no type information>)
+
+The function is wshom!CWshShell::Run, we can breakpoint on this and check for the argument:
+0:000> bp wshom!CWshShell::Run
+0:000> g
+Breakpoint 0 hit
+wshom!CWshShell::Run:
+00007fff`b563bbb0 48895c2408      mov     qword ptr [rsp+8],rbx ss:00000020`7ccfd520=0000013f3d650420
+0:000> du rdx
+0000013f`3d65055c  "calc.exe"
+
+In contrary to the previous case study, the argument is directly a string and not a structure, therefore there is no offset required to retrieve the argument 
+
+Case Study #3: WScript XMLHTTP Object
+
+Here is the source code for this case study:
+var httpStream = WScript.CreateObject("MSXML2.XMLHTTP");
+httpStream.open("GET", 'http://blog.talosintelligence.com');
+httpStream.send();
+
+The library associated with the MSXML2.XMLHTTP object:
+c:\Users\user> script.py MSXML2.XMLHTTP
+Object Name: MSXML2.XMLHTTP
+CLSID: {F6D90F16-9C73-11D3-B32E-00C04F990BB4}
+Description: XML HTTP
+dll: %SystemRoot%\System32\msxml3.dll
+
+We can use the same technique as before:
+0:000> sxe ld msxml3
+0:000> g
+ModLoad: 00007fff`8dc40000 00007fff`8de68000   C:\WINDOWS\System32\msxml3.dll
+ntdll!NtMapViewOfSection+0x14:
+00007fff`c8e658a4 c3              ret
+
+This time, we use a regular expression to breakpoint on all the APIs that contain the word "Open":
+0:000> bm msxml3!*Open*
+1: 00007fff`8dc43030 @!"msxml3!ErrorHelper::CHTMLWindow2::open"
+breakpoint 1 redefined
+1: 00007fff`8dc43030 @!"msxml3!FakeHTMLDoc::open"
+2: 00007fff`8dd4c5fc @!"msxml3!HTTPStream::OpenRequest"
+3: 00007fff`8dcaa407 @!"msxml3!_imp_load_CertOpenStore"
+breakpoint 1 redefined
+1: 00007fff`8dc43030 @!"msxml3!ErrorHelper::CHTMLWindow2::get_opener"
+4: 00007fff`8dc48eb4 @!"msxml3!ContentModel::openGroup"
+5: 00007fff`8dd4cb00 @!"msxml3!HTTPStream::deferedOpen"
+breakpoint 1 redefined
+1: 00007fff`8dc43030 @!"msxml3!ErrorHelper::CHTMLDocument2::open"
+breakpoint 1 redefined
+1: 00007fff`8dc43030 @!"msxml3!ErrorHelper::CHTMLWindow2::put_opener"
+6: 00007fff`8dd4a050 @!"msxml3!URLMONRequest::open"
+7: 00007fff`8dc8f4d0 @!"msxml3!FileStream::deferedOpen"
+8: 00007fff`8dd34e80 @!"msxml3!XMLHttp::open"
+9: 00007fff`8dc597e0 @!"msxml3!URLMONStream::deferedOpen"
+10: 00007fff`8dc70ddc @!"msxml3!NamespaceMgr::popEntry"
+11: 00007fff`8dcaa3bf @!"msxml3!_imp_load_WinHttpOpen"
+12: 00007fff`8dcaa3e3 @!"msxml3!_imp_load_WinHttpOpenRequest"
+13: 00007fff`8dd47340 @!"msxml3!HTTPRequest::open"
+14: 00007fff`8dd47660 @!"msxml3!HTTPRequest::openWithCredentials"
+15: 00007fff`8dc8f37c @!"msxml3!FileStream::open"
+16: 00007fff`8dd4c128 @!"msxml3!URLStream::OpenPreloadResource"
+17: 00007fff`8dd4b410 @!"msxml3!URLRequest::open"
+0:000> g
+Breakpoint 8 hit
+msxml3!XMLHttp::open:
+00007fff`8dd34e80 488bc4          mov     rax,rsp
+
+We see that the API used is in fact XMLHttp::open() from this we can obtain the argument:
+0:000> du rdx
+00000173`311a0568  "GET"
+0:000> du r8
+00000173`311a0578  "http://blog.talosintelligence.co"
+00000173`311a05b8  "m"
+
+These arguments are two strings rather than a structure and can be retrieved without offset.
+
+Case Study #4: Eval() Function
+
+The eval() function is frequently used by malware authors to obfuscate code execution. This function is native to JavaScript and does not require an external library. Here is an example of eval() in use:
+var test = "var oShell = new ActiveXObject(\"Shell.Application\");var commandtoRun = \"notepad.exe\"; oShell.ShellExecute(commandtoRun,\"\",\"\",\"\",\"1\");"
+eval(test) 
+
+var encoded = "dmFyIG9TaGVsbCA9IG5ldyBBY3RpdmVYT2JqZWN0KCJTaGVsbC5BcHBsaWNhdGlvbiIpO3ZhciBjb21tYW5kdG9SdW4gPSAiY2FsYy5leGUiOyBvU2hlbGwuU2hlbGxFeGVjdXRlKGNvbW1hbmR0b1J1biwiIiwiIiwiIiwiMSIpOwo="
+eval(Base64.decode(encoded))
+
+This script executes 2 different kind of eval() calls. The first, contains a string to execute directly (calc.exe execution); the second contains a command used to generate the code to execute (notepad.exe execution encoded with base64). 
+
+The eval() function itself is located in the script.dll library: bp jscript!JsEval. The function uses the jscript!COleScript::Compile API to generate the JavaScript code executed via eval():
+0:000> sxe ld jscript;g
+ModLoad: 00007fff`9e650000 00007fff`9e70c000   C:\Windows\System32\jscript.dll
+ntdll!NtMapViewOfSection+0x14:
+00007fff`c8e658a4 c3              ret
+0:000> bp jscript!JsEval
+0:000> g
+Breakpoint 0 hit
+jscript!JsEval:
+00007fff`9e681960 488bc4          mov     rax,rsp
+0:000> u rip L50
+jscript!JsEval:
+00007fff`9e681960 488bc4          mov     rax,rsp
+00007fff`9e681963 48895810        mov     qword ptr [rax+10h],rbx
+00007fff`9e681967 48897018        mov     qword ptr [rax+18h],rsi
+00007fff`9e68196b 48897820        mov     qword ptr [rax+20h],rdi
+[...redacted…]
+00007fff`9e681a81 488364242000    and     qword ptr [rsp+20h],0
+00007fff`9e681a87 e80c3cfdff      call    jscript!COleScript::Compile
+00007fff`9e681a8c 89455f          mov     dword ptr [rbp+5Fh],eax
+00007fff`9e681a8f 8bf8            mov     edi,eax
+00007fff`9e681a91 85c0            test    eax,eax
+00007fff`9e681a93 7923            jns     jscript!JsEval+0x158 (00007fff`9e681ab8)
+
+We can breakpoint at jscript!COleScript::Compile to obtain both the unencoded string example calling calc.exe, and the decoded version of the base64 encoded call to notepad.exe:
+0:000> bp jscript!COleScript::Compile "r $t1 = poi(rdx+0x10);r $t2 = poi($t1+0x8);du $t2;g";g
+jscript!COleScript::Compile:
+00007fff`9e715698 4053            push    rbx
+0:000> g
+0000019b`d23f6408  "var oShell = new ActiveXObject(""
+0000019b`d23f6448  "Shell.Application");var commandt"
+0000019b`d23f6488  "oRun = "calc.exe"; oShell.ShellE"
+0000019b`d23f64c8  "xecute(commandtoRun,"","","","1""
+0000019b`d23f6508  ");."
+80070002 The system cannot find the file specified.
+0000019b`d473a1b0  "var oShell = new ActiveXObject(""
+0000019b`d473a1f0  "Shell.Application");var commandt"
+0000019b`d473a230  "oRun = "notepad.exe"; oShell.She"
+0000019b`d473a270  "llExecute(commandtoRun,"","","","
+0000019b`d473a2b0  ""1");"
+ntdll!NtTerminateProcess+0x14:
+00007fff`c8e65924 c3              ret
+
+
+Conclusion
+
+WinDBG is an extremely powerful tool that can not only help in the analysis of .NET files, but also help understand the execution of JavaScript by wscript.exe. In many cases, WinDBG may be overkill for understanding the functionality of single JavaScript files. However, using WinDBG can provide a different overview of functionality and facilitate the analysis of complex JavaScript.
+
+
+Appendix
+
+
+Python script to get the library from an object name
+from _winreg import *
+import sys
+
+try:
+  objectName = sys.argv[1]
+except:
+  sys.exit(1)
+
+try:
+  hReg = ConnectRegistry(None,HKEY_CLASSES_ROOT)
+  hCLSIDKey = OpenKey(hReg, objectName+"\CLSID")
+  CLSID=QueryValue(hCLSIDKey, "")
+  if CLSID:
+    hKey = OpenKey(hReg, "CLSID\\"+CLSID)
+    description = QueryValue(hKey, "")
+    hKey = OpenKey(hReg, "CLSID\\"+CLSID+"\\InProcServer32")
+    dll = QueryValueEx(hKey, "")[0]
+    print "Object Name: "+objectName
+    print "CLSID: "+CLSID
+    print "Description: "+description
+    print "dll: "+dll
+  else:
+    print "No CLSID"
+except:
+  print "Error"
+  sys.exit(2)
+
+
+

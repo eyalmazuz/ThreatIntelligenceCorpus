@@ -1,0 +1,607 @@
+Inside Petya and Mischa ransomware
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 20 September 2016
+
+The Avast Threat Intelligence team takes a deeper look into the double ransomware, Petya and Mischa.Petya and Mischa ransomware, come as a package deal, distributed by its creators, Janus. They are very unusual in that they combine two different methods to encrypt user data. Unlike most other ransomware, Petya primarily encrypts MFT (Master File Table) and MBR (Master Boot Record). If Petya has insufficient privileges to access MBR on HDD (Hard Disk Drive), the Mischa module is deployed and encrypts files one by one.
+
+
+The first version of Petya was only able to encrypt MBR and MFT sectors. This version of Petya used red for its logo, font, etc.. The authors have now changed the color to green and added the Mischa module in the second and third versions of Petya.
+
+During development, the authors have made some mistakes when implementing the salsa20 encryption algorithm, which enables retrospective file decryption via genetic algorithms or the use of bruteforce, without paying a ransom fee. The latest Petya MBR loader implementation has been fixed and the previous methods that could be used for decryption do not work anymore.
+Petya and Mischa can also work offline, meaning they don’t need to communicate back to their C&C servers, something other ransomware needs to do in order to download the encryption key.
+The names of the modules, Petya and Mischa, and the creator's nickname, Janus, were inspired by the James Bond film “Goldeneye.”
+Let's look at some interesting features of this double ransomware:
+
+Fake email
+This ransomware is primarily spread via spam email campaigns using different variations with different types of attachments (zip, pif, .pdf.exe, ..) or links to various online storage services. The fake emails looks like job applications, job offers, legal proceedings, among other things. The ransomware doesn’t use any sophisticated methods or exploit kits to infect devices, it purely relies on user action to run the infected attachments.
+Dropper
+When we analyzed Petya, the dropper posed as a Machine Debug Manager* and included the original compilation date, as well as fragments of the original Machine Debug Manager binary. It also imported a lot of unnecessary API functions.
+* Machine Debug Manager, Mdm.exe, is a program that is installed with the Microsoft Script Editor to provide support for program debugging.
+
+The dropper is simple and doesn’t contain any anti-debugging tricks, but it is very strongly obfuscated with a ton of junk code instructions and also uses self modifying methods.
+Obfuscated code before modification:
+
+And after SMC (Self Modifying Method):
+
+The dropper includes the XORed payload, which contains Petya’s bootloader and the Mischa module.
+Payload
+The payload is a DLL file named “Setup.dll” with significant export “_ZuWQdweafdsg345312@0” and “.xxxx” section name in the PE header. This section contains encrypted modules.
+
+In the first step, the Petya bootloader and the Mischa module are decrypted, using a simple 1-byte XOR algorithm.
+
+In the next step, the payload checks which privileges it has via the GetTokenInformation API function and decides which module will be deployed.
+
+A random encryption key is generated via the CryptGenRandom API function from the Windows CryptoAPI library. This key is encrypted and represented as a Base58 encoded string. This atypical encoding with the BitCoin alphabet is used in other modules too.
+ 
+
+
+A little structure with the user OS identification (red) and the user’s installed AV product (orange) is added at the end of the encoded key (green). As you can see, the authors kept several free spaces (purple) probably for further usage.
+
+The OS version verification is performed using an interesting method via the API functions VerSetConditionMask and VerifyVersionInfoW. This method ensures compatibility on Win8 and higher where the API function GetVersion(Ex) was deprecated.
+
+Each OS version represents an ASCII character from the Base58 alphabet.
+
+
+
+
+Hex
+
+
+ASCII
+
+
+Windows version
+
+
+
+
+0x44 
+
+
+D
+
+
+Windows 10
+
+
+
+
+0x43 
+
+
+C
+
+
+Windows 8.1 or Windows Server 2012 R2
+
+
+
+
+0x42 
+
+
+B
+
+
+Windows 8 or Windows Server 2012
+
+
+
+
+0x41
+
+
+A
+
+
+Windows 7 SP1 or Windows Server 2008 R2 SP1
+
+
+
+
+0x39
+
+
+9
+
+
+Windows 7 or Windows Server 2008 R2 (without Service Pack)
+
+
+
+
+0x38
+
+
+8
+
+
+Windows Vista SP2 or Windows Server 2008 SP2
+
+
+
+
+0x37
+
+
+7
+
+
+Windows Vista SP1 or Windows Server 2008 SP1
+
+
+
+
+0x36
+
+
+6
+
+
+Windows Vista or Windows Server 2008 (without Service Pack)
+
+
+
+
+0x35
+
+
+5
+
+
+Windows XP SP3
+
+
+
+
+0x34
+
+
+4
+
+
+Windows XP SP2
+
+
+
+
+0x33
+
+
+3
+
+
+Windows XP SP1
+
+
+
+
+0x32
+
+
+2
+
+
+Older version
+
+
+
+
+
+
+The verification of the installed AV product is done by searching folder names inside “Program Files” or “Program Files (x86)” and comparing the results with the hardcoded list. The payload will store value “1” if nothing is found or add a character from Base58 alphabet that corresponds to the AV product that was found.
+Table of AV products:
+
+
+
+
+Hex
+
+
+ASCII
+
+
+AV product directory string
+
+
+
+
+0x31
+
+
+1
+
+
+nothing found
+
+
+
+
+0x32 
+
+
+2
+
+
+AhnLab
+
+
+
+
+0x33 
+
+
+3
+
+
+AVAST Software
+
+
+
+
+0x34 
+
+
+4
+
+
+AVG
+
+
+
+
+0x35 
+
+
+5
+
+
+Avira
+
+
+
+
+0x36 
+
+
+6
+
+
+Bitdefender
+
+
+
+
+0x37 
+
+
+7
+
+
+BullGuard Ltd
+
+
+
+
+0x38 
+
+
+8
+
+
+CheckPoint
+
+
+
+
+0x39
+
+
+9
+
+
+COMODO
+
+
+
+
+0x41
+
+
+A
+
+
+ESET
+
+
+
+
+0x42
+
+
+B
+
+
+F-Secure
+
+
+
+
+0x43 
+
+
+C
+
+
+G DATA
+
+
+
+
+0x44
+
+
+D
+
+
+K7 Computing
+
+
+
+
+0x45 
+
+
+E
+
+
+Kaspersky Lab
+
+
+
+
+0x46 
+
+
+F
+
+
+Malwarebytes Anti-Malware
+
+
+
+
+0x47 
+
+
+G
+
+
+McAfee
+
+
+
+
+0x48
+
+
+H
+
+
+McAfee.com
+
+
+
+
+0x4A
+
+
+J
+
+
+Microsoft Security Client
+
+
+
+
+0x4B
+
+
+K
+
+
+Norman
+
+
+
+
+0x4C 
+
+
+L
+
+
+Panda Security
+
+
+
+
+0x4D 
+
+
+M
+
+
+Quick Heal
+
+
+
+
+0x4E 
+
+
+N
+
+
+Spybot - Search & Destroy 2
+
+
+
+
+0x50 
+
+
+P
+
+
+Spybot - Search & Destroy
+
+
+
+
+0x51 
+
+
+Q
+
+
+Norton Security with Backup
+
+
+
+
+0x52 
+
+
+R
+
+
+Norton Security
+
+
+
+
+0x53 
+
+
+S
+
+
+NortonInstaller
+
+
+
+
+0x54 
+
+
+T
+
+
+VIPRE
+
+
+
+
+0x55 
+
+
+U
+
+
+Trend Micro
+
+
+
+
+
+The folder search is carried out using the GetFileAttributesA API function and the results are checked with the value 0x10 = FILE_ATTRIBUTE_DIRECTORY.
+
+The next step is to select the correct .onion URL address and append part of the generated key to them.
+
+The authors have been using the following TOR addresses for a long time:
+hxxp://petya3jxfp2f7g3i.onion/
+hxxp://petya3sen7dyko2n.onion/
+hxxp://mischapuk6hyrn72.onion/
+hxxp://mischa5xyix2mrhd.onion/
+Now, everything is ready to run Petya for the MBR infection or Mischa to encrypt user’s files.
+Petya
+The malware author behind Petya showed his or her art in the field of low-level programming, and his or her deep knowledge of MBR and MFT technologies in this module. Petya not only includes the bootloader, but also includes a micro kernel for MFT encryption. This process looks like a CHKDSK utility, but during its operation it encrypts MFT.
+
+Petya uses atypical salsa20 encryption.The authors had problems correctly implementing the encryption in previous versions, but they seemed to have figured everything out now.
+Official source code:
+
+Implementation of sigma constant inside Petya’s micro kernel:
+
+The Petya code hasn’t changed since the last update in July, which makes us think the authors probably consider the code to be stable enough.
+Right after the bootloader and micro kernel are successfully written into the MBR, the ransomware rudely restarts the computer, without giving any warning, by using the undocumented NtRaiseHardError API function with specifically selected parameters:
+HARD_ERROR_RESPONSE_OPTION = 0x06 | OptionShutdownSystem
+NTSTATUS = 0xC0000350 | STATUS_HOST_DOWN
+
+Mischa
+Mischa encrypts individual files based on their extensions, as most ransomwares does. The version that we analyzed can encrypt 241 file types.
+
+Mischa is able to encrypt data on all local drives, connected USB drives and remote drives. For drive verification it uses the GetLogicalDriveStringsA and GetDriveTypeA API functions.
+
+
+ Mischa avoids the following directories, because they also encrypt EXE and DLL files:
+
+Mischa is injected into one of the running system processes (explorer.exe, taskhost.exe, conhost.exe etc.), so the entire encryption process is less noticeable and the malicious process can better avoid some behavioral detection systems.
+Mischa uses open-source ReflectiveLoader code for this purpose.
+Official source code:
+
+Implementation inside Mischa:
+
+The file encryption is based on an XOR operation (CBC - Cipher Block Chaining - style) from a randomly generated key (initial vector for the CBC) and the previously generated master key, in its decrypted form.
+
+
+Like every other ransomware, Mischa also saves help files (txt and html) in each folder along with the encrypted files. The file extension of the encrypted files are the same as the identification string in the .onion URL. Help files aren’t obfuscated.
+
+We found a bug in Windows XP, in which Mischa encrypted important system files and the entire system became unusable.
+This error (Error Code 0x8007002 = ERROR_FILE_NOT_FOUND)
+occurs before logging into Windows and if you click on the “OK” button the message will pop up again, causing a never ending loop....
+
+Ransomware as service
+The authors also offer their services as an affiliate program. If Janus earns a profit of more than 125 BTC, they pay the distributor 85% of the profit, which could be very attractive to other cybercriminals or even employees working in big companies.
+
+
+According to discussions we read on their TOR pages, it is evident that the attacks targeting large companies may not always be an attack from the “outside”, but quite possibly and frequently “insider jobs”. Janus’ offer of giving distributors a large percentage of the profit made from attacks could entice employees within bigger companies to carry out the attack. Each affected PC has a unique key to decrypt devices, so a company would need to pay to decrypt each infected computer, that is a lot of money...
+
+Conclusion
+The creators of Petya are very skilled programmers. The ransomware is written in a very pure form and is constantly being reviewed and improved. Over a relatively short time, the authors released several versions, added the Mischa module and fixed bugs in the implementation of the encryption, which previously made decryption without paying a ransom fee possible.
+As you can see below, the authors also monitor what the AV industry is saying about their products, especially at security conferences.
+
+It is unusual to see double ransomware, and we will see how Petya and Mischa will evolve in the future ...
+How to stay safe
+Avast protects against ransomware such as Petya and Mischa. Compare security solutions on our website.
+
+As always, don’t open suspicious attachments (e.g. zipped .js, .wsf or .vbs files)
+Disable Microsoft Office macros by default and never enable macros in strange/unknown attachments that you receive via email
+Keep recent backup copies of important data in a secure place either online or offline
+Ensure that your system and applications are fully updated and patched
+
+SHA-256: EEFA052DA01C3FAA1D1F516DDFEFA8CEB8A5185BB9B5368142FFDF839AEA4506
+
+Ransomware
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+

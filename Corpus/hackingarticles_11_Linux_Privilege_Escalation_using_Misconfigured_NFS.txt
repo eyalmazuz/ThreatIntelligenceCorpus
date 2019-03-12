@@ -1,0 +1,70 @@
+
+Linux Privilege Escalation using Misconfigured NFS
+
+After solving several OSCP Challenges we decided to write the article on the various method used for Linux privilege escalation, that could be helpful for our readers in their penetration testing project. In this article, we will learn how to exploit a misconfigured NFS share to gain root access to a remote host machine.
+Table of contents
+Introduction of NFS
+Misconfigured NFS Lab setup
+Scanning NFS shares
+Exploiting NFS server for Privilege Escalation via:
+Bash file
+C program file
+Nano/vi
+Let’s Start!!
+Network File System (NFS): Network File System permits a user on a client machine to mount the shared files or directories over a network. NFS uses Remote Procedure Calls (RPC) to route requests between clients and servers. Although NFS uses TCP/UDP port 2049 for sharing any files/directories over a network.
+Basically, there are three core configuration files (/etc/exports, /etc/hosts.allow, and /etc/hosts.deny) you will need to configure to set up an NFS server. BUT to configure weak NFS server we will look only /etc/export file.
+To install NFS service execute below command in your terminal and open /etc/export file for configuration.
+The /etc/exports file holds a record for each directory that you expect to share within a network machine. Each record describes how one directory or file is shared. 
+Apply basic syntax for configuration:
+ Directory         Host-IP(Option-list)
+ There are various options will define which type of Privilege that machine will have over shared directory.
+
+Hopefully, it might be clear to you, how to configure the /etc/export file by using a particular option. An NFS system is considered weak or Misconfigured when following entry/record is edit into it for sharing any directory.
+Above entry shows that we have shared /home directory and allowed the root user on the client to access files to read/ write operation and * sign denotes connection from any Host machine. After then restart the service with help of the following command.
+
+You can take help of Nmap script to scan NFS service in target network because it reveals the name of share directory of target’s system if port 2049 is opened.
+ 
+Basically nmap exports showmount -e command to identify the shared directory and here we can clearly observe /home * is shared directory for everyone in the network.
+The same thing can be done manually by using showmount command but for that install nfs-common package on your local machine with help of the following command.
+
+Bash file
+Now execute below command on your local machine to exploit NFS server for root privilege.
+Above command will create a new folder raj inside /tmp and mount shared directory /home inside /tmp/raj. Then upload a local exploit to gain root by copying bin/bash and set suid permission.
+ 
+Use df -h command to get summary of the amount of free disk space on each mounted disk.
+
+First, you need to compromise the target system and then move to privilege escalation phase. Suppose you successfully login into victim’s machine through ssh. Now we knew that /home is shared directory, therefore, move inside it and follow below steps to get root access of victim’s machine.
+So, it was the first method to pwn the root access with help of bin/bash if NFS system is configured weak. 
+
+Similarly, we can use C language program file for root privilege escalation. We have generated a C-Program file and copied it into /tmp/raj folder. Since it is c program file therefore first we need to compile it and then set suid permission as done above.
+
+Now repeat the above process and run shell file to obtained root access.
+ So, it was the second method to pwn the root access with help of bin/bash via c-program if NFS system is misconfigured. 
+
+Nano and vi editor both are most dangerous applications that can lead to privilege escalation if share directly or indirectly. In our case, it not shared directly but still, we can use any application for exploiting root access.
+Follow below steps:
+
+Since we have set suid permission to nano therefore after compromising target’s machine at least once we can escalate root privilege through various techniques.
+
+When you will execute above command it will open shadow file, from where you can copy the hash password of any user.
+
+Here I have copied hash password of the user: raj in a text file and saved as shadow then use john the ripper to crack that hash password.
+Awesome!!! It tells raj having password 123. Now either you can login as raj and verify its privilege or follow next step.
+
+Passwd file 
+Now we know the password of raj user but we are not sure that raj has root privilege or not, therefore, we can add raj into the root group by editing etc/passwd file.
+
+Open the passwd file with help of nano and make following changes
+
+Now use su command to switch user and enter the password found for raj.
+Great!!! This was another way to get root access to target’s machine.
+
+Sudoers file
+We can also escalate root privilege by editing sudoers file where we can assign ALL privilege to our non-root user (ignite).
+
+Open the sudoers file with help of nano and make following changes
+
+Now use sudo bash command to access root terminal and get root privilege
+
+Conclusion: Thus we saw the various approach to escalated root privilege if port 2049 is open for NFS services and server is weak configured. For your practice, you can play with ORCUS which is a vulnerable lab of vulnhub and read the article from here.
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

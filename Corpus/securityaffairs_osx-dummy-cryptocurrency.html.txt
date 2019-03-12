@@ -1,0 +1,21 @@
+
+					Recently discovered OSX.Dummy mac malware is targeting the cryptocurrency community					
+“Previous days we’ve seen multiple MacOS malware attacks, originating within crypto related Slack or Discord chats groups by impersonating admins or key people. Small snippets are being shared, resulting in downloading and executing a malicious binary.” wrote Verhoef.
+The Wardle intent was to demonstrate that the Objective-See’s tools can generically thwart this new threat even if it was undetected by all the anti-virus software.
+
+Verhoef noticed that the attack was originating within crypto related Slack or Discord chats groups by impersonating admins or key people. 
+The attackers shared small code snippets like the following one resulting in downloading and executing a malicious binary.
+Wardle noticed that the malicious binary is not signed, this means it would be blocked by GateKeeper, but attackers overwhelmed this limitation by making the victims to download and run the binary directly via terminal commands.
+Wardle conducted a dynamic analysis of the malware using a High Sierra virtual machine with various Objective-See tools installed.
+The malware first sets script to be owned as root
+then it changes file’s permissions to root by executing the sudo command, but this will require the user to enter the password in the terminal.
+The password is saved by the malicious code in the folder /tmp/dumpdummy;
+The malware makes a series of operations that allow it to gain persistence through a malicious launch daemon.
+The malware sets up the RunAtLoad key to true, this implies that the value of the Program key, /var/root/script.sh, will be automatically executed by the OS whenever the system is rebooted.
+“It then duplicates stdin, stdout and stderr to the socket, before executing /bin/sh with the –i flag. In other words, it’s setting up an interactive reverse shell.” explained Wardle.
+“If you have a firewall product installed, such as Objective-See’s LuLu, this network activity will be detected”
+If the malware successfully connects the C&C server (185[.]243.115.230:1337), the attacker will be able to arbitrarily execute commands as root on the target system.
+Below the key findings of Wardle analysis on the OSX.Dummy:
+“To check if you’re infected run KnockKnock as root (since the malware set’s it components to be readable only by root). Look for an unsigned launch item com.startup.plist executing something named ‘script.sh'” Wardle concluded.
+Pierluigi Paganini
+(Security Affairs – malware, OSX.Dummy)

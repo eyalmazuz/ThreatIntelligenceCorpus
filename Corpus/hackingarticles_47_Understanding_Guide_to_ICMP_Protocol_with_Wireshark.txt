@@ -1,0 +1,88 @@
+
+Understanding Guide to ICMP Protocol with Wireshark
+
+From Wikipedia
+The Internet Control Message Protocol (ICMP) is a supporting protocol in the Internet protocol suite. It is used by network devices, including routers, to send error messages and operational information which indicates that a requested service is not available or that a host or router could not be reached.
+It is layer 3 i.e. network layer protocol used by the ping command for sending message through ICMP payload which is encapsulated with IP Header packet.  According to MTU the size of ICMP packet cannot be greater than 1500 bytes.
+ICMP packet at Network layer 
+
+ICMP packet at Data Link layer 
+ICMP Message code & Packet description with Wireshark
+ICMP message contains two types of codes i.e. query and error.
+Query: The query messages are the  information we get  from a router or another destination host.
+For example given below message types are some ICMP query codes:
+A ping command sends an ICMP echo request to the target host. The target host responds with an echo Reply which means target host is alive.
+
+Here we are going to test how ping command helps in identifying alive host by Pinging host IP.
+Ping 192.168.0.105
+From the given below image you can see reply from host; now notice few more things as given below:
+
+Look over the sequence of packet transfer between source and destination captured through wireshark.
+Total numbers of packet captured is 8, 4 for request and 4 for reply between source and destination machine.
+ The 1st packet is send by source machine is ICMP echo request and if you look by the  given below image, you will observe highlighted text is showing ICMP query code: type 8 echo ping request.
+Length of frame is 74 now  as explained in the below table: 
+ 
+
+Similarly given below image is showing details of 2nd packet i.e.  Echo reply, you can observe that the highlighted text is showing ICMP query code: type 0 echo ping reply.  
+
+Error: The error statement messages reports problem which a router or a destination host may generate.
+For example: given below message types are some of the ICMP error codes:
+When we ping an IP sometime we don’t get echo ping reply from the host machine, instead of that we get some reply such as destination unreachable or time exceeded this is known as ICMP error reporting message. There are so many reasons behind such kind of error message, possibily a host in a  network is down or firewall is blocking your ping request.
+
+The 1st packet send by source machine is ICMP echo request and if you observe by the given below image the highlighted text is showing ICMP query code: type 8 echo ping request.
+Similarly given below image is showing detail of 2nd packet i.e.  Destination unreachable, you can observe that it is showing ICMP error code: type 3.  
+
+ ping –a 192.168.0.105
+-a : Resolve IP addresses to host-name, identify’s that reverse name resolution is carried out on the host IP address. If it is successful, ping shows the matching host name.
+
+From the given below image you can observe that,  instead of ICMP protocol the ping request has been send through NBNS (NetBIOS Name service)protocol through port 137 which is a UDP port.
+
+After applying UDP filter you can read host name captured by wireshark “WIN-1GKSSJ7D2AE” is the part of workgroup.
+
+By default a ping send’s 4 packet of request and receives same number of packet as reply from the host. You can increase or decrease this number of packet by using given below command.
+ping –n 2 192.168.0.105
+-n: Number of echo requests to send
+As we had set -n as 2  packets of request hence we got two packet as reply.
+
+Similarly we can also set TTL (Time to Live) for echo request packet, by default 4 packet of request query are sent from source machine at the rate of 1 millisecond per packet. Suppose we want to give TTL between two packets, set -i as 5ms so that after the first packet is delivered the second packet is sent after 5ms.
+Ping –i 5 192.168.0.105
+-i TTL: Time To Live
+
+Let’s verify TTL for packet sent from source to destination though wireshark. Now if you observe by the given below image you will notice that every echo ping request packet has TTL 5 but every echo reply has default TTL value i.e.128.
+ICMP payload description through Wireshark
+As we have discuss above default size of ICMP payload is 32 bytes and maximum is 1472, if the size of payload packet is greater than 1472 then packet get’s fragmented into small packets.
+From the given below image you can observe source has pinged the host which carries default 32 bytes size payload.   
+
+Now let check the information payload carries from source to destination using wireshark. From the given below image you can read that highlighted texts are alphabets that has been used as 32 bytes payload.
+The alphabet is the combination 26 letters but in 32 bytes payload, they are used as:
+abcd——uvw are 23 letter only 9 letter needed more to complete 32 bytes therefore again it included 9 alphabets more  i.e. abcdefghi
+
+You can reset the size of payload using following command that  will carry echo ping request from source to destination.
+ping -l 33 192.168.0.105
+As we have seen above the 32 bytes payload carry data in the form of alphabets abcd—-uvw and then abcd—hi.  Hence if the size of payload is 33 then data should start from abcd—-uvw and then abcd—hij.  Alphabet “j” must be the last payload of data packet.
+
+From the given image you can confirm that Alphabet “j” is the last payload of data packet, In this way increasing the payload size will add an alphabet letter into data packet.
+Length of frame has become 75 now as shown in below table:
+
+Now we are sending maximum size of payload using following command.
+Ping -l 1472 192.168.0.105
+From the given below image you can see reply from host machine.
+
+According to MTU if the size of payload is set to 1472 then frame size will become 1514 as explain above, let’s verify it from wireshark.  From given below image you can read length of frame is 1514 and highlighted text is showing data of 1472 bytes payload.
+
+When the size of payload is greater than 1472 or too large for a network to hold and reach at a router, the router breaks it into smaller packets (fragments).
+ping -l 1473 192.168.0.105
+From the given below image you can see now size of payload is 1473 which carries echo ping request from source to destination.
+
+From the given image you can confirm that when payload is more than 1472 ICMP packet it gets fragmented as per below table:
+If you separate Ethernet header and IP header the size of payload will be 1480 bytes as shown below.
+
+Using –f option with ping command will not allow packet fragmentation in network.
+ping –f –l 1472 192.168.0.105
+-f:  Set Don’t Fragment flag in packet
+
+From the given below image you can observe remote host  has set (don’t) fragment flag which will not allow router to fragment the payload packets. More over 1472 bytes payload didn’t need fragmentation by router. 
+
+If the packet size 1473 is set with (don’t) fragment flag with ping, the router will reject the packet and will display an ICMP message that the packet needs to be fragmeted because of MTU size limit of 1500 bytes
+
+ Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

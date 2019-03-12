@@ -1,0 +1,154 @@
+
+A Simple USB Thumb Drive Duplicator on the Cheap
+
+
+By Tony Lee and Matt Kemelhar.
+
+You may have had to shop for a USB duplicator for some reason or another and noticed that they can be quite expensive and the product reviews are not always very encouraging.  At Foundstone, we teach a few classes that require each student to have the same Foundstone customized USB stick—thus we have a need for one of these expensive devices—especially when we need upwards of 100 sticks created in a weekend. 
+
+After scouring the web and reading reviews, we resorted to buying a duplicator that was around $300 and could duplicate 7 USB sticks at a time. Our first batch finished without a hitch - until we tried to boot off of them.  It turns out this product cannot duplicate a bootable USB stick which we needed for a LIVE Linux distro.  We contacted customer support and they even went as far as to rewrite the software to try to get it to do what we wanted—unfortunately, without any success.
+
+When all hope was lost, we turned to some Linux dd foo.  As it turns out, you don’t need the expensive hardware.  All you need is a standard USB hub, dd, and some command line magic.
+
+Overall, the process involves the following steps:
+
+Finding a good USB hub
+Getting a copy of dd
+Determining the drive mapping
+Executing the foo
+
+Finding a good USB hub
+
+Ironically, the very expensive “7-port USB duplicator” that we purchased last year served as our first USB hub, however we later realized that ANY USB hub would work.  If you are going to use an old hub you have laying around, you can skip this section.  Otherwise, there are a few things you may want to consider if you are going to purchase a new hub:
+Number of ports
+This will vary depending on the size of your project.  As stated earlier, we have to duplicate 100 or more USB sticks in a weekend, so for us… the more ports the better.  The USB hub I purchased this year was simply a hub (and not a “duplicator”), but it has 7 ports.
+U-Speed H7928-U3:  7-port USB 3.0 hub
+Price:  Less than $50 on amazon - much cheaper (1/6th) than our USB 2.0 7-port “duplicator”
+USB hub speed
+
+The duplicator we originally purchased was a USB 2.0 hub.  However, I also used an old Belkin USB 1.1 4-port hub to successfully test duplication as well.  This year, we went with a USB 3.0 hub to determine the performance increase—if any.
+
+
+Spacing between ports
+This is something you hopefully do not learn the hard way.  When buying a USB hub, you have to keep in mind the bulkiness of the USB sticks you may have to duplicate.  Take the image below for example with USB sticks of varying width.  The Flash Voyager and the Verbatim stick (lower left) are wider than the Cruzer (lower right) and DataTraveler sticks (top right).
+
+Source:  http://techdadreview.com/wp-content/uploads/2011/09/USB-flash-drives.jpg
+
+If the spacing between the ports on the hub is too close together and you happen to find a wider stick on-sale when you are buying, you will not be able to fit all of the sticks into the hub at the same time—thus involuntarily reducing your 7 usable ports down to 4.
+
+We took this into consideration when we purchased the USB 3.0 USpeed hub mentioned above.  As you can see in the image below there is plenty of space between the ports which accommodates the wider/bulkier USB sticks that may be on-sale.
+
+Source:  Amazon product page
+
+
+An example of a hub that has ports that are too close together was the old USB 1.1 4-port belkin I had laying around the house:
+
+Source:  Belkin F5U021 product page
+Power requirements
+This is not too much of an issue, but it is something to keep in mind.  Most of the USB hubs can be powered off of the USB port itself or an external power source.  When you are duplicating many sticks at the same time, you may want to plug in to a wall socket—even if you think you can power the hub via USB.  The power source can sometimes affect speed and reliability of the copies.
+Reviews
+One of the deciding factors in our most recent purchase was the positive remarks about the hub (beware of shills!).  We recommend choosing a hub that is industry proven and popular for speed, features, and reliability. 
+Lights on each port
+This may seem like a minor and nitpicky feature, however having lights on the individual ports is often helpful to ensure:
+
+The USB port is functioning
+The USB stick is functioning
+The USB stick is seated properly
+Data is being written to the stick
+
+Getting a copy of dd
+dd is an old school *nix command that does low-level bit for bit copying.  It is a very versatile and easy to use tool.  Common uses are acquiring a forensic image of media, creating backup images (ISO’s) of CD’s or DVD’s, performing drive backups and now, duplicating USB sticks.
+
+There are ports of dd for Windows, but many of them have some limitation—thus we prefer to use dd natively in *nix.  Ironically, since we are duplicating bootable Linux distributions, we use one of the USB sticks that we manually created in order to boot to that and make the others.  We create two USB sticks the manual way (one to boot from and one to copy).
+Determining the drive mapping
+Depending on the operating system, the USB sticks may be auto-mounted.  It is important that you unmount the drives before starting the duplication process.  There are several ways in which you can determine how the USB sticks were mounted and how to address them.
+Monitoring/var/log/messages
+For real time detection, just use tail:
+root@box:~# tail –f /var/log/messages
+Jul  1 16:16:59 DVORAK kernel: [174268.742086] usb 1-1: new high-speed USB device number 5 using ehci_hcd
+Jul  1 16:17:00 DVORAK kernel: [174269.149525] scsi6 : usb-storage 1-1:1.0
+Jul  1 16:17:01 DVORAK kernel: [174270.252811] scsi 6:0:0:0: Direct-Access     Kingston DataTraveler G3  PMAP PQ: 0 ANSI: 0 CCS
+Jul  1 16:17:01 DVORAK kernel: [174270.260034] sd 6:0:0:0: Attached scsi generic sg2 type 0
+Jul  1 16:17:01 DVORAK kernel: [174270.779011] sd 6:0:0:0: [sdb] 7826688 512-byte logical blocks: (4.00 GB/3.73 GiB)
+Jul  1 16:17:01 DVORAK kernel: [174270.786126] sd 6:0:0:0: [sdb] Write Protect is off
+Jul  1 16:17:02 DVORAK kernel: [174270.834954]  sdb: sdb1
+Jul  1 16:17:02 DVORAK kernel: [174270.860634] sd 6:0:0:0: [sdb] Attached SCSI removable disk
+
+
+
+dmesg - print or control kernel messages
+For a running history, you can use “dmesg | less” and then hit ‘G’ to go to the bottom and find your USB sticks.  You will find something like the following indicating that the operating system has detected and labeled the device /dev/sdb:
+[  981.231497] Initializing USB Mass Storage driver...
+[  981.231586] scsi3 : usb-storage 1-1:1.0
+[  981.231792] usbcore: registered new interface driver usb-storage
+[  981.231794] USB Mass Storage support registered.
+[  982.235921] scsi 3:0:0:0: Direct-Access     Kingston DataTraveler G3  PMAP PQ: 0 ANSI: 0 CCS
+[  982.238374] sd 3:0:0:0: Attached scsi generic sg2 type 0
+[  982.248017] sd 3:0:0:0: [sdb] 7826688 512-byte logical blocks: (4.00 GB/3.73 GiB)
+[  982.252239] sd 3:0:0:0: [sdb] Write Protect is off
+[  982.252243] sd 3:0:0:0: [sdb] Mode Sense: 23 00 00 00
+[  982.256745] sd 3:0:0:0: [sdb] No Caching mode page present
+[  982.256749] sd 3:0:0:0: [sdb] Assuming drive cache: write through
+[  982.276716] sd 3:0:0:0: [sdb] No Caching mode page present
+[  982.276719] sd 3:0:0:0: [sdb] Assuming drive cache: write through
+[  982.278560]  sdb: sdb1
+[  982.291142] sd 3:0:0:0: [sdb] No Caching mode page present
+[  982.291145] sd 3:0:0:0: [sdb] Assuming drive cache: write through
+[  982.291148] sd 3:0:0:0: [sdb] Attached SCSI removable disk
+
+
+
+fdisk –l– partition table manipulator and viewer
+fdisk with the –l (lower case L) will list the devices as shown:
+
+ 
+ Disk /dev/sdb: 4007 MB, 4007264256 bytes
+74 heads, 10 sectors/track, 10576 cylinders
+Units = cylinders of 740 * 512 = 378880 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disk identifier: 
+
+   Device Boot      Start         End      Blocks   Id  System
+/dev/sdb1   *          11       10577     3909312    b  W95 FAT32
+
+
+
+Executing the foo
+Once you have determined the number of drives detected and how they are to be referenced, you are ready to execute the foo.  Make sure you do not switch around source (if) and destination (of) as defined below:
+
+For example, if you have 2 drives you are imaging it may look something like this:
+
+Originating drive:   /dev/sdf
+First drive:   /dev/sdd
+Second drive:   /dev/sde
+ root@box:~# dd if=/dev/sdf |pv| tee >(dd of=/dev/sdd bs=16M) | dd of=/dev/sde bs=16M
+
+
+
+
+
+Syntax explanation:
+dd = program used to duplicate
+if = input file (source drive)
+of = output file (destination drive)
+pv = pipe viewer (for copying statistics)
+tee = program used to redirect input and output
+bs = option of dd to control blocksize – could be adjusted for potential speed increase
+
+
+An example if you have 4 drives you are imaging it may look something like this:
+Originating drive:   /dev/sdd
+First drive:   /dev/sde
+Second drive:   /dev/sdf
+Third drive:    /dev/sdg
+Fourth drive:  /dev/sdh
+ root@box:~# dd if=/dev/sdd |pv| tee >(dd of=/dev/sde bs=16M) >(dd of=/dev/sdf bs=16M) >(dd of=/dev/sdg bs=16M) | dd of=/dev/sdh bs=16M
+
+
+Performance
+Duplication performance will vary depending on the setup, however in the next article we will reveal how our different setups did and hopefully extract some useful information that may save you time and money.
+Overall results
+The command syntax above worked great for us and duplicated over 100 drives with no issues at all—most of the time duplicating up to 7 drives simultaneously.  As we realize that there are many ways to get the job done—if you have other commands, tools, or parameter adjustments that you have used that worked well, we would love to hear about them.
+
+

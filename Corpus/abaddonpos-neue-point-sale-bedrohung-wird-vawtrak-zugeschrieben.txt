@@ -1,0 +1,62 @@
+AbaddonPOS: Neue Point-of-Sale-Bedrohung wird Vawtrak zugeschrieben
+Einige der größten Datenschutzverletzungen der letzten Zeit wurden mithilfe von Point of Sale (POS)-Malware durchgeführt und richteten bei Einzelhändlern, Restaurants, Hotels und Organisationen verschiedenster Branchen großen Schaden an, wobei oft Endverbraucher in den USA betroffen waren. [1] Die Schutzverletzungen im Einzelhandel Ende 2013 zeigten bereits, dass diese Attacken, die früher von Cyberkriminellen als zu aufwendig und unpraktisch erachtet wurden, durchaus machbar und für Cyberkriminelle hoch profitabel sind. Seitdem wurde PoS-Malware ständig weiter entwickelt und zeigt immer vielfältigere und raffiniertere Varianten. [2]
+Point of sale (PoS) malware has been implicated in some of the biggest recent data breaches, striking retailers, restaurants, hospitality and organizations from a variety of industries, and often targeting consumers in the US. [1] Once considered too difficult to carry out to be practical for cybercriminals, the retail breaches of late 2013 demonstrated that these attacks are both feasible and highly profitable for cybercriminals, and PoS malware has since continued to evolve and grow in both variety and sophistication. [2]
+Bedrohungsanalytiker von Proofpoint haben kürzlich eine neue Erweiterung der PoS-Malware-Landschaft entdeckt. Diese Signatur, der die Proofpoint-Forscher den Namen AbaddonPOS gaben, wurde erstmals erkannt, als sie in Verbindung mit einer Vawtrak-Infektion heruntergeladen wurde. Die Verwendung zusätzlicher Nutzlasten zur Erweiterung der Angriffsmöglichkeiten stellt ein weiteres Beispiel für das Bestreben der Bedrohungsakteure dar, die Angriffsflächen durch das Ablegen mehrerer Nutzlasten in einer einzigen Kampagne zu erweitern – in diesem Fall unter Einbeziehung potenzieller PoS-Terminals. In diesem Post wollen wir AbaddonPOS analysieren, die beobachteten Infektionsvektoren erläutern und Einzelheiten zum Downloader aufzeigen, der zum Abrufen dieser neuen PoS-Malware dient. Außerdem liefern wir den Beweis dafür, dass Downloader-Malware und PoS-Malware eng miteinander verwandt sind – und möglicherweise sogar von dem oder den selben Akteuren stammen.
+Bekannte Infektionsvektoren
+Am 8. Oktober beobachteten Proofpoint-Forscher Vawtrak [3] (Projekt-ID 5) beim Herunterladen von TinyLoader, einem Downloader, der über ein benutzerdefiniertes Protokoll ausführbare Nutzlasten von seinem Befehls- und Kontrollserver (C2) herunterlädt. Anschließend wurde mit TinyLoader ein anderer Downloader in Shellcode-Form heruntergeladen, der wiederum AbaddonPOS herunterlud. Obwohl dieser Infektionsvektor zunächst nur der Vawtrak-Projekt-ID 5 zugeschrieben wurde, haben wir seine Aktivität seitdem auch unter den Projekt-IDs 6, 9, 10, 12 und 13 festgestellt. Die Projekt-IDs sind im Vawtrak C2-Traffic am leichtesten zu beobachten, da sie in codierter Form im Cookie-Wert PHPSESSID gespeichert sind. Anhand des Cookie-Wertes, der von Proofpoint bei der Untersuchung von Vawtrak als Beispiel genommen wurde, ist es möglich, diesen im decodierten Zustand sehen (Abb. 1). Byte 4 bis 7 enthalten die Projekt-ID in der Byte-Folge von „Little Endian“. 
+
+Abbildung 1: Decodierter Vawtrak-Cookie mit der Kampagnen-/Projekt-ID
+Neben der Beobachtung, dass AbaddonPOS über eine Infektion namens Angler EK à BedepàVawtrak (Cyphort, [4]) und Angler EKàBedep (durch Umgehung von Vawtrak) abgelegt wurde, haben die Proofpoint-Forscher dieses Infektionsverhalten auch bei Microsoft® Office-Dokumenten festgestellt, die praktisch als Waffe eingesetzt wurden, um einen Pony à Vawtrak herunterzuladen (Abb. 2).
+
+Abbildung 2: AbaddonPOS-Infektionskette
+ 
+TinyLoader
+Der einzige Zweck von TinyLoader innerhalb dieser Infektionskette besteht darin, ausführbare Anweisungen vom C2 abzurufen, die es den Angreifern ermöglichen, ihren eigens definierten Shellcode auf infizierten Rechnern auszuführen und zudem weitere Malware-Nutzlasten herunterzuladen und auszuführen. Mit nur 2–5 KB typischer Größe macht TinyLoader (dt. “winziges Ladeprogramm”) seinem Namen alle Ehre. Eine bemerkenswerte Eigenschaft von TinyLoader ist, dass die Malware vor der Kontaktaufnahme mit der einzelnen festcodierten C2-IP-Adresse prüft, ob der Loader als x64- oder x86-Prozess läuft. Dazu nutzt sie die Windows-API IsWow64Process (Abb. 3.). Je nach Ergebnis dieses API-Aufrufs wählt TinyLoader einen Wert aus, und anhand des Ergebnisses erfährt der C2, welcher ausführbare Code auf den infizierten Client heruntergeladen werden soll.
+
+Abbildung 3: API-Aufruf von TinyLoader prüft, ob x86 oder x64
+Wie oben in Abbildung 3 dargestellt, wird 0x84 mit x86-Prozessen und 0xBA mit x64-Prozessen eingesetzt. Jedoch hängen die für die jeweilige Architektur verwendeten Werte von der Variante ab. Ist die richtige Architektur ausgewählt, erstellt TinyLoader ein Paket, das an den C2 gesendet wird, um den Download der Nutzlast einzuleiten. Vor dem Abrufen des Downloaders, der AbaddonPOS herunterlädt, haben wir beobachtet, wie TinyLoader zuerst eine Kopie von sich selbst abruft (ein Schritt, der leicht variieren kann), die wiederum als Persistenzmethode verwendet wird, indem ein Registrierungsschlüssel zum Verzeichnis HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run hinzugefügt wird (Abb. 4). TinyLoader kann auch eine DLL-Version von sich selbst herunterladen, wobei der zu beobachtende Registrierungsschlüssel dem folgenden ähnelt: regsvr32.exe /s “C:\PROGRA~2\[a-zA-Z0-9]+\.dll”
+ 
+
+Abbildung 4: Persistenz-Registrierungsschlüssel von TinyLoader (Beispiel)
+Sobald die persistente Nutzlast auf die Festplatte geschrieben ist, wird eine weitere Nutzlast in Form eines Shellcode (Abb. 5) von TinyLoader heruntergeladen, deren Zweck darin besteht, eine HTTP-Anfrage manuell zu erstellen, die wiederum zum Herunterladen einer AbaddonPOS-Nutzlast dient (Abb. 6). 
+
+Abbildung 5: TinyLoader-Binärprotokoll beim Abrufen des Shellcodes
+
+Abbildung 6: HTTP-Anfrage zum Abrufen der vom Shellcode definierten AbaddonPOS-Variante
+AbaddonPOS
+AbaddonPOS ist eine weitere Ergänzung zur PoS-Malware-Kategorie, die in den vergangenen Jahren sehr starke Aufmerksamkeit seitens der Malware-Urheber auf sich gezogen hat. [4] Bei AbaddonPOS handelt es sich, ähnlich wie bei TinyLoader, um ein relativ kleines Paket mit Proben von meistens 5 KB Größe. Zwar ist die Kernfunktion dieser neuen Ergänzung verhältnismäßig einfach; sie weist jedoch verschiedene Merkmale auf, die sicherlich einer Analyse und eingehenden Diskussion wert sind: Antianalyse, Codeverschleierung, Persistenz, Kreditkartendaten-Spionage und ein benutzerdefiniertes Protokoll zur Exfiltration von Daten.
+Antianalyse und Verschleierung
+AbaddonPOS implementiert verschiedene grundlegende Antianalyse- und Verschleierungstechniken, welche die manuellen wie automatischen Analysetechniken behindern. So nutzt AbaddonPOS beispielsweise eine CALL-Anweisung, um einen Funktionsparameter zum Verarbeitungsstapel zu verschieben, statt einfach die gängigere PUSH-Anweisung zu verwenden. Eine CALL-Anweisung verschiebt die nächste Adresse zum Stapel, der in der Regel nach einer RETN-Anweisung als Rücksendeadresse dient. In diesem Fall wird die CALL-Anweisung dazu verwendet, die Adresse, die einen String enthält, zu verschieben (Abb. 7): Genau genommen, wird die Adresse mit dem String “devil_host” zum Stack verschoben, der dann als Mutex dient.
+
+Abbildung 7: AbaddonPOS nutzt CALL-Anweisung zur Behinderung statischer Analysen
+Der AbaddonPOS-Code ist größtenteils weder verschleiert noch gepackt, es sei denn, er wird zum Codieren und Übertragen gestohlener Kreditkartendaten verwendet. Dieser Shellcode ist mit einem XOR-Schlüssel (4 Byte) codiert, der jedoch nicht festcodiert ist. Stattdessen durchläuft die Malware wiederholt mithilfe der ersten 4 Byte des decodierten Shellcode alle möglichen 4-Byte-XOR-Schlüssel, bis der richtige gefunden wird, indem sie das Ergebnis mit den festcodierten Anweisungen abgleicht: 0x5589E58B (Abb. 8). Stimmt das XOR-Ergebnis mit den festcodierten Anweisungen überein, so ist es der richtige Schlüssel. Damit kann die Malware nun den Shellcode weiter decodieren.
+
+Abbildung 8: Decodier-Routine für den AbaddonPOS-Shellcode
+Kreditkartendaten-Spionage
+AbaddonPOS sucht nach Kreditkarten, indem er die Protokolle aller Prozesse – außer des eigenen – aus dem Speicher liest. Dazu setzt er zunächst die eigene PID mithilfe der API GetCurrentProcessId auf eine Blacklist. Zur Ermittlung der Kreditkartendaten verfährt AbaddonPOS in etwa wie folgt:
+Die AbaddonPOS-Probe mit md5 hash: f63e0a7ca8349e02342c502157ec485d wurde auf den obigen Prozess hin analysiert. Die etwas ältere Version von AbaddonPOS kann eine leicht modifizierte Funktionalität enthalten, bei der z. B. „D“ als Trennzeichen für Abschnitt 2 nicht zulässig ist.
+ 
+Exfiltration gestohlener Kreditkartendaten
+Obwohl viele der unterschiedlichen PoS-Malware-Familien HTTP zum Exfiltrieren der Daten nutzen, verwendet AbaddonPOS hierzu ein benutzerdefiniertes, binäres Protokoll. Die Übermittlung bzw. Exfiltration von Kreditkartendaten erfolgt mithilfe des o. g. decodierten Shellcodes. Als C2-Adresse dient eine einzige festcodierte IP-Adresse sowie die Codier-Routine, die zur Verschleierung exfiltrierter Daten verwendet wird. Ein Beispiel für den Netzwerkverkehr, der bei einem einzigen Kreditkartendaten-Exfiltrationsversuch generiert wird, ist in Abbildung 9 dargestellt. Aufgrund dieser Analyse hat Proofpoint ET Pro IDPS-Signaturen (IDs 2814677-2814680) zur Erkennung von Exfiltrationsversuchen erstellt und am 30. Oktober veröffentlicht.
+ 
+
+ 
+Abbildung 9: AbaddonPOS bei der Exfiltration codierter Kreditkartendaten nach C2
+Die ersten vier Byte des Netzwerkverkehrs haben die Länge der codierten Daten, während die folgenden vier Byte dem Wert des von OpenProcess zurückgegebenen Prozesshandlers entsprechen. Die nachfolgenden Byte sind die codierten exfiltrierten Daten, die im decodierten Zustand folgendes Format aufweisen:
+[Kreditkartendaten] ***[Prozessname]
+Zum Codieren der Daten fragt die Malware zuerst vier Byte des Klartextes mithilfe des Prozesshandlers ab (XOR), gefolgt von einem zweiten XOR mit festcodiertem 4-Byte-Schlüssel. In Abbildung 10 wird der Exfiltrations-Netzwerkverkehr aus Abbildung 9 im Klartext dargestellt. 
+
+Abbildung 10: Klartext exfiltrierter Kreditkartendaten und Prozessname
+Das folgende Python-Skript kann zum Decodieren des Netzwerkverkehrs verwendet werden, sofern es wie oben beschrieben codiert wurde:
+AbaddonPOS-Varianten
+Offenbar wurden nur bei einem sehr geringen Teil der Proben, die Proofpoint-Forscher bis dato erkannt und analysiert haben, irgendwelche Funktionen hinzugefügt oder entfernt. Wenngleich “devil_host” der bekannteste von dieser Malware verwendete Mutex ist, so haben wir auch eine Probe gefunden, die “devil_kor” (md5, a55843235cd8e36c7e254c5c05662a5b) verwendet, sowie eine weitere, die mit “DeviL_Task” (md5, ac03e0e9f70136adede78872e45f6182) arbeitet. Außerdem haben wir eine leicht aktualisierte Version von AbaddonPOS gefunden (siehe IOCs), bei der fast alle Funktionen zum codierten Shellcode verlagert wurden. Bei diesen aktualisierten Proben wurde der Mutex “MG_REX” verwendet und darüber hinaus der Kreditkarten-Suchalgorithmus geändert, indem „D“ als Gültigkeitstrennzeichen für Abschnitt 2 hinzugefügt wurde.
+ 
+Das Verbinden der Punkt
+TinyLoader befindet sich nun schon mindestens ein Jahr in Entwicklung und wurde Berichten zufolge erstmals am 16. Januar 2015 gesichtet. Im vergangenen Jahr wurde TinyLoader verschiedenen entwicklungstechnischen Änderungen unterzogen, darunter folgende:
+Mit dem Aufkommen von AbaddonPOS wurde schnell klar, dass eine enge Verbindung zwischen TinyLoader und AbaddonPOS besteht – und zwar nicht nur, weil TinyLoader als Downloader verwendet wurde. Der Code weist bei TinyLoader und AbaddonPOS einige wichtige Gemeinsamkeiten auf:
+Weiter unten sind die Gemeinsamkeiten anhand einiger Codeauszüge mit einer Zeitachse nach den Daten von Proofpoint wiedergegeben (Abb. 11).
+ 
+
+ 
+Abbildung 11: Codeverlauf – Vergleich zwischen TinyLoader und AbaddonPOS
+Fazit

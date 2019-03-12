@@ -1,0 +1,221 @@
+Comparison of Adware in Windows and OS X: Linkular and Genieo
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 8 January 2014
+
+Comparison of Adware in Windows and OS X: Linkular and GenieoBy definition, Adware is a program bundle which renders advertisements in order to generate revenue for its author. In a more strict sense, e.g. for security solutions, it means an application/installer whose nature lies somewhere between a potentially unwanted application and proper malware, like Trojans or Spyware. It might use more or less aggressive methods, starting with tricks and ending with fraud, to achieve its goals to benefit its distributor, while staying as innocent as possible on first sight. We blogged about an adware downloader a year ago.
+Now we focus on two selected adware examples: The first is a Windows installer called Linkular and the second is a well-known application called Genieo (with a focus on its OS X version.) Being in the wild for a few months, the detection within AV products reached only partial coverage in both cases, with very similar numbers on VirusTotal (~10-20 %, see Sources below). However, the OS X adware Genieo is additionally flagged by OS X-specific security solutions. Considering maliciousness, the Windows adware is far more dangerous and invasive than the OS X one and also more than other Windows Adware examples we usually see. Here's the comparison:
+
+
+
+property
+Win32:Linkular
+MacOs:Genieo
+
+
+Distribution strategy
+Advertisement Network
+unknown
+
+
+Software Download site
+coolestmovie.info
+www.genieo.com
+
+
+Rank on alexa.com
+~4200
+~3000
+
+
+Masking
+VLC Player + Addon
+Flash Player (*)
+
+
+Payload
+SpeedUpMyPC; Multiplug; Bitcoinminer;OneStep/BasicServe
+Codemc; Photo.it; Qtrax(**)
+
+
+Forced agreement of terms of use
+YES
+NO
+
+
+Change of browser start page
+YES
+YES
+
+
+Persistance
+YES (of payload)
+YES
+
+
+Obfuscation
+YES (of payload)
+NO
+
+
+Digitally signed
+YES (both installer & payload)
+YES
+
+
+
+(*) masking is not connected with the official site, but some of its distribution partners
+(**) related to older installers; not presented anymore
+
+The rank of a website on alexa.com, the company which collects web traffic analytics, sketches the significance of commercial web traffic data. The higher the rank, the more popular the page is for internet surfers, and also for owners of the domain to commercialize its potential. Distribution strategy means the method used to attract a user to the download site where he can obtain the software. Linkular is mainly advertised via an advertisement network with a bad web reputation called Adcash. It usually displays ads by opening one or more pop-up windows e.g. when entering torrent sites. The data from alexa.com demonstrate this:
+
+Windows - Linkular
+The initial installer might be digitally signed by a signer Linkular LLC. The first dialog box has two options of installation. We can see names of the payload offered by this installer: Mobogenie is a framework for a custom Android market portal; GPUtemp is an Agent that downloads a bitcoin miner; BasicServe is a set of browser helper objects and extensions. Applications called SpeedUpMyPC and Browsebeyond are offered in the next dialog box, but their installation can be skipped by declining terms of use conditions.
+
+In the left red outlined square we see how a user is pushed into a decision in case he leaves the dialog box with no action for a few seconds. This is not a very ethical approach, and together with the content delivered this installer is decidedly not just 'potentially' unwanted. The only reason why it avoided being flagged as a Trojan is the possibility to opt-out all components resp. quit the installer after the first dialog.
+GPUtemp (bitcoin miner)
+The caption says that GPUtemp will help gather data. That's true, but unfortunately they did not mention what is the data's nature and how it will affect the user's system. Choosing this option will start a chain of events that we usually see from Trojans.
+A series of executables packed with Themida and each signed by White Sea Media are downloaded from shoppingsuggestion.com. The name of the first one usually contains a substring "setup" and it will ask for an Open Computing Language library by NVIDIA Corporation (used for CUDA-powered computing) and for a binary dubbed with a string containing "detection." The purpose of the latter one is to choose a bitcoin mining bundle depending on the system options and to check the presence of a few AV processes. We have observed the following character strings:
+
+The debug info suggests something about the purpose ("Miner Bundle11 (connectsea.com)", "detection2.pdb") and that the development is quite recent (2013_12_09 Dalink Work.) The additional binaries in the chain are so called 'Watchdog' which serves as an updates and the miner bundle itself. It is installed into the directory %ProgramFiles/VLC Player GPU+. The persistence is achieved by creating entries in the registry Software/Microsoft/Windows/CurrentVersion/Run directory: One for the watchdog and one for a proper miner called GPUlog.exe. Another snapshot of character strings (note that a variation of "gsoftv4" appeared in the article about Carberp by ESET  ):
+
+A modified coin miner by Ufasoft is used (and again protected by Themida) as the computing software:
+
+To estimate the size of the potential botnet, first we realize the popularity of coolestmovie.info on alexa.com:
+
+And detections of the Linkular installer and the bitcoin miner themselves:
+
+
+
+Date
+Unique GUID count
+Detection
+
+
+06.01.2014
+11337
+Win32:Bitcoinminer-FC [Trj]
+
+
+
+6639
+Win32:Linkular-D [Adw]
+
+
+05.01.2014
+7549
+Win32:Bitcoinminer-FC [Trj]
+
+
+04.01.2014
+8622
+Win32:Bitcoinminer-FC [Trj]
+
+
+03.01.2014
+10792
+Win32:Bitcoinminer-FC [Trj]
+
+
+02.01.2014
+14311
+Win32:Bitcoinminer-FC [Trj]
+
+
+01.01.2014
+20066
+Win32:Bitcoinminer-FC [Trj]
+
+
+
+
+We see that the data of the beginning of the download chain provided by alexa.com and Win32:Linkular-D [Adw] corresponds to each other (France, Italy, Brazil). On the other hand, hits in the dominating countries at the end of the chain differ (Russia, Poland, Turkey, and Brazil). The bitcoin miner is therefore distributed also through some other channel.
+Basic Serve
+Or should we call it BasicScan? The link points to our blog from a year ago where we have described an Adware installer called Xvid downloading a browser extension with the mentioned name. And both these browser tools share strange export names like "iludokiwef", "kolezu", "oximayazu" and the method of persistence (that is realized through an automatic load of a service on the startup. We consider them tightly connected.
+OS X - Genieo
+This application will deliver web content through a so-called personal webpage dependent on the user's behavior. From the official Genieo website, additional promises are made
+"significant monetization options through its proprietary personalization technology, white-labeled and delivered to users as an exciting newspaper styled homepage that reflects both the partner’s brand and the end users’ interests".
+The persistence and functionality was previously sketched by Intego. To modify the browser's behavior, the line
+"setenv DYLD_INSERT_LIBRARIES /usr/lib/Libgenkit.dylib"
+is inserted into the /etc/launchd.conf and serves as a method of code injection. The library Libgenkitsa.dylib is then loaded by the injected code if a process is named "Safari":
+
+and this is how it looks on the system:
+
+Genieo, in contrast to Linkular, actually provides features that could be useful to the user. However, with the desired personalized web content it delivers also various advertisements that are occasionally aggressive (You're a winner! This is not a joke!) and have a bad web reputation. On the other hand, it avoided using explicit unethical behavior, so we decided to flag it only as a low threat: Potentially unwanted.
+Conclusion
+Pop-up windows with advertisements can not only be annoying but can lead to a real fraud exposure. One needs to remember that with one or two uncertain clicks on the "Next"/"Accept" buttons he can end with a bunch of unwanted software on the system, especially a bitcoin miner running and waiting for commands. Even the presence of a digital signature does not automatically imply harmlessness.
+Sources
+
+
+
+OSX Genieo Installer
+03C220FF4FE4AA44BA2AD1E1E0D41D56279E
+9E09D5605F08E2BCE929E8FC1ECE
+MacOs:Genieo-F [PUP]
+
+
+libgenkit.dylib
+F3AC26ABDB36EBAAE8E00B8B9F21A9C5F41E
+C817B1A82922EE72BE90A63D909A
+MacOs:Genieo-L [PUP]
+
+
+libgenkitsa.dylib
+BB2678DF9B6D3BDB0F00CBEBB0E677BA3AF71
+F1056BC21A00D78679298ABA75C
+MacOs:Genieo-M [PUP]
+
+
+Linkular
+1B2C6F697EE40069DBBCDF3606BD3AB9AF33
+4BC52FB73B4F250C48412D873642
+Win32:Linkular-D [Adw]
+
+
+Basic Serve dynamic library
+2962AC2D0B126BB4B0BA45576504F8B5F00B
+11BE0D6EC00DC7234C556AE4E703
+Win32:OneStep-BS [Adw]
+
+
+Basic Serve embedded dll
+FB150C1CE24994BC220523185BD4657E7EE56C
+FEECD70B16431BED46890F3989
+Win32:OneStep-BT [Adw]
+
+
+GPUlog.exe
+C2949F4151FE3B8FD8AAA61FE2F39998243086
+0CE60A834C5FF1D8CFB2AE33D2
+Win32:BitCoinMiner-FC [Trj]
+
+
+GPUtemp.exe
+3046B948AAF6B20F9FA36F570338E6EF9C8591
+4C035ECCAE179C72DE48FDB2FC
+Win32:BitCoinMiner-FC [Trj]
+
+
+
+
+
+
+Check 1 comments or write your comment
+
+
+
+
+
+
+
+
+

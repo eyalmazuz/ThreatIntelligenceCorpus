@@ -1,0 +1,74 @@
+
+Fareit Spam: Rocking Out to a New File Type
+
+
+This post authored by Nick Biasini
+
+Talos is constantly monitoring the threat landscape including the email threat landscape. Lately this landscape has been dominated with Locky distribution. During a recent Locky vacation Talos noticed an interesting shift in file types being used to distribute another well known malware family, Fareit.
+
+We've discussed Fareit before, it's a trojan used to steal credentials and distribute multiple different types of malware. The focus of this post will not be on Fareit but on a new way attackers are working to distribute it via email. Locky has been a case study in how to leverage different file extensions in email to distribute malware. The use of various file types such as .js, .wsf, and .hta have been used quite successfully for Locky. We've already noted other threats making use of .js for distribution largely due to Locky's success. Recently we observed another uncommon file type associated with email and decided to dig a little further on the infection chain.
+
+Email Campaign
+
+
+
+
+
+This investigation started with the identification of an uncommon file type, .mht. MHT files, also referred to as .mhtml files, are MIME HTML files.  These files are commonly created when trying to save a document or other content as a web page. MHT files can be created using various types of applications including web browsers and word processors. In this case we found a small spam campaign purporting as a billing payment document from HSBC. They also made sure to include some security tips in the email including not opening attachments from unknown or unverified senders. Ironically if a user were to follow these instructions they would have avoided potential infection.
+
+Talos started analyzing the .mht file and found a couple of interesting tidbits. First thing of note was a reference to a .hta file. HTA or HTML Application files have been used periodically in the last six months during Locky campaigns and just like .js can be leveraged to execute natively on Microsoft Windows. 
+
+
+This file was being hosted on a compromised website. Next after some further analysis there is an odd musical reference in the file details. The mht files have a section that is dedicated to identifying things like Author information, versioning, and company information. It's in this section that Talos found a reference to the band Deftones.
+
+
+This is just another weird tidbit that we find from time to time in malware threats, similar to the PUMPKIN theme of a recent locky campaign. Talos continued down the infection path by analyzing the .hta file that was being hosted. The first step is going and pulling the questionable file down.
+
+
+This is where Talos found the first hurdle commonly associated with threat analysis. To their credit the compromised website was cleaned up quickly and effectively and the file in question was no longer available. However, that doesn't help the people that were compromised during the time when the files were available.
+
+Hunting Threats Post Mortem
+Talos was placed in a situation where there was a threat that was once active but had been cleaned up. This is a common problem and provides an opportunity to demonstrate how data and threat intelligence can be used to find the missing links and rebuild the infection chain. In this particular case we had URL pointing to an hta file that no longer existed. We were able to find instances of the file being blocked from being downloaded. Normally that would not be particularly interesting, but in this case we were able to find a file hash (a95a01472fdb42a123e1beb6332cb42c9372fdfe33066b94a7cabdac3d78efe1). We then started searching through various data sources for the file in question and found it in multiple locations including VirusTotal.
+
+
+As you can see the filename correlates as does the analysis date. Talos then obtained the file and continued analysis. The file in question, as shown below, was actually just a vbscript that was used to pull yet another file.
+
+
+This file was being hosted on the same compromised website, and therefore was gone. In this particular instance we didn't have as much information available on the file and were left with only the URL path and filename. We were able to leverage the domain known to be distributing the file to again find the files in question. Using the same techniques described earlier we were able to continue to hunt the threat, initially searching based upon URL in question and finally located another file hash, 27689bcbab872e321f4c9f9b5b01a6c7e1eca0ee7442afc80c5af48e62d3c5f3.
+
+
+Finally, we were able to analyze the final payload to determine this in fact Fareit being distributed via these .mht files. This completed the infection chain and identified the true purpose of this particular spam campaign.
+
+IOC
+Email Subject:
+BILL PAYMENT ADVICE Our Ref: <RANDOM STRING> Counterparty: Your Ref:
+
+Hashes:
+a95a01472fdb42a123e1beb6332cb42c9372fdfe33066b94a7cabdac3d78efe1 (File.hta)
+27689bcbab872e321f4c9f9b5b01a6c7e1eca0ee7442afc80c5af48e62d3c5f3 (j.exe)
+d60bb9655a98b4fdb712162c75298ab6364951b1fc085131607f5073857b0ddc (.mht File)
+
+C2 Domain:
+jerryotis[.]pw
+
+Conclusion
+This is yet another example of adversary evolution. As security products continue to evolve and users get smart to various file types, adversaries will keep changing to get users infected. In this particular instance you can see a couple relatively uncommon file types being leveraged. First, the mhtml file that is provided as an email attachment. This file then grabs another uncommon filetype hta. Hta files are more common now, thanks largely to Locky leveraging it in various spam campaigns. Regardless of the filetype the end result is the same, a compromised system.
+
+This particular campaign also provides an example of how hunting threats doesn't necessarily end when the site gets taken down or fixed. In this case it shows how you can still figure out an attack even when everything appears to already be dead. In today's world threat intelligence is of utmost importance and this is a key reason why. Simply by leveraging intelligence information and data sources Talos was able to find all necessary files to recreate the infection chain. In today's multi-hundred million or billion dollar industry of crimeware adversaries are always looking for new and effective ways to infect users. This small scale use of .mht files could just be a test run and will likely start showing up in larger volumes, if found to be effective by the bad guys.
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+
+
+
+

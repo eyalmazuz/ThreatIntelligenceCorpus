@@ -1,0 +1,20 @@
+Public Exploits Available for ImageMagick Vulnerabilities
+Within hours of the disclosure of serious vulnerabilities in ImageMagick, public exploits were available increasing the risk to thousands of websites that make use of the open source image-processing software.
+Attackers can append malicious code to an image file that ImageMagick will process without question, leading to, in the case of one of the vulnerabilities, remote code execution. The scope of the issue is severe since image-processing plugins such as PHP imagick, Ruby rmagick and Ruby paperclip, and nodeJS imagemagick among others are built on top of the ImageMagick library.
+Researcher Ryan Huber was among the first on Tuesday to publicly disclose that ImageMagick had a problem. A researcher from the Mail.ru team in Russia who goes by the handle Stewie found the flaw, while Nikolay Ermishkin, also of the Mail.ru team, found the remote code execution issue.
+“We have collectively determined that these vulnerabilities are available to individuals other than the person(s) who discovered them,” Huber wrote on the ImageTragick website, a landing page complete with FAQ on the bugs. “An unknowable number of people having access to these vulnerabilities makes this a critical issue for everyone using this software.”
+Researcher Dan Tentler yesterday afternoon tweeted that he had come up with a working proof-of-concept exploit, and today an exploit developed by Ermishkin was posted to the OSS-Security mailing list.
+
+Huber and Ermishkin warned in their respective posts that websites that process user-submitted images are particularly at risk to public exploits.
+Ermishkin privately disclosed the bugs to ImageMagick’s developers who pushed out a fix on April 30; Ermishkin, however, said the fix was incomplete and work continues on a new patch.
+ImageMagick, meanwhile, yesterday posted a mitigation to its forums. They suggest adding the following code to the ImageMagick policy.xml file.
+<policy domain=”coder” rights=”none” pattern=”EPHEMERAL” />
+<policy domain=”coder” rights=”none” pattern=”HTTPS” />
+<policy domain=”coder” rights=”none” pattern=”MVG” />
+<policy domain=”coder” rights=”none” pattern=”MSL” />
+“We have secured these coders in ImageMagick 7.0.1-1 and 6.9.3-10 (available by this weekend) by sanitizing the HTTPS parameters and preventing indirect reads with this policy: <policy domain=”path” rights=”none” pattern=”@*” />” ImageMagick said. “If you require the HTTPS, MVG, or MSL coders, the above policy is sufficient to prevent exploits.”
+Huber also suggested a pair of mitigations: that users verify that image files begin with the proper “magic bytes” that correspond to image file types before ImageMagick processes them; and the use of policy files to disable vulnerable ImageMagick coders.
+The vulnerabilities, covered in CVE-2016-3714, are described as insufficient shell character filtering.
+From the advisory:
+“ImageMagick allows to process files with external libraries. This feature is called ‘delegate’. It is implemented as a system() with command string (‘command’) from the config file delegates.xml with actual value for different params (input/output filenames etc). Due to insufficient %M param filtering it is possible to conduct shell command injection.
+The most dangerous part is ImageMagick supports several formats like svg, mvg, maybe some others—which allow to include external files from any supported protocol including delegates. As a result, any service, which uses ImageMagick to process user supplied images and uses default delegates.xml / policy.xml, may be vulnerable to this issue.”

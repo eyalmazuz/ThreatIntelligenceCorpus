@@ -1,0 +1,141 @@
+
+					Locky Ransomware is back! 49 domains compromised!					
+This time, it comes with hard-coded javascript 
+
+A new Locky campaign appears in the wild with, experts observed million malicious email messages starting from June 20.
+Researchers at Proofpoint observed that this new Locky campaign is linked to the Necurs botnet, but it presents more advanced features such as anti-analysis techniques and a runtime javascript de-obfuscation with an argument needed to decode the payload.
+Since it first appeared in the wild earlier March it evolved and was distributed through different campaigns, presenting different attack scenarios.
+
+Starting from that above image, in this report will be described all the steps in the details:
+Spam Email & Zip Archive Attachment
+As we said, the propagation method used to spread the Locky ransomware rely on spamming emails. Below an example of malicious email:
+Lance Davis asked me to send you the attached Word document, which contains the final version of the report.
+Please let me know if you have any trouble with the file, and please let Lance know if you have any questions about the contents of the report.
+Kind regards
+Faith Leonard
+Chief Executive Officer
+As we can see the attacker ask to open the attached document saying it’s a Word document, but the attachment is a zip archive containing a javascript encoded file.
+The Javascript file
+Like the previous campaigns that delivered the Locky ransomware, also this time, it comes with an encoded javascript file used to download from a compromised domain the main payload of the ransomware.
+It presents a variation for wScript,‘123’, otherwise, the decryption routine will produce junk code and the execution flow will jump into that code and crash the process.
+It presents more layers of obfuscation detailed here, the first layer is a declared variable containing a string value of JavaScript code to be executed that will be built, joined together, and reversed, the first layer is a declared variable containing a string value of JavaScript code to be executed that will be built, joined together, and reversed. RAW
+The second layer uses lots of variables and function definitions to make the analysis harder:
+
+After bypassing that second layer it would present more readable code and it’s easy to quickly spot the domains used to download Locky ransomware payloads.
+All of them appear to be compromised and used without the legit owner’s knowledge.
+After the file has been saved to disk, a decoding function is executed to decrypt the file before running it, the task is carried on through a wScript command.
+
+The %TEMP% variable contains the dir path to the executable downloaded from the server.
+This command will run the main payload with the argument ‘123’ needed for the decryption routine of the executable.
+By obfuscating the transfer of the sample over the network, the malware hopes to bypass network appliances intelligent enough to parse file types with static file headers out of network sessions for inspection.
+Following a brief image of that steps:
+
+The Locky Binary 
+In this report, we will focus on the specific features of the Locky ransomware
+According to the research we will track the syscall pattern of that behaviors can let us distinguish a general malware from a ransomware.
+The behaviors covered on that report will be:
+Before studying this behavior we want to show you an interesting way that the Locky ransomware implements to identify if someone is trying to reverse engineer its code and to debug it through an Anti-Analysis Technique Time-Based through the RDTSC (Read Time Stamp Counter):
+
+It consists in comparing the time spent executing the instructions normally, and while being debugged.
+Longer time taken compared to normal run indicates that the binary is being debugged.
+Now let’s look at our sample:
+The Locky sample we study is one took from a compromised domain on the 23th of June,
+SHA256: e5a6828f732bea6b66c4f6d850b235f6c1f139b10f8d9f2c3760298cfd88c163.
+The first investigation on that sample was on the possible deletion of the shadow copies:
+
+It’s done by passing a command line instruction “vssadmin.exe Delete Shadows /All /Quiet” to a function that will prompt the execution.
+“The Volume Shadow Copy Service (VSS) is a set of COM interfaces that implements a framework to allow volume backups to be performed while applications on a system continue to write to the volumes.” states the MSDN.
+On default settings of Windows operating system that service is set to do automatic backup of the files hold on the operating system drive while the user is working on it.
+So a common behavior of ransomware will be to delete the shadow copies avoiding the victim to restore the encrypted files.
+The second step was to track the syscall pattern for the drive enumeration because Locky ransomware doesn’t encrypt only the file on the local drive of the operating system, but it also encrypts the files on all devices linked to the machine with write privilege (including the network share):
+
+This is done (1) by calling the syscall GetLogicalDrive() that returns an array with the names of the logical drives connected to the machine.
+In the point (2) starts the while loop through all the names returned by the previous syscall, in  the point (3) we can see that it check if the drive is a remote drive.
+
+After that, it calls (1) the syscall GetVolumeInformation() to retrieve more information on the drive passed on the specific loop cycle.
+Then it checks if is possible to write data on that drive comparing it with the constants DRIVE_FIXED (2) (The drive has fixed media; for example, a hard disk drive or flash drive), DRIVE_REMOVABLE (3) (The drive has removable media; for example, a floppy drive, thumb drive, or flash card reader),
+DRIVE_RAMDISK (4) (The drive is a RAM disk).
+If all the checks are verified, it calls the enumFilesFromDrive() function on that drive to enumerate all the files to pass at the encryption routine:
+
+The enumFilesFromDrive() function is implemented by appending a wildchar “\*” to the drive name passed as a parameter of the function.
+Then it calls the FindFirstFileW() syscall to find all the files and directory hold on that drive.
+This function is recursive and it calls itself if it finds a directory:
+
+It compares the result of the syscall FindFirstFilesW() with the constant FILE_ATTRIBUTE_DIRECTORY to check if the file found is a directory or a file.syscall FindFirstFilesW() with the constant FILE_ATTRIBUTE_DIRECTORY to check if the file found is a directory or a file.
+If it’s a directory it will enum all files of that directory call recursively itself.
+[Note: before it calls itself recursively, a series of controls are done to check if the folder is a system folder, but this behavior won’t be covered in that report.]
+This is done through a loop on all the files of the root directory of the drive.
+If the check on the FILE_ATTRIBUTE_DIRECTORY fails, then it means that it’s a file and could be encrypted by the Locky ransomware calling the encryption routine:
+
+The first action that ransomware perform is to take the filename and append the “.locky” extension and prepare itself to replace with the original file (1).ransomware perform is to take the filename and append the “.locky” extension and prepare itself to replace with the original file.
+In the point (2) it creates the new files and opens it in “w+” mode.
+It read the content from the original file and it generates a new random key that will be used as a key for encrypting the file (3), that key is 16 bit long.
+Once it acquires the key it calls the CryptEncrypt() syscall to write the encrypted content into the new file, the bitstream is 256 bit long so it’s used an AES algorithm with a 256 bit key.
+Then the original file is deleted.
+Note that on the syscalls CryptGenRandom() and CryptEncrypt() it’s passed as the first argument a cryptographic service provider handle needed to instruct the encryption mechanism.
+It’s created by the following function:
+
+As we can see it’s passed a request for PROV_RSA_AES dwProvType parameter for acquiring a cryptographic service provider handle that will be passed in the previous syscall we saw.
+After we found the common behavior of a ransomware, we want to report some observables we found studying the Locky Ransomware.
+During some minutes, the panel server had some problem and we was been able to download the php file from the server: (been able to download the php file from the server: (main.php)
+Following a list of all the compromised domains used by the necurs botnet to drop the locky ransomware:necurs botnet to drop the locky ransomware:
+Compromised domains (49):
+3141592.ru/ wyesvj
+4k18.com/ u69f97
+aberfoyledental.ca/ 6dil05
+abligl.com/ 8v62l4i4
+adbm.co.uk/ 1o2wejz
+angeelle.nichost.ru/ y6s1y9h
+arogyaforhealth.com/ jujg6ru
+atlantaelectronics.co.id/ quv7rcc1
+babycotsonline.com/ ph42q6ue
+barum.de/ c2blg
+beautifulhosting.com.au/ rxn80
+bilgoray.com/ vi5sfu
+bobbysinghwpg.com/ pdqcqlnr
+boranwebshop.nl/ ggc7ld
+bptec.ir/ kvk9leho
+cameramartusa.info/ xrfpm
+capitalwomanmagazine.ca/ 6k1oig
+century21keim.com/ c7xb2xy
+certifiedbanker.org/ obmv6590
+cg.wandashops.com/ evqbfwkx
+clients.seospell.co.in/ fkn67zy
+climairuk.com/ h32k491o
+climatizareonline.ro/ azkqs
+cond.gribochechki.ru/ zibni
+dentalshop4you.nl/ m22brjfz
+disneyexperience.com/ psyyhe
+elviraminkina.com/ ojyq1
+empiredeckandfence.com/ h2uppib
+euro-support.be/ rdl3n7u
+focolareostuni.it/ 0k2ren
+freesource.su/ ijugasq1
+grantica.ru/ 6hjli
+honeystays.co.za/ siu2k
+ideograph.com/ k7qfsxx
+imetinyang.za.pl/ 74hd4by5
+immoclic.o2switch.net/ styvuwti
+jd-products.nl/ xjld131
+karl-lee.se/ x23ft
+margohack.za.pl/ wkiokl
+matvil8.freehostia.com/ 64tmb1
+mycreativeprint.com/ mqib9te
+oakashandthorn.charybdis.seedboxes.cc/ f7ge4y3k
+promoresults.com.au/ gx4al
+redpower.com.au/ xlkdld
+tip.ub.ac.id/ k2e32vh
+www.centroinfantilelmolino.com/ 60wfh
+www.darkhollowcoffee.com/ oqlyd9m
+www.ellicottcitypediatrics.com/ 7d6sdl
+www.keven.site.aplus.net/ fmlonxl
+CONCLUSION
+Duo to the low rate of antivirus detection of the Locky ransomware, one usefull advice would be to install a good firewall software and block the outbound traffic to that list of domains, so if a victim open a javascript downloader of locky ransomware it would be hard for it download the binary payload of the ransomware, a good way to prevent the infections.
+One other advice would be to disable vssadmin.exe service to prevent the ransomware deleting the shadow copies of windows that, in most cases, let the victim restore the files encrypted on the operating system hard drive.
+REFERENCES
+
+Written by the IT Security Expert Antonio Cocomazzi
+Antonio Cocomazzi is an IT Security Expert specialized in the malware analysis field. Young and recently graduated, he conducts a 6 months research focused on Ransomware giving a full characterization of the recent families defining a new methodology for dissecting this kind of malware.
+ 
+Pierluigi Paganini
+(Security Affairs – Locky Ransomware, malware)

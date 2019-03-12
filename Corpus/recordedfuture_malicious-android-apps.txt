@@ -1,0 +1,82 @@
+Malicious Android Applications Raise Concerns for Enterprises
+By Levi Gundert on June 8, 2017
+Update: June 8, 2017 — Special thanks to Tim Strazzere (@timstrazz) for identifying the Android APK file (named “newvpn.apk”) using the DroidJack DEX file referenced in this blog.
+The recent White House leaks allegedly began shortly after President Trump’s inauguration. According to Wired, “… multiple reports indicate that Republican operatives and White House staffers are using end-to-end encrypted messaging app Confide [sic].” Confide’s website touts the product as “Your Confidential Messenger. With encrypted messages that self-destruct, Confide gives you the comfort of knowing that your private messages will now truly stay that way.”
+IOActive researchers subsequently pointed out vulnerabilities in the Confide app on Windows, macOS, and Android. Given the increasing popularity of encrypted messaging apps, Insikt Group was curious about other encrypted messaging apps that might be vulnerable to attack.
+The curiosity led to exploration in ReversingLab’s (Recorded Future’s research partner) malicious file data, specifically Android files. An Android Spyware file surfaced in late 2016, labeled by ESET as Android/Spy.Kasandra.A trojan (variant), and G Data labeled it Android.Trojan-Spy.SandroRAT.A, more commonly known as DroidJack.
+
+Intel Card showing DroidJack history.
+
+Most importantly, this DroidJack instance communicated with a command and control (C2) server located at telegram.ddns[.]net.
+C2 domains are often purposefully named to appear legitimate, attempting to evade the scrutiny of information security professionals.
+This DroidJack trojan is a DEX (Dalvik Executable) file containing 546 Java classes. A DEX file is a compiled Android program. Usually, DEX files are further zipped into an APK (Android application kit) file which is installed on an Android phone.
+
+File details provided by ReversingLabs.
+DEX File
+DroidJack is a feature-rich trojan, according to the promotional YouTube video, and the point-and-click application menu facilitates easy trojan creation and low barriers to entry. One of DroidJack’s selling points is that it binds itself to a legitimate application. In this case, the DEX file is part of an APK file likely imitating a legitimate VPN application (based on the name of the file, “newvpn.apk”) for Android installation.
+APK File
+
+Equal interest in DroidJack across languages.
+Strings found in the DroidJack DEX file include the typical search functionality expected from an Android trojan, including:
+/WhatsApp/Databases/wams.db
+content://call_log/calls
+content://sms
+content://sms/draft
+content://sms/inbox
+content://sms/sent
+Telegram.ddns[.]net does not currently resolve to an IP address. In 2014, before the activity related to the malicious Android app, telegram.ddns[.]net originally resolved to a host in India. In 2015 the domain resolved to the following Iranian internet service providers:
+27.7.50.84 – Hathway Cable & Datacom, India
+188.158.48.204 – NGS ADSL, Iran
+46.224.94.221 – Dadeh Gostar, Iran
+31.14.158.3 – Telecom Company of Khorasan Razavi, Iran
+5.250.101.179 – AsiaTech DSL Broadband, Iran
+80.69.240.9 – Pasargad Network, Iran (Known Open Proxy)
+80.69.240.10 – Pasargad Network, Iran
+A historical passive DNS (pDNS) record, provided by FarSight Security, reveals that in 2016 the domain resolved to 151.80.239.207 (OVH, Italy).
+
+FarSight’s pDNS record for telegram.ddns[.]net in Recorded Future Intel Card.
+Recorded Future’s full Intel Card for 151.80.239.207 contains relatively recent honeypot and blacklist sightings, specifically for RDP (remote desktop protocol) brute force authentication attempts.
+
+Recorded Future Intel Card for 151.80.239.207.
+Additionally, traffic analysis performed with the assistance of Team Cymru indicates that the C2 host — 151.80.239.207 — was specifically engaged in large-scale RDP scanning of Saudi subnets beginning in December 2016. OVH is a large hosting provider and multiple domains typically map to virtual instances on a single IP address, which makes activity attribution difficult. Threat actors understand that shared hosts are preferable for malicious campaigns, precisely because they are noisy, making traffic analysis less helpful for security researchers.
+Before telegram.ddns[.]net resolved to 151.80.239.207, it briefly resolved to two different Iranian hosts, both belonging to Aria Shatel Company:
+151.246.17.181 – Aria Shatel Company Ltd, AS31549
+31.57.118.202 – Aria Shatel Company Ltd, AS31549
+Recorded Future contains over 23,000 references to AS31549 and 175 references to Aria Shatel. The results are almost universally related to historical scanning and brute forcing abuse, in addition to a notable Aria Shatel data breach and subsequent public customer exposure.
+
+Aria Shatel Company abuse, as noted by honeypot services.
+
+Recorded Future timeline of AS31549 references.
+Additionally, Aria Shatel IP addresses are included in multiple anonymous proxy lists.
+
+Thousands of anonymous proxies.
+Traffic analysis, with the assistance of Team Cymru, for the two hosts at Aria Shatel in late December 2016 and early January 2017 reveals TCP sessions to numerous IP addresses on port 443 owned by Telegram Messenger. The IPv4 prefixes belonging to Telegram — AS62041 — include the following:
+91.108.4.0/22
+91.108.56.0/22
+91.108.8.0/22
+149.154.160.0/20
+149.154.164.0/22
+Additional notable traffic patterns include TCP high port to high port traffic between 151.246.17.181 (Aria Shatel) and 208.98.21.253 (XTIDC, China). 
+208.98.0.0/18
+Org Name: xtidc
+Org ID: GDF-YRTYR
+Address: zhuhai tianhong lu 123zhuhai tianhong lu 123
+City: zhuhai
+Postal Code: 519000
+Country: CN
+Net Range: 208.98.21.224 – 208.98.21.255
+CIDR: 208.98.21.224/27
+Abuse Phone: 862756465434
+Abuse Email: 44267797@qq.com
+The abuse email — 44267797@qq.com — returns a Recorded Future result sourced by an apparent data breach (March 2016) of Staminus, a hosting provider located in Los Angeles. The quickleak.se paste (cached in Recorded Future) lists the following information for company “xuntian.”
+Email: 44267797@qq.com
+Company: xuntian
+Password: 4941e8b0191991e89cf19f29a76c7e94:(z%B(
+Interestingly, the Github repository for “Xuntian” includes VLP-mobie, an Android program for “capturing the optical signal transmitted by LED lights and sends to the server.”
+
+These controller data points are light, circumstantial, and may be unrelated. This effort underlines the continuing difficulty of achieving attribution for this malicious Android app, and malicious campaigns in general that utilize internet resources. While the exact motives, spreading mechanism(s), and victims of this Spyware are unknown, moving the controller between open proxies in Iran and Italian shared hosting, indicates that the responsible actor(s) is aware of common operational security pitfalls.
+Malicious Android apps are particularly concerning from an enterprise risk analysis standpoint. Businesses face threats from employees using smartphones for two reasons:
+Android specifically suffers from a patchwork of hardware vendors and operating system versions making automatic security update support difficult. Additionally, while Google has made progress cleaning up malicious apps in the Google Play store, there are still numerous third-party markets for unauthorized app installation.
+Corporate BYOD programs provide improved employee productivity, but without comprehensive MDM (mobile device management), the threat of intentional or unintentional harm from employees’ smartphone use is real and quantifiable.
+MDM that provides access to mobile endpoint traffic for Netflow (packet header) collection may be helpful for hunting insider threat behaviors. For example, Tor entry and exit nodes are logical initial destinations to hunt, and an updated list of encrypted apps should also be maintained to facilitate corresponding messaging app infrastructure awareness.
+Important: All relevant sub-domains in this blog belonging to dynamic DNS provider No-IP were reported to the No-IP abuse team. No-IP confirmed that the sub-domains in question have been terminated.

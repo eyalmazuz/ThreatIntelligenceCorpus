@@ -1,0 +1,75 @@
+
+The Mutiny Fuzzing Framework and Decept Proxy
+
+
+
+This blog post is authored by James Spadaro of Cisco ASIG and Lilith Wyatt of Cisco Talos.
+
+Imagine a scenario where you, as a vulnerability researcher, are tasked with auditing a network application to identify vulnerabilities. By itself, the task may not seem too daunting until you learn of a couple conditions and constraints: you have very little information to work off of on how the network applications operates, how the protocols work, and you have a limited amount of time to conduct your evaluation. What do you do?
+
+In these scenarios, searching for and identifying vulnerabilities in network applications can be a monumental task. Fuzzing is one testing method that researchers may use in these cases to test software and find vulnerabilities in an efficient manner. However, the question that then comes up is how does one fuzz quickly and effectively?
+
+Enter the Mutiny Fuzzing Framework and the Decept Proxy.
+
+
+
+Mutiny Fuzzing Framework
+
+
+
+
+
+The Mutiny Fuzzing Framework is a network fuzzer that operates by replaying network traffic through a mutational fuzzer.  The goal is to begin network fuzzing as quickly as possible, at the expense of being thorough.
+
+At a high level, Mutiny is designed to take a sample of legitimate traffic, such as a browser request, that has been prepared and formatted into a .fuzzer file.  Mutiny can then be run with this .fuzzer file to generate traffic against a target host, mutating whichever packets the user would like.  Mutiny can also be extended and configured to behave in different ways such as changing messages based on input/output, specifying how network errors are handled, and monitoring the target host in a separate thread.
+
+Mutiny is easy to use for cleartext traffic, but it does not natively support TLS or other various network protocols.  This is where the Decept Proxy comes into play.  Not only does it simplify capturing and fuzzing encrypted traffic, it also performs one-step traffic capture and processing for Mutiny.
+
+
+Decept Proxy
+
+
+The Decept Proxy is a multi-purpose network proxy that can forward plaintext or TLS secured traffic from a TCP/UDP/DTLS/domain socket connection to another plaintext or TLS secured socket connection.  It makes a good companion for Mutiny as it can both generate .fuzzer files directly, particularly helpful when fuzzing TLS connections, and allow Mutiny to communicate with TLS hosts.
+
+What makes Decept Proxy different from the various other proxies?
+
+
+It supports TLS endpoints, IPv6, Unix Sockets, abstract namespace sockets, L3 protocols/captures, and L2 bridging and passive modes. 
+
+It can perform SSH proxying/sniffing/filtering.
+
+It was created with portability in mind and only uses standard python libraries. As long as the system you're going to run Decept Proxy on has Python 2 install, it should be good to go. 
+
+Decept is based off of the TCP proxy.py from Black Hat Python by Justin Seitz.
+
+
+Decept and Mutiny In Action
+
+The Mutiny Fuzzing Framework and Decept Proxy have been an effective tool set for Cisco in evaluating a variety of network applications and devices. This includes a number of Cisco devices which have been hardened based on bugs and vulnerabilities that were identified by network fuzzing. Other examples where Mutiny and Decept were instrumental include: 
+
+
+
+CVE-2014-7815, a denial of service bug in QEMU.
+
+TALOS-2017-0439, a heap overflow bug in Tinysvcmdns which affected Circle with Disney devices.
+
+several vulnerabilities in VMware products that have been responsibly disclosed.
+
+
+
+
+
+Where To Find These Tools
+
+Talos is releasing the Mutiny Fuzzing Framework and the Decept Proxy as open source tools.  These tools are actively maintained by us and we gladly welcome any feedback from the community on improving functionality.  Note that these tools are provide as-is and are not officially supported. Users assume all liability for the use of these tools.
+
+The Mutiny Fuzzing Framework can be found on GitHub at the link below. Note that there are several development branches for Mutiny and users who are interested running the stable version should use the master branch.  The experiment branch contains newer functionality, but may not be stable enough for normal use.
+
+Mutiny Fuzzing Framework:
+https://github.com/Cisco-Talos/mutiny-fuzzer
+
+The Decept Proxy can be found on GitHub here:
+https://github.com/Cisco-Talos/Decept
+
+
+

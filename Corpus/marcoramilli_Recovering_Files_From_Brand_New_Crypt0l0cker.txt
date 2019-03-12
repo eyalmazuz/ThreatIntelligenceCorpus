@@ -1,0 +1,199 @@
+
+Recovering Files From Brand New Crypt0l0cker
+
+
+
+
+Today I want to share a quick'n dirty analysis of a brand new Crypt0l0cker version realised for the Italian market and spread over emails (such as: ENEL Bolletta).  Unfortunately I do not have much time to invest in that analysis but we will analyse how we might be able to recover mostly of the encrypted data.
+
+
+
+
+
+
+New Crypt0l0cker Version
+
+
+Sample signatures:
+
+[*] MD5 : aafc1dcd976f91b50e1f71017b8ab10f
+
+[*] SHA-1 : 56e623b2d2a4abb09cfc23d754e0095f9a71a9cb
+
+[*] SHA-256 : f44310005b4d75b15df0126e954c68456e7882ee6081cfd3e39f4267f86b44d9
+
+
+Two Antivirus on FiftySix where able to tag the new Malware as Suspicious executable. Baidu defines the new Crypt0l0cker as a generic Trojan (well, actually this version does "Trojan" too, please follow on reading) and Kaspersky defines it as "General Dangerous".
+
+
+
+
+Antivirus Detection
+
+
+Giving the new Crypt0l0cker to a packer signature engine (which happens to be an .EXE implementing a PDF icon) you might find out two valid information: (a) The Sample has been likely compiled through Visual C++ and (b) no known packers have been involved.
+
+
+
+PEiD OEP Plugin
+
+
+Let's move directly on OEP and see what we'll find there ! A Decrypting loop within anti-debug traps is found (please see the Graph Overview in the following picture). It's time to statically read the code patching the anti-debug trap and later on firing up the executable to decrypt the memory stub.
+
+
+
+Decrypting loop within anti-debug traps
+
+
+
+Patching the "isDebugPresent-return-function" and running the sample on a virtualized environment we might observe interesting behaviours. I wont spend time in writing how to reverse this sample but this time I am mostly interested in behaviour analysis. So letting run the code you will see the Malware injecting a DLL into explorer.exe getting administration privileges and exchanging modules and keys through its CC on ngrok VPN networks.  
+
+
+
+PERSONAL NOTE: I saw may samples scanning for ngrok connection (mostly to find out vulnerable systems) but I never seen before Ransomware using ngrok protocol to communicate through their command and control exchanging keys. Ngrok is a secure introspectable tunnel to "localhost" which remote "localhost services". Ngrok is mostly used from developers to share preliminary results to their clients and for such a reason installed on developer 's machines. If the Ransomware 's author used ngrok from his own developer machine, we might be able to find him. But this is another "story"...
+
+
+Following the Malware network activity you might appreciate a brand new Domain Name Generation Algorithm based on ngork network:
+
+
+
+- DNS Query(16807d6e.ngrok.com)
+
+- DNS Query(d07a6607.ngrok.io)
+
+- DNS Query(ofywoxonega.neokred.org)
+
+- DNS Query(ilqde.neokred.org)
+
+
+
+The Injected DLL communicates through the following address by exchanging encryption keys and modules: 
+
+
+
+** OUT,TCP - HTTP,192.168.1.69,171.25.193.9:80,C:\Windows\SysWOW64\explorer.exe
+
+** IN,TCP - HTTP,171.25.193.9:80,192.168.1.69,C:\Windows\SysWOW64\explorer.exe
+
+** OUT,TCP - HTTPS,192.168.1.69,198.211.127.225:443,C:\Windows\SysWOW64\explorer.exe
+
+** IN,TCP - HTTPS,198.211.127.225:443,192.168.1.69,C:\Windows\SysWOW64\explorer.exe
+
+** DNS Query(ibog.neokred.org)
+
+** OUT,TCP - HTTPS,192.168.1.69,86.59.21.38:443,C:\Windows\SysWOW64\explorer.exe
+
+** IN,TCP - HTTPS,86.59.21.38:443,192.168.1.69,C:\Windows\SysWOW64\explorer.exe
+
+
+
+PERSONAL NOTE: it will be super interesting spending time in reversing the DNGA used in this sample. Please if you have time to spend on this project contact me I'll send you the sample.
+
+As most of the Malware out there do, it sets itself in "autorun" to survive the system reboot. It copies itself into c:/windows/ and it changes the regkey to load the saved software (itself) on every system reboot (machine\software\microsoft\Windows\CurrentVersion\Run\utivikyh). The sample disables system securities and software quality-client as well, but this is out of my investigation topic. Before sending requests to C&C it harvests many information about the victims such as hardware components and keyboards layout. The malware is weaponized through modules it downloads from C&C. What has been found during this quick'n dirty analysis is the following:
+
+
+
+   * Keylogger functionality.
+
+   * Gets system default language ID.
+
+   * Gets input locale identifiers.
+
+   * Gets computer name.
+
+   * Encrypts data.
+
+   * Decrypts data.
+
+   * Checks for debuggers.
+
+   * Deletes activity traces.
+
+   * Anti-Malware Analyzer routine: Disk information query.
+
+    * Privilege Escalation Techniques.
+
+
+
+The Malware sample implements some elementary evasion techniques such as understanding the user behaviour by acquiring the used windows (GetForegroundWindow) and applying some heuristics on windows and mouses. It saves many (I do not have the evience about "all") ongoing heuristics (or "counters" as the developer prefers to call them) into the following file:
+
+C:\Users\user\AppData\Local\Microsoft\Windows\Temporary Internet Files\counters.dat
+
+
+
+The Malware sample looks for email clients on the victim machines and tries to read out email address. Does it maybe send the new found emails addresses to Command and Control in order to self-empower central victim lists ? (I have no evidence of that, further analysis is needed)
+
+
+
+The sample heavily uses sleep(60000) all around the code to avoid simple sandboxes analyses. But let's analyse the interesting part of it: how this version of Crypt0l0cker encrypts files! Observing Syscalls tree we observe: Encryption Parallelization ! My best guess is that Malware writer uses parallelization to speed up the entire process of encryption. Indeed the victim's CPUs rise up to 90% and the Crypt0l0cker process increases the number of threads and sub-process as soon as the infection starts !
+
+Faster encryption means increasing the probability to encrypt user data before the victim stops the infection process. As more files will be encrypted as higher is the probability the user will pay for having them back!
+
+Each process performs the following simplified encryption path:
+
+
+
+
+
+Observed Encryption Behaviour
+
+
+
+
+
+
+As a first stage the Malware reads the file in a input dynamically sized buffer, while it's encrypting the read file it deletes the original file and create a new one directly on the hard drive which will be filled with the encrypted content. This encryption path is vulnerable to file carving technique since Malware deletes the fileA and creates a new fileA.encrypted which will be (statistically but not scientifically) located in different HardDrive Block. So if you are a victim of such a Crypt0l0cker version (refers to hashes), and you do not have shadows file (File History, for windows 8 users) and/or backups you might try with file carving which it will statistically work :D !
+
+Older ransomware (such as: torrentlocker, teslacrypt, bitlocker, etc etc) use a different but most effective approach. Some of them, in order to increase the speed, encrypts only a specific part of the file, others just rewrites the original file but without creating a new file itself. In such a situation file carving is not going to work. 
+
+
+
+Summing Up:
+
+
+
+- We obtained a brand new version of Crypt0l0cker.
+
+
+
+- We  did have not enough time to invest on reversing the DNGA (based on ngrok) and the specific functionalities this original Crypt0l0cker have implemented,  BUT...
+
+
+
+- We obtained two main interesting results:
+
+
+
+It is the first time we are observing a Malware implementing a DNGA based on private encrypted tunnels such as ngrok.
+This Cryp0l0cker version use a vulnerable read-encrypt-write algorithm which might decrease its effectiveness and vulnerable to file carving.
+
+
+Conclusions:
+
+If you've got infected by the Italian version of Crypt0l0cker try with file carving and you will probably get back data.
+
+
+
+IoC:
+Extension:
+.encrypted
+
+DNS Queries: 
+16807d6e.ngrok.com
+d07a6607.ngrok.io
+
+ofywoxonega.neokred.org
+
+ilqde.neokred.org
+
+Temp File:
+C:\Users\user\AppData\Local\Microsoft\Windows\Temporary Internet Files\counters.dat
+
+
+
+
+
+
+
+
+

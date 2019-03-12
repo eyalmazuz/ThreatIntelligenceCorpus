@@ -1,0 +1,25 @@
+
+					FTP Injection flaws in Java and Python allows firewall bypass					
+Attackers can trick Java and Python applications to execute rogue FTP commands that would open ports in firewalls
+
+The security researcher Alexander Klink published the analysis of the FTP protocol injection vulnerability in Java’s XML eXternal Entity (XXE).  The expert explained how to trigger the flaw to inject non-FTP malicious commands inside an FTP connection request.
+It is important to highlight that the attack works even if the FTP connection fails, as FTP servers do support authentication, but doesn’t check for the present of carriage returns (CR) or line feeds (LF) in usernames.
+“This attack is particularly interesting in a scenario where you can reach an (unrestricted, maybe not even spam- or malware-filtering) internal mail server from the machine doing the XML parsing.” states the blog post published by Alexander Klink. “It even allows for sending attachments, since the URL length seems to be unrestricted and only limited by available RAM (parsing a 400MB long URL did take more than 32 GBs of RAM for some reason, though ;-)).” 
+
+The security researcher Timothy Morgan from Blindspot Security devised a new attack technique leveraging on Java/Python FTP Injection to bypass firewalls.
+The FTP protocol injection flaw could be exploited to trick the target firewall into accepting TCP connections from the web to the vulnerable host’s system on its “high” ports (from 1024 to 65535).”
+FTP protocol injection attack is caused by an old and well-known security issue in FTP protocol called classic mode FTP that is still supported by default by many firewall vendors.
+When a classic mode FTP connection is initiated, the firewall temporarily opens a port (typically included in the range 1024 and 65535) specified in the PORT command.
+Using the FTP protocol injection issue in Java and Python, the attacker just needs to know the targeted host’s internal IP address while classic mode FTP connection is started.
+In order to open a port in the targeted firewall the attackers need to make the following requests:
+Once identified the process to bypass the firewall, all an attacker needs to do to launch the attack is to trick victims into accessing a malicious Java or Python applications running on a server to bypass the network defense.
+“If a desktop user could be convinced to visit a malicious website while Java is installed, even if Java applets are disabled, they could still trigger Java Web Start to parse a JNLP (Java Network Launch Protocol) file,” Morgan said. “These files could contain malicious FTP URLs which trigger this bug.” reads the analysis.
+“Also note, that since Java parses JNLP files before presenting the user with any security warnings, the attack can be entirely successful without any indication to the user (unless the browser itself warns the user about Java Web Start being launched).”
+A similar flaw resides in Python’s urllib2 and urllib libraries, although “this injection appears to be limited to attacks via directory names specified in the URL.”
+Both flaws were already reported to the companies, the FTP protocol injection flaw was reported to the Python team in January 2016 and Oracle in November 2016, but they are still unpatched.
+Morgan has also developed a proof-of-concept (PoC) exploit code that he will release only after both Oracle and Python will relaese the necessary security updates.
+According to Morgan his exploit code has successfully been tested against Palo Alto Networks and Cisco ASA firewalls, the list of vulnerable network security devices could include many other systems.
+Below Morgan’s recommendations:
+Pierluigi Paganini
+(Security Affairs – FTP Injection, hacking)
+ 

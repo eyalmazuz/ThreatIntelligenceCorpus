@@ -1,0 +1,23 @@
+NoSQL: Injection vaccination for a new generation
+We are becoming more and more accustomed to reading about losses of online data through malicious hack attacks, accidents, and downright carelessness – it’s almost as if we don’t know how to secure data against the most common forms of attack.
+Of course, that isn’t really true as best practice, legislation, and education on the matter are easy to come by, from a variety of sources.
+Yet we continue to see common attacks being repeated, with SC Magazine reporting recently that 100,000 customers were compromised by SQL injection.
+Then, last year it was reported that the Wall Street Journal was vulnerable to the same security breach.
+NoSQL is, or was meant to be (you pick) the future architecture, an opportunity, almost, to start afresh. Given that and with the wealth of knowledge that's amassed from decades of SQL, you'd think NoSQL databases and systems wouldn’t fall into the same traps as the previous generations of RDBM systems.
+Just this February nearly 40,000 MongoDB systems were found with no access control and with default port access open. To be fair, not all the possible faults I'm about to mention apply to all NoSQL systems; some are harder than others and some from distribution companies are deliberately hardened out of the box.
+The first rule of security is that if someone manages to get on your box then it’s just about game over. Hopefully, I don’t need to re-emphasise the importance of firewalling database boxes (whatever the flavour) from the outside world and only allowing access to your application servers, but it is worth stating that this is as important in the NoSQL world as any other.
+Once on the system, a hacker may well go for the table files themselves, the default location of the files that hold your database usually isn’t hard to find and if it isn’t the default location a quick check of a configuration file (or using a command line utility) will usually turn the location up.
+Your particular database may well have a command to dump the contents of a database to disk, mongoexport for Mongodb or sstable2json for Cassandra. Using proper file permissions on the files can help, but if the hacker has root access then the door’s wide open.
+Your database may allow compression/encryption on the tables (or whatever the database you are working with calls them) themselves, although this may only be available in “Enterprise” versions of the tool. The Datastax enterprise edition of Cassandra supports transparent data encryption to disk on a "per table" basis.
+Sadly, if you're using the “free” version, this isn’t available to you. Be warned though, this won’t affect commit logs which will retain copies of data for some time and could be a security attack vector.
+Any good RDB admin will tell you about the importance of segmenting access to your tables so users and processes have just the right access they need to the data. It might even be the case that the highest level database admin might have the ability to index and move tables but not access the data held within.
+NoSQL databases are no exemption, most modern versions include access control (some integrating with LDAP or active directory) but just like SQL systems access control doesn’t come free out of box.
+Access control can cause pain in the development cycle, but to run a production system without it is just insane, so personally I’d recommend keeping access control turned on for all levels of development.
+One other important point to consider is access to system tables which can give access to the database schemas, important information for the would-be hacker. Several Cassandra system tables (for instance system.schema_columns) by default have read permissions for every authenticated users which can be a security weakness.
+Very closely related to Table security is the security of the disks themselves. As before, this is no different to RDBMS security, if someone has access to your disks (the data at rest) then they could have access to your data.
+An important question to ask of our operations people (or your cloud provider) is what happens to disks that are removed from machines; how are they destroyed?
+You may also want to consider employing disk encryption just in case a retired disk falls into the wrong hands. The amount of data on disk will depend on your NoSQL system, the size of the cluster, and if your system allows it, the replication factor of the tables and write operations. Disk encryption may slow your system down a tad, but using modern hardware this can be minimal.
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

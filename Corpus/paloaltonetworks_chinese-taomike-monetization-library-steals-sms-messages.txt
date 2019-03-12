@@ -1,0 +1,208 @@
+Chinese Taomike Monetization Library Steals SMS Messages
+
+Mobile app creators are often looking for ways to monetize their software. One of the most common ways to do this is by displaying advertisements to users or by offering in-app purchases (IAPs). Mobile monetization platforms create software libraries that authors can embed into their apps to start earning money quickly. We previously highlighted the dangers of installing apps that enable IAPs using SMS messages, as these apps typically have access to all SMS messages sent to the phone.
+
+While not all SMS-based IAP applications steal user data, we recently identified that the Chinese Taomike SDK has begun capturing copies of all messages received by the phone and sending them to a Taomike controlled server. Since August 1, Palo Alto Networks WildFire has captured over 18,000 Android apps that contain this library. These apps are not hosted inside the Google Play store, but are distributed via third party distribution mechanisms in China.
+Background
+WildFire captures many samples of mobile malware that intercept and upload SMS messages. Most of these are created by malware authors who set up command and control (C2) servers with third party hosting providers and frequently update their locations to avoid detection.
+Among these malware we have found many that are created by “mobile monetization” companies who distribute apps that provide little value but have a high cost to the user. These apps are often installed by tricking users into clicking a pop-up, only to find later that a charge has appeared on their phone bill. Antivirus programs typically identify these apps as malware, the topic of this blog is something different and harder to detect.
+Taomike is a Chinese company that aims to become the biggest mobile advertisement solution platform in China. They provide an SDK and services to help developers display rich advertisements with a high pay rate. Taomike has not previously been associated with malicious activity, but a recent update to their software added SMS theft functionality. The apps this library is embedded in may be legitimate and have significant functionality, but their developer’s choice to use this library has put them at risk.
+Technical Details: SMS Theft
+Not all apps that use the Taomike library steal SMS messages. Our analysis indicates that only samples that contain the embedded URL, hxxp://112.126.69.51/2c.php have this functionality. This is the URL to which the software uploads SMS messages, and the IP address belongs to the Taomike API server used by other Taomike services. We have captured around 63,000 Android apps in WildFire that include the Taomike library but only around 18,000 include the SMS theft functionality.  
+We believe there are different versions of the Taomike SDK and only some of them include SMS uploading behavior. Based on our data, the version that contains the SMS stealing functions is newer and was released around August 2015. Apps that use earlier versions of the library appear to be safe.
+The Taomike library is called “zdtpay” and is a component of Taomike’s IAP system.
+
+Because Android apps are required to list the permissions they need in their manifest file, we can see that this library requires both SMS and network related permissions. The library also registers a receiver named com.zdtpay.Rf2b for both the SMS_RECEIVED and BOOT_COMPLETED actions with highest priority of 2147483647.
+Figure 1. Registered receiver for SMS_RECEIVED
+The registered receiver Rf2b reads SMS messages whenever they arrive. The message body and sender phone number are collected as shown in Figure 2.
+Figure 2. SMS body and sender number read
+If the device has just booted, it will start the service MySd2e, which then registers a receiver for Rf2b as shown in Figure 3.
+Figure 3. MySd2e Service registers receiver for Rf2b
+SMS information collected by the receiver is saved in a hashmap with “other” as the key and sent to a method that uploads the message to 112.126.69.51 as shown in Figure 4.
+Figure 4. Information uploaded to IP Address used by api.taomike.com
+All SMS messages sent to the phone are uploaded, not just those that are relevant to Taomike’s platform. Figure 5 shows a packet capture of a test message upload. The message content is “hey test msg” as circled with dashed red box.
+Figure 5. SMS uploaded via HTTP in pcap
+The Taomike library makes contact with the following URLs, but only the “2c.php” path is used to capture SMS messages. The rest appear to be used for other parts of the IAP functionality in the library.
+
+http://112.126.69.51/2c.php
+http://112.126.69.51/imei_mobile.php
+http://112.126.69.51/install_report.php
+http://112.126.69.51/error.php
+http://112.126.69.51/rixian.php
+http://112.126.69.51/order_mo.php
+http://112.126.69.51/order.php
+http://112.126.69.51/order_status.php
+http://112.126.69.51/tdstatus.php
+
+Risks and Mitigation
+We have captured over 18,000 samples that contain the SMS stealing library since August 2015, meaning the number of affected users is considerable. We expect the number of affected apps and users to increase as more developers incorporate the newer version of Taomike library.
+The infected apps are not limited to a single developer or third party store as many developers appear use the Taomike library. Some of the infected apps purport to contain or display adult content.
+We do not know how Taomike is using the stolen SMS messages, but no library should capture all messages and send them to a system outside the phone. In version 4.4 of Android (KitKat) Google began preventing apps from capturing SMS messages unless they were defined as the “default” SMS app.
+Users outside of China and those that only download apps from the official Google Play store are not at risk from this threat.
+To protect Palo Alto Networks customers from the Taomike SMS stealer, we’ve made the following protections available:
+
+Palo Alto Networks WildFire will automatically identify and block malicious APK samples containing the SMS stealing Library
+Threat Prevention signature 14798 will detect and block the malicious C2 communication, including the SMS upload traffic from Taomike library
+Palo Alto Networks AutoFocus users can identify and investigate this threat using the Taomike tag
+
+Conclusion
+Even popular third party monetization platforms are not always trustworthy. When developers incorporate the libraries into their apps they need to carefully test them and monitor for any abnormal activities. Identifying monetization and advertising platforms that behave poorly and abuse their users is something that our industry must to do ensure the safety of all mobile devices and their users.
+Acknowledgement
+We greatly appreciate the help from Rongbo Shao from Palo Alto Networks in working on the Threat Prevention signature. We would also like to thank Ryan Olson, Benjamin Small, Richar Wartell, and Chris Clark from Palo Alto networks in publishing the discovery.
+Related Sample Hash Values
+
+
+
+d378409c7998dfc7d6688bd63831e54e293571cc96f6c5cc72981d9d9612daff
+
+
+5cde5e36084a79de18d759be1b9d8017d4e2a3928cf429bcc633aedf03258bf3
+
+
+71ff99dc77806ee0ee224ba3084bdf35aff5d75d58eee5cc3450ef1465b470fb
+
+
+60d096c70cb3f799ffbbd91969165d40c2082ec2a48a1de4443ffa3da8a6f393
+
+
+ea5023931f861f72c0125c2d945461130261f0e324393404a1e4387922315849
+
+
+e9cd3684eae35d625887c731ca0e4734e8ff130811e081b67fdfcb10c0c20356
+
+
+db7168198db54e040bc78e65c7d73f85b1bdfb8ba593201a1bfb1546ad4a9f09
+
+
+c15a7f073e3d896b973c49d573d3836eab4992edc5493398b96885f16136de27
+
+
+ad2e55a9fd2e2a75482342f67494f3ec7e0abd9385351b60c1b46c03032b7ab9
+
+
+0b2efa549eec0fbf137475b5b8ca4832bcf2aaede29620b34581c5f9b8864104
+
+
+3170e767ec86bec448fe78a3e6484b65048d09f579cf1276adc2c66f8a9ba8d2
+
+
+8b3338b56178ae4517cf0de35189e5174d678af46bf691120011881094831f81
+
+
+f08ab9b52324af7f70e9cd8a0ce376ff0191f22a3c87ded057a1d514de042d1b
+
+
+60fec234fece534b6400d35844353158c54b49de9357f8d015e36c2053c465e5
+
+
+76a0233fb468a219399df0f6dfcf20e53addd554e0f0857f2c6626d0a831e30e
+
+
+cdcaced59f254acb13b830b9d64108029f1f44652fbba0f0d07b73e5bd733629
+
+
+57c101e7e0b6adb0725241fa2e58f689e12ef76b837b3e631734b2ad8d85595c
+
+
+c6bf1e7764e4dfa0b9f148089236e9edff914e1d022cf93776b834de1eb8e39c
+
+
+99a4907b74574d2bbaeb83360da8f8b3b29805b941bc2b61f02f0e089e393225
+
+
+5101e244452973f7bf54b1d21c67ce60f39961ecebb760f3bb22da09b8c197b8
+
+
+5e4456ae3dc3f4241263448557a5107a934b2ff661d509de42d02a91f71cc18d
+
+
+00776dbed469bb55afabfe94c70f4e09680fed9fadd69e1e415abcbdae7298f0
+
+
+e9345cce7994d2b3cc23ed6fe8f744530f893c3c3d20c1d08ed99d0e1d7dab44
+
+
+7e79bfe4642fb44742794d35cfa77553a2382aed23766dc5cf42ae0f05d166ab
+
+
+a5a6cfc594a0891b0175ad6c79bee6d3654792e39f92f9b446e3764c5d6e5beb
+
+
+3297a82541e0ba9b2e6c3c980b50b623503c9c22dfc79a97d843a4a457d71cff
+
+
+23a944c5f58fb5aff1d5532b99ec5749db63ce373562da96e6747d5442a6cc79
+
+
+209cada39642c581ca7732aa4695e885bc9e330d1f268890ed5439e643830df1
+
+
+1c556aca39778255cdea10a4309a3b9f9790ccab7edd38ef04f80b0490942024
+
+
+10459c84a7b7e0a76d3a22f5555f1628c8ffc0916d9b89952e817e97996156de
+
+
+0f271cf83acc69aa831d4fb1688fee9a518ef86fbaf10b79337ad1408e2b18cd
+
+
+41f5d3cf5d060914acadbbae8b26274e841a697edcf264240d46fd0519322ab8
+
+
+17f1c075bc3a01c64d662bc470d2bbf20beffb3e2688f9e36ceefdc2b970ba18
+
+
+06774c5288fb1d313d1e499b8a864b6dc35534f6707969bded8d3a8298460fbb
+
+
+01728f7040d049f40b52bcf2380913cf88b4a43a4872abd72baf2a27b0b1b868
+
+
+53323667a4a55b6d5d97db9bb629cfd7139b2f4d1f435f09882009c51d7ee85c
+
+
+4a4fab4f13e44a4cc428a5efcc7b23523b7c9ebaa6cc3ca9de7b93d4aa44cc3f
+
+
+4b0b177836ef763640c4f7d959e294bea464c9d68e5e32f125d4789c7370fe5d
+
+
+231afbc703b0dea14f6d8830dddc1cfb7ae788f3037767fea0a7f7a91d041401
+
+
+3677dfe67ba6e6c1ea342cc02c20182d948d05b218825d6f73f574637af6c3b1
+
+
+7559f844a850ab2fc5a1c1731f6f29b9417a243674d5dbc77f6e5ab292a1f99f
+
+
+ab8f77d54effa0efcf57ae28242439a3c5176f71a1ca043e61b9849482e7c512
+
+
+789edaf569e41ad1dbe76d8a65647bce347e8367e76f95b7395ca9e8d101ddfd
+
+
+abc7129f6ad5d30f146915e3be2041dc7516f4049eb20dca33040bc46ce72498
+
+
+e37cdc1747dc39ccb3cc411b96e9b6d53d7c4da11933d0612173cf26a8f8c5f3
+
+
+6ed47b7564c6e015cfe9c21d5aefdc555a8734cf6c85bf2929bf4331bb43084a
+
+
+78940a88e6777b5daf001978eb16ac47ca152fa61016d62d5341eaaf8c037e6f
+
+
+2631329044f0ef151ff21ccd24bb539cadc5a3b4f5c14bfda32b546d53c2f8f5
+
+
+868db42e6c7c59df87ab615f6167a1fb581ceb044d3aa934468ca124a3895d05
+
+
+81f26e2d2388e0eed8a5ca135b7855f9470ec8e2897df051823dcc04b880657b
+
+
+
+ 
+

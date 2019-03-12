@@ -1,0 +1,34 @@
+APNIC boffins may enlist TCP to defend DNS
+Could defending the Domain Name System (DNS) infrastructure against amplification attacks be as simple as switching protocols in resolvers? Probably not – but an experiment conducted at APNIC has far-reaching implications.
+As Geoff Huston, chief scientist at APNIC, writes, DNS amplification attacks are easy to launch and can be relatively hard to defend against.
+The ease with which an attack can be launched is practically built into DNS: an amplification attack – a small query returning large response – is very little different to “DNS behaving as it should”. That's pretty much the characteristic of DNS that was exploited in the Cloudflare attack earlier this year.
+With too many open resolvers in the world, and too few networks implementing source egress filtering specified in the BCP38 best practice document authored back in 2000, amplification attacks will most likely continue.
+The result, he writes, is that UDP “allows an attacker to mount a reflection attack by co-opting a large set of open resolvers to send their responses to the target system, by using UDP queries whose IP source address is the IP address of the intended victim.”
+Looking at this “comprehensive vulnerability for the Internet”, Dr Huston – currently chief scientist at APNIC – has led an experiment that looks at an almost-forgotten aspect of the DNS specifications.
+As he describes, nearly every DNS transaction in the world today uses UDP for DNS queries. However, the DNS specification, RFC 1123, allows either UDP or TCP to be used.
+TCP has fallen out of use for most DNS operations, he notes, but it has one attractive characteristic in today's Internet: TCP is not vulnerable to amplification attacks. That's because it's stateful, while UDP is stateless. TCP's session establishment would break the reflection aspect of DNS attacks.
+In this simplified example, stateless UDP messages
+spoofing the target address trigger huge number of
+DNS responses, in a Denial-of-Service attack
+“If an attacker were to attempt to open up a TCP session using an IP source address of the intended victim, the victim would receive a short IP packet (IP and TCP header only, which is a 40 byte packet) containing only the SYN and ACK flags set. As the victim system has no pre-existing state for this TCP connection, it will discard the packet,” he writes. With no way to maintain a session from a spoofed address, the attack will fail.
+TCP, however, drops the session because
+the target doesn't respond with an ACK
+Could reconfiguring DNS to use TCP be a practical solution to the amplification attack problem? For that, APNIC set up an experiment to test one question: “How many clients were able to successfully switch to TCP following the receipt of a truncated response in UDP?”
+The setup change in the test resolver was simple enough: on receipt of a UDP query, it sent back a truncated response, which should trigger the client to switch to TCP. Without recounting every nuance of the experiment, there were some encouraging and some not-so-encouraging results.
+On the upside: only 2.6 percent of 2 million clients (still “large enough to be significant”) failed to retrieve their queries when redirected to TCP.
+Investigation of the failures revealed that the 2 million clients used more than 80,000 resolvers, and of these, there was a much higher rate of failure – 17 percent.
+To get a handle of what all this means, The Register spoke to APNIC research scientist George Michaelson, who worked with Huston on the experiment.
+Michaelson explained there is an active debate TCP-versus-UDP debate in the DNS community, often centred on concerns that scaling the server side to use TCP exclusively would be impossible, since the big resolvers run workloads of 13,000 requests per second or more.
+The APNIC experiment looked at the other end of the question: what would the failure rate be, all the way out to clients? From that point of view, a 2 percent failure rate would raise a serious question for providers: “Is one-in-fifty a number you're happy with?”
+While the experiment couldn't see all the way to the clients, Michaelson believes there's a lot of SME and home networking kit that can't handle a fallover to TCP for DNS requests.
+“Perhaps the resolver is behind an old firewall, for example.” There are suggestions, he said, that people running “old magic” in their firewalls have access control lists that block TCP over DNS. And a lot of home networking kit is “running a stack that hasn't changed in 15 years and can't handle it,” Michaelson added.
+But that's not all: issues could also arise based on the operating system an end user is running. “Vanilla OSX, for example, can only do DNS over UDP,” he added.
+It's not a merely academic question, because even if the world of DNS doesn't suddenly switch to TCP as a matter of policy, some users might find themselves hostage to trends in technology: the move to IPv6 and the slow-motion-avalanche rollout of DNSSEC.
+These become problematic, Michaelson, because they create large responses to queries – and can therefore trigger an automatic fallover to TCP. That's because if a DNS transaction exceeds 512 bytes, UDP sends a “truncated” response to signal that TCP should be used.
+As Michaelson explained, “if there's more DNSSEC, there's more big packets”.
+“For example, if the Australian government decides to sign .gov.au there will be more DNSSEC. And that means there's more DNS-over-TCP coming down the line.
+“We absolutely need DNSSEC – we want a framework that lets you get secure trust in the person you're talking to”. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

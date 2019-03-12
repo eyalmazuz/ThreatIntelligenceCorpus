@@ -1,0 +1,91 @@
+
+SandBoxes personal evaluations
+
+
+
+
+Understanding the "sandbox" technology is a fundamental step in Malware prevention. While it is obvious the new evasion techniques such as (but not limited to); Malware Encryption, Malware Packing, Metamorphism and Polimorfism are able to evade romantic defensive technologies such as (but not limited to) AntiVirus, Intrusion Detection and Prevention Systems, URL Filtering and Proxy, is it not obvious enough that Malware can evade sandbox too.
+
+
+
+This post is not about evasion techniques, I've been talking and writing a lot on evasion techniques, but is about better knowing sandbox technologies.
+
+
+
+Each SandBox implements one or more specific detection strategies which makes SandBox an unique environment. It's hard to find two SandBoxes implementing the same strategies.  My point here is to understand the technologies and later on figuring out the different strategies behind them.
+
+If you are wondering why I decided to start from "implementation" (describing how specific sandboxes work) rather then from "foundations" (describing what are the most common ways to detect Malwares ) the answer is pretty simple: "I believe is much more interesting a bottom-up approach: starting from real technologies to reach out more general strategies". I know it's questionable.
+
+
+Let me start from Anubis. ANalysis of Unknown BInarieS is one of the "oldest" Sandboxes becoming one of the most known online analysis system. Anubis decided to implements its own running device on an emulated environment consisting of a Windows XP operating system running as the guest in Qemu. The analysis is performed by monitoring the invocation of Windows API functions, as well as system service calls to the Windows Native API. Additionally, the parameters passed to these functions are examined and tracked.
+
+
+
+CWSandbox. Is another quite famous Sandbox system. It executes the sample in a "patched" way in order to discover what it does. It executes the sample into memory by adding a function call built to monitoring the API and SysCall before and after the execution. It uses an "instrumentation" procedure to patch the bynaries.
+
+
+
+Norman SandBox. The Norman sandbox is a dynamic malware analysis solution which executes the sample in a small controlled virtual environment which simulate Windows operating system. The simulation involve multiple OS levels (such as API, System Calls, libraries, etc) as well as the Local area Network and the external Internet connectivity. Norman supports memory protection emulation and Multi-Threading supports in order to better emulate Windows OS. It has been used to mostly detect Net Worms since it makes eavy usage of DNS, Connection resolultions etc.  It monitors the auto-start extensibility points (ASEPs) often used by Malware to achieve persistance.
+
+
+Joebox. One of the first SandBox system built to live in real hardware and not on Virtual/Emulated environment. It is based on a client/server architecture in which the client runs the Suspicious sample by hooking (user mode) API, Syscall invocations, Export Address Table, and System Service Descriptor Table). It enables a Kernel driver to cloaking binary patching in order to "inject calls-debugging code". It uses AutoIT to emulate users interaction with the machine during the analysis phase.
+
+
+
+LastLine. Developed by Anubis's creators, Lastline implements multiple techniques including Intrusion Detection System, DNS analysis and Sandbox. It does suspicious file analysis by performing a multi path technique on a fully emulated environment. While Norman implemets an OS emulation Lastline performs a CPU and Memory emulation being hidden from the entire OS (not care if Kernel mode or  user mode at this stage, since being behind the whole OS). 
+
+
+
+ReVirt. Mainly based on virtualization environment (VBox) where a local engine logs alld the grabbed data. A centralized collector processes and analyze the produced logs. It includes a system called BackTracker that helps system 
+administrators understand (and thereby recover from) an intrusion, by 
+automatically identifying potential sequences of steps that occurred in 
+an intrusion.
+
+
+
+FireEye. It is one of the most known player of Cyber Security Solitions, it provides many products in addition to a sandbox, but we want to focus on FireEye SandBox. It is based on proprietary virtualization. They do not run samples in known VM-Managers such as: ESX, Hypervisor and VM-Ware, but they built their own VM engine in order to "avoid" the "VM-Aware" Malware.
+
+
+
+Buster. Buster is a toolkit applied to Sanboxie running on a VirtualMachine as well as on a real hardware. Buster Sandbox Analyzer is a tool that has been designed to analyze the behaviour of processes and the changes made to system and then evaluate if they are malware suspicious.
+
+
+The changes made to system can be of several types: file system changes, registry changes and port changes. It does not include any anti evasion technique to mitigate the "VM-Aware" Malware.
+
+WildFire. Powered by PaloAlto, wildfire claims to be a fully os level emulation system able to detect  and report Malware within 15 minutes from the discovery. It basically emulates the Operation System cheating the Malware and observing syscalls, API calls, File Mutex, RegKeys, and so on .
+
+
+
+HookAnalyzer. Well, actually it's hard to define this tool a SandBox, but let me put it in this environment. It basically works by hooking the executable getting dynimic as well as stati conformation on it. It runs on physical hardware and do not monitor any level of virtualization/emulation.
+
+
+
+Cuckoo SandBox. A simple sandbox based on Virtualization within many embedded euristics to detect "VM-aware" malware. It is implemented according to Client-Server Infrastructural paradigm. On client (VirtualMachine running potentially almost any OS ) a daemon runs on system-level. It (named cuckoomon) hooks API and Syscall and sends back to the VM manager (cuckoo result-server) the entire result set. A post processing engine elaborates the cuckoomon results inflating a DB. Eventually a webinterface shows results and hits euristics.
+
+
+
+Out there many other SandBoxe solutions are available for the security community, for example: SandBlust (By Checkpoint), Jotti, PayloadSecurity and ThreatGrid (Cisco) are some of the most known ones. Each SandBox owns particularity in botht technical implementations and detection techniques. Even on my hart I definitely know what is the actual best solution (for the time being) considering the Malware Zoo I am observing, I wont to give a gudjement since I  known that technologies follows markets, so there is not an absolute "best in class". For such a reason consider my contribution on providing the following considerations based on logics and real experiences expressed by the following chart.
+
+
+
+
+SandBox Strategies VS Comparison Properties (click to enlarge)
+
+
+On the time line: Virtualization, Virtualization + Anti-detection Heuristics, Emulation OS, Hardware Emulation, Hardware Agent Base and Hardware Based Agentless are the most used strategies in nowadays SandBoxes. On the leftside hand evaluation parameters: 
+
+
+Evasion Grade: how easy it could be, for a Malware, to detect the SandBox system. Higher this value easier is the evasion.
+Analysis Depth: how deep is the SandBox Analysis due to the owned data. Much more "raw" data is involved much more deep analysis is possible, much high is the complexity.
+Solution Complexity: the complexity of the SandBox solution. Higher is the complexity higher is the bug rate (not feedback chain in the evasion technique has been considered so far).
+Realization: considering my current experiences on Malware detection and evasion technologies, the state of the art I see on the implementation phase grouped by detection strategy.
+
+As you might observe there is really not a best solution right now. SandBoxes strategies with low detection rate are the one with the highest complexity and the lower realization rate. SandBoxes stategies with the highest detection rate could be adopt heuristics to try to decrease it (once the sample has been positive analyzed, ergo time consuming) but own the lowest complexity rate and highest realization rate.
+
+Depending on the involved "business" you might need to decide the right sandbox in the right time frame. This activity includes (but not limited to) organization analysis, threat detection, asset risks, past attacks and underground economy knowledge. I hope this post will help you out to decide the right sandbox for your business.
+
+
+
+
+
+

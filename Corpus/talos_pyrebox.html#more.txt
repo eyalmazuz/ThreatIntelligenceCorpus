@@ -1,0 +1,251 @@
+
+PyREBox, a Python Scriptable Reverse Engineering Sandbox
+
+
+This post was authored by Xabier Ugarte Pedrero
+
+
+
+
+
+
+
+
+In Talos, we are continuously trying to improve our research and threat intelligence capabilities. As a consequence, we not only leverage standard tools for analysis, but we also focus our efforts on innovation, developing our own technology to overcome new challenges. Also, Talos has traditionally supported open-source projects, and has open-sourced many different projects and tools that are currently used as part of our workflow like FIRST and BASS. 
+
+
+
+In this blogpost we present PyREBox, our Python scriptable Reverse Engineering sandbox. PyREBox is based on QEMU, and its goal is to aid reverse engineering by providing dynamic analysis and debugging capabilities from a different perspective. PyREBox allows to inspect a running QEMU VM, modify its memory or registers, and to instrument its execution with simple Python scripts. QEMU (when working as a whole-system-emulator) emulates a complete system (CPU, memory, devices...). By using Virtual Machine Introspection (VMI) techniques, it does not require to perform any modification into the guest operating system, as it transparently retrieves information from its memory at run-time.
+
+
+
+Several academic projects such as DECAF, PANDA, S2E, or AVATAR, have previously leveraged QEMU based instrumentation for reverse engineering tasks. These projects allow to write plugins in C/C++, and implement several advanced features such as dynamic taint analysis, symbolic execution, or even record and replay of execution traces. With PyREBox, we aim to apply this technology focusing on keeping the design simple, and on the usability of the system for threat analysts.
+
+
+
+
+
+
+
+
+Goals
+
+
+Provide a whole system emulation platform with a simple interface for inspecting the emulated guest system:
+Fine grained instrumentation of system events.
+
+Virtual Machine Introspection (VMI), based on volatility. No agent or driver needs to be installed into the guest.
+An IPython based shell interface.
+A Python based scripting engine, that allows to leverage any of the security tools based on this language (one of the biggest ecosystems).
+
+Have a clean design, de-coupled from QEMU. Many projects that are built over QEMU do not evolve when QEMU gets upgraded, missing new features and optimizations, as well as security updates. In order to achieve this, PyREBox is implemented as an independent module that can be compiled together with QEMU requiring a minimal set of modifications.
+Support for different architectures. Currently, PyREBox only supports Windows for x86 and x86-64 bit architectures, but its design allows to support other architectures such as ARM, MIPS, or PowerPC, and other operating systems. Support for these systems is becoming more relevant as more and more devices (with miscellaneous architectures and operating systems) are susceptible to attacks. We plan to support other architectures and operating systems in the future.
+
+
+
+
+
+
+
+
+
+
+How does PyREBox work?
+
+
+PyREBox is built together with QEMU, introducing a minimal set of modifications that allow to monitor certain events on the system. QEMU is based on Tiny Code Generator (TCG), an engine that allows the translation of code from different architectures to an intermediate language that operates over a virtual CPU. This intermediate language is then compiled to the target architecture where QEMU is running. PyREBox allows to instrument this translated code. A user can therefore register callbacks dynamically at runtime, and PyREBox will just translate all the necessary parameters to python readable objects. All the user needs to know is that a python function will be executed whenever certain event is triggered in the system.
+
+Also, PyREBox leverages Volatility in order to perform Virtual Machine Introspection, which helps to bridge the semantic gap between the physical view of the system (emulated machine), and the logical view of the operating system (processes, modules, symbols…). We also implemented a few routines in C/C++ that need to be called frequently, in order to improve the efficiency of the system by avoiding stepping into the Python runtime environment all the time. This approach allows to inspect the running processes, the modules loaded by them, as well as their exported symbols without inserting any agent or driver into the emulated system.
+
+Thanks to this approach, a user can inspect what is happening in the guest at a physical level, and more importantly, she can also understand which process is running at every moment, focus the analysis on one or several specific processes, or even insert stealthy breakpoints for any process and at any level (user or kernel space).
+
+
+
+What can PyREBox do for me?
+
+
+PyREBox offers two main interfaces to the user. On the one hand, the user can start a shell while running a guest system in QEMU, and inspect the running VM using many different commands. The shell is based on IPython, so it allows to write snippets of python code on top of its API and to express PyREBox command parameters using Python expressions. On the other hand, it is possible to write python scripts that can register callbacks for certain events on the system.
+
+
+IPython shell
+
+
+Starting a PyREBox shell is as easy as typing the sh command on QEMU’s monitor. It will immediately start an IPython shell. This shell records the command history as well as the defined variables. For instance, you can save a value and recover it later at a different point of the execution, when you start the shell again. PyREBox takes advantage of all the available features in IPython such as auto-completion, command history, multi-line editing, and automated command help generation.
+
+PyREBox will allow you to debug the system (or an specific process) in a fairly stealthy way. Unlike traditional debuggers which stay in the system being debugged (even modifying the memory of the debugged process to insert breakpoints), PyREBox stays completely outside the inspected system, and it does not require the installation of any driver or component into the guest.
+
+
+
+
+PyREBox offers a complete set of commands to inspect and modify the state of the running VM. Just type list_commands to obtain a complete list. 
+
+
+
+
+
+
+
+
+
+
+You will be able to run any volatility plugin at any moment during the execution of the VM, if you type vol and the corresponding volatility command. For a complete list of available volatility plugins, you can type list_vol_commands. This list is generated automatically, so it will also show any volatility plugin you install on PyREBox's volatiliy/ path.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Finally, you can also define your own commands in scripts! You just need to create a function with a name starting by "do_" and PyREBox will do the rest for you.
+
+
+
+
+
+If you need something more expressive than a command, you can write a Python snippet leveraging the API.
+
+
+
+
+
+
+
+
+For a detailed description of the API, you can type help(api) in the shell.
+
+
+
+
+
+Scripting
+
+
+
+
+PyREBox allows to dynamically load scripts that can register callback functions. These functions are called when certain events occur:
+
+
+
+Instruction and/or basic block execution
+Memory read/write
+Process creation/termination
+Context switch
+TLB miss
+Network interface and keyboard events
+
+
+
+
+
+This framework is inspired by projects such as DECAF, and as a consequence, we support many of the callbacks types that are supported in DECAF.
+
+
+
+Given that PyREBox is integrated with Volatility, it will let you take advantage of all the volatility plugins for memory forensics in your python scripts. Many of the most famous reverse engineering tools are implemented in Python or at least have Python bindings. Our approach allows to integrate all these tools into any script.
+
+
+
+The scripting interface also allows to define custom commands. A script only needs to declare a function following a specific prototype. This is enough to create a new command that will be available from the shell once the script is loaded. This feature allows to integrate any Python tool not only in the scripting engine, but on the IPython shell too, just by writing a simple wrapper in Python.
+
+
+
+A script can also start a shell for you whenever certain event occurs, or certain conditions are met. A user can monitor events, record them, and whenever a condition is met, a simple call to start_shell() is enough to pause the VM and start a shell at that specific point.
+
+
+
+The following snippet represents a simple script that registers a callback on process creation on the moment the script is loaded into PyREBox. Each time a new process is created, a PyREBox shell will be started. It also implements a custom command named my_command, that can be called from the PyREBox shell by typing custom my_command. 
+
+
+
+#!/usr/bin/python
+import sys
+import api
+from ipython_shell import start_shell
+from api import CallbackManager
+
+#Callback manager
+cm = None
+#Printer
+pyrebox_print = None
+
+if __name__ == "__main__":
+    #This message will be displayed when the script is loaded in memory
+    print "[*] Loading python module %s" % (__file__)
+
+def new_proc(pid,pgd,name):
+    '''
+    Process creation callback. Receives 3 parameters:
+        :param pid: The pid of the process
+        :type pid: int
+        :param pgd: The PGD of the process
+        :type pgd: int
+        :param name: The name of the process
+        :type name: str
+    '''
+    global pyrebox_print
+    global cm
+
+    #Print a message.
+    pyrebox_print("New process created! pid: %x, pgd: %x, name: %s" % (pid,pgd,name))
+    #Start a PyREBox shell exactly when a new process is created
+    start_shell()
+
+
+def initialize_callbacks(module_hdl,printer):
+    '''
+    Initilize callbacks for this module.
+    '''
+    global cm
+    global pyrebox_print
+    #Initialize printer function
+    pyrebox_print = printer
+    pyrebox_print("[*]    Initializing callbacks")
+    #Initialize the callback manager
+    cm = CallbackManager(module_hdl)
+
+    #Register a process creation callback
+    new_proc_cb = cm.add_callback(CallbackManager.CREATEPROC_CB,new_proc)
+
+    pyrebox_print("[*]    Initialized callbacks")
+
+def clean():
+    '''
+    Clean up everything.
+    '''
+    global cm
+    print "[*]    Cleaning module"
+    #This call will unregister all existing callbacks
+    cm.clean()
+    print "[*]    Cleaned module"
+
+def do_my_command(line):
+    ''' Short description of the custom command.
+
+        Long description of the custom command
+    '''
+    global pyrebox_print
+    global cm
+
+    #Implementation of the command functionality
+    pyrebox_print("This is a custom command")
+
+Finally, given that python callbacks can introduce a performance penalty (especially on frequent events such as instructions executed), it is also possible to create triggers. Triggers are native-code plug-ins (developed in C/C++) that can be inserted dynamically at run-time on any event just before the Python callback is executed. This allows to limit the number of events that hit the python code, as well as to precompute values in native code.
+
+For a complete reference on the available features, one can read the project’s documentation.
+
+
+Conclusion
+
+
+We believe that PyREBox can be a useful tool for reverse engineering. Its integration with Python and Volatility allows countless applications, from malware or exploit/vulnerability analysis, to firmware analysis (in the future, we plan to support other architectures and operating systems). It can be easily integrated with many security tools that are already implemented in Python. The design of this framework makes trivial to create a new set of shell commands to interface with any python library: it would be a matter of writing a simple wrapper script.
+
+We are open-sourcing this internally developed tool because we believe it can be valuable for the community, and invite researchers to contribute with new scripts that can unleash the full potential of PyREBox.
+
+

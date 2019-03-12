@@ -1,0 +1,43 @@
+
+Threat Profile: Dofoil (Smoke Loader) Trojan with Coin-Miner 
+
+Posted by
+Roy Moshailov on March 22, 2018 at 8:08 AM
+                           
+
+Find me on:
+
+Twitter 
+
+
+
+
+ 
+These days, most malware employs a long attack chain with anti-analysis techniques to make it more difficult to detect the payload and harder to analyze by security researchers. More and more frequently, they are also incorporating coin miners in attacks. Such is the case with a newly observed variant of the Dofoil (also known as Smoke Loader) trojan, which includes a resource-draining cryptocurrency-mining payload. This latest Dofoil strain entered the scene earlier this month and is currently still active.
+With the growing popularity and profitability of cryptocurrency, malware authors are often adding coin mining features into their attacks. The cryptocurrency mining payload in this wave of attacks mines Electroneum coins, which is a less common currency, but could be configured to mine other cryptocurrencies.
+Morphisec protected its customers from this latest Dofoil (Smoke Loader) variant  the moment it emerged and will prevent all future attacks, no updates needed.
+The current campaign was identified by researchers at Microsoft.
+Within just a few hours, the attack targeted more than 500,000 instances. According to Microsoft, 73% of these were in Russia, Turkey accounted for 18% and Ukraine 4% of the global encounters.
+
+Image credit: Microsoft
+We will focus on the Dofoil/Smoke Loader Trojan sample and evasive techniques employed. This campaign leverages process injection techniques (RunPE/Process-Hollowing) for persistency and evading detection and uses multiple techniques to make analysis difficult.
+As shown in the images below, VirtualAlloc API Address is used to allocate memory and then add offset to the start of the allocated base region. Below are some of the indicators for the unpacked executable shellcode (this self-modifying code re-writes and executes from the same location).
+ 
+Jump to decoded code (shellcode):
+
+As part of the evasive techniques, Doifoil iterates over the PEB (Process Environment Block) to find useful modules and functions:
+
+Locate the VirtualAlloc API (allocation of the new memory region), and then copy the decoded code to a newly allocated memory area:
+
+After the memory allocation we can see the Decrypted PE in this memory region – this is the hollowed malicious PE:
+ 
+ 
+
+After these stages, Dofoil performs Process Hollowing/RunPE injection. Hiding code behind a legitimate process so that it is harder to detect, it creates an explorer.exe process in suspended mode and replaces it with a decrypted malicious PE from the memory. The hollowed process drops and executes coin mining malware as a legitimate Windows file wuauclt.exe.
+The coin miner payload itself uses several techniques designed to avoid detection, including identifying tools used by analysts and stopping them.
+Based on the image below, the coin miner can mine different cryptocurrencies as it is NiceHash  supported.
+
+ 
+ 
+Morphisec customers were never in danger from this attack. Morphisec’s Moving Target Defense remaps the application memory space so any attack, including Dofoil, cannot find the resources it needs to execute. The attack is stopped before it can perform any type of malicious activity.
+ 

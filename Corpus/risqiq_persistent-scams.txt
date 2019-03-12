@@ -1,0 +1,35 @@
+Not so Fast – Some Scams Don’t Take No for an Answer
+Some scams literally don’t take no for an answer. 
+Going beyond tricking users with flashy ads for fake products or prizes or scaring them into trying to download phony software with the goal of redirecting them elsewhere, some scammers go a step further—they don’t even let their victims leave their page. 
+While doing page reviews for RiskIQ’s scam model (link), I came across an interesting crawl. Because it was missing a screenshot and, strangely, there seemed to be a phone number in the URL pathway, I decided to take a closer look. 
+(hxxps://d7wbuen63chon.cloudfront[dot]net/new/index.html?phone=+1-855-500-0184#forward).  
+Fig -1 PDF download prompt
+When I loaded up the suspicious resource in a VM instance to see how it behaved and what sort of scam payload it presents to victims, I encountered some unique behavior, as shown in Fig. 1.  
+Not requiring any input from the user, a print dialog box opened up that attempted to get the user to download the page as a PDF file, which was the system default. The PDF file that pops up came back clean in VirusTotal, but the method by which the file was delivered was unusual. This mechanism seems to be designed to add an extra layer of pop-ups without any additional functionality.
+Fig -2 Alerting for loops
+To accomplish the delivery, the threat actors behind this campaign utilized the window.print() method, as well as a series of alerting for loops, as shown in Fig. 2. For the user, merely closing the print dialog box will only take them back to the same scam page—no amount of backing out will take them away from the page. 
+ But wait, there’s more! In addition to those obnoxious for-loop alerts, the user also gets swept into a stream of windows through a function called ‘openMultipleTabs,’ which opens multiple fun windows the user can interact with (Fig. 3)—another way of keeping visitors on the page. The source also uses a fairly common trick that replaces the window.history with the current page, so the ‘back’ button is rendered useless.
+Fig-3 Code opening multiple windows
+The last major item for this page was that it was looking for specific keyboard values (as seen in Fig. 4). If any of the following keys were pressed, the page would toggle to full screen, another factor making it more difficult for a user to leave. 
+27 = escape
+18 = alt
+123 = f12
+85 = u
+9 = tab
+115 = f4
+116 = f5
+112 = f1
+114 = f3
+17 = ctrl
+91 = left window key
+Fig-4 Keyboard values
+The threat actors left a possible breadcrumb trail. One of the functions referenced in the source had a unique name, ‘function xuypizda.’  The function itself doesn’t do much other than establish an audio loop for a ‘beep.mp3’ file, but a quick Google search for ‘xuypizda’ will pull in multiple results for Russian and other Eastern European gaming forums. 
+I have previously encountered a similar situation in which a unique identifier on a page appeared to correlate with the Eastern Europe gamer and developer community, but that does not seem to be the case here. Data in PassiveTotal suggests that the threat actors are heavily using Indian infrastructure. In addition to utilizing India-based IPs, the actors’ registrant data also indicates they are operating out of India. 
+As a PassiveTotal user, there are a few points you can pivot off of to further investigate this particular scam. The logical starting point for most would be the scam domain (d7wbuen63chon.cloudfront[dot]net). From here, the user could examine IP resolution history, web components, DNS, and host pair data. Alternatively, the source of the page gives us another avenue to examine. At the top of the page, there is another hint brought to you by HTTrack:
+<!– Mirrored from www.maccloudestoragedevice-securitywarningalertcodex0000jnsnscjna[dot]xyz/ by HTTrack Website Copier/3.x [XR&CO’2014], Thu, 12 Apr 2018 14:04:08 GMT –>
+From here, we can grab the domain that was actually copied (www.maccloudestoragedevice-securitywarningalertcodex0000jnsnscjna[dot]xyz). We can corroborate this tag by examining the components of d7wbuen63chon.cloudfront[dot]net, which confirms the presence of HTTrack:
+Fig-5 Trackers tab showing the HTTrack
+We can pivot around the registrant data on this host better, which expands on the size of this particular scam campaign. Direct links to both PassiveTotal pages have been included for your convenience:
+https://community.riskiq.com/search/maccloudestoragedevice-securitywarningalertcodex0000jnsnscjna.xyz
+https://community.riskiq.com/search/d7wbuen63chon.cloudfront.net
+Contact RiskIQ to find out how we can help your organization fight back against scams like this, and as always, happy hunting!

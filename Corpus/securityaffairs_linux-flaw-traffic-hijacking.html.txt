@@ -1,0 +1,23 @@
+
+					Serious Linux design flaw CVE-2016-569 allows Traffic Hijacking					
+A severe flaw in the Linux kernel could be exploited by attackers to hijack traffic, inject malware into downloads and web pages, and run a wide range of attacks, break Tor connections.
+“In general, we believe that a DoS attack against Tor connections can have a devastating impact on both the availability of the service as a whole and the privacy guarantees that it can provide,” the team wrote in a white paper .
+The flaw is widespread, vulnerable Linux distros are everywhere, in PC, servers, mobile devices and IoT devices.
+The serious flaw (CVE-2016-5696) exists since version 3.6, deployed in 2012. It was discovered by researchers from the University of California, Riverside, and the U.S. Army Research Laboratory that present their findings at USENIX Security Symposium. The study is detailed in a paper titled “Off-Path TCP Exploits: Global Rate Limit Considered Dangerous,” that also includes recommendations on how to mitigate the issue.
+The TCP/IP networking flaw allows attackers to spot communications between two entities and can be exploited to hijack the traffic and manipulate it if the exchange is not encrypted.
+The attack is not considerable a man-in-the-middle attack, the attackers just need to send spoofed packets to both sides of the connection by simply knowing their IP addresses and destination ports.
+“The unique aspect of the attack we demonstrated is the very low requirement to be able to carry it out,” explained Zhiyun Qian project leader.
+“Essentially, it can be done easily by anyone in the world where an attack machine is in a network that allows IP spoofing. The only piece of information that is needed is the pair of IP addresses (for victim client and server), which is fairly easy to obtain.”
+Giving a close look at the RFC 5961 we can note that it addresses spoofed packet injection attacks by introducing challenge ACK packets.
+The researchers exploited the feature that Linux rate limits the output of these challenge ACKs.
+The attacker can send malicious packets to confuse to the server, that in turn sends challenge ACKs to the client until it reaches its limit and temporarily stops sending them. In this phase, the attacker can turn to the client and send spoofed IP packets to break the connection or to substitute the silenced server in the connection.
+
+“The root cause of the vulnerability is the introduction of the challenge ACK responses and the global rate limit imposed on certain TCP control packets.” explained the researchers.
+“Through extensive experimentation, we demonstrate that the attack is extremely effective and reliable. Given any two arbitrary hosts, it takes only 10 seconds to successfully infer whether they are communicating. If there is a connection, subsequently, it takes also only tens of seconds to infer the TCP sequence numbers used on the connection. To demonstrate the impact, we perform case studies on a wide range of applications.
+The basic idea is to repeat the following steps: 1) send spoofed packets to the connection under test (with a specific four-tuple), 2) create contention on the global challenge ACK rate limit, ie, by creating a regular connection from the attacker to the server and intentionally triggering the maximum allowed challenge ACKs per second, and 3) count the actual number of challenge ACKs received on that connection. If this number is less than the system limit, some challenge ACKs must have been sent over the connection under test, as responses to the spoofed packets.”
+Waiting for a patch, users can raise the rate limit for the challenge ACK packets so that it cannot be reached, it can be done by modifying the rule it in the /etc/sysctl.conf:
+then execute sysctl -p to activate it and root the machine.
+Below a video PoC of the attack:
+
+Pierluigi Paganini
+(Security Affairs – Linux, Traffic Hijacking)

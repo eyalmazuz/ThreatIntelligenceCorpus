@@ -1,0 +1,509 @@
+
+About UsContact UsGo to ESET.COM
+
+About Us
+Contact Us
+Go to ESET.COM
+
+Our website uses cookies. By continuing to browse the site you are agreeing to our use of cookies. For more details about cookies and how to manage them, see our Cookie Policy
+News, views, and insight from the ESET security community
+All Posts
+Latest Research
+How To
+Multimedia 
+
+Videos
+Podcasts
+
+
+Papers 
+
+Conference Materials
+White Papers
+Magazine
+
+
+Our Experts
+
+All Posts
+Latest Research
+How To
+Multimedia 
+
+Videos
+Podcasts
+
+
+
+Videos
+Podcasts
+
+Videos
+Podcasts
+Papers 
+
+Conference Materials
+White Papers
+Magazine
+
+
+
+Conference Materials
+White Papers
+Magazine
+
+Conference Materials
+White Papers
+Magazine
+Our Experts
+BlackEnergy by the SSHBearDoor: attacks against Ukrainian news media and electric industry
+By Anton Cherepanov posted 3 Jan 2016 - 12:28AM
+Cybercrime
+Update: In case you want to have a more simplified version of this article, please check out BlackEnergy trojan strikes again: Attacks Ukrainian electric power industry.
+The cybercriminal group behind BlackEnergy, the malware family that has been around since 2007 and has made a comeback in 2014 (see our previous blog posts on Back in BlackEnergy *: 2014 Targeted Attacks in Ukraine and Poland and BlackEnergy PowerPoint Campaigns, as well as our Virus Bulletin talk on the subject), was also active in the year 2015.
+ESET has recently discovered that the BlackEnergy trojan was recently used as a backdoor to deliver a destructive KillDisk component in attacks against Ukrainian news media companies and against the electrical power industry. In this blog, we provide details on the BlackEnergy samples ESET has detected in 2015, as well as the KillDisk components used in the attacks. Furthermore, we examine a previously unknown SSH backdoor that was also used as another channel of accessing the infected systems, in addition to BlackEnergy.
+We continue to monitor the BlackEnergy malware operations for future developments. For any inquiries or to make sample submissions related to the subject, contact us at: threatintel@eset.com
+BlackEnergy evolution in 2015
+Once activated, variants of BlackEnergy Lite allow a malware operator to check specific criteria in order to assess whether the infected computer truly belongs to the intended target. If that is the case, the dropper of a regular BlackEnergy variant is pushed to the system. The exact mechanism of infection by BlackEnergy is described in our Virus Bulletin presentation and this whitepaper by F-Secure.
+The BlackEnergy malware stores XML configuration data embedded in the binary of DLL payload.
+Figure 1 – The BlackEnergy configuration example used in 2015
+Apart from a list of C&C servers, the BlackEnergy config contains a value called build_id. This value is a unique text string used to identify individual infections or infection attempts by the BlackEnergy malware operators. The combinations of letters and numbers used can sometimes reveal information about the campaign and targets.
+Here is the list of Build ID values that we identified in 2015:
+
+2015en
+khm10
+khelm
+2015telsmi
+2015ts
+2015stb
+kiev_o
+brd2015
+11131526kbp
+02260517ee
+03150618aaa
+11131526trk
+
+2015en
+khm10
+khelm
+2015telsmi
+2015ts
+2015stb
+kiev_o
+brd2015
+11131526kbp
+02260517ee
+03150618aaa
+11131526trk
+We can speculate that some of them have a special meaning. For example 2015telsmi could contain the Russian acronym SMI – Sredstva Massovoj Informacii, 2015en could mean Energy, and there’s also the obvious “Kiev”.
+KillDisk component
+In 2014 some variants of the BlackEnergy trojan contained a plugin designed for the destruction of the infected system, named dstr.
+In 2015 the BlackEnergy group started to use a new destructive BlackEnergy component detected by ESET products as Win32/KillDisk.NBB, Win32/KillDisk.NBC and Win32/KillDisk.NBD trojan variants.
+The main purpose of this component is to do damage to data stored on the computer: it overwrites documents with random data and makes the OS unbootable.
+The first known case where the KillDisk component of BlackEnergy was used was documented by CERT-UA in November 2015. In that instance, a number of news media companies were attacked at the time of the 2015 Ukrainian local elections. The report claims that a large number of video materials and various documents were destroyed as a result of the attack.
+It should be noted that the Win32/KillDisk.NBB variant used against media companies is more focused on destroying various types of files and documents. It has a long list of file extensions that it tries to overwrite and delete. The complete list contains more than 4000 file extensions.
+Figure 2 – A partial list of file extensions targeted for destruction by KillDisk.NBB
+The KillDisk component used in attacks against energy companies in Ukraine was slightly different. Our analysis of the samples shows that the main changes made in the newest version are:
+
+Now it accepts a command line argument, to set a specific time delay when the destructive payload should activate.
+It also deletes Windows Event Logs : Application, Security, Setup, System.
+It is less focused on deleting documents. Only 35 file extensions are targeted.
+
+Now it accepts a command line argument, to set a specific time delay when the destructive payload should activate.
+It also deletes Windows Event Logs : Application, Security, Setup, System.
+It is less focused on deleting documents. Only 35 file extensions are targeted.
+Figure 3 – A list of file extensions targeted for destruction by new variant of KillDisk component
+As well as being able to delete system files to make the system unbootable – functionality typical for such destructive trojans – the KillDisk variant detected in the electricity distribution companies also appears to contain some additional functionality specifically intended to sabotage industrial systems.
+Once activated, this variant of the KillDisk component looks for and terminates two non-standard processes with the following names:
+
+komut.exe
+sec_service.exe
+
+komut.exe
+sec_service.exe
+We didn’t manage to find any information regarding the name of the first process (komut.exe).
+The second process name may belong to software called ASEM Ubiquity, a software platform that is often used in Industrial control systems (ICS), or to ELTIMA Serial to Ethernet Connector. In case the process is found, the malware does not just terminate it, but also overwrites the executable file with random data.
+Backdoored SSH server
+In addition to the malware families already mentioned, we have discovered an interesting sample used by the BlackEnergy group. During our investigation of one of the compromised servers we found an application that, at first glance, appeared to be a legitimate SSH server called Dropbear SSH.
+In the order to run the SSH server, the attackers created a VBS file with the following content:
+Set WshShell = CreateObject(“WScript.Shell”)
+WshShell.CurrentDirectory = “C:\WINDOWS\TEMP\Dropbear\”
+WshShell.Run “dropbear.exe -r rsa -d dss -a -p 6789”, 0, false
+As is evident here, the SSH server will accept connections on port number 6789. By running SSH on the server in a compromised network, attackers can come back to the network whenever they want.
+However, for some reason this was not enough for them. After detailed analysis we discovered that the binary of the SSH server actually contains a backdoor.
+Figure 4 – Backdoored authentication function in SSH server
+As you can see in Figure 4, this version of Dropbear SSH will authenticate the user if the password passDs5Bu9Te7 was entered. The same situation applies to authentication by key pair – the server contains a pre-defined constant public key and it allows authentication only if a particular private key is used.
+Figure 5 – The embedded RSA public key in SSH server
+ESET security solutions detect this threat as Win32/SSHBearDoor.A trojan.
+Indicators of Compromise (IoC)
+IP addresses of BlackEnergy C2-servers:
+5.149.254.114
+5.9.32.230
+31.210.111.154
+88.198.25.92
+146.0.74.7
+188.40.8.72
+XLS document with malicious macro SHA-1:
+AA67CA4FB712374F5301D1D2BAB0AC66107A4DF1
+BlackEnergy Lite dropper SHA-1:
+4C424D5C8CFEDF8D2164B9F833F7C631F94C5A4C
+BlackEnergy Big dropper SHA-1:
+896FCACFF6310BBE5335677E99E4C3D370F73D96
+BlackEnergy drivers SHA-1:
+069163E1FB606C6178E23066E0AC7B7F0E18506B
+0B4BE96ADA3B54453BD37130087618EA90168D72
+1A716BF5532C13FA0DC407D00ACDC4A457FA87CD
+1A86F7EF10849DA7D36CA27D0C9B1D686768E177
+1CBE4E22B034EE8EA8567E3F8EB9426B30D4AFFE
+20901CC767055F29CA3B676550164A66F85E2A42
+2C1260FD5CEAEF3B5CB11D702EDC4CDD1610C2ED
+2D805BCA41AA0EB1FC7EC3BD944EFD7DBA686AE1
+4BC2BBD1809C8B66EECD7C28AC319B948577DE7B
+502BD7662A553397BBDCFA27B585D740A20C49FC
+672F5F332A6303080D807200A7F258C8155C54AF
+84248BC0AC1F2F42A41CFFFA70B21B347DDC70E9
+A427B264C1BD2712D1178912753BAC051A7A2F6C
+A9ACA6F541555619159640D3EBC570CDCDCE0A0D
+B05E577E002C510E7AB11B996A1CD8FE8FDADA0C
+BD87CF5B66E36506F1D6774FD40C2C92A196E278
+BE319672A87D0DD1F055AD1221B6FFD8C226A6E2
+C7E919622D6D8EA2491ED392A0F8457E4483EAE9
+CD07036416B3A344A34F4571CE6A1DF3CBB5783F
+D91E6BB091551E773B3933BE5985F91711D6AC3B
+E1C2B28E6A35AEADB508C60A9D09AB7B1041AFB8
+E40F0D402FDCBA6DD7467C1366D040B02A44628C
+E5A2204F085C07250DA07D71CB4E48769328D7DC
+KillDisk-components SHA-1:
+16F44FAC7E8BC94ECCD7AD9692E6665EF540EEC4
+8AD6F88C5813C2B4CD7ABAB1D6C056D95D6AC569
+6D6BA221DA5B1AE1E910BBEAA07BD44AFF26A7C0
+F3E41EB94C4D72A98CD743BBB02D248F510AD925
+VBS/Agent.AD trojan SHA-1:
+72D0B326410E1D0705281FDE83CB7C33C67BC8CA
+Win32/SSHBearDoor.A trojan SHA-1:
+166D71C63D0EB609C4F77499112965DB7D9A51BB
+Picture credits: ©flickr/tanozzo
+Author Anton Cherepanov,  ESET
+You might also be interested in:
+Follow us
+Sign up to our newsletter
+The latest security news direct to your inbox
+Industroyer
+Popular articles
+Archives
+ March 2018 (7)
+February 2018 (27)
+January 2018 (29)
+December 2017 (25)
+November 2017 (37)
+October 2017 (35)
+September 2017 (20)
+August 2017 (24)
+July 2017 (30)
+June 2017 (29)
+May 2017 (43)
+April 2017 (35)
+March 2017 (31)
+February 2017 (33)
+January 2017 (40)
+December 2016 (33)
+November 2016 (33)
+October 2016 (36)
+September 2016 (33)
+August 2016 (36)
+July 2016 (39)
+June 2016 (50)
+May 2016 (50)
+April 2016 (41)
+March 2016 (42)
+February 2016 (53)
+January 2016 (53)
+December 2015 (47)
+November 2015 (47)
+October 2015 (56)
+September 2015 (50)
+August 2015 (55)
+July 2015 (54)
+June 2015 (51)
+May 2015 (63)
+April 2015 (63)
+March 2015 (67)
+February 2015 (60)
+January 2015 (84)
+December 2014 (54)
+November 2014 (60)
+October 2014 (78)
+September 2014 (56)
+August 2014 (51)
+July 2014 (62)
+June 2014 (49)
+May 2014 (50)
+April 2014 (55)
+March 2014 (57)
+February 2014 (60)
+January 2014 (51)
+December 2013 (47)
+November 2013 (55)
+October 2013 (57)
+September 2013 (53)
+August 2013 (53)
+July 2013 (53)
+June 2013 (35)
+May 2013 (45)
+April 2013 (36)
+March 2013 (34)
+February 2013 (25)
+January 2013 (25)
+December 2012 (38)
+November 2012 (11)
+October 2012 (21)
+September 2012 (14)
+August 2012 (21)
+July 2012 (24)
+June 2012 (22)
+May 2012 (16)
+April 2012 (16)
+March 2012 (22)
+February 2012 (21)
+January 2012 (26)
+December 2011 (32)
+November 2011 (34)
+October 2011 (37)
+September 2011 (34)
+August 2011 (40)
+July 2011 (39)
+June 2011 (56)
+May 2011 (51)
+April 2011 (17)
+March 2011 (46)
+February 2011 (24)
+January 2011 (32)
+December 2010 (25)
+November 2010 (18)
+October 2010 (31)
+September 2010 (23)
+August 2010 (34)
+July 2010 (34)
+June 2010 (37)
+May 2010 (39)
+April 2010 (65)
+March 2010 (44)
+February 2010 (44)
+January 2010 (47)
+December 2009 (38)
+November 2009 (37)
+October 2009 (28)
+September 2009 (37)
+August 2009 (35)
+July 2009 (32)
+June 2009 (23)
+May 2009 (18)
+April 2009 (27)
+March 2009 (55)
+February 2009 (26)
+January 2009 (39)
+December 2008 (15)
+November 2008 (22)
+October 2008 (12)
+September 2008 (1)
+August 2008 (13)
+July 2008 (2)
+June 2008 (6)
+May 2008 (4)
+April 2008 (3)
+March 2008 (6)
+February 2008 (9)
+January 2008 (5)
+December 2007 (4)
+November 2007 (4)
+October 2007 (3)
+September 2007 (2)
+August 2007 (8)
+July 2007 (9)
+June 2007 (4)
+May 2007 (2)
+April 2007 (7)
+March 2007 (4)
+February 2007 (11)
+January 2007 (3)
+December 2006 (5)
+November 2006 (2)
+October 2006 (3)
+September 2006 (7)
+August 2006 (1)
+July 2006 (1)
+June 2006 (2)
+March 2006 (3)
+January 2006 (1)
+
+March 2018 (7)
+February 2018 (27)
+January 2018 (29)
+December 2017 (25)
+November 2017 (37)
+October 2017 (35)
+September 2017 (20)
+August 2017 (24)
+July 2017 (30)
+June 2017 (29)
+May 2017 (43)
+April 2017 (35)
+March 2017 (31)
+February 2017 (33)
+January 2017 (40)
+December 2016 (33)
+November 2016 (33)
+October 2016 (36)
+September 2016 (33)
+August 2016 (36)
+July 2016 (39)
+June 2016 (50)
+May 2016 (50)
+April 2016 (41)
+March 2016 (42)
+February 2016 (53)
+January 2016 (53)
+December 2015 (47)
+November 2015 (47)
+October 2015 (56)
+September 2015 (50)
+August 2015 (55)
+July 2015 (54)
+June 2015 (51)
+May 2015 (63)
+April 2015 (63)
+March 2015 (67)
+February 2015 (60)
+January 2015 (84)
+December 2014 (54)
+November 2014 (60)
+October 2014 (78)
+September 2014 (56)
+August 2014 (51)
+July 2014 (62)
+June 2014 (49)
+May 2014 (50)
+April 2014 (55)
+March 2014 (57)
+February 2014 (60)
+January 2014 (51)
+December 2013 (47)
+November 2013 (55)
+October 2013 (57)
+September 2013 (53)
+August 2013 (53)
+July 2013 (53)
+June 2013 (35)
+May 2013 (45)
+April 2013 (36)
+March 2013 (34)
+February 2013 (25)
+January 2013 (25)
+December 2012 (38)
+November 2012 (11)
+October 2012 (21)
+September 2012 (14)
+August 2012 (21)
+July 2012 (24)
+June 2012 (22)
+May 2012 (16)
+April 2012 (16)
+March 2012 (22)
+February 2012 (21)
+January 2012 (26)
+December 2011 (32)
+November 2011 (34)
+October 2011 (37)
+September 2011 (34)
+August 2011 (40)
+July 2011 (39)
+June 2011 (56)
+May 2011 (51)
+April 2011 (17)
+March 2011 (46)
+February 2011 (24)
+January 2011 (32)
+December 2010 (25)
+November 2010 (18)
+October 2010 (31)
+September 2010 (23)
+August 2010 (34)
+July 2010 (34)
+June 2010 (37)
+May 2010 (39)
+April 2010 (65)
+March 2010 (44)
+February 2010 (44)
+January 2010 (47)
+December 2009 (38)
+November 2009 (37)
+October 2009 (28)
+September 2009 (37)
+August 2009 (35)
+July 2009 (32)
+June 2009 (23)
+May 2009 (18)
+April 2009 (27)
+March 2009 (55)
+February 2009 (26)
+January 2009 (39)
+December 2008 (15)
+November 2008 (22)
+October 2008 (12)
+September 2008 (1)
+August 2008 (13)
+July 2008 (2)
+June 2008 (6)
+May 2008 (4)
+April 2008 (3)
+March 2008 (6)
+February 2008 (9)
+January 2008 (5)
+December 2007 (4)
+November 2007 (4)
+October 2007 (3)
+September 2007 (2)
+August 2007 (8)
+July 2007 (9)
+June 2007 (4)
+May 2007 (2)
+April 2007 (7)
+March 2007 (4)
+February 2007 (11)
+January 2007 (3)
+December 2006 (5)
+November 2006 (2)
+October 2006 (3)
+September 2006 (7)
+August 2006 (1)
+July 2006 (1)
+June 2006 (2)
+March 2006 (3)
+January 2006 (1)
+Sign up to our newsletter
+The latest security news direct to your inbox
+
+ | About Us | Contact Us | Home | How To | Expert Opinion | Videos | Papers | Our Experts | Virus Radar | Sitemap | Privacy policy | Legal Information 
+ | About Us
+ | Contact Us
+ | Home
+ | How To
+ | Expert Opinion
+ | Videos
+ | Papers
+ | Our Experts
+ | Virus Radar
+ | Sitemap
+ | Privacy policy
+ | Legal Information
+Embed Code
+Add this code to your site
+BlackEnergy by the SSHBearDoor: attacks against Ukrainian news media and electric industry
+ Share this selection on facebook Tweet [ embed ] 
+Share this selection on facebook
+Tweet
+[ embed ]
+ Share this selection on facebook Tweet [ embed ] 
+Share this selection on facebook
+Tweet
+[ embed ]

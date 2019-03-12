@@ -1,0 +1,84 @@
+
+Nmap Scan with Timing Parameters
+
+Hello everyone, in this article we will have a look at the different parameters that are used together to make a timing template and how to use those parameters individually according to will.
+Let’s Start!!
+As we have seen that Nmap has multiple timing templates that can be used for differently as according to the requirement. Click here to check the timing scan article. Let’s see what’s inside the timing template. For getting the description of timing template we’ll use -dattribute.
+Here we have multiple arguments that collectively make a timing template. Let’s have a look at them one by one.
+
+–max-retries specifies the number of times a packet is to be resent on a port to check if it is open or closed. If –max-retries is set to 0, the packets will be sent only once on a port and no retries will be done.
+
+Here in wireshark, we can see that 1-1 TCP SYN packet sent to each port from source: 192.168.1.126 to destination: 192.168.1.139 are not sent again.
+
+Now we will apply a small firewall rule on the target machine so that the packets get blocked if they come at a faster rate.
+
+Now, the normal scan will not show any results with max-retries
+
+As we can see that the ports whose packets got dropped are not sent again so their status is not determined.
+
+here we can increase the max-retries value which will bypass the specified firewall filter so that we can get the exact port status.
+
+Here we can see that TCP SYN packets sent to one port from source: 192.168.1.126 to destination: 192.168.1.139 are sent again and again until the packets return a specified reply or the maximum retry value (here 5) is reached.
+
+The –host-timeout is an attribute that specifies the scan to give up on a host after the specified time. The lesser the time specified the more are the chances of inaccuracy in scan results.
+We can specify time in milliseconds (ms), seconds (s), minutes (m)
+
+Now we will try to get the result by increasing the timeout value
+
+We can use –host-timeout in other scenarios also like when we need to check if the host system is live or not. Here we have shown how the host-timeout can affect the results of a ping scan.
+Output from above command had given 0 host is up.
+Output from above command had given 1 host is up.
+
+hostgroup attribute is specified to scan a specified number of hosts in network at a time. You need to specify minimum number of hosts or maximum number of hosts or both to be scaned at a time
+From given below image you can observed that it has shown only 3 live host from inside complete subnet mask and save your time from scanning complete network.
+
+Scan delay is used to delay the packet to be sent by the specified time. It is very useful in evading time based firewalls.
+
+here we can see the time difference in between the packets
+packet 1: TCP SYN packet on port 25 at 07:58:01 from 192.168.1.126 to 192.168.1.139
+
+packet 2: TCP SYN packet on port 22 at 07:58:12 from 192.168.1.126 to 192.168.1.139
+Now if you will count the time difference between these packets you get 11 sec time laps between these two packets.
+
+Rate is an attribute that specifies at what rate is the packets are to be sent, in other words number of packets to be sent at a time. Max-rate specifies maximum number of packets to be sent at once.
+
+wireshark shows that the packets sending rate is less than 2, means number of packets sent at a time is less than or equal to 2
+packet 1: TCP SYN packet on port 21 at 03:17:20 from 192.168.1.126 to 192.168.1.139
+
+packet 2: TCP SYN packet on port 23 at 03:17:21 from 192.168.1.126 to 192.168.1.139
+Now if you will count the time difference between these packets you get 1 sec time laps between these two packets indicating that these two packets were not sent together.
+
+Min-rate specifies maximum number of packets to be sent at once. Here if we want atleat 2 packet must be sent on target’s network at same time not less then this, then need to execute below command.
+
+wireshark shows that the packets sending rate is greater than 2, means number of packets sent at a time is equal to or greater than 2
+packet 1: TCP SYN packet on port 23 at 03:28:29 from 192.168.1.126 to 192.168.1.139
+
+packet 2: TCP SYN packet on port 22 at 03:28:29 from 192.168.1.126 to 192.168.1.139
+Now if you will count the time difference between these packets you get only a fraction of second as time laps between these two packets indicating that these two packets were sent together.
+
+Parallelism attribute is used to send multiple packets in parallel, min-parallelism means that the number of packets to be sent in parallel is to be greater than the value specified and max-parallelism means that the number of packets to be sent in parallel is to be less than or equal to the value specified
+
+In wireshark we can see the couple of TCP-SYN packetssent in parallel from 192.168.1.126 which is neither less nor greater than 2.
+
+Rtt timeout is the time specified for a packet to return a reply, min-rtt-timeout specifies the minimum value of time that is to be taken by a packet to return a reply
+
+wireshark shows that the packet and its reply takes time greater than the min-rtt-timeout specified
+
+packet 1: TCP SYN packet on port 25 at 08:10:53.232666116 from 192.168.1.126 to 192.168.1.139
+packet 2: SYN ACK packet from port 25 at 08:10:53.233466679 from 192.168.1.139 to 192.168.1.126
+
+max-rtt-timeout specifies the maximum value of time that is to be taken by a packet to return a reply
+
+wireshark shows that the packet and its reply takes time lesser than the max-rtt-timeout
+packet 1: TCP SYN packet on port 22 at 08:15:08.171777907 from 192.168.1.126 to 192.168.1.139
+
+packet 2: SYN ACK packet from port 22 at 08:15:08.173117154 from 192.168.1.139 to 192.168.1.126
+
+Initial-rtt-timeout specifies the initial value of time to be taken by a packet to return a reply, the return time can be greater or lesser than the  initial-rtt-timeout because of the max-rtt-timeout and min-rtt-timeout specifeies the range of time for a packet to return a reply but the packet attempts to return a reply in the time specified in initial-rtt-timeout
+
+wireshark shows that the time taken by packet to return reply is around same as specified in initial-rtt-timeout
+packet 1: TCP SYN packet on port 23 at 08:18:45.342395520 from 192.168.1.126 to 192.168.1.139
+
+packet 2: SYN ACK packet from port 23 at 08:18:45.342930962 from 192.168.1.139 to 192.168.1.126
+
+Auhtor:  Deepanshu is a Certified Ethical Hacker and a budding Security researcher. Contact here.

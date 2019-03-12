@@ -1,0 +1,17 @@
+
+					Abusing X.509 Digital Certificates to establish a covert data exchange channel					
+Last year, during the Bsides conference in July 2017, the security researcher at Fidelis Cybersecurity Jason Reaves demonstrated how to covertly exchange data using X.509 digital certificates, now the same expert published the proof-of-concept code.
+
+The X.509  is a standard that defines the format of public key certificates currently used in many Internet protocols, including TLS/SS. TLS, for example, uses X.509 for certificate exchange, during the handshake process that establishes an encrypted communication.
+The covert channel devised by Reaves uses fields in X.509 extensions to carry data, it could be exploited by an attacker to exfiltrate data from a target organization without being detected.
+“The research demonstrates that a sufficiently motivated attacker can utilize technologies outside of their intended purposes to not only accomplish their goals but also end up bypassing common security measures in the process.” reads the paper published by the expert.
+“In brief, TLS X.509 certificates have many fields where strings can be stored. You can see them in this image[16]. The fields include version, serial number, Issuer Name, validity period and so on. The certificate abuse described in our research takes advantage of this fact to hide data transfer inside one of these fields. Since the certificate exchange happens before the TLS session is established there appears to never be data transfer, when in reality the data was transferred within the certificate exchange itself. “
+The proof-of-concept code published by Reaves uses the field ‘class=wrap_text>SubjectKeyIdentifier‘
+Digital certificate extensions were added in version 3 of the X.509 protocol and allow the CAs to add descriptions to a certificate, unfortunately, they can be abused to embed malicious data.
+Attackers can send small amounts of data to an external server without being noticed.
+Anyway, these extensions can be very large, for this reason, many libraries attempt to limit the ultimate handshake packet size. The expert noticed that the extension in the certificate itself can be created to a length that appears to only be limited by memory.
+Data hidden in the X.509 metadata are impossible to detect, the PoC code published transfers the Mimikatz post-exploit attack tool in the TLS negotiation:
+
+As possible mitigations, Reaves suggests to block self-signed certificates such the ones used in the PoC and check for executables in certificates.
+Pierluigi Paganini
+(Security Affairs – X.509 Digital Certificates, hacking)

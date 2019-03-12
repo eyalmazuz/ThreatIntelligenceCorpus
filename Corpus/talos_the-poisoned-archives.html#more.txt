@@ -1,0 +1,309 @@
+
+The Poisoned Archives
+
+
+Vulnerabilities discovered by Marcin “Icewall” Noga. Blog post authored by Marcin Noga and Jaeson Schultz.
+
+Update 2016-08-01: Talos has produced a video demonstrating how flaws in libarchive can be exploited using Splunk 6.4.1 as an attack vector. Release 3.2.1 of Libarchive addresses these issues, and Splunk has released patches.
+
+
+
+
+
+libarchive is an open-source library that provides access to a variety of different file archive formats, and it’s used just about everywhere. Cisco Talos has recently worked with the maintainers of libarchive to patch three rather severe bugs in the library. Because of the number of products that include libarchive in their handling of compressed files, Talos urges all users to patch/upgrade related, vulnerable software.
+
+
+
+TALOS-2016-0152 [CVE-2016-4300]:7-Zip read_SubStreamsInfo Integer Overflow
+
+
+Here is another 7-Zip vulnerability leading to code execution (the previous blog on 7-Zip vulnerabilities is here). In this instance, a specially crafted 7-Zip file can cause an integer overflow, resulting in subsequent memory corruption and code execution. To exploit this vulnerability, an attacker need only send their victim a poisoned 7-Zip file for the victim to process with libarchive.
+
+The vulnerable code exists in the 7-Zip support format module
+libarchive\archive_read_support_format_7zip.c:
+(...)
+#define UMAX_ENTRY        ARCHIVE_LITERAL_ULL(100000000)
+(...)
+Line 2129        static int
+Line 2130        read_SubStreamsInfo(struct archive_read *a, struct _7z_substream_info *ss,
+Line 2131                struct _7z_folder *f, size_t numFolders)
+Line 2132        {
+Line 2133                const unsigned char *p;
+Line 2134                uint64_t *usizes;
+Line 2135                size_t unpack_streams;
+Line 2136                int type;
+Line 2137                unsigned i;
+Line 2138                uint32_t numDigests;
+(...)
+Line 2149        if (type == kNumUnPackStream) {
+Line 2150                unpack_streams = 0;
+Line 2151                for (i = 0; i < numFolders; i++) {
+Line 2152                        if (parse_7zip_uint64(a, &(f[i].numUnpackStreams)) < 0)
+Line 2153                                return (-1);
+Line 2154                        if (UMAX_ENTRY < f[i].numUnpackStreams)
+Line 2155                                return (-1);
+Line 2156                        unpack_streams += (size_t)f[i].numUnpackStreams;    
+^^^^^^^^^  ---- INTEGER OVERFLOW
+Line 2157                }
+Line 2158                if ((p = header_bytes(a, 1)) == NULL)
+Line 2159                        return (-1);
+Line 2160                type = *p;
+Line 2161        } else
+Line 2162                unpack_streams = numFolders;
+Line 2163
+Line 2164        ss->unpack_streams = unpack_streams;
+Line 2165        if (unpack_streams) {
+Line 2166                ss->unpackSizes = calloc(unpack_streams,                                
+^^^^^^^^^  ---- ALLOCATION BASED ON OVERFLOWED INT
+Line 2167                    sizeof(*ss->unpackSizes));
+Line 2168                ss->digestsDefined = calloc(unpack_streams,
+Line 2169                    sizeof(*ss->digestsDefined));
+Line 2170                ss->digests = calloc(unpack_streams,
+Line 2171                    sizeof(*ss->digests));
+Line 2172                if (ss->unpackSizes == NULL || ss->digestsDefined == NULL ||
+Line 2173                    ss->digests == NULL)
+Line 2174                        return (-1);
+Line 2175        }
+Line 2176
+Line 2177        usizes = ss->unpackSizes;
+Line 2178        for (i = 0; i < numFolders; i++) {
+Line 2179                unsigned pack;
+Line 2180                uint64_t sum;
+Line 2181
+Line 2182                if (f[i].numUnpackStreams == 0)
+Line 2183                        continue;
+Line 2184
+Line 2185                sum = 0;
+Line 2186                if (type == kSize) {
+Line 2187                        for (pack = 1; pack < f[i].numUnpackStreams; pack++) {
+Line 2188                                if (parse_7zip_uint64(a, usizes) < 0)                         ^^^^^^^^^  ---- BUFFER OVERFLOW
+Line 2189                                        return (-1);
+Line 2190                                sum += *usizes++;
+Line 2191                        }
+Line 2192                }
+Line 2193                *usizes++ = folder_uncompressed_size(&f[i]) - sum;
+Line 2194        }
+
+In lines 2149-2157 from the code, we can see that for all "folders" we calculate the sum of "numUnpackStreams", and the result is then stored in the "unpack_streams" variable.
+This variable is “size_t” which means that on the x86 platform it will be a 32-bit unsigned integer. However, note that the maximum value of of "numUnpackStreams" allowed by the code is:
+
+           UMAX_ENTRY        100000000
+
+This means that to overflow the "unpack_streams" variable we need only have a 7-Zip file with the number of folders "numFolders" larger than 42 and then populate "numUnpackStreams" with sufficient values.
+
+Note that the overflowed value is used as size parameter in calloc in lines 2166-2171. The most interesting buffer allocated there is "ss->unpackSizes". Later, in lines 2187-2194, based on the "numFolders" and "numUnpackStreams" of each folder, 64-bit unsigned integers (maximum) are read from the file and stored into buffer "usizes", which is indeed "ss->unpackSizes" ( line 2177 ) causing (depending on the overflowed value) a heap based buffer overflow. After some iteration, the attacker fully controls the amount of bytes used to overflow the buffer and also their values.
+
+
+
+TALOS-2016-0153 [CVE-2016-4301]:mtree parse_device Stack Based Buffer Overflow
+
+
+In this vulnerability, the code makes its best effort to protect against overflowing the buffer but does so incorrectly. An array is created to hold at maximum three unsigned longs. Later the code tries to verify the number of arguments is less than the maximum, three, but fails to check whether these arguments are bigger than size long.
+
+Vulnerable code exists in mtree support format module libarchive\archive_read_support_format_mtree.c:
+Line 1353        static int
+Line 1354        parse_device(dev_t *pdev, struct archive *a, char *val)
+Line 1355        {
+Line 1356        #define MAX_PACK_ARGS 3
+Line 1357                unsigned long numbers[MAX_PACK_ARGS];
+Line 1358                char *p, *dev;
+Line 1359                int argc;
+Line 1360                pack_t *pack;
+Line 1361                dev_t result;
+Line 1362                const char *error = NULL;
+(...)
+Line 1377                while ((p = la_strsep(&dev, ",")) != NULL) {
+Line 1378                        if (*p == '\0') {
+Line 1379                                archive_set_error(a, ARCHIVE_ERRNO_FILE_FORMAT,
+Line 1380                                    "Missing number");
+Line 1381                                return ARCHIVE_WARN;
+Line 1382                        }
+Line 1383                        numbers[argc++] = (unsigned long)mtree_atol(&p);
+Line 1384                        if (argc > MAX_PACK_ARGS) {
+Line 1385                                archive_set_error(a, ARCHIVE_ERRNO_FILE_FORMAT,
+Line 1386                                    "Too many arguments");
+Line 1387                                return ARCHIVE_WARN;
+Line 1388                        }
+Line 1389                }
+In line 1357 we see the definition of static buffer prepared to contain three elements. Next in the while loop in lines 1377-1389 there exists a condition (line 1384) which should protect against overflowing the "numbers" buffer. However, this condition is coded incorrectly, and allows an attacker to overflow the buffer using a single element larger than an unsigned long integer. Depending on the platform and architecture, the overwrite can be 4 or 8 bytes, the contents of which can be fully controlled.
+
+
+TALOS-2016-0154 [CVE-2016-4302]:Libarchive Rar RestartModel Heap Overflow
+
+
+To establish context, here is the execution flow leading to heap corruption:
+archive_read_next_header
+           archive_read_format_rar_read_header
+        head_type : 0x72
+        head_type : 0x73
+        head_type : 0x74
+        read_header
+        rar->packed_size : 0x1
+        rar->dictionary_size = 0;
+        archive_format_name : RAR
+archive_read_extract
+        rar->compression_method : 0x31
+        read_data_compressed
+           archive_read_format_rar_read_header
+        head_type : 0x7a
+        read_header
+        parse_codes
+                if (ppmd_flags & 0x20)
+                   archive_read_format_rar_read_header
+                head_type : 0x7b
+                   archive_read_format_rar_read_header
+                head_type : 0x74
+                read_header
+                rar->packed_size : 0x1
+                rar->dictionary_size = 0;
+                   archive_read_format_rar_read_header
+                head_type : 0x7a
+                read_header
+                rar->dictionary_size : 0x10000000
+                   archive_read_format_rar_read_header
+                head_type : 0x7b
+                   archive_read_format_rar_read_header
+                head_type : 0x74
+                read_header
+                rar->packed_size : 0x1
+                rar->dictionary_size = 0;
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                __archive_ppmd7_functions.PpmdRAR_RangeDec_CreateVTable(&rar->range_dec);
+                ppmd_alloc : 0
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                   archive_read_format_rar_read_header
+                Ppmd7_Init
+                RestartModel
+        *** Heap corruption ***
+Let’s focus on the extraction phase (everything below archive_read_extract). The key variable/field here is rar->dictionary_size. First, we see that its value is set to:
+
+        rar->dictionary_size : 0x10000000
+
+libarchive\archive_read_support_format_rar.c
+
+Line 2073    /* Memory is allocated in MB */
+Line 2074    if (ppmd_flags & 0x20)
+Line 2075    {
+Line 2076      if (!rar_br_read_ahead(a, br, 8))
+Line 2077        goto truncated_data;
+Line 2078      rar->dictionary_size = (rar_br_bits(br, 8) + 1) << 20;
+Line 2079      rar_br_consume(br, 8);
+Line 2080    }
+Next, because, among other things, the small value of
+
+        rar->packed_size : 0x1
+
+another portion of data is read from the file, and parsed during the "reading phase" in archive_read_next_header by calling the archive_read_format_rar_read_header, and read_header functions. During one of these calls we see that value of dictionary_size is set to zero. Next, depending on the value of dictionary_size an allocation is made for Ppmd context:
+
+libarchive\archive_read_support_format_rar.c:
+
+Line 2115      if ( !__archive_ppmd7_functions.Ppmd7_Alloc(&rar->ppmd7_context,rar->dictionary_size, &g_szalloc) )
+libarchive\archive_ppmd7.c
+
+Line 125        static Bool Ppmd7_Alloc(CPpmd7 *p, UInt32 size, ISzAlloc *alloc)
+Line 126        {
+Line 127          if (p->Base == 0 || p->Size != size)
+Line 128          {
+Line 129                Ppmd7_Free(p, alloc);
+Line 130                p->AlignOffset =
+Line 131                  #ifdef PPMD_32BIT
+Line 132                        (4 - size) & 3;
+Line 133                  #else
+Line 134                        4 - (size & 3);
+Line 135                  #endif
+Line 136                if ((p->Base = (Byte *)alloc->Alloc(alloc, p->AlignOffset + size
+Line 137                        #ifndef PPMD_32BIT
+Line 138                        + UNIT_SIZE
+Line 139                        #endif
+Line 140                        )) == 0)
+Line 141                  return False;
+Line 142                p->Size = size;
+Line 143          }
+Line 144          return True;
+Line 145        }
+As we can see for dictionary_size equal 0 we will have allocation made for 0 bytes which allocates the smallest possible chunk:
+python import gdbheap
+p p->Base
+$5 = (Byte *) 0x80e2480 " \b\r\brn"
+heap select size==16
+Reading in symbols for malloc.c...done.
+    Start         End         Domain         Kind    Detail                                                                             Hexdump
+----------  ----------  -------------  -----------  --------  ----------------------------------------------------------------------------------
+0x080d0798  0x080d07a7  uncategorized               16 bytes  a8 07 0d 08 03 00 00 00 57 4d 54 00 19 00 00 00 c0 07 0d 08 |........WMT.........|
+0x080d07c0  0x080d07cf  uncategorized               16 bytes  d0 07 0d 08 03 00 00 00 43 45 54 00 19 00 00 00 e8 07 0d 08 |........CET.........|
+0x080d07e8  0x080d07f7  uncategorized               16 bytes  00 00 00 00 03 00 00 00 45 45 54 00 21 00 00 00 72 61 72 2d |........EET.!...rar-|
+0x080d0818  0x080d0827  uncategorized               16 bytes  00 00 00 00 50 a4 d8 f7 00 00 00 00 11 00 00 00 50 70 6d 64 |....P...........Ppmd|
+0x080d0828  0x080d0837              C  string data            50 70 6d 64 37 5f 49 6e 69 74 0a 00 21 00 00 00 44 00 00 00 |Ppmd7_Init..!...D...|
+0x080d0cd8  0x080d0ce7  uncategorized               16 bytes  e8 0c 0d 08 00 00 00 00 00 00 00 00 f9 01 00 00 c5 b0 01 c0 |....................|
+0x080e2470  0x080e247f  uncategorized               16 bytes  00 69 62 61 32 2e 68 74 6d 6c c0 cc 11 00 00 00 20 08 0d 08 |.iba2.html...... ...|
+0x080e2480  0x080e248f              C  string data            20 08 0d 08 72 6e 00 00 00 00 00 00 21 00 00 00 72 61 72 2d | ...rn......!...rar-|
+Finally we land in the RestartModel function:
+
+libarchive\archive_ppmd7.c
+Line 314        static void RestartModel(CPpmd7 *p)
+Line 315        {
+Line 316          unsigned i, k, m;
+Line 317
+Line 318          memset(p->FreeList, 0, sizeof(p->FreeList));
+Line 319          p->Text = p->Base + p->AlignOffset;
+Line 320          p->HiUnit = p->Text + p->Size;
+Line 321          p->LoUnit = p->UnitsStart = p->HiUnit - p->Size / 8 / UNIT_SIZE * 7 * UNIT_SIZE;
+Line 322          p->GlueCount = 0;
+Line 323
+Line 324          p->OrderFall = p->MaxOrder;
+Line 325          p->RunLength = p->InitRL = -(Int32)((p->MaxOrder < 12) ? p->MaxOrder : 12) - 1;
+Line 326          p->PrevSuccess = 0;
+Line 327
+Line 328          p->MinContext = p->MaxContext = (CTX_PTR)(p->HiUnit -= UNIT_SIZE); /* AllocContext(p); */
+Line 329          p->MinContext->Suffix = 0;
+Line 330          p->MinContext->NumStats = 256;
+Line 331          p->MinContext->SummFreq = 256 + 1;
+Line 332          p->FoundState = (CPpmd_State *)p->LoUnit; /* AllocUnits(p, PPMD_NUM_INDEXES - 1); */
+Line 333          p->LoUnit += U2B(256 / 2);
+Line 334          p->MinContext->Stats = REF(p->FoundState);
+Key values here are:
+
+p p->AlignOffset
+$6 = 0
+p p->Size
+$7 = 0
+
+As we can see above, both equal 0, a value which has consequences in line 328.
+UNIT_SIZE value is subtracted from p->HiUnit:
+Line 30 #define UNIT_SIZE 12
+and assigned to p->MinContext.
+
+When everything is correct, p->HiUnit first is set at the end of allocated space for Ppmd context, but because AlignOffset and Size is equal to 0, it still points to the beginning of allocated space for Ppmd. As a result of this, subtraction p->MinContext is set to a value inside of previous heap chunk space.
+
+p p->MinContext
+$8 = (CPpmd7_Context *) 0x80e2474
+
+Just a reminder, here is our heap[a][b]:
+(...)
+0x080e2470  0x080e247f  uncategorized               16 bytes  00 69 62 61 32 2e 68 74 6d 6c c0 cc 11 00 00 00 20 08 0d 08 |.iba2.html...... ...|
+0x080e2480  0x080e248f              C  string data            20 08 0d 08 72 6e 00 00 00 00 00 00 21 00 00 00 72 61 72 2d | ...rn......!...rar-|
+(...)
+Further writes to this structure overwrite heap chunks. Heap check before execution of line 329:
+
+python from heap.glibc import *
+python print MChunkPtr(gdb.Value(0x080e2480-8).cast(MChunkPtr.gdb_type()))
+<MChunkPtr chunk=0x80e2478 mem=0x80e2480 PREV_INUSE inuse chunksize=16 memsize=8>
+After execution:
+
+python print MChunkPtr(gdb.Value(0x080e2480-8).cast(MChunkPtr.gdb_type()))
+<MChunkPtr chunk=0x80e2478 mem=0x80e2480 prev_size=3435162733 free chunksize=0 memsize=-8&gt
+
+Conclusion 
+
+Writing secure code can be difficult. The root cause of these libarchive vulnerabilities is a failure to properly validate input --data being read from a compressed file. Sadly, these types of programming errors occur over, and over again. When vulnerabilities are discovered in a piece of software such as libarchive, many third-party programs that rely on, and bundle libarchive are affected. These are what are known as common mode failures, which enable attackers to use a single attack to compromise many different programs/systems. Users are encouraged to patch all relevant programs as quickly as possible.
+
+TALOS-CAN-0152 coverage provided via ClamAV, as the whole file is necessary for detection. TALOS-CAN-0153 is detected by SIDs 39034,39035. TALOS-CAN-0154 is detected by SIDs 39045,39046.
+
+

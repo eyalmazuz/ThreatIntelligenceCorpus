@@ -1,0 +1,45 @@
+
+Vulnerability Spotlight: Multiple Nvidia D3D10 Driver Pixel Shader Vulnerabilities
+
+
+Discovered by Piotr Bania of Cisco Talos
+
+Overview
+
+Today, Cisco Talos is disclosing multiple vulnerabilities that exist within the Nvidia D3D10 driver. This driver is used throughout multiple GPU product lines available from Nvidia. This is a commonly used driver, and exploitation can even affect VMware, thus giving rise to a potential guest-to-host escape. It is strongly recommended that patches are applied immediately.
+
+
+TALOS-2018-0514 - Nvidia D3D10 Driver Pixel Shader Heap Memory Corruption Vulnerability (CVE-2018-6251)
+
+An exploitable heap memory corruption vulnerability exists in the NVIDIA D3D10 Driver 22.21.13.8607. A specially crafted pixel shader can cause heap memory corruption, resulting in at least denial of service and potential code execution. An attacker can provide a specially crafted shader file (either in binary or text form) to trigger this vulnerability. This vulnerability can be triggered from a VMware guest, and the VMware host will be affected (potentially leading to VMware crash or guest-to-host escape).
+
+This vulnerability can be triggered by supplying a malformed pixel shader (in text or binary form) to the NVIDIA nvwgf2umx.dll driver. Such an attack can be triggered from a local machine (usermode), from a VMware guest usermode (to cause memory corruption on VMware host) or theoretically through WEBGL (remote website) — assuming the browser will not use ANGLE and will somehow supply the malformed shader to the vulnerable NVIDIA driver. Detailed vulnerability information can be found here.
+
+
+TALOS-2018-0522 - Nvidia D3D10 Driver Pixel Shader Functionality Denial Of Service (CVE-2018-6253)
+
+An exploitable denial-of-service vulnerability exists in the Nvidia D3D10 Driver 22.21.13.8607. A specially crafted pixel shader can cause a stack overflow exception, resulting in at least denial of service. An attacker can provide a specially crafted shader file (either in binary or text form) to trigger this vulnerability. This vulnerability can be triggered from a VMware guest, and will affect a VMware host (leading to the vmware-vmx.exe process to crash on the host). 
+
+This vulnerability can be triggered by supplying a malformed pixel shader (in text or binary form) to the Nvidia nvwgf2umx.dll driver. Such an attack can be triggered from local machine (usermode), from VMware guest usermode (to cause a memory denial-of-service attack on vmware-vmx.exe process on host) or theoretically through WEBGL (remote website) — assuming the browser will not use ANGLE, and will somehow supply the malformed shader to the vulnerable Nvidia driver.
+
+In short, it is possible to create a shader in such a way that it will cause a function (sub_038B150) to call itself recursively without any validation of the number of recursions/stack memory borders, which finally leads to denial of service due to stack memory exhaustion.  Detailed vulnerability information can be found here.
+
+
+Known vulnerable versions
+
+Nvidia nvwgf2umx.dll 22.21.13.8607 (x64) on Windows 10 x64
+
+
+Conclusion
+
+In accordance with our coordinated disclosure policy, Talos has worked with Nvidia to ensure that these issues have been resolved and that an update is made available for affected customers. Users are recommended to upgrade to version 391.35 of the D3D10 driver to ensure that systems are no longer affected by these vulnerabilities. Release notes for this updated version can be found here.
+
+
+Coverage
+
+The following Snort Rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your Firepower Management Center or Snort.org.
+
+Snort Rules: 45504-5, 45602-3
+
+
+

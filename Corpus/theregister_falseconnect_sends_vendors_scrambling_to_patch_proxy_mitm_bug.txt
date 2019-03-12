@@ -1,0 +1,29 @@
+FalseCONNECT sends vendors scrambling to patch proxy MITM bug
+For the many people that dislike corporate proxies, this probably won't be much of a surprise: a bunch of environments are vulnerable to man-in-the-middle attacks.
+“FalseCONNECT” is a combination of protocol bug and implementation error – which means it affects end users via operating systems, as well as network devices.
+The problem is in how two Web protocols interact: HTTP CONNECT (which asks a firewall or proxy to forward a connection, described in RFC 7230), and HTTP Authentication (described in RFC 7235), which the firewall or proxy use to ask users to authenticate.
+The discoverer, Jerry Decime, explains FalseCONNECT here.
+If an attacker can see users' requests to connect (for example, via a rogue wireless access point), they can replace the proxy's OK message (expected under RFC 7230) with “407 Proxy Authentication Required” message – and grab the victim's credentials.
+
+
+
+Here's some detail from the US CERT advisory about this mess:
+“HTTP CONNECT requests and 407 Proxy Authentication Required messages are not integrity protected and are susceptible to man-in-the-middle attacks. WebKit-based applications are additionally vulnerable to arbitrary HTML markup and JavaScript execution in the context of the originally requested domain.”
+This is a potent attack, because the user's browser can then go ahead and establish their “trusted” connection via the proxy. The victim won't get anything like a browser warning to tell them something's wrong.
+And because it happens before the handshakes set up trust, it doesn't trip warnings like pinned certificates.
+“This vector happens before the server public key can be provided to the client as shown in step five, but not before a trust relationship has already been established or maintained by the browser or application as shown in step one,” Decime writes.
+“Unfortunately this implementation resulted in false trust situations whereby untrusted code delivered in the response body of the CONNECT could execute within trusted browser and application states.”
+So far, the CERT advisory lists Apple, Microsoft, Opera, and Oracle as affected. Lenovo reckons its machines aren't affected.
+Ten other vendors and systems are on the notice but are still working out whether they're vulnerable: Arista, Belkin, CentOS, Cisco, CoreOS, Debian, DesktopBSD, DragonFly BSD, EMC and F5 Networks.
+Others will, we expect, be added to that list as time passes.
+Decime's post concentrates on how the bug can be exploited against iOS, because of how WebKit handles the CONNECT / 407 interaction.
+
+
+
+He notes that the attack code leaves out the header that the 407 message should include, because that would risk tipping the user off:
+“On iOS, WebKit renders the markup provided in a '407 Proxy Authentication Required.' This allows a proxy server that requires authentication to give the user a soft-error after a certain number of failed authentication attempts, but because the contents of the HTTP response are rendered within a trust realm, it can be used to attack cryptography trust in WebKit.”
+Apple has fixed the bug in the iOS 9.3.3 update and in El Capitan's 10.11.6 update. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

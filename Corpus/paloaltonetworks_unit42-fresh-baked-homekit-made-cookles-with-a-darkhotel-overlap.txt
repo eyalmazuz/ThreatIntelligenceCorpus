@@ -1,0 +1,105 @@
+Fresh Baked HOMEKit-made Cookles – With a DarkHotel Overlap
+
+Threat actors tend to reuse certain tools, a trend we observed during recent Unit 42 research published on MNKit. In this post, we will discuss a fresh toolkit, which on the surface, appeared similar to MNKit, but functionally was found to be quite different.
+This toolkit, which we named “HOMEKit”, is similar to MNKit in that it is also designed to generate weaponized Microsoft Word documents containing an exploit for CVE-2012-0158, but it uses OLE instead of MHTML files. In addition, we have been able to track the use of HOMEKit by its operators since 2013 across a variety of campaigns, using several different variants of the toolkit. For this post, we will be focusing on the most recent example of the HOMEKit toolkit, in addition to an interesting overlap we discovered with the well-known attack campaign DarkHotel. In a follow-up post, we will discuss the other campaigns associated with HOMEKit, along with other variants of HOMEKit that we discovered.
+In addition to analysis of HOMEKit, we will also examine a new payload we discovered embedded in one of the malicious documents created by HOMEKit, which we have named “Cookle.” It is a fairly simple downloader tool, but until now has not been publicly discussed. Cookle deploys some interesting tactics to obfuscate its activity.
+Telemetry
+In late June 2016, we collected an e-mail file (Figure 1) that appeared to carry a phishing attack with a malicious file attached. The sender address was spoofed, using the identity of a coordination associate for the United Nations Environment Programme (UNEP). The content of the email seemed legitimate, using the subject line of “Pyongyang International Phonebook and Mailing lists – JUNE,” attempting to appear as a global directory for residents of the Democratic People’s Republic of Korea under UNEP. To further increase the legitimacy of the phishing attack, the threat actor copied the coordination associate’s signature block as well.
+
+Figure 1 Phishing email carrying HOMEKit exploit file
+The email contained two file attachments, a Microsoft Word document and a Microsoft Excel document. The Excel document proved to be benign, but the Word document exploited the CVE-2012-0158 vulnerability. If the victim were to open the Word document, it would silently install the Cookle Trojan, while opening a decoy document in Word (Figure 2), displaying the expected content to the victim.
+
+Figure 2 Decoy document containing message intended for residents of Pyongyang
+The benign Excel document and the Word document used as decoys both appeared to be legitimate, internal documents; the Word document containing the email addresses of all DPRK UNEP residents, along with mailing lists to use for specific topics. The Excel document contained additional contacts for other related agencies, in addition to emergency contact information for the DPRK UNEP residents. Examination of the metadata of the two files revealed the Excel document was last modified by the spoofed sender’s identity on June 22, 2016, while the decoy Word document showed the original author as the Coordination Officer in 2012, with a creation timestamp of July 19, 2012. The “last modified” field of the decoy document though revealed its true nature, showing that it was last modified on April 5, 2016, by “Windows User” indicating the decoy document was likely to be last modified by the threat actor.
+By using the specific documents observed in this attack, the threat actor demonstrated that he or she may have already gained unauthorized access to some extent. Also, the contents of these internal documents show that the threat actor currently has access to data that could be further leveraged to craft additional phishing attacks at related targets.
+HOMEKit
+The HOMEKit toolkit creates Microsoft Word documents (OLE) that exploit the CVE-2012-0158 vulnerability. All malicious documents created by the HOMEKit toolkit have the same metadata within the SummaryInformation and DocumentSummaryInformation streams of the OLE document, as seen in Figure 3.
+
+
+
+
+Author: User
+Last Modified By: User
+Company: HOME
+Code Page: Windows Simplified Chinese (PRC, Singapore)
+Create Date: 2006:09:28 17:06:00
+Modify Date: 2006:09:28 17:09:00
+
+
+
+
+123456
+
+Author: UserLast Modified By: UserCompany: HOMECode Page: Windows Simplified Chinese (PRC, Singapore)Create Date: 2006:09:28 17:06:00Modify Date: 2006:09:28 17:09:00
+
+
+
+
+
+
+Figure 3 HOMEKit Meta Data
+HOMEKit creates documents designed to exploit a vulnerability within the TreeView ActiveX control, specifically the CLSID of 9368265E-85FE-11d1-8BE3-0000F8754DA1. Upon successful exploitation, the malicious document will execute shellcode to open a decoy document (~.doc) while it installs and executes a payload on the system (~.dat).
+The shellcode executed by this variant of HOMEKit begins with a decryption stub that is responsible for decrypting the functional shellcode. The decryption stub uses a combination of right bit shifting (ROR 3) and an XOR operation (key of 0xAF) on each byte of ciphertext.
+The functional shellcode exposed by the decryption stub starts by enumerating open file handles looking for files that have a file size greater than zero. It then reads the last 20 bytes of each file looking for the value “0xDEADFOOD” at the very end of the file to find the delivery document. Once it finds the appropriate file, it parses the last 20 bytes of the file to locate the payload and decoy document using the following structure:
+
+To decrypt the payload and decoy, the shellcode uses an algorithm that starts from the end of the ciphertext, using the lowest byte of the initial value of “0xDEADFOOD” to XOR the first byte and then rotating the key value by 1 for each subsequent operation. The shellcode will save the payload to %TEMP%\~.dat and the decoy to %TEMP%\~.doc after the decryption routines are finished. Once the payload and decoy are saved to the system, the shellcode creates a process with %TEMP%\~.dat to execute the payload and creates a process with the following command line to open the decoy document:
+cmd.exe /c dir /s %windir%\system32\*.sys&&taskkill /im winword.exe /f&dir /a /s %windir%\system32\*.msc && DOCUME~1\ADMINI~1\LOCALS~1\Temp\~.doc
+When creating the processes to run the payload and open the decoy, the shellcode calls GetCurrentProcess to get a handle to the current Word process, then OpenProcessToken to access the Word process’s token. Finally, it uses this token to call CreateProcessAsUserA to run the payload and the decoy with the same context as the current Word process.
+Cookle Trojan
+At a high level, the payload delivered in this attack is a downloader Trojan that we are tracking as “Cookle” based on a header value in HTTP requests made by the malware.
+After initial execution, the Trojan creates the mutex “LDE_160425” and copies itself from %TEMP%\~.dat to %APPDATA%\Microsoft\WindowsUpdate\~.exe. For persistence, the Trojan creates the following registry key with a path to the newly copied Trojan:
+SOFTWARE\Microsoft\Windows\CurrentVersion\Run\Startup
+A majority of the pertinent strings embedded within the Trojan are encoded, which the Trojan decodes using a modified base64 decoding function that swaps the uppercase letters in the base64 alphabet with lowercase letters, and vice versa. It uses this custom base64 decoder to decode the following strings:
+
+The Trojan contains two command and control (C2) domains within the encoded strings listed above, dyn.kaleebso[.]com and dyn.pwnz[.]org. The Trojan sets a sleep timer of 20 minutes to wait before generating and sending network beacons to the C2 servers. The initial beacon seen in Figure 4 contains a misspelled “Cookie” field that includes the same value the Trojan uses as a mutex.
+
+Figure 4 C2 Beacon sent from Cookle Trojan
+If the Trojan receives a response to this beacon from the C2 server, it runs several system commands, specifically systeminfo, tasklist, netstat /ano, and ipconfig /all. It will then take the output from those system commands and save the output to a text file in the %TEMP% folder with a filename of “<year><month><day><hour><minute><second>.tmp”. The Trojan will then send the contents of this file to the C2 server as cleartext within a HTTP POST request that will resemble the following:
+
+Figure 5 HTTP POST request issued by Cookle that sends system information to C2 server
+The C2 server will respond to this request with a command that the Trojan will parse. The Trojan’s command handler has three available commands:
+
+Figure 6 Commands within Cookle’s Command Handler
+The functionality available within the Trojan is limited, however, it allows the actor to perform system reconnaissance before delivering a secondary payload. The secondary payload is delivered via the ‘d’ command, wherein the Trojan will decrypt an executable using the XOR operation on each byte in the C2’s response with 0xA7. During the analysis period, the C2 servers did not respond with a secondary payload.
+Overlap with DarkHotel
+Collection of additional HOMEKit delivery documents revealed use of this toolkit by its operators since at least 2013 and most recently, late June 2016. Each of these malicious documents created by the HOMEKit toolkit installed different payloads including PlugX, Sutr, and HIMAN/Mirage, among others. As mentioned earlier, we will be publishing a follow up to this post that contains details of these prior attacks.
+As part of the collected sample set, we found two documents that have a very similar structure as the delivery document used in the attack delivering the Cookle payload but with very slight variations in the exploit code. The most curious aspect of these two documents was the payload embedded in them.
+Both of the additional HOMEKit samples have the same functional shellcode and install a downloader associated with the Tapaoux Trojan, a tool related to the DarkHotel threat group. We compared the shellcode embedded in the HOMEKit delivery documents with previous samples associated with DarkHotel and found striking similarities (Figure 7).
+
+Figure 7 Comparison of notable static attributes within HOMEKit documents installing Cookle and DarkHotel
+The major difference between the HOMEKit documents dropping Cookle and DarkHotel begins with the stub decrypter, as seen in Figure 7. The stub decrypter decrypts a second piece of shellcode that carries out the main functionality as mentioned previously in this post. The decryption routines themselves differ, as seen in the green highlighted instructions in Figure 8. The size of the decrypted shellcode differs between the two samples as well, as seen in the yellow highlighted “mov cx” instructions in Figure 8.
+
+Figure 8 Comparison of stub decrypters found in the shellcode within Cookle and DarkHotel samples
+Even though the size of the shellcode differs between the Cookle and DarkHotel samples, the shellcode itself is extremely similar. A simple binary difference between the two functional shellcodes result in over a 90 percent similarity. Static analysis determined that the two shellcodes resolve the same API functions and store them on the stack in the same order. Also, many identical code blocks exist between the two shellcodes that results in significant code overlap. The similarities in shellcode suggest that the author of the HOMEKit toolkit variant used to deliver the Cookle Trojan had access to the same shellcode as the HOMEKit toolkit used to install DarkHotel.
+The difference between the functional shellcode that installs Cookle and DarkHotel lies in the way a process is created to execute the payload and to open the decoy document. While the difference between the two is very minor, it is worth discussing as it suggests the author of the Cookle shellcode intentionally modified the DarkHotel shellcode, possibly as an anti-analysis technique. Figure 9 shows a side-by-side comparison of the process creation functionality within the DarkHotel and Cookle shellcodes, which highlights the differences between the two (red and blue highlighted instructions and two new gray code blocks).
+
+Figure 9 Side-by-side comparison of the shellcode dropping DarkHotel and Cookle, specifically code used to create a process
+The comparison in Figure 9 shows the differences between the two functions using highlighted instructions and additional boxes, but it does not explain what the changes mean from a functionality standpoint. We will explain how the two functions go about creating a process and how they differ.
+The DarkHotel shellcode first uses the GetCurrentProcess function to get a handle to the Word process, then uses OpenProcessToken and finally CreateProcessAsUserA to open the decoy and execute the payload just like the Cookle shellcode. However, the DarkHotel shellcode calls the API functions in a very straightforward manner, specifically using CALL instructions (highlighted red in Figure 9).
+In contrast, the Cookle shellcode uses CALL instructions to call the GetCurrentProcess and OpenProcessToken functions, but jumps to the CreateProcessAsUserA function using a JMP instruction. To allow the use of JMP in place of a CALL, the shellcode must provide a way to return to the function that called it, as the JMP instruction does not automatically handle this like the CALL instruction. Instead, it references a specific location (top four blue highlighted instructions) and starts looking for the value “0xC3” (first gray box in Figure 9), which is the value for the instruction “RETN”. Once found, the shellcode will push to the stack so the JMP instruction can be used to call the CreateProcessAsUserA function and return to the original calling function.
+The similarities between the delivery documents dropping Cookle and DarkHotel payloads suggest that both were generated by the HOMEKit toolkit, albeit using slightly different versions. The slight differences between the stub decrypters and the functional shellcode within the malicious documents hints that the actor may have used the same codebase to create a modified version of HOMEKit for use in the Cookle attack.
+Conclusion
+As we have highlighted several times in the past, the reuse of tools is quite common amongst various threat actor groups. Our next post will further map out the various campaigns associated with HOMEKit, along with the multiple variants discovered in the span of several years. The DarkHotel payload however, is a curious outlier in the grouping of payloads we were able to identify. It is possible that the DarkHotel threat actors were able to obtain a copy of the HOMEKit codebase somehow, or even possible that the Tapaoux Trojan was obtained by operators with access to HOMEKit. It is also possible that HOMEKit is a toolkit available to multiple threat actors, via a connected intermediary. Unfortunately, at this time, a lack of data does not allow us to come to a definitive answer. Regardless, it is yet another example of tool sharing and overlap, this time with surprising results.
+
+Palo Alto Networks customers are protected and can learn more via the following resources:
+All samples of this HOMEKit variant and Cookle are detected as malicious by WildFire
+All domains described in this post are classified as malicious
+HOMEKit and Cookle AutoFocus tags created
+
+Indicators of Compromise
+HOMEKit SHA256
+ed676d191684fa03b2b57925fe081cf32d5d6b074637f6f2a6401dd891818752
+ab7b5c35786813ed874483d388edbee3736eb6af7bc4946c41794209026eeac4
+f9bf645a3a7d506136132fcfa18ddf057778d641ff71d175afd86f1a4fed7ee9
+Cookle SHA256
+4a5807bab603d3a0a5d36aaec75729310928a9a57375b7440298fb3f3e4a2279
+Cookle C2s
+dyn.kaleebso[.]com
+dyn.pwnz[.]org
+DarkHotel SHA256
+2437d0a9cc019e33fe8306fceed99605dd5ab67a8023da65fa20b9815ec19d06
+bb06bfad96535ad04a6e65a6e68f34cb51f311cae48a2ff1c305f3957b2c8a4b
+DarkHotel C2s
+apply-wsu.ebizx[.]net
+apply.ebizx[.]net
+

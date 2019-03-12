@@ -1,0 +1,77 @@
+iOS Trojan “TinyV” Attacks Jailbroken Devices
+
+In October 2015, we discovered a malicious payload file targeting Apple iOS devices. After investigating, we believe the payload belongs to a new iOS Trojan family that we’re calling “TinyV”. In December 2015, Chinese users reported they were infected by this malware. After further research, we found the malware has been repackaged into several pirated iOS apps that are available for download via multiple channels. In this blog, we will discuss how the TinyV Trojan spreads and how it works.
+Repackaging and Spreading
+TinyV was repackaged into some pirated iOS apps for jailbroken devices. Infected iOS apps include “Watermelon Player (西瓜播放器)”, “Youku (优酷)”, “iQiYi (爱奇艺)” and others. After repackaging, these apps were uploaded to websites for downloading.
+The infected Watermelon Player was available from its official website xigua[.]com. It is advertised as an app for watching pirated videos online for free. The infected versions of Youku, iQiYi, and other apps were hosted on third party iOS app download sites such as iosqgg[.]com and piqu[.]com (which belongs to a tool named “PiQu Apple Helper 批趣苹果助手”). They were advertised as modified ad-free versions of those popular video players (in China).
+
+Figure 1. Watermelon Player’s official website hosts the infected app
+
+Figure 2. A third party website hosting infected “ad-free” video players
+
+Figure 3. Another third party iOS app downloading website hosting infected apps
+When using an iOS device to access piqu[.]com to download the pirated version of Youku, a URL like the following is accessed:
+
+itms-services://?action=download-manifest&url=https%3A%2F%2Fappsre.com%2Fdj_plist_data.php%3Fdata%3DYmlkPWNvbS55b3VrdS5Zb3VLdSZu…
+
+This URL will re-direct the iOS device to download a PLIST file hosted in “appsre[.]com” and then to install an enterprise app described by this PLIST file. According to the PLIST file, the IPA installer file to be downloaded is “pq_com.youku.YouKu.5.0.ipa”, which is also hosted on appsre[.]com.
+
+Figure 4. The infected app installer was actually hosted on appsre.com
+TinyV is repackaged differently than prior iOS or OSX malware such as WireLurker. In Watermelon Player’s iOS installer file, “com.xiaoxiaov.ipa”, there are actually two executable files. One is the main executable Mach-O file we expect and the second is Mach-O dynamic library file named “xg.png”. In the main executable file’s import table, the last import entry is “@executable_path/xg.png”. Which means after the app is executed, the xg.png file will be loaded (and the code in it will be executed). Note that the main executable and the xg.png were not compiled in the same environment as the xg.png was infected by the XcodeGhost malware while the main executable wasn’t.
+Similarly, in the infected version of Youku, there are some extra Mach-O dynamic library files named “dj.png”, “macro_off@2x.png” and “zippo_on@2x.png” in addition to its main Mach-O executable file “YoukuiPhone”. The TinyV author modified the original YoukuiPhone file, added “@executable_path/zippo_on@2x.png” and “@executable_path/dj.png” to its imports table.
+
+Figure 5. Import table of the infected app’s main executable
+The loaded xg.png will invoke its -[hlNDkcAzamMgoaQm downloadDeb] method to connect with the C2 server wx[.]iosyy.me and fetch configuration information. The configuration supplied by the C2 specified a “debUrl” that points to the URL of a ZIP file, and specified a “shName” with the value “zipinstall”.
+
+Figure 6. The extra Mach-O dynamic library accesses a URL supplied by its C2 to download a malicious payload
+In the infected Youku, “macro_off@2x.png” will access another page on the same C2 server to get its configuration. This time the “debUrl” value is encrypted with an XOR algorithm. Despite the attempt at obfuscation, after decrypting with the key “0xaf”, the same URL is shown.
+Malicious Behaviors
+After getting configuration from its C2, TinyV will download a ZIP file from the given “debUrl” value. The ZIP file examined here was hosted on another C2 server, apt[.]appstt.com. While we were writing this report, the URL returned a 404 error. However, when we initially investigated it in late October, the URL was still alive and a “deb.zip” file was downloaded.
+In the deb.zip, there are 4 files:
+
+safemode.deb, which is the official MobileSafety tweak provided by Saurik
+freeDeamo/usr/bin/locka, which is a Mach-O executable that implemented malicious behaviors;
+freeDeamo/Library/LaunchDaemons/com.locka.plist, which is a PLIST file used to config “locka” as a launch daemon in iOS;
+freeDeamo/zipinstall, which is a shell script file.
+
+After downloading and decompressing this ZIP file, xg.png will execute the zipinstall script to install locka and com.locka.plist as a launch daemon as detailed below.
+
+Copying locka to /usr/bin, changing its user and group to root:wheel, and changing its file permission to 755;
+Copying com.locka.plist to /Library/LaunchDaemons/, changing its user and group to root:wheel, and changing its file permission to 644;
+Executing /bin/launchctl to load the com.locka.plist.
+
+
+Figure 7. The malicious executable file is installed as a launch daemon
+The locka file implements the main malicious behaviors of TinyV, including:
+
+Connecting with its C2 server to get remote commands
+Installing specified IPA file or DEB file(s) in the background
+Uninstalling specified IPA app or DEB package(s) in the background
+Changing the /etc/hosts file
+
+
+Figure 8. Some of the functions in locka
+Just like the previously discovered Trojan YiSpecter, this locka implemented IPA file installation and uninstallation via iOS private APIs is defined in the MobileInstallation framework.
+
+Figure 9. TinyV invokes private APIs
+Another interesting characteristic of this Trojan is the code in locka was obfuscated with name mangling and junk code insertion techniques, which made it much harder to reverse engineer.
+
+Figure 10. The malicious code is inserted with a lot of junk code
+It’s also worth noting that we found a function named “ClassStaticFunctionHook” that implemented a runtime hook by itself in a piece of repackaged code. Right now the function is only used to hook an advertisement SDK’s code. However, it could be used to implement much more dangerous behaviors in the infected apps. Previously discovered iOS malware uses the CydiaSubstrate framework to hook. This is the first time we have seen a real world iOS malware sample implement standalone hooking functionality.
+Infections
+On December 12, TinyV began to promote an iOS jailbreak tweak named “XZ Helper (协奏助手)”. Many victims in China found the XY Helper tweak on their iOS devices. Because of TinyV’s code implementation and variety of C2 server commands, even if a victim deleted the promoted tweak, TinyV would immediately install it again. Some victims discussed this abnormal phenomenon in forums including Weiphone and Zhihu. So far we have only observed the malware infecting users in mainland China.
+Mitigation
+As always, we suggest iOS users do not jailbreak their devices or install any enterprise apps from untrusted sources.
+Palo Alto Networks has updated WildFire signatures to block all related C2 domains.
+Acknowledgements
+We would like to thank CDSQ from WeipTech for sharing infection cases with us.
+Appendix
+SHA-256 of samples
+09fb33e3fe30e99a993dbf834ea6085f46f60366a17964023eb184ee64247be9 deb.zip
+b564a919ef7a7f64c5023cbae709a86201e3d78b1604b63296466448167aaba4 locka
+bdb452b56b21d3537de252d612b2469c752b2a9f7e0cc0d45624bedf762cfc7b com.xiaoxiaov.ipa
+4242b0055bc53125cef00f12320eaaebeb7c55eb54303b21e8a5f9e54cc7735e pq_com.youku.YouKu.5.0.ipa
+96f5698271c9b79e78a6f499bd74b4eb78d00f7247db5dcb3b65ba8ecbf4a098 pqcom.qiyi.iphone.ipa
+c6ec85a4aedfdd543f1c20fdf1ed15923e257c9664fd8c5ea38826dd47c0322d pq_weixin63820151203.ipa
+ 
+

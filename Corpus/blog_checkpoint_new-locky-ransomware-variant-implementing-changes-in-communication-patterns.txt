@@ -1,0 +1,47 @@
+New Locky Ransomware Variant Implementing Changes in Communication Patterns
+Recently, Check Point published a detailed report describing Locky, an emerging new ransomware threat, which was first reported on February 16, 2016. New characteristics related to its communication have now been observed in the wild.
+In the past two weeks we have witnessed several changes in Locky communication patterns, as a part of a new distribution campaign.
+Initially, Locky’s communication was well known across the community for displaying a particular communication pattern[i]:
+ 
+
+ 
+However, since March 22 we have encountered a major drop in logs related to communication of this Locky variant:
+
+ 
+Assuming that Locky probably didn’t go silent all of a sudden, we tried to actively uncover changes in its activity and discover new findings.
+The first variant that displayed change in communication was encountered on March 22, and showed changes in the headers:
+
+ 
+Notice the addition of Content-Type and User-Agent, while the host relative position is no longer directly after the POST header.
+Even after this change of action, it seems that the actor behind Locky did not rest on one’s laurels, and the communication has yet again changed; in the midst of our ongoing research of exploit kits (EK), we encountered a second change in the Locky variant delivered by the Nuclear EK. This time the changes were more drastic, both in the downloader dropped by the EK, and in the C&C key exchange protocol.
+The Downloader performs this request to the C&C server:
+GET /login.php HTTP/1.1
+Accept: */*
+ Accept-Encoding: gzip, deflate
+ User-Agent: Mozilla/4.0 (…)
+ Host:    <hostname>
+ Connection: Keep-Alive
+ 
+The response is the Locky executable, which now has a new method to fetch the encryption keys from its C&C server:
+POST /submit.php HTTP/1.1
+Content-Type: application/x-www-form-urlencoded
+User-Agent: Mozilla/4.0 (…)
+Host: <hostname>
+Content-Length: <length of encoded binary data>
+Connection: Keep-Alive
+Cache-Control: no-cache
+ 
+The server responds with:
+HTTP/1.1 200 OK
+Server: nginx
+Date: <date>
+Content-Type: text/html; charset=UTF-8
+Content-Length: <length of encoded binary data>
+Connection: keep-alive
+Vary: Accept-Encoding
+ 
+Check Points Threat Intelligence & Research team is currently performing a deep analysis of this new variant, and will publish a technical report, including IOCs, soon. Stay tuned.
+ 
+[i] https://www.fireeye.com/blog/threat-research/2016/03/surge_in_spam_campai.html
+ 
+ 

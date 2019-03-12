@@ -1,0 +1,17 @@
+Storm in a teapot: Anger brews over npm's jokey proxy error messages
+npm, the widely used and defiantly lower-case Node.js package manager, on Monday briefly returned an error to users connecting to the registry via proxy who attempted the npm install command.
+The error message declared "npm ERR! 418 I'm a teapot…", in reference to a RFC 2324, a tongue-in-cheek coffee pot communications protocol created as an April Fool's joke in 1998.
+Last year, Mark Nottingham, who chairs the IETF HTTP and QUIC Working Groups, urged the removal of the 418 I'm a Teapot status code from Node since 418 isn't a recognized HTTP status code.
+"I know it's amusing, I know that a few people have knocked up implementations for fun, but it shouldn't pollute the core protocol; folks can extend Node easily enough if they want to play with non-standard semantics," he wrote in a bug report in August.
+But other developers opposed the effort to purge the humorous status code message, which is also supported in Go, Python's Requests library, and ASP.NET's HttpAbstractions library. And James M. Snell, a member of the Node.js Project’s Technical Steering Committee, ultimately put a halt to the recall effort.
+Complaints about the buggy npm behavior surfaced in two GitHub issues: #335 and #20971. The problem on Monday appears to have lasted between three and four hours, but the concern isn't so much the outage time for those using proxies. Rather, it's the lack of any clear statement by npm's management that has developers grumbling.
+There's been criticism that npm should have published something about the issue because the company's status page don't have any details about what happened. However, the status page typically presents server-side information, and the proxy problem had to do with the way npm clients were appending the port to the Host header.
+In an email to The Register, CJ Silverio, CTO at npm, explained what happened:
+On Monday, npm's registry API began responding to requests with host headers it did not recognize with htcpcp status 418.
+As a consequence of supporting registry.yarnpkg.com, Cloudflare advised us that we should begin using cnames for the registry. We took their advice, and implemented this check. Thanks to the magic of Cloudflare edge workers, we were able to implement this host header check entirely in JavaScript and execute it on every request made to the npm Registry.
+Unfortunately, our host header parsing had a bug. It failed to account for port numbers appended to the host name. Users who were accessing npm through certain proxies were therefore greeted with a refusal to brew coffee via the message "I'm a teapot". This bug was filed on the npm cli issue tracker. We fixed it Monday morning.
+NPM has had some growing pains along the way to its indispensability (for JavaScript developers, at least). In February, it had to undo a code fix that messed with Linux file permissions. In January, the package registry biz apologized after removing code that had been erroneously flagged as malware. And there have been a handful of other minor snafus, some rather significant. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

@@ -1,0 +1,163 @@
+
+Go RAT, Go! AthenaGo points “TorWords” Portugal
+
+
+This post was authored by Edmund Brumaghin with contributions from Angel Villegas
+
+
+Summary
+
+Talos is constantly monitoring the threat landscape in an effort to identify changes in the way attackers are attempting to target organizations around the world. We identified a unique malware campaign that was distributed via malicious Word documents. The campaign appeared to be targeting victims in Portugal. The malware being distributed was interesting for a variety of reasons. As the author of this malware refers to it as "Athena" in their source code working directory and the fact that the C2 domain used by the malware begins with "athena", we have identified this malware as "AthenaGo". We were unable to locate a detailed analysis of this particular malware. 
+
+AthenaGo appears to be a Remote Access Trojan (RAT) that also features the capability to download and run additional binaries on infected systems when instructed to do so by an attacker. The malware was written using the Go programming language. Windows-based malware written in Go is not commonly seen in the wild. Additionally the command and control (C2) communications used by the malware made use of Tor2Web proxies, which is part of a trend of increased reliance on these proxying services by various malware authors. As this was an interesting/unique infection chain, Talos decided to examine the malware itself as well as the campaigns that were distributing it.
+
+
+Initial Infection Vector
+
+The initial distribution of this malware was accomplished via the use of Microsoft Word documents containing malicious macros responsible for downloading the Go binary and executing it on the system. The word documents containing the macros appear to have been designed specifically to target Portuguese speaking victims. The message instructing the user to enable macros to view the documents was written in Portuguese. Additionally, all of the malicious Word documents associated with this campaign that had been uploaded to VirusTotal were all initially uploaded from sources in Portugal. 
+
+
+
+Figure 1: Example Malicious Word Document
+
+The branding in the above Word document features the logo used by CTT Correios de Portugal, S.A., which is the national postal service of Portugal. The macros contained within the malicious documents functions as a malware downloader and retrieves a zip archive containing the malicious Go binary which was hosted at hXXp://teenhangout[.]tk/data/msguard.zip. The macro downloader then unzips the executable and launches it, infecting the system. In all of the malicious document samples analyzed, the author field within the file metadata was consistent (See Figure 4).
+
+
+
+Figure 2: Example Macro Downloader
+
+Once executed, the malware achieves persistence by dropping files into the following directory locations on the infected system:
+
+%USERPROFILE%\Start Menu\Programs\Startup\msguard.exe
+%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\msguard.exe
+
+
+Binary Details
+
+The Athena HTTP/IRC bot has been around for several years now. It is designed to perform various types of DDoS attacks against target environments, conduct pay-per-install (PPI) fraud, etc. An early version of the Athena source code was leaked online. This malware does not appear to be part of the same malware family, and does not appear to share the same functionality. 
+
+One of the most interesting elements of this malware is the fact that it was written using the Go programming language. While AthenaGo is not the first malware written in Go, Windows-based malware written in Go is uncommon compared to other programming languages. Go adds a lot of information to compiled binaries. This information makes analysis easier as it allows analysts to identify the functionality available within the malware by reviewing this information.  Analysis of the malicious binary and associated artifacts provided information about most of the functionality present within the Go samples we analyzed. 
+
+
+
+Figure 3: Binary Artifacts 
+
+Interestingly, the username specified in the path to the source files matched the author field present within the malicious Word documents used to distribute the downloader for this malware. 
+
+
+
+Figure 4: Office Document Metadata
+
+
+C2 Communications
+
+While analyzing the C2 communications associated with AthenaGo, we identified two hardcoded domains within the malware that it reaches out to post-infection. They both utilize Tor2Web which is a project that allows access to resources on the Tor network without requiring the requesting client system to be on the Tor network. Tor2Web servers act as proxies and allow clients to access servers hosting content on Tor without requiring the installation of a local Tor client application. This approach has shown to be increasingly attractive to cybercriminals. The use of Tor2Web and Tor in general allows them to stay anonymous. It also makes it much more difficult to remove malicious content being hosted on servers within Tor, as it is difficult to identify where a Tor server is hosted physically. Historically Tor2Web has been utilized by ransomware payment systems, however we are now seeing it increasingly used for malware distribution and post-infection C2 communications.
+
+During the initial infection process, the malware generates public and private RSA keys which are used during communications with C2 infrastructure. Below is pseudocode that demonstrates this process:
+
+
+
+Figure 5: Pseudocode Example
+
+After generating the RSA keys, the malware makes two HTTP HEAD requests to the C2 servers, which are hardcoded into the binary. Whichever server it is able to successfully establish communications with first becomes the active C2 server. The hard coded domains used by the malware leverage Tor2Web. This enables the malware authors to take advantage of the benefits provided by Tor without requiring them to package Tor functionality with their malware.  
+
+
+
+
+
+Figure 6: Example HTTP HEAD Request
+
+The two domains hardcoded into the binary are athenabeicoxjr2l[.]onion[.]to and athenabeicoxjr2l[.]onion[.]link. If the malware is unable to reach either of the hard coded domains, it will sleep for four seconds and then reattempt the connection establishment process. The malware also uses canihazip[.]com to determine the external IP address associated with infected systems. 
+
+Once the malware has successfully established communications with a C2 server, it then uses an HTTP POST request to /helo to transmit the RSA public key that was previously generated along with basic survey information about the infected system. The server then returns a response containing a cryptographic key generated using AES.
+
+
+
+Figure 7: Example HELO POST 
+
+The request body of above HTTP POST request is encrypted, and uses the following format:
+
+
+
+Figure 8: HELO POST Format
+
+Regardless of whether or not the HTTP POST request to /helo is successful, the malware will immediately generate another HTTP POST request, this time to /init. The contents of this request are encrypted using RSA encryption for the data parameter and AES encryption for the id parameter. The id parameter contains additional survey information about the infected system and is formatted in JSON. 
+
+
+
+Figure 9: Example INIT POST 
+
+The JSON format of the additional survey data being sent to the C2 server is as follows:
+{"Os":"<os type:<Windows>","Os_ver":"<os version>","Username":"<username and domain>","Hostname":"<system hostname>"}
+If the HTTP POST request to /init was successful, the malware then sends an HTTP GET request to /cmd which also contains the same basic survey information about the infected system. This appears to be a request for a command to be issued by the attacker controlling the C2 infrastructure associated with this malware. The malware expects the C2 server to reply to the HTTP GET request with an HTTP response containing Base64 URL encoded data that is encrypted using AES-CBC and the last AES key that was provided by the C2 server during earlier communications. This data is also in JSON format and includes the following keys: signature, timestamp, cmd. 
+
+The following commands are available to the malware and instruct it how to operate once received from C2:
+
+
+ListDir - This command returns a directory listing from the infected system.
+
+
+
+ListProcesses - This command returns a list of processes running on the infected system.
+
+
+
+KillProcess - This command causes the malware to execute the taskkill command against a target process running on the infected system.
+
+
+
+DownloadFile - This command causes the malware to download a file and save it into a target location specified in the command parameters.
+
+
+
+DLRUN - This command causes the malware to download a file, save it to %TEMP% and execute the downloaded file.
+
+
+
+RunCMD - This command uses Go's os/exec package to execute system commands on the infected system.
+
+For the aforementioned commands that require output to be returned to the C2 server, an HTTP POST request to /cmd will be generated and transmitted by the malware.
+
+
+Conclusion
+
+Malware authors will continue to evolve their attacks as they identify ways to effectively reduce their risk of being caught. This includes relying on C2 infrastructure hosted on Tor, making use of varying levels of encryption to protect the nature and content of network communications with their malware, and limiting their attacks to targeted attacks against specific targets or demographics. AthenaGo is an example of changes in the way malware is being written in an attempt to evade network defenses and successfully compromise target environments.  Talos continues to monitor changes within the threat landscape to ensure that customers remain protected as these techniques evolve over time. 
+
+
+Indicators of Compromise (IOCs)
+
+Domains:
+athenabeicoxjr2l[.]onion[.]to
+athenabeicoxjr2l[.]onion[.]link
+teenhangout[.]tk
+
+Maldocs:
+518362bce6243d6040bbf6fc1840c42450eeb03b7d7b47b232c1569a92de7f91 (SHA256)
+009f9f92b65b552ae195030ed48e787b249067aa26de3102718823807063afb5 (SHA256)
+
+Binaries:
+af385c983832273390bb8e72a9617e89becff2809a24a3c76646544375f21d14 (SHA256)
+c32fb305903a22106c6d3def0ac6c05b4f16cba99e23527b6c61d617ea794b1d (SHA256)
+72d87b225b83ffb4f9c1595a12e6d6e296895b4202cdece01b28bbac0d13b449 (SHA256)
+
+
+Coverage
+
+ 
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella prevents DNS resolution of the domains associated with malicious activity.
+
+

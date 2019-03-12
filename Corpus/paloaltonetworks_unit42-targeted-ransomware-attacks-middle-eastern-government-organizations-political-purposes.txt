@@ -1,0 +1,253 @@
+Targeted Ransomware Attacks Middle Eastern Government Organizations for Political Purposes
+
+Recently, Unit 42 has observed attacks against multiple Middle Eastern government organizations using a previously unseen ransomware family. Based on embedded strings within the malware, we have named this malware ‘RanRan’. Due to the targeted nature of the ransom message delivered by the malware, and the small sample set of this malware family, we believe that this attack was targeted in nature. Our analysis shows no connections between these attacks and the recent waves of Shamoon 2 attacks.
+The ransom note specifically attempts to extort a political statement by forcing the victims to create a public sub-domain with a name that would appear to advocate and incite violence against a Middle Eastern political leader.
+The malware itself is fairly rudimentary and makes a number of mistakes in how files are encrypted. This allowed Unit 42 to create a script that is able to decrypt some files that were encrypted by RanRan.
+RanRan Analysis
+The malware author named the payload “Ran”, as seen in the following debug path within the binary:
+C:\Users\pc\Desktop\Ran\Ran\Release\Services.pdb
+When the malware is initially executed, it will create the following mutex:
+
+Services1.0
+
+RanRan will exit if this mutex already exists. This ensures only a single instance of RanRan executes at a time.
+RanRan installs itself on the system by making a copy as “C:\services.exe”. It has the following base64 encoded string that it uses to create an autorun key on the system to execute itself each time the system boots:
+TlFRICJVWFBIXEZCU0dKTkVSXFp2cGViZmJzZ1xKdmFxYmpmIEFHXFBoZWVyYWdJcmVmdmJhXEp2YXFiamYiIC9zIC9pIFlibnEgL2cgRVJUX0ZNIC9xIA==
+The payload decodes this base64 string and applies a routine that either adds or subtracts 13 from each alpha character. We wrote a script to decode this string, for which  the output can be seen below:
+
+
+
+
+$ python decode_base64_routine.py 
+TlFRICJVWFBIXEZCU0dKTkVSXFp2cGViZmJzZ1xKdmFxYmpmIEFHXFBoZWVyYWdJcmVmdmJhXEp2Y
+XFiamYiIC9zIC9pIFlibnEgL2cgRVJUX0ZNIC9xIA==
+Base64: 
+TlFRICJVWFBIXEZCU0dKTkVSXFp2cGViZmJzZ1xKdmFxYmpmIEFHXFBoZWVyYWdJcmVmdmJhXEp2Y
+XFiamYiIC9zIC9pIFlibnEgL2cgRVJUX0ZNIC9xIA==
+Encoded: NQQ "UXPH\FBSGJNER\Zvpebfbsg\Jvaqbjf AG\PheeragIrefvba\Jvaqbjf" /s
+/i Ybnq /g ERT_FM /q 
+Decoded: 'ADD "HKCU\\SOFTWARE\\Microsoft\\Windows 
+NT\\CurrentVersion\\Windows" /f /v Load /t REG_SZ /d '
+
+
+
+
+12345678910
+
+$ python decode_base64_routine.py TlFRICJVWFBIXEZCU0dKTkVSXFp2cGViZmJzZ1xKdmFxYmpmIEFHXFBoZWVyYWdJcmVmdmJhXEp2YXFiamYiIC9zIC9pIFlibnEgL2cgRVJUX0ZNIC9xIA==Base64: TlFRICJVWFBIXEZCU0dKTkVSXFp2cGViZmJzZ1xKdmFxYmpmIEFHXFBoZWVyYWdJcmVmdmJhXEp2YXFiamYiIC9zIC9pIFlibnEgL2cgRVJUX0ZNIC9xIA==Encoded: NQQ "UXPH\FBSGJNER\Zvpebfbsg\Jvaqbjf AG\PheeragIrefvba\Jvaqbjf" /s/i Ybnq /g ERT_FM /q Decoded: 'ADD "HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Windows" /f /v Load /t REG_SZ /d '
+
+
+
+
+
+RanRan uses this string to create a registry key, which can be seen in the following registry query:
+
+
+
+
+C:\Users\>reg query "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersi
+on\Windows"
+
+HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows
+    Device    REG_SZ    Send To OneNote 2010,winspool,nul:
+    UserSelectedDefault    REG_DWORD    0x1
+    Load    REG_SZ    C:\services.exe
+
+
+
+
+1234567
+
+C:\Users\>reg query "HKCU\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows" HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Windows    Device    REG_SZ    Send To OneNote 2010,winspool,nul:    UserSelectedDefault    REG_DWORD    0x1    Load    REG_SZ    C:\services.exe
+
+
+
+
+
+This registry key is meant to execute “C:\services.exe” each time the system starts up.
+Anti-disinfection and Limiting System Use
+RanRan also attempts to make removing it to disinfect the system difficult, as it continually monitors for windows with titles that contain “task manager” and closes them, which makes killing the payload’s process difficult.
+Additionally, the malware continually monitors the following services and processes and will periodically stop them.
+
+MSSQLSERVER
+SQLWriter
+MSSQL$CONTOSO1
+SQLServerAgent
+MSSQL$SQLEXPRESS
+Microsoft Exchange Information Store
+OracleASMService+ASM
+OracleCSService
+OracleServiceORCL
+OracleOraDb10g_home1TNSListener
+usermanager
+outlook
+exchange
+sql
+
+We believe it is likely that the author chose to stop these services and processes to increase the ransomware’s chances of being able to appropriately encrypt associated database files by limiting any open handles to those files.
+Main Functionality
+The main purpose of RanRan is to encrypt files on the system and request a ransom from the victim to restore these files. The tool gathers a wide range of file types to encrypt based on the following file extensions:
+
+
+
+
+
+.mdf
+.ldf
+.edb
+.pst
+.ost
+.doc
+.docx
+.pdf
+.xls
+.xlsx
+.ppt
+.pps
+.pptx
+.ppsx
+.accdb
+.mdb
+.zip
+.rar
+.txt
+.jpg
+.bad
+.epf
+.bdp
+.efp
+.vsd
+.mpp
+.xlt
+.cmd
+.lic
+.me
+.xlsm
+.war
+
+
+
+
+.bdr
+.stm
+.sdb
+.psd
+.eml
+.vdw
+.vdx
+.tar
+.csv
+.max
+.png
+.ai
+.dwg
+.dxf
+.7z
+.c
+.cpp
+.bak
+.ese
+.ashx
+.asmx
+.soap
+.svc
+.bkf
+.issue
+.sql
+.fmb
+.olb
+.java
+.webm
+.mkv
+.flv
+
+
+
+
+.dbf
+.mtb
+.asp
+.aspx
+.sln
+.cs
+.jar
+.bmp
+.iso
+.resx
+.exe
+.tar
+.dat
+.rtf
+.img
+.gz
+.vmdk
+.log
+.ace
+.kdbx
+.rdp
+.psc
+.bat
+.cfg
+.rmvb
+.3gp
+.swf
+.ipdb
+.db
+.cmsc
+.kmz
+.edx
+
+
+
+
+
+The files RanRan looks for includes (but is not limited to) Microsoft Office files, Adobe Acrobat files, images, web pages, SQL queries, archive and backup files.
+RanRan expects the attacker to supply an RSA public key in the C:\pubkey location. If a public key is not provided, RanRan will encrypt files using the md5 hash of the string “aaoy09aaqqq@#433dd56fdfdf$Fss45*ss”.
+Otherwise, a randomly generated string is written to a file named ‘C:\WINDOWS\pass’. The MD5 of this string is used as the RC4 password. A new password is generated for groups of files of the following sizes:
+
+0 – 5 MB
+5 – 30 MB
+30 – 100 MB
+100 – 300 MB
+300 – 700 MB
+700 – 2000 MB
+2000 – 3000 MB
+3000 MB and greater
+
+After each successful round of encryption, the key being used for the particular group is encrypted using the supplied RSA public key and written to a file named using the following notation:
+VictemKey_[lower_bound]_[upper_bound]
+Where [lower_bound] is the lower file size for that particular group, and [upper_bound] is the upper file size for that particular group. This results in the following files being written after all encryption occurs:
+
+VictemKey_0_5
+VictemKey_5_30
+VictemKey_30_100
+VictemKey_100_300
+VictemKey_300_700
+VictemKey_700_2000
+VictemKey_2000_3000
+VictemKey_3000
+
+During encryption, the encrypted files are then renamed to append a new file extension of “zXz” to the file. After encrypting the files, the payload will display a ransom message with a filename of zXz.html with instructions on how to get the files decrypted. The following screenshot shows the ransom message:
+
+Figure 1 RanRan ransom note
+The ransom note above shows a number of interesting things. Unlike many other well-known and popular ransomware families, RanRan does not ask for direct payment. Instead, prior to any negotiations regarding payment, the victim must create a subdomain with a seemingly politically inflammatory name as well as a Ransomware.txt file hosted on this subdomain. The hosted file must include a statement of ‘Hacked’ and an email address. By performing these actions, the victim, a Middle Eastern government organization, has to generate a political statement against the leader of the country. It also forces the victim to publicly announce that they have been hacked by hosting the Ransomware.txt file.
+As mentioned originally, RanRan makes a number of mistakes when encryption occurs. For one, they use a symmetric cipher (RC4) with a re-used key. Additionally, some files are encrypted, but the originals are not deleted. This is due to a number of reasons, one of which being that encryption is attempted against system files and other files that are opened by running processes. Because we are provided with a situation where we have an original file, a file that has been encrypted, and the RC4 key is re-used against other encrypted files, we have the ability to decrypt some of this data.
+This only works in certain instances where the following criteria is met:
+
+An encrypted and unencrypted file must be present for a given file size group (0-5MB, 5-30MB, etc). Using these two files, we are able to acquire the RC4 stream cipher.
+The remaining encrypted files must be of lesser size than the previously obtained stream cipher. If a file is of greater size, it is only able to be partially decrypted.
+
+Two scripts that may be used to decrypt files that meet the conditions above can be found here. The scripts have been provided in both their raw Python form, as well as Windows binaries that have been compiled with PyInstaller.
+Upon investigation of the encryption, it was found that RanRan uses the following code to perform its encryption functionality:
+https://github.com/eugenekolo/Charlie-2/blob/master/Hookcrypt/test/EncryptFile.cpp
+The reuse of publicly available source code and a mistakes previously outlined suggests this is a rather unsophisticated threat actor.
+Conclusion
+Overall, RanRan represents an interesting shift in tactics by ransomware. Instead of being purely financially motivated, this specific actor takes a hacktivist approach by attempting to force a Middle Eastern government organization to make a negative public statement against their leader.
+The malware itself was found to be unsophisticated, using both a symmetric cipher, as well as publicly available code. Other indicators, such as debug statements found within the malware also provide further evidence to compound this statement.
+Palo Alto Networks customers are protected against this threat in the following ways:
+
+WildFire accurately identifies all RanRan samples as malicious
+An AutoFocus tag may be used to track this threat
+
+ 
+

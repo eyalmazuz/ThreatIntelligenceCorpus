@@ -1,0 +1,854 @@
+A closer look at the Locky ransomware
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 10 March 2016
+
+A deep and technical look into the latest ransomware called Locky. This new file encryptor, targeting PC users, has most likely been created by authors of the well-known Dridex botnet and is spread the same way.
+Locky uses all “top class” features, such as a domain generation algorithm, custom encrypted communication, TOR/BitCoin payment, strong RSA-2048+AES-128 file encryption and can encrypt over 160 different file types, including virtual disks, source codes and databases.
+We monitored the Locky family this past month and discovered a second variant of the malware, which has new features and program code improvements. Locky’s authors added a new hard-coded seed to the domain generation algorithm, which allows them to deactivate Locky on Russian PCs.
+Infection vector
+Locky is spreading via spam email campaigns that are similar to those used by the Dridex botnet. They use similar file names, obfuscation, email content and structure of download URLs.
+We have observed three different campaign versions of Locky and have described them below.
+Below is an example of one of the spam emails. The emails are designed to make people believe they were sent from large companies such as Nordstrom, Symantec and Crown Holdings. 
+
+We found different malicious documents (Word, Excel, etc.) attached to the emails that include macros with obfuscated Visual Basic Script (VBS). The malware authors use social engineering to get people to enable the by default disabled macros. The malicious code contains autoopen() sub, which triggers the VBS to automatically run once the macros have been enabled.
+
+Campaign version one
+
+The authors of Locky used uncommon obfuscation via the CallByName function and a significant string to generate the VBS code.
+
+The obfuscation is simple and is the same obfuscation as found inside Dridex email campaigns. The download  URL is “encrypted” and hard-coded as an array.
+VBS after deobfuscation:
+
+Campaign version two
+
+ 
+In the second campaign, the author used more complicated obfuscation over script files and added more steps before downloading the final PE binary file.
+Obfuscated batch file:
+
+Final deobfuscation Visual Basic Script:
+
+Execution script and hard-coded plaintext download URL:
+
+Campaign version three
+
+We also spotted emails with a very generic obfuscated JavaScript downloader inside the Zip archives.
+
+Here, we saw the same downloader that was featured in Campaign version two. In this case, however, it was just rewritten in JavaScript language.
+Here is the JavaScript after deobfuscation:
+
+Downloading and executing the Locky malware is the last and final step of all of the three mentioned campaigns.
+We also spotted two specific types of download URLs inside the infected documents and archives.
+
+
+
+
+
+Domain Type 1
+
+
+Domain Type 2
+
+
+
+
+ecoledecorroy.be/1/1.exe
+onigirigohan.web.fc2.com/1/1.exe
+killerjeff.free.fr/2/2.exe
+lasmak.pl/2/2.exe
+animar.net.pl/3/3.exe
+uponor.otistores.com/3/3.exe
+premium34.tmweb.ru/4/4.exe
+suicast.de/4/4.exe
+bebikiask.bc00.info/5/5.exe
+ratgeber-beziehung.de/5/5.exe
+proteusnet.it/6/6.exe
+test.rinzo.biz/6/6.exe
+avp-mech.ru/7/7.exe
+luigicalabrese.it/7/7.exe
+
+
+173.214.183.81/~tomorrowhope/09u8h76f/65fg67n
+66.133.129.5/~chuckgilbert/09u8h76f/65fg67n
+iynus.net/~test/09u8h76f/65fg67n
+
+mondero.ru/system/logs/56y4g45gh45h  
+neways-eurasia.com.ua/system/logs/7647gd7b43f43.exe
+tcpos.com.vn/system/logs/56y4g45gh45h
+tramviet.vn/system/logs/7647gd7b43f43.exe
+www.bag-online.com/system/logs/56y4g45gh45h
+choobyta.com/system/logs/23f3rf33.exe
+bitmeyenkartusistanbul.com/system/logs/87h754/
+shop.havtoto.bget.ru/system/logs/45g456jhyfg
+
+www.iglobali.com/34gf5y/r34f3345g.exe
+www.jesusdenazaret.com.ve/34gf5y/r34f3345g.exe
+www.southlife.church/34gf5y/r34f3345g.exe
+www.villaggio.airwave.at/34gf5y/r34f3345g.exe
+
+
+
+
+
+Malicious documents from campaign version two use a very specific Base64 decode function written in Visual Basic Script, which we also discovered inside other Banker/Banload/RAT malware campaigns in Brazil.
+
+Locky file cryptor
+We first saw samples of Locky spreading without a PE packer, which is strange as malware usually contains generic PE packers to avoid AV detections.
+Below is a graph of newly infected countries, day by day (DD/MM/YYYY). There are three peaks, which represent new campaigns targeting different geo-locations. The total count of infected countries is over 160. 
+
+
+
+
+
+Date
+
+
+Count
+
+
+Infected countries
+
+
+
+
+18.02. 2016
+
+
+18
+
+
+Brazil, Viet Nam, South Africa, Ghana, Lithuania, Bulgaria, Kuwait, Croatia, Namibia, Germany, France, Spain, Ukraine, Peru, Mexico, Chile, Ecuador, United States
+
+
+
+
+19.02. 2016
+
+
+24
+
+
+Philippines, India, Austria, Lebanon, South Korea, Thailand, Slovenia, Czech Republic, Hungary, Moldova, Belgium, Italy, Greece, Romania, Netherlands, Indonesia, Poland, Morocco, Ireland, Kenya, Bolivia, Costa Rica, Jamaica, Colombia
+
+
+
+
+20.02. 2016
+
+
+2
+
+
+Malaysia, Paraguay
+
+
+
+
+21.02. 2016
+
+
+1
+
+
+Argentina
+
+
+
+
+22.02. 2016
+
+
+4
+
+
+Serbia, Luxembourg, Singapore, Bangladesh
+
+
+
+
+23.02. 2016
+
+
+2
+
+
+Finland, Puerto Rico
+
+
+
+
+24.02.2016
+
+
+12
+
+
+Sri Lanka, Saudi Arabia, Brunei Darussalam, Pakistan, Cambodia, Great Britain, Taiwan, Guatemala, Curacao, Canada, Portugal, Japan
+
+
+
+
+25.02. 2016
+
+
+4
+
+
+Bosnia and Herzegovina, Azerbaijan, Tunisia, Slovakia
+
+
+
+
+26.02. 2016
+
+
+22
+
+
+Australia, Hong Kong, Israel, Kyrgyzstan, Turkey, Switzerland, Estonia, Sweden, Denmark, Guadeloupe, Russian Federation, Malta, Egypt, Reunion, Norway, China, Martinique, Macedonia, United Arab Emirates, Barbados, Cyprus, Venezuela
+
+
+
+
+27.02. 2016
+
+
+4
+
+
+Quatar, Maledives, Zimbabwe, Algeria
+
+
+
+
+28.02. 2016
+
+
+5
+
+
+Panama, Jordan, Djibouti, Congo, Uruguay
+
+
+
+
+29.02. 2016
+
+
+7
+
+
+Georgia, Latvia, Uganda, Gabon, Angola, Nigeria, Cameroon
+
+
+
+
+01.03. 2016
+
+
+6
+
+
+Comoros, Congo, Senegal, Nicaragua, New Caledonia, El Salvador
+
+
+
+
+02.03. 2016
+
+
+6
+
+
+New Zealand, Botswana, Niger, Madagascar, Haiti, Côte d’Ivoire
+
+
+
+
+03.03. 2016
+
+
+5
+
+
+Belarus, Kazakhstan, Iraq, Armenia, Dominican Republic
+
+
+
+
+04.03. 2016
+
+
+3
+
+
+Mauritius, Benin, Honduras
+
+
+
+
+05.03. 2016
+
+
+22
+
+
+Zambia, Mali, Liechtenstein, Cabo Verde, Iceland, Yeman, Guernsey, Macao, Palestine, Monaco, Tanzania, Guyana, Bahamas, Bahrain, Togo San Marino, Cook Islands, Malawi, Vatican City State, Vanuatu, Grenada, French Polynesia
+
+
+
+
+06.03. 2016
+
+
+11
+
+
+Northern Mariana Islands, Oman, Seychelles, Nepal, Liberia, Libya, Gibraltar, Andorra, Montenegro, Åland Islands, Saint Kitts and Nevis
+
+
+
+
+07.03. 2016
+
+
+9
+
+
+French Guiana, Mongolia, Lao People’s Democratic Republic, Tonga, Turkmenistan, Ethiopia, Mozambique, Albania, Swaziland
+
+
+
+
+
+The top 10 countries that have encountered Locky are: France, Italy, Germany, Spain, USA, Great Britain, Poland, Japan, Czech Republic, and Canada.
+Persistence
+After its execution, the Locky binary is copied to the %TEMP% directory and renamed to svchost.exe, to make it difficult for people to find and delete. The malware then removes the :Zone.Identifier flag from the newly created svchost.exe file (to bypass the “File Downloaded from the Internet” warning) and executes it. 
+
+The first downloaded Locky binary is moved to the %TEMP% directory, renamed as “sys*.tmp” and deleted by cmd.exe.
+
+Locky also sets a registry value to Software\Microsoft\Windows\CurrentVersion\Run in case the infected PC is restarted before the malware encrypts all the files. In this case, Locky encrypts the files during the next session. 
+
+The malware creates a new process with the CommandLine value “vssadmin.exe Delete Shadows /All /Quiet” and deletes stored data from Volume Shadow Copy Service. This action prevents a backup retrieval or system restore from previous saved data on an infected computer. 
+
+The malware then adds a “completed=1” value to the Locky registry key and deletes the previously added ..\CurrentVersion\Run value after encrypting all possible files. It also opens an instruction text file,creates an image file from txt and sets an instruction image as the computer’s desktop wallpaper.
+
+The malware’s process is closed and the malicious svchost.exe file is deleted from the %TEMP% directory in the last step.
+C&C servers
+Locky contains hard-coded IP addresses of C&C (Command and Control) servers and also uses a domain generation algorithm, which is probably used as a backup in case the main hard-coded IPs are blocked.
+C&C servers are used for reporting infections and to exchange encryption keys.
+
+Domain Generation Algorithm (DGA)
+The original domain generation algorithm was based on two hard-coded seeds and the current system time of an infected machine. This DGA version generates six unique domains every two days.
+
+The authors decided to change the DGA by a less deterministic algorithm after a quick domains block or sinkhole from AVs. This version of DGA is now based on seed value hard-coded to malware binary and this seed can be changed at any time or in every sample. It also generates eight unique domains every two days.
+
+ Both versions use the following Top Level Domains: 
+.be, .de, .eu, .fr, .in, .it, .nl, .pm, .pw, .ru, .tf, .uk, .us, .yt.
+You can download both DGA Python scripts here and here.
+List of hard-coded IP addresses:
+
+
+
+
+
+Hard-coded IP
+
+
+ISP/Organization/Geolocation
+
+
+Resolved IP 
+
+
+
+
+5.34.183.136
+
+
+Ua Servers, UA
+
+
+skaldin.uaservers.net
+
+
+
+
+31.41.47.3
+
+
+RelinkRoute, Relink LTD, RU
+
+
+31.41.47.3
+
+
+
+
+31.41.47.37
+
+
+RelinkRoute, Relink LTD, RU
+
+
+casader.ce
+
+
+
+
+31.184.233.106
+
+
+Virty.io Network, Virty.io, RU
+
+
+31.184.233.106
+
+
+
+
+46.4.239.76
+
+
+Hetzner-rz-fks, ObjectNova, DE
+
+
+static.76.239.4.46.clients.your-server.de
+
+
+
+
+85.25.138.187
+
+
+PlusServer AG, BSB-Service GmbH, DE
+
+
+echo509.dedicatedpanel.com
+
+
+
+
+86.104.134.144
+
+
+One Telecom SRL, MD
+
+
+144.onetelecom.md
+
+
+
+
+91.121.97.170
+
+
+Ovh Isp, Ovh Sas, FR
+
+
+ns353643.ip-91-121-97.eu
+
+
+
+
+91.195.12.185
+
+
+Host4.Biz, PE Astakhov Pavel Viktorovich, UA
+
+
+91-195-12-185.net.host4.biz
+
+
+
+
+91.234.33.206
+
+
+FOP Sedinkin Olexandr Valeriyovuch, UA
+
+
+client.thehost.com.ua
+
+
+
+
+94.242.57.45
+
+
+NET Network & vStoike.com DC, RU
+
+
+mail.hsaworkshop.ru
+
+
+
+
+95.181.171.58
+
+
+Qwarta.ru, QWARTA LLC, RU
+
+
+95.181.171.58
+
+
+
+
+109.237.111.168
+
+
+Adman, Krek Ltd., RU
+
+
+109.237.111.168
+
+
+
+
+109.234.38.35
+
+
+Vdsina, RU
+
+
+qikos.sa
+
+
+
+
+185.14.29.188
+
+
+Camper Solutions, NL
+
+
+skaldin11.example.com
+
+
+
+
+185.14.30.97
+
+
+Camper Solutions, NL
+
+
+vepliok.pq
+
+
+
+
+185.46.11.239
+
+
+Agava, RU
+
+
+kvm17915.hv9.ru
+
+
+
+
+185.82.216.213
+
+
+Itldc1-sof1, BG
+
+
+skaldin21.example.com
+
+
+
+
+188.138.88.184
+
+
+Plusserver AG, intergenia AG, DE
+
+
+xray730.dedicatedpanel.com
+
+
+
+
+192.71.213.69
+
+
+RIPE Network Coordination Center. FR
+
+
+335.ES.multiservers.xyz
+
+
+
+
+192.121.16.196
+
+
+EDIS GmbH, AT
+
+
+335.NL.multiservers.xyz
+
+
+
+
+193.124.181.169
+
+
+MAROSNET Telecommunication Company Network, RU
+
+
+test.ru
+
+
+
+
+195.154.241.208
+
+
+Online SAS, FR
+
+
+304.worldit.xyz
+
+
+
+
+212.47.223.19
+
+
+LINXTELECOM Linx Telecommunications B.V., EE
+
+
+ought-scan.retirecompet.com.223.47.212.in-addr.arpa
+
+
+
+
+
+Nine servers are located in Russia, three in Germany and the rest is in France, Ukraine, the Netherlands, Austria, Bulgaria, Estonia and Moldova.
+C&C communication
+All C&C requests are in a specific format:
+HTTP/1.1 POST http://{hardcoded_IP_or_DGA}/.main.php?{parameters}
+Parameters
+The malware computes a User ID and gathers some information about the infected machine. The User ID isn't randomly generated, but is instead computed as a MD5 hash of volume mount point GUID from the infected machine’s hard disk. The GUID can be displayed if the cmd.exe is run and the “mountvol” command is entered.
+
+Locky checks the infected device’s operating system version and checks if it is a 32/64 bit version, has the original installed service pack and which language the PC is set to, to determine in which language it should show the ransom message. The parameters AffiliateID, C&C command and two others parameters &corp= and &serv= are also requested by the C&C server. The Affiliate ID value is hard-coded inside Locky’s binary. We found AffiliateIDs with the values 0, 1 and 3.
+All parameters merged together:
+
+Parameters of Locky C&C command “&act=”:
+
+
+
+
+
+Parameter
+
+
+Action
+
+
+
+
+getkey
+
+
+Request public RSA key.
+
+
+
+
+stats&path + encrypted, failed, length
+
+
+Global statistics of encryption and paths of encrypted files.
+
+
+
+
+report&data
+
+
+List of all encrypted files.
+
+
+
+
+gettext&lang
+
+
+Request Locky language files.
+
+
+
+
+
+The entire malware traffic is encrypted with two different algorithms for incoming and outgoing data -- both algorithms contain specific hard-coded keys. Both incoming and outgoing traffic data includes a MD5 hash as a CRC of the data content.
+
+File encryption
+The malware starts encrypting files only after it reports the infection to the C&C server and gets back the RSA public key. Locky does not begin encrypting files without a requested RSA key or when a device is disconnected from the Internet. Public and private RSA keys for every infection are generated on the server’s side, so manual decryption is impossible.
+Attackers use RSA-2048 + AES-128 cipher with ECB mode for file encryption. All encrypted files are renamed to form {USERID}{random_hash} with .locky extension.
+
+Affected file types
+Locky malware can encrypt 164 file types that can be broken down into 11 categories:
+
+
+
+
+
+Office/Document files (62x):
+
+
+.123, .602, .CSV, .dif, .DOC, .docb, .docm, .docx, .DOT, .dotm, .dotx, .hwp, .mml, .odg, .odp, .ods, .odt, .otg, .otp, .ots, .ott, .pdf, .pot, .potm, .potx, .ppam, .pps, .ppsm, .ppsx, .PPT, .pptm, .pptx, .RTF, .sldm, .sldx, .slk, .stc, .std, .sti, .stw, .sxc, .sxd, .sxi, .sxm, .sxw, .txt, .uop, .uot, .wb2, .wk1, .wks, .xlc, .xlm, .XLS, .xlsb, .xlsm, .xlsx, .xlt, .xltm, .xltx, .xlw, .xml
+
+
+
+
+Scripts/Source codes (23x):
+
+
+.asm, .asp, .bat, .brd, .c, .class, .cmd, .cpp, .cs, .dch, .dip, .h, .jar, .java, .js, .pas, .php, .pl, .rb, .sch, .sh, .vb, .vbs
+
+
+
+
+Media files (20x):
+
+
+.3g2, .3gp, .asf, .avi, .fla, .flv, .m3u, .m4u, .mid, .mkv, .mov, .mp3, .mp4, .mpeg, .mpg, .swf, .vob, .wav, .wma, .wmv
+
+
+
+
+Graphic/Image files (14x):
+
+
+.bmp, .cgm, .djv, .djvu, .gif, .jpeg, .jpg, .NEF, .png, .psd, .raw, .svg, .tif, .tiff
+
+
+
+
+Database files (14x):
+
+
+.db, .dbf, .frm, .ibd, .ldf, .mdb, .mdf, .MYD, .MYI, .odb, .onenotec2, .sql, .SQLITE3, .SQLITEDB
+
+
+
+
+Archives (11x):
+
+
+.7z, .ARC, .bak, .gz, .PAQ, .rar, .tar, .bz2, .tbk, .tgz, .zip
+
+
+
+
+CAD/CAM/3D files (8x):
+
+
+.3dm, .3ds, .asc, .lay, .lay6, .max, .ms11, .ms11 (Security copy)
+
+
+
+
+Certificates (5x):
+
+
+.crt, .csr, .key, .p12, .pem
+
+
+
+
+Virtual HDD (4x):
+
+
+.qcow2, .vdi, .vmdk, .vmx
+
+
+
+
+Data encryption (2x):
+
+
+.aes, .gpg
+
+
+
+
+Virtual currency (1x):
+
+
+wallet.dat
+
+
+
+
+Because the file type range is very wide, this malware can also affect a large number of businesses. Especially interesting are the.ms11 file types, which are created by the CAD application used for printed circuit boards. File types from the Virtual HDD category are also interesting, as they are used by many developers, testers or virtualized business solutions.
+Locky also adds “_Locky_recover_instructions.txt” file to every directory with encrypted files and also sets “_Locky_recover_instructions.bmp” as desktop wallpaper.
+Locky encrypts files on all fixed drives, removable drives and also on RAM disk drives. Remote drives are not affected.
+
+We discovered some changes inside the newer Locky binary version. The algorithm is more precious and accurate now.
+
+Exclusion of Russian PCs
+The newer version of the malware contains a new hard-coded config value to disable Locky’s encryption on PCs whose locale is set to Russia or whose language is set to Russian (0x19). The hard-coded config value also determines how long Locky should remain dormant after its execution to avoid sandbox detections.
+
+Configuration structure
+Malware samples from the newer version contain hard-coded configuration data. Included are AffiliateID (DWORD), DGA seed value (DWORD), count of second for Sleep (DWORD), create %TEMP%\svchost.exe (BYTE), set Locky to \CurrentVersion\RUN registry (BYTE), exclude RU machines and list of hard-coded IPs.
+
+Locky payment method
+Locky’s payment system for decrypting files is the same as that of numerous other ransomwares. Locky’s website is hidden inside the Tor network and the ransom can only be paid with BitCoins. The decryption price is likely based on how many files are encrypted and the ransom value typically starts at 0.5 BitCoins.
+Locky’s decryptor can be found on the following TOR sites:
+6dtxgqam4crv6rr6.onion
+i3ezlvkoi7fwyood.onion
+lpholfnvwbukqwye.onion
+twbers4hmi6dc65f.onion
+Locky’s authors changed the design of the decryptor webpage during its campaign.
+Original design:
+
+New design:
+
+You can download the Locky decryptor after the payment has been verified. The decryptor contains a hard-coded private RSA key and it’s also possible to decrypt files with other stored key files using the /key: parameter.
+
+Traces
+Inside some of Locky’s malicious documents, we uncovered several strings which shed light on the malware’s authors. As previously mentioned, the Locky creators are probably the same or closely connected to the Dridex group, as they use the same obfuscation techniques and spam email campaign.
+We also suspect that the authors are from Russia, because many of their C&C servers are there and because they added a function to the newer Locky binary to exclude Locky from infecting Russian PCs. 
+While taking a close look at Locky’s strings, we discovered that certain malicious documents contained file path strings that include PC user names. Yikes!
+
+
+Conclusions
+Locky ransomware is currently a big player in the malware sphere. When looking into Locky, we can see all top features, such as a time-based DGA system, huge spam email campaigns, various scripting languages, generic PE packers, server-side encryption key generation and Tor/BitCoin payment. 
+The authors of Locky are skilled and are developing Locky further. They reacted to the AV industry blocking their C&C server infrastructure by changing the DGA algorithm and also patched some minor bugs in the newer version.
+File encryption malware is currently very popular and can be very profitable. We therefore predict new ransomware families will emerge this year.
+How to stay safe
+
+As always, don’t open suspicious attachments (e.g. .doc, .xls, and .zip files)
+Disable Microsoft Office macros by default and never enable macros in strange/unknown attachments that you receive via email
+Keep recent backup copies of important data in a secure place either online or offline
+Ensure that your system and applications are fully updated and patched
+
+
+Ransomware
+
+
+Check 13 comments or write your comment
+
+
+
+
+
+
+
+
+

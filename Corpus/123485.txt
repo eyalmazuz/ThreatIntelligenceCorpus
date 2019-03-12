@@ -1,0 +1,23 @@
+Ugly Password Gaffe Plagues Cryptkeeper Encryption App
+A longtime Debian developer has recommended that the Cryptkeeper Linux encryption app be removed from the distribution. The advice came after the disclosure of a bug where the app sets the universal password “p” to decrypt any directory created with the program.
+Simon McVittie, a programmer at Collabora, confirmed the findings of researcher Kirill Tkhai, who disclosed the bug Jan. 26. McVittie said he was able to reproduce the bug in the Stretch version (Debian 9, in testing), but not in the Jessie version (Debian 8).
+“I have recommended that the release team remove this package from stretch: it currently gives a false sense of security that is worse than not encrypting at all,” McVittie said in response to the original bug report. Francesco Namuri, another Debian developer, agreed the Cryptkeeper packages should be yanked from Debian.
+Tkhai’s advisory said Cryptkeeper version 0.9.5-5.1 is affected. The problem appears when Cryptkeeper calls encfs, a command line interface for the encrypted file system. Encfs simulates a ‘p’ keystroke but the uses it instead as a universal password.
+“It looks as though cryptkeeper makes assumptions about encfs’ command-line interface that are no longer valid,” McVittie said. “I also notice that cryptkeeper does not check what write() and close() return during its interactions with encfs, which seems very likely to lead to undesired results.”
+From Tkhai’s report:
+I’ve looked into cryptkeeper code and found, it calls encfs with -S option:
+execlp (“encfs”, “encfs”, “-S”, crypt_dir, mount_dir, NULL);                 exit (0);
+While the password is passed to encfs using pipe in this way:
+// paranoid default setup mode
+//write (fd[1], “y\n”, 2);
+//write (fd[1], “y\n”, 2);
+write (fd[1], “p\n”, 2);
+write (fd[1], password, strlen (password));
+write (fd[1], “\n”, 1);
+But it seems it’s wrong. When I’m executing encfs program from console $ encfs -S crypt_dir mount_dir and I’m passing “p\n”, encfs exits and doesn’t wait for a password itself.
+“I do not know, who is blame, cryptkeeper or encfs, and even nothing about if the interface above exists (“p\n” before the password),” Tkhai said. “But decrypting using ‘p’ password works for any encrypted directory, created using cryptkeeper. This obviously mustn’t work such way.”
+Namuri clarified in a statement to Threatpost that the stable version of Debian is not affected by the bug, which appears only if later versions of encfs are enabled.
+“Cryptkeeper is a GUI front end to encfs; it works passing to encfs executable the parameters needed to mount or to create a new encrypted folder. On newer version of encfs the interface is changed a litle bit,
+this causes that cryptkeeper used with newer versions of encfs are created with ‘p’ password, ignoring the password entered by the user,” Namuri said.
+The problem on the encfs end is being addressed as well, he said. According to the co-maintainer of encfs, this was an “unintentional ABI change.”
+This article was updated Feb. 1 with comments from Francesco Namuri. 

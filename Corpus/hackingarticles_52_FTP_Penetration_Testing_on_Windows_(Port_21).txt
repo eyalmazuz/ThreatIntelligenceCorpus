@@ -1,0 +1,110 @@
+
+FTP Penetration Testing on Windows (Port 21)
+
+Hello friends today we are sharing tips and tricks on FTP attacks and security through FTP penetration testing which will help to secure your server from any kind FTP attack.
+FTP stand for File Transfer Protocol used for the transfer of computer files such as docs, pdf, multimedia and etc between a client and server on a computer network via port 21. Port 21 is default port which gets open when FTP is activated for sharing data.
+Let’s start!!
+Firstly we are going to setup an FTP server on our Windows 7 for sharing file in a LAN. In order to accomplish that we are going to open Control Panel >Programs >Programs and Features >Turn Windows features on or off as shown below.
+
+Here Expand Internet Information Services and check the FTP Server option.
+Also, ensure that FTP Extensibility and FTP Service are both checked as show below and click OK to begin Installation.
+This Installs the IIS and FTP Service Manager, be Patient it might take some time.
+
+Configure FTP Site in IIS
+Now to open IIS, we will open Control Panel after then open System and Security and here we will open Administrative Tools. In Administrative Tools you will find IIS Manager as shown below, open it.
+
+The new window of Internet information IIS Manager will come up; right-click Sites given in left panel under Connections, select Add FTP Site.
+This will open a new window as shown below.
+
+Enter the name of your FTP site of your choice, as shown in given image ignite.
+Enter the path to the FTP folder you want to use to send and receive files. In our case, we created a folder named ftp in location C:\ftp.
+And click next.
+
+Allow following setting in Authentication and Authorization for your FTP site and then click on Finish.
+Authentication: Basic
+Authorization: specific users (pc7)
+Permission: read and write
+
+Binding and SSL Settings, we will bind our IPv4 address to the server by allowing following setting then click on next.
+
+From given image you can see we had successfully configure FTP server for Ignite. Now let’s try to connect with it for sharing files.
+
+Attacker may take help of nmap to verify whether port 21 is activated or not. For FTP penetration, we are also using nmap in order to scan targeted system (192.168.1.128) for open FTP port.
+nmap -p 21 192.168.1.128
+If file transfer service is allowed then nmap will show OPEN as state for port 21, as shown in given image.
+
+Connect client to FTP Server through WinSCP
+WinSCP is free software which is used to access the ftp server. You can download it from here.
+Protocol to: FTP
+Encryption To: No Encryption
+Host name: IP of the FTP Server
+Port: 21
+Username and Password: Windows login credentials of the user.
+Click on login
+
+As you can see I have successfully connected to my ftp server which have a file called demo.txt.
+
+ 
+Now, let’s try to get the FTP version through ftp_version on Metasploit
+Open the terminal in your kali Linux and Load metasploit framework now type following command to scan for FTP version.
+use auxiliary/scanner/ftp/ftp_version
+msf auxiliary(ftp_version) > set rhosts 192.168.1.128
+msf auxiliary(ftp_version) > exploit
+
+Open IIS Manger.
+Click on Features View given in bottom of window.
+
+A new window for FTP messages will come up where you can change Message Behavior.
+Now let’s check if our FTP version is still visible or not.
+
+You can verify it by executing following command in kali Linux for NMAP version scan.
+nmap -p 21 -sV 192.168.1.128
+As you can see that our FTP version is no longer visible to anybody.
+
+Let’s try to make Brute force attack on our FTP Server using Metasploit.
+Open the terminal in your kali Linux and Load metasploit framework now type following command to Brute force FTP login.
+use auxiliary/scanner/ftp/ftp_login
+msf auxiliary(ftp_login) > set rhosts 192.168.1.128
+msf auxiliary(ftp_login) > set user_file /root/Desktop/user.txt
+msf auxiliary(ftp_login) > set pass_file /root/Desktop/pass.txt
+msf auxiliary(ftp_login) > set stop_on_success true
+msf auxiliary(ftp_login) > exploit
+From given image you can observe that our FTP server is not secure against brute force attack because it is showing matching combination of username and password for login. So let’s protect our FTP server against Brute force.
+
+Secure FTP server against Brute Force Attack
+Open IIS Manager
+Now open FTP IPv4 Address and Domain Restrictions. Here we are going to allow only a particular IP address to access the FTP server. This will allow only valid IP to get connect with FTP.
+
+Allow specific IP to connect FTP
+Now following given below step:
+Here you can also add range of IPs of your network.
+
+Restrict IPs to connect FTP
+Now repeat the step with some changes to restrict other IPs for denying to access FTP services. 
+Now following given below step:
+Hence if any other user or attacker finds out credential for ftp login he cannot able to connect with server.
+
+Let’s verify above setting by Brute force again in the same way we did before. From given image you can observe though it is showing incorrect combination for correct credential also.
+
+You can forward port 21 on another port for increasing server security although to perform this you need to open IIS.
+
+Now click on the Bindings on Actions Tab.
+It will open a window as shown below where it is showing that FTP service is activated on port 21, now click on edit to replace this port into another.             
+
+From given image you can see we have are now using port 5000 for FTP services.
+
+Now let’s check using nmap
+nmap -p 5000 -sV 192.168.1.128
+As you can see the FTP service have been shifted to port 5000
+
+Now to verify if the service is actually running on port 5000 let’s login into FTP server using WinSCP and this time using port 5000 as shown below
+
+Great!!! We are successfully connected with FTP server via port5000
+
+In IIS Manager we can also manage Logs of our FTP Server. Here, we can Schedule the Logging and also manage the size of logs and Location of Logs For monitoring ftp log follow given below steps:
+Open FTP Logging in the Features View.
+
+Now if you want to view logs of FTP server you can open the directory which you have browsed for saving logs i.e. C:\inerpub\logs\Logsfiles
+From given below image you can observe logs for FTP login.
+
+Author: Pavandeep Singh is An Ethical Hacker, Cyber Security Expert, Penetration Tester, India. Contact here

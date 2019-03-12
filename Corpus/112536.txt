@@ -1,0 +1,19 @@
+Researcher Finds Method to Bypass Google Password Alert
+A security researcher has developed a method–actually two methods–for defeating the new Chrome Password Alert extension that Google released earlier this week.
+The Password Alert extension is designed to warn users when they’re about to enter their Google passwords into a fraudulent site. The extension is meant as a defense against phishing attacks, which remain a serious threat to consumers despite more than a decade of research and warnings about the way the attacks work.
+“Here’s how it works for consumer accounts. Once you’ve installed and initialized Password Alert, Chrome will remember a ‘scrambled’ version of your Google Account password. It only remembers this information for security purposes and doesn’t share it with anyone. If you type your password into a site that isn’t a Google sign-in page, Password Alert will show you a notice like the one below. This alert will tell you that you’re at risk of being phished so you can update your password and protect yourself,” Drew Hintz and Justin Kosslyn of Google wrote in a post on the new extension. 
+Just a day after Google released the extension, Paul Moore, a security consultant in the U.K., developed a method for bypassing the extension. The technique involved using Javascript to look on a given page for the warning screen that Password Alert shows users. The method Moore developed then simply blocks the screen, according to a report on Ars Technica. In an email, Moore said it took him about two minutes to develop that bypass, which Google fixed in short order.
+However, Moore then began looking more closely at the code for the extension, and Chrome itself, and discovered another way to get around the extension. He said this one likely will be more difficult to repair.
+“The second exploit will prove quite difficult (if not near impossible) to resolve, as it leverages a race condition in Chrome which I doubt any single extension can remedy. The extension works by detecting each key press and comparing it against a stored, hashed version.  When you’ve entered the correct password, Password Alert throws a warning advising the user to change their password,” Moore said.
+“In the old version, this warning was handled in the DOM which is obviously vulnerable because the extension and malicious code share the same origin. In the new version, the warning window is handled by the UA itself and, because it’s no longer within the same origin, javascript cannot alter/hide the warning screen. However, we can trick the UA into thinking the user hasn’t entered the password.”
+By accomplishing that, Moore can prevent the Password Alert extension from seeing the whole password.
+“By refreshing the page after each key press, the UA and event handlers attached to that session never see the entire password, so the warning is never fired,” Moore said. 
+“So instead of: “CorrectHorseBatteryStaple” -> /login.html -> valid hash -> warning window
+the UA sees
+“C” -> /login.html -> invalid hash
+“o” -> /login.html -> invalid hash
+“r” -> /login.html -> invalid hash
+… and so on.  The only caveat being instances where the user enters the password *very* slowly, which the extension handles as expected.”
+Moore said it took him about 20 minutes to develop this technique and said he’s not sure there’s a great way to fix the problem.
+“To be honest, I can’t think of way to do it without introducing other, far more serious issues.  One possibility is persisting input states across multiple tabs/windows, which I doubt is even possible with tabs/extensions being isolated from each other,” Moore said.
+Google officials say that it’s common for researchers to look for ways to evade new protections and that the company will make whatever fixes are appropriate.

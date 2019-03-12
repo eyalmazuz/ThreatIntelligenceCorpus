@@ -1,0 +1,203 @@
+
+Extending Burp Proxy With Extensions
+
+
+By Chris Bush. 
+
+The world of information security is awash with tools to help security practitioners do their jobs more easily, accurately and productively.  Regardless of whether you are responsible for doing PCI audits, network vulnerability assessments, enterprise risk assessments, social engineering, or what have you, there’s a tool for that.  Usually there are several.  Some are good, some not so much.   One of the reasons a tool may or may not ultimately be useful is the ability for its functionality to be customized or extended to meet the needs of the practitioner using it.  This is never truer than in application security, where every application the security tester confronts is different from the last.  Bespoke applications demand bespoke security testing, and this requires that the tools used by the application security professional be not only robust and feature rich, but customizable in a way that allows them to be rapidly extended to fit to the needs of the job at hand.
+
+Pound for pound (or maybe dollar for dollar), the Burp Suite is one of the best tools an application security professional can have in their tool kit.  It has capabilities and features on par with, or exceeding, those of big-name commercial application scanners costing tens of thousands of dollars more, all in a single UI where all of the tools integrate and work together seamlessly.  Often overlooked is the fact that Burp includes an extensibility framework that allows you to extend Burp’s functionality in a number of useful ways, through loading 3rd party extensions, or writing your own.
+An Overview of Extending Burp
+The Burp extensibility framework provides the ability to easily extend Burp’s functionality in many useful ways, including:
+
+Analyzing and modifying HTTP requests/responses
+Customizing the placement of attack insertion points within scanned requests
+Implementing custom scan checks
+Implementing custom session handling
+Creating and issuing HTTP requests
+Controlling and initiating actions within Burp, such as initiating scans or spidering
+Customizing the Burp UI with custom tabs and context menus
+Much, much more
+
+
+There are a growing number of 3rd party extensions available that you can download and use.  The BApp Store was recently created, providing access to a number of useful extensions that you can download and add to Burp.  Beginning with Burp Suite version 1.6 beta, released along with the BApp Store on March 4, 2014, access to the BApp Store is also provided directly from within Burp’s UI.
+
+Additionally, there are a number of examples available in the Portswigger blog that provide an excellent starting point for writing your own extension, depending on what you are trying to accomplish.  Go to the Burp Extender page to see an overview of some of these examples, including a links to the full blog posts and downloadable code.  And of course, you can always turn to the Burp Extension User Forum for help with writing your own extensions, and more examples contributed by the user community.
+
+In the rest of this article, we’ll provide a quick overview of the Burp Extender tool, which you will use to load extensions and configure Burp to run those extensions.  Then we’ll dive right into writing our own custom extension, and create an extension that performs a couple of custom passive scans.
+Burp Extender Tool
+
+First, let’s take a look at the Burp Extender Tool.  When you select the Extender tab in Burp Suite, there are four sub-tabs that provide access to the functionality and configuration options of the Extender. 
+Extensions
+The Extensions tab (shown below) allows you to load and manage the extensions you are using in Burp.  From this you can add and remove your extensions, as well as manage the order in which extensions and their resources are invoked.  The panel at the bottom provides details on a selected extension, as well as tabs to display any output written by the extension, as well as any error messages produced by the extension.
+
+BApp Store
+
+The BApp Store tab, new with version 1.6 beta of Burp Suite, provides direct access to downloadable extensions from the Portswigger BApp Store. 
+
+APIs
+
+The APIs tab essentially just provides a convenient reference to the Burp Extensibility API.  From here, you can also download the Java interface files, for inclusion in your Java project, as well as download the Javadocs as a set of HTML files that you can access locally for reference.
+
+Options
+
+Finally, the Options tab is where you will configure things like the location of different environments required to run your extensions, depending on whether the extension is written in Java, Python, or Ruby.  To run extensions written in Python requires the use of Jython, a Python interpreter that is written in Java.  Similarly, to run extensions written in Ruby requires the use of JRuby, a Ruby interpreter written in Java.  The Options tab allows you to specify the locations of the Jython JAR file or JRuby JAR file respectively.  Download the most recent versions of these and configure Burp Extender to point to them if you will be writing extensions in Python or Ruby.
+
+
+Loading and managing extensions and configuring the runtime options needed is very straightforward and simple.  Refer to the Burp Extender Help page online for additional information.
+Writing Your Own Extensions
+
+You can write your own extensions in Burp using the Burp Extensibility API.  The API consists of a number of Java interfaces that you will provide implementations of, depending upon what you are trying to accomplish.  It is beyond the scope of this article to cover the entire API in detail.  Refer to the Burp Extender Javadoc page online for a complete description.  Instead, we’ll cover a few key interfaces that are used by all extensions, some that are of practical use to nearly all extensions, as well as some that will be useful in understanding the example extension that will be presented later in this article.  As indicated previously, Burp extensions can be written in Java, Python, or Ruby.  Choose the language you are most familiar with.  We’ll use Python here, for its familiarity and the ease of development as an interpreted language.  While code examples provided in this article will be in Python, they should be easily read and understood by anyone with a programming background in Java or another high-level language.
+IBurpExtender
+
+The IBurpExtender class is the foundation of every extension you will write.  A Burp extension must provide an implementation of IBurpExtender that is declared public, and implements a single method, called registerExtenderCallbacks.  This method is invoked when the extension is loaded into Burp, and is passed an instance of the IBurpExtenderCallbacks class.  This class provides a number of useful methods that can be invoked by your extension to perform a variety of actions.  At its very simplest, an extension in Burp starts out like this:
+ from burp import IBurpExtender
+class BurpExtender(IBurpExtender):
+    def registerExtenderCallbacks(self, callbacks):
+        # put your extension code here
+        return
+
+
+IBurpExtenderCallbacks
+
+As indicated above, an instance of this class is passed to the registerExtenderCallbacks method in your IBurpExtender implementation when the extension is loaded in Burp.  Through this callbacks object, you have access to a wide variety of useful methods that will help you create your extension.  I’ll point out just a few, as these will be of importance as we build out our example custom scanner extension to follow.
+
+getHelpers – Obtain an instance of the IExtensionHelpers class, which provides numerous useful "helper" methods that can be used to add functionality to an extension.
+setExtensionName – Sets the name of the extension as it will appear in the Extensions tab in Burp Suite.
+registerScannerCheck – Used to register an extension as a custom Scanner check.
+applyMarkers – Used to apply markers, or highlights, to areas of a request or response.  For instance, this may be used to mark a vulnerable parameter in a request, or an area of the response that indicates a vulnerability, such as a reflected XSS payload.
+
+
+This is just a small taste.  There are many other methods available to you in an instance of IBurpExtenderCallbacks.  Consult the Burp Extender Javadoc page online for complete details.
+IExtensionHelpers
+The IExtensionHelpers class provides access to another large set of methods that you will undoubtedly find useful.  It will be the rare extension that doesn’t get an instance of this class, which is obtained using a call to the getHelpers() method of IBurpExtenderCallbacks (see above).  Just a few examples of the methods provided by this class are the following:
+
+analyzeRequest –  Used to analyze an HTTP request, and obtain various details, such as a list of parameters , headers, and more.
+analyzeResponse – Used to analyze an HTTP response, and obtain various details, such as a list of cookies, headers, the response code, and more.
+urlEncode – Perform URL encoding on a piece of data.
+urlDecode – Perform URL decoding on a piece of data.
+indexOf – Searches a piece of data for a specified pattern.  This is very useful for search a request or a response for a specific value, such as PII, or examining the response for a parameter value that was in the corresponding request.
+bytesToString – Converts data from an array of bytes to a String object.  Many of the methods in the Burp API operate on an array of bytes, so this comes in quite handy.
+
+IScannerCheck
+Extensions implement this interface when they are going to be used to perform custom scan checks.  Your extension must call the registerScannerCheck method of the IBurpExtenderCallbacks class to tell Burp that it is implementing this interface.  Burp will then know to use your extension when performing active or passive scans on a base request/response pair, as well as to report any issues (see IScanIssue below) identified by your custom scan checks.  The following three methods may be implemented by an IScannerCheck class:
+
+consolidateDuplicateIssues – This method is invoked when the custom Scanner check has reported multiple issues for the same URL.  You use this to tell Burp whether to keep the existing issue, or replace with the new issue, based on whatever criteria you decide.
+doActiveScan – This method is invoked for each insertion point that is actively scanned by Burp.  An implementation of this will then construct a new request, based on the base request passed, and insert a test payload into the specified insertion point.  It will then issue that new request, and examine the response for an indication that the inserted payload reveals a vulnerability.
+doPassiveScan – This method is invoked for each base request/response pair that Burp passively scans.  An implementation of this will typically examine the base request and/or response for patterns of interest.  No new requests should be generated from a passive scan.
+
+
+Both the doActiveScan and doPassiveScan methods must return a list of IScanIssue objects, which Burp will then automatically include in the Scanner issues report.
+IScanIssue
+
+The IScanIssue class provides a representation of a Scanner issue.  An extension may retrieve current issues (IScanIssue objects) from the Scanner tool by registering an IScannerListener callback, or by calling the getScanIssue method of the IBurpExtenderCallbacks class.  Scanner issues can be added to Burp by implementing the IScanIssue class in your extension, and calling the addScanIssue method of the IBurpExtenderCallbacks class with specific instances.  Additionally, Scanner issues can be added via a custom scan check, by creating a list of instances of IScanIssue that is returned by either the doPassiveScan or doActiveScan methods of an IScannerCheck implementation.
+
+Implementing the IScanIssue interface involves implementing a constructor method to set the details of the Scanner issue, as well as a number of getter methods to retrieve those details.  We won’t go into details of the various methods here, as they will often be as simple as setting a class variable with a value passed to the constructor, and implementing a getter method that returns this value.
+A Custom Passive Scanner
+https://github.com/OpenSecurityResearch/CustomPassiveScanner
+
+To conclude our discussion, we will present an example extension that implements a custom scanner, which will perform two different passive scan checks:
+
+Reflection Checks – Using the values of the parameters in the base request that is being passively scanned, this check searches the corresponding response for those same values, providing a candidate point for further testing for reflected XSS vulnerabilities.
+Regular Expression Match – Can be used to examine the base response of a passive scan request, looking for any string that matches a particular regular expression.  In the context of this example extension, this check is used to do a customized search of application responses using a regular expression designed to match potentially sensitive personally identifiable information (PII) unique to a specific, non-US, country.
+
+
+The full source code for this example extension can be downloaded from our GitHub page.  This extension is written in Python, so to try it out you will first need to download the latest Jython library from The Jython Project, and configure the Burp Extender to use it.  Then add the extension, and try it out.
+
+The source code is extensively documented with comments.  With the information provided above, as well as the Burp API Javadocs and the comments in the code, it should be easy to grasp what’s going on in the code.  In the remainder of this article, I’ll go into a little detail for a few key sections of the code that may be particularly interesting or require some further context for understanding.
+
+Earlier, we showed the simplest example of a Burp extension that does nothing.  Recall that at a minimum an extension must implement the IBurpExtender interface, which has one method – registerExtenderCallbacks.  Let’s take a quick look at the implementation of our registerExtenderCallbacks method.
+ Line 15-26
+def registerExtenderCallbacks(self, callbacks):
+      # Put the callbacks parameter into a class variable so we have class-level scope
+      self._callbacks = callbacks
+
+      # Set the name of our extension, which will appear in the Extender tool when loaded
+      self._callbacks.setExtensionName("Custom Passive Scanner")
+        
+      # Register our extension as a custom scanner check, so Burp will use this extension
+      # to perform active or passive scanning and report on scan issues returned
+      self._callbacks.registerScannerCheck(self)
+        
+      return
+
+
+
+The registerExtenderCallbacks method is passed an instance of the IBurpExtenderCallbacks class.  On line 17 above, we are simply storing this callbacks object in a class variable, so that it has class-level scope, allowing any other methods within our BurpExtender class to access it.  On line 20, we use one of the methods of the callbacks object, setExtensionName, to set the name of our extension.  This is how the extension will be identified in the Extender tool when it is loaded.  Finally, on line 24, we call the registerScannerCheck method of the callbacks object.  This tells Burp that our extension implements a custom scanner check, and Burp will now call the doActiveScan and doPassiveScan methods of our extension whenever it is performing an active or passive scan, respectively.  In our extension, we have only implemented doPassiveScan.
+
+Our implementation of doPassiveScan makes use of a custom class that we have created, called CustomScans, which is not an implementation of anything in the Burp API.
+ Line 47
+self._CustomScans = CustomScans(baseRequestResponse, self._callbacks)
+
+
+
+As we see above, within doPassiveScan, an instance of this class is created, passing the base request/response pair, as well as our instance of IBurpExtenderCallbacks that was created as a class variable in the registerExtenderCallbacks earlier.  The purpose of the CustomScans class is to implement one or more methods that we can call that perform unique scan checks against the base request/response pair being passively scanned.   In this extension, we’ve implemented two methods in CustomScans, called findReflections and findRegEx, whose purpose was described above.
+
+Next, the extension’s implementation of doPassiveScan calls the findReflections method of CustomScans.  This method will examine the base request/response pair, passed previously to the constructor for CustomScans, and identify any request parameters whose value appears in the corresponding response.
+ Line 51-62
+issuename = "Possible Reflected XSS"
+issuelevel = "Information"
+issuedetail = """The value of the $param$ request parameter appears
+        in the corresponding response.  This indicates that there is a
+        potential for reflected cross-site scripting (XSS), and this URL
+        should be tested for XSS vulnerabilities using active scans and
+        thorough manual testing and verification. """
+
+tmp_issues = self._CustomScans.findReflections(issuename, issuelevel, issuedetail)
+        
+# Add the issues (if any) from findReflections to the list of issues to be returned
+scan_issues = scan_issues + tmp_issues
+
+
+
+Three arguments passed to findReflections provide information used to construct any new scan issues, including the issue name, level (or severity), and issue details.  Note that the argument representing the issue details contains HTML tags.  Burp will interpret these tags and render the issue details in its UI accordingly.  Finally, the findReflections method returns a list of scan issues, in tmp_issues, which is then appended to the list of issues, scan_issues, which will ultimately be returned to Burp from doPassiveScan. 
+
+
+Following the above code, lines 69-81 follow a similar patter, calling CustomScans.findRegEx, and appending any resulting issues to the scan_issues list.  Lines 85-88 then returns scan_issues if it is not empty, else it returns None (think null).  Burp will then include the returned issues, if any, in the Scanner issues report.
+
+The findReflections and findRegEx methods of CustomScans should be fairly straightforward to understand, and each follows a very similar flow.   Lines 127-136 of findReflections, and lines 160-169 of findRegEx in particular follow a very similar pattern, which we’ll explain below.
+ Line 127-136 (findReflections)
+offset[0] = start
+offset[1] = start + len(paramVal)
+offsets.append(offset)
+                    
+# Create a ScanIssue object and append it to our list of issues, marking
+# the reflected parameter value in the response.
+                    scan_issues.append(ScanIssue(self._requestResponse.getHttpService(),              
+        self._helpers.analyzeRequest(self._requestResponse).getUrl(), 
+        [self._callbacks.applyMarkers(self._requestResponse, None, offsets)],
+        issuename, issuelevel, issuedetail.replace("$param$", paramName)))
+
+
+The first three lines set up an array that is used to store offsets used to apply a marker to a region of the response, in this case to highlight the reflected parameter value.  The first array element contains the start position of the identified value, and the second element contains its end position.  This array of two values is then appended to a list, called offsets, which will be passed to the applyMarkers method of IBurpExtenderCallbacks when the new scan issue is created.  The applyMarkers method expects a List of arrays in its last two arguments, each array containing the start and end values of regions to be marked in the request and response respectively.
+
+The last four lines above create an instance of our ScanIssue class, which is our extension’s implementation of the IScanIssue interface, by calling its constructor using a number of arguments.  We then append that new instance of ScanIssue to a list, called scan_issues, which will be returned back to our caller, doPassiveScan.  In the call to the constructor for our Scan, we call the applyMarkers method of IBurpExtenderCallbacks, passing the base request/response pair, and offsets for applying markers to the request (None in this case), and to the response, using the list, offsets, described above.  The last three arguments to the ScanIssue constructor provide the issue name, issue level (severity), and issue detail information that was passed as arguments to findReflections.  Here, we are replacing a token in the literal string passed in the issuedetail argument with the actual parameter value that was reflected in the response.  This adds useful detail to the new scan issue for the tester, and also makes it so Burp will identify the issue as a unique instance when it calls our extension’s consolidateDuplicateIssues method.
+
+The findRegEx method in CustomScans follows a similar pattern to that described above for findReflections.  It makes use of Python’s regular expression operations to search the response, but otherwise uses the same techniques to create new scan issues as in findReflections.
+
+One part of findReflections that is perhaps non-intuitive when examining the code is the following:
+ Line 122
+if len(paramVal) > 3:
+
+
+
+Here we are checking the length of the variable paramVal, which contains the value of the current parameter we are checking for reflection of.  In order to prevent a lot of noise from coincidental matches, we are simply checking that the parameter’s value is greater than three characters long.  This is a fairly simplistic approach, and you are free to try any heuristic you can think of here.  Regardless of what you try, since this is a passive scan, eliminating potentially coincidental matches may also eliminate true reflection of parameter values that may in fact be vulnerable to XSS.  Remember, the point of this passive XSS scan is only to identify candidate points for further examination and testing, not to actually identify XSS vulnerabilities.  Caveat emptor.
+
+Lastly, there are some additional classes from the Burp Extensibility API that are being used in the example extension that have not been covered here.  These classes are not explicitly implemented in the extension, but are used implicitly, typically as return values from other methods in the Burp API.  They are mentioned briefly below, but you are encouraged to examine these in more detail in the Burp Extender Javadoc page online.
+
+IHttpRequestResponse – Representation of an HTTP message
+IHttpService – Representation of an HTTP service, to which requests can be sent
+IRequesetInfo – Representation of an HTTP request
+IParameter – Representation of an HTTP request parameter
+
+Conclusion
+As you can see, while it does involve some programming, creating Burp extensions is really quite straightforward, and should be no problem for anyone with a reasonable programming or scripting background.  In the above example, we have the basics of a fairly useful custom scan check extension that performs two different passive scan checks, in around 160 lines of code (excluding comments).
+
+
+Try out the example above, visit the new BApp Store, study the Burp Extensibility APIs, and you’re sure to come up with ideas for your own extensions that will help you do your job more easily, accurately, and productively, and get better results by customizing Burp to meet your particular needs.  Best of luck.
+
+
+ root@bt:~# 
+
+
+

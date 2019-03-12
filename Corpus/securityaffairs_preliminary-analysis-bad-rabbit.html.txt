@@ -1,0 +1,46 @@
+
+					CSE Malware ZLab – Preliminary analysis of Bad Rabbit attack					
+This is just the beginning of a complete report that we will release in the next days, but we believe our findings can be useful for the security community.
+This malware remembers the notorious NotPetya basically for two characteristics:
+Figure 1 – Ransom note after the reboot
+Comparing NotPetya with Bad Rabbit we noticed that the latter has more sophisticated behavior. Vxers likely reused some pieces of NotPetya code increasing the complexity of the code itself and fixing coding error that transforms NotPetya from a ransomware to wiper. The Bad Rabbit leverages the open source library DiskCryptor in order to encrypt the user files.
+The ransomware propagates through drive-by download attacks, attackers infected many sites in Russia, Bulgaria, and Turkey. Bad Rabbit hackers deployed on the compromised websites a javascript that redirects visitors to 1dnscontrol[.]com. At the time of the analysis, the site which was hosting the malicious file is no longer reachable. The script was used to download the ransomware using a POST request to the static IP address (185.149.120[.]3).
+The ransomware appears as an Adobe Flash update, in reality, it is a dropper containing some payloads.
+When the dropper executes itself, it first checks the existence of the file “C:\Windows\cscc.dat”. This is, actually, the library used by the malware to encrypt the user files. The presence of the file is interpreted by the ransomware as an indicator of compromise, this means that the host has been already infected and for this reason, the attack chain is halted. We can conclude that the file cscc.dat acts a sort of killswitch for the malware.
+When the infection is ready to go, the dropper file extracts some files:
+“infpub.dat” can be considered as the “controller” of the malware, it controls every action of the ransomware. Once the “infpub.dat” is loaded in memory, it deletes itself from the disk remaining only in memory.
+Figure 2 – Some actions of “infpub.dat”
+The figure 2 shows the process “infpub.dat” performs several actions, including the reboot of the machine and the execution of “dispci.exe” executable at the startup.
+Figure 3 – Reboot scheduling
+
+The “infpub.dat” is also tasked of the propagation in the network with a particular SMB tool in order to execute on the other machines in the subnetwork. It launches a modified version of the “Mimikatz” tool to harvest the password stored on the victim’s host and reuse it to gain access to other machines.
+The malware scans the target network for open SMB shares, tries to access them using hardcoded list of credentials to drop the malicious code, then uses the Mimikatz tool to extract credentials from the target.
+Another difference between NotPetya and Bad Rabbit is that the latter enforces its propagation capability brute-forcing with its own wordlist.
+After the scheduled reboot, the scheduled process “dispci.exe” overwrites the original MBR with its own version.
+Figure 5 shows the behavior of the malware we observed:
+ 
+Figure 5 – Bad Rabbit’s control flow
+Further reflections on the Bad Rabbit ransomware
+While Petya and NotPetya implements a Two-stage attack, the Bad Rabbit has 3 stages.
+
+After the reboot it uses  its own bootloader.
+The Bad Rabbit attack vector requested more effort respect the Petya/NotPetya ones, hackers compromised dozens of websites to deploy the malicious javascript.
+Most of the compromised websites belong to restaurants, hotels and “house rental” services.
+Who is behind the attack? Why is the real attackers’ motivation?
+In this phase is not possible to attribute the attack to a certain threat actor. It is interesting to note that the malware doesn’t explicitly implement a wiper behavior, suggesting the operators are financially motivated. However, the. onion website used for the payment is no longer available, this implies that victims cannot pay the ransom to decrypt the file.
+This behavior could be intentional and used by attackers to hide as a distraction tactic.
+We will release the full report soon, stay tuned.
+About the author: Antonio Pirozzi
+Principal Malware Scientist and Senior Threat Researcher for CSE CybSec Enterprise spa
+
+Actually, he holds more than 10 Infosec International Certification, from SANS, EC-Council and Department of Homeland Security.
+His experience goes beyond the classical Computer Security landscape, he worked on numerous projects on GSM Security, Critical Infrastructure Security,  Blockchain Malware, composition malware, malware evasion.
+ 
+
+Luigi Martire is graduated in Computer Engineering at the University of Sannio. He’s part of University of Sannio Software Security Lab (ISWAT lab) and participated in some cyber security projects, among them “DoApp – Denial Of App”. Nowadays, he’s also Malware Analyst and Threat Researcher for Z-Lab, the malware lab of CSE CybSec Enterprise spa.
+ 
+
+Antonio Farina is graduated in Computer Engineering at the University of Sannio. He’s part of University of Sannio Software Security Lab (ISWAT lab) and participated in some cyber security projects, among them “DoApp – Denial Of App”. Nowadays, he’s also Malware Analyst and Threat Researcher for Z-Lab, the malware lab of CSE CybSec Enterprise spa.
+ 
+Pierluigi Paganini
+(Security Affairs – Bad Rabbit ransomware, Cybercrime)

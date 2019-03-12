@@ -1,0 +1,19 @@
+
+					A bug in the Android MediaProjection service lets hackers to record audio and screen activity on 77% of all devices					
+A vulnerability affecting Android smartphones running Lolipop, Marshmallow, and Nougat (Around 77.5% of all Android devices)  could be exploited by an attacker to record audio and screen activity.
+The vulnerability resides in the Android MediaProjection service that has the access to both screen contents and record system audio.
+Starting with the release of Android Lolipop (5.0), the MediaProjection service is not restricted to users with root access.
+“To use the MediaProjection service, an application would simply have to request access to this system Service via an Intent. Access to this system Service is granted by displaying a SystemUI pop-up that warns the user that the requesting application would like to capture the user’s screen.” the MWR team wrote in a report.
+The researchers explained that an attacker could overlay this SystemUI pop-up which warns the user that the contents of the screen and system audio would be captured, with an arbitrary message to trick the user into granting a malicious application the ability to capture the user’s screen.
+The lack of specific android permissions to use this API makes it difficult check if an application uses the MediaProjection service to record video and audio. The unique access control mechanism available to prevent the abuse of the MediaProjection service s the SystemUI pop-up that could be easily bypassed.
+The root cause of this vulnerability is due to the fact that vulnerable Android versions don’t implement mechanisms to detect partially obscured SystemUI pop-ups.
+An attacker can craft an application to draw an overlay over the SystemUI pop-up which would lead to the elevation of the application’s privileges.
+“Furthermore, the SystemUI pop-up is the only access control mechanism available that prevents the abuse of the MediaProjection service. An attacker could trivially bypass this mechanism by tap-jacking this pop-up using publicly known methods to grant their applications the ability to capture the user’s screen.” added MWR.
+“This vulnerability would allow an attacker to capture the user’s screen should the user tap of the SystemUI popup that has been overlayed by the attacker with an arbitrary message.” 
+Google patched the vulnerability only in Android Oreo Android Oreo (8.0), older versions are still affected by the bug.
+Researchers highlighted that the attack exploiting this flaw is not entirely undetectable. When an application gains access to the MediaProjection Service, it generates a Virtual Display which activates the screencast icon in the notification bar as the following image shows:
+
+It is unclear if Google plans to fix the vulnerability also for older affected versions of Android, for this reason users should update their devices.
+MWR also provided a workaround to Android application developers that can address the issue by enabling the FLAG_SECURE layout parameter via the application’s WindowManager. This would ensure that the content of the applications windows is treated as secure, preventing it from appearing in screenshots or from being viewed on non-secure displays.
+Pierluigi Paganini
+(Security Affairs – Android, MediaProjection service)

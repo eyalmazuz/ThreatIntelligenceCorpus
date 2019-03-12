@@ -1,0 +1,485 @@
+
+Ransomware: Past, Present, and Future
+
+
+"What's past is prologue."
+-- William Shakespeare, The Tempest
+
+
+Introduction
+
+The rise of ransomware over the past year is an ever growing problem. Businesses often believe that paying the ransom is the most cost effective way of getting their data back - and this may also be the reality. The problem we face is that every single business that pays to recover their files, is directly funding the development of the next generation of ransomware. As a result of this we're seeing ransomware evolve at an alarming rate.
+
+In this blog post we explore traits of highly effective strains of self-propagating malware of the past, as well as advances in tools to facilitate lateral movement. This research is important as we expect adversaries to begin utilizing these capabilities in ransomware going forward. This blog post focuses on two avenues of thought - that our past is chock full of successful malware, and that successful cyber extortionists will look to the past to create new and evolving threats going forward.
+
+Ransomware as we know it today has a sort of 'spray and pray' mentality; they hit as many individual targets as they can as quickly as possible. Typically, payloads are delivered via exploit kits or mass phishing campaigns. Recently a number of scattered ransomware campaigns deliberately targeting enterprise networks, have come to light. We believe that this is a harbinger of what's to come -- a portent for the future of ransomware. 
+
+Traditionally, malware was never terribly concerned with the destruction of data or denial of access to its contents; With few notable exceptions, data loss was mostly a side-effect of malware campaigns. Most actors were concerned with sustained access to data or the resources a system provided to meet their objectives. Ransomware is a change to this paradigm from subversion of systems to outright extortion; actors are now denying access to data, and demanding money to restore access to that data. This paper will discuss the latest ransomware trends as well as how to defend your enterprise against this threat.
+
+
+
+Table of Contents
+
+Introduction
+Table of Contents
+Chapter 1: Introduction to Ransomware
+Chapter 2: A Brief History of Ransomware
+Chapter 3: Current Events in Ransomware
+
+Locky: A Shift from Banking Trojans to Ransomware
+Portent: SamSam.exe
+
+
+Chapter 4: Habits of Highly Effective Self-Propagating Malware
+Chapter 5: Ransomware of the Future
+
+King's Ransom Framework
+The Scenario
+
+
+Chapter 6: Defense
+
+Preventing Initial Access
+DMZ Hardening Tips
+Mitigating Phishing/Social Engineering
+Impeding Lateral Movement and Propagation
+Recovery
+
+
+Conclusion
+References
+
+
+
+Chapter 1: Introduction to Ransomware
+
+Ransomware is the name given to a class of malware whose end-goal is to deny access to user data by various means. Early variants would use various techniques to lock down access to the computer or deny access to files (e.g. modifying ACLs and disabling access to system tools, the desktop, etc.), while newer variants simply encrypt user files with strong encryption algorithms (e.g. AES, RSA, etc.). Ransomware specifically targets user files, while avoiding damage to system files. This is to both ensure that the user can be notified of what happened to their files, as well as providing a viable means for the user to pay the ransom in order to get their files back. Once the files are encrypted, the malware usually self-deletes and leaves behind a document of some sort. This document instructs the victim on how to provide payment and regain access to their files. Some variants display a countdown timer to the victim, threatening to delete the key/decryption tool if payment is not received before the timer reaches zero or, in other cases, increase the price of the ransom.
+
+
+Ransomware is commonly delivered through exploit kits, waterhole attacks, malvertising, or mass phishing campaigns. Once delivered, ransomware typically identifies user files and data through some sort of an embedded file extension list. It is also programmed to avoid interacting with certain system directories (such as the WINDOWS system directory, or certain program files directories) to ensure system stability for delivery of the ransom after the payload finishes running. If the files are in a certain location and match one of the listed file extensions, encrypt the file. Otherwise, leave the file(s) alone. After the files have been encrypted, it typically leaves a notification for the user, with instructions on how to pay the ransom[1].
+
+
+
+Figure 1: Locky is a very recent ransomware variant. This is a list of file extensions the ransomware will encrypt if found[2].
+
+
+Ransomware is steadily becoming more targeted as it evolves. In order to understand the future of ransomware, we believe it is important to delve into the past of both ransomware, and highly effective self-propagating malware. We will also study recent ransomware events that seem to indicate a shift in targeting, and finally present scenarios we believe represent the most likely course of evolution".
+
+
+Chapter 2: A Brief History of Ransomware
+
+Let's rewind all the way back to one of the first recorded instances of ransomware: 1989. The AIDS Trojan was written by the "PC Cyborg Corporation", and spread via floppy disk[3]. Fast-forward to 1996 and we see research paper written on what is then referred to as "Cryptovirology," or the use of cryptology for malicious purposes[4]. Researchers create a proof-of-concept virus that encrypted files utilizing RSA and TEA algorithms, while denying access to the key used to encrypt the files. Fast-forward to 2005 and begin seeing ransomware in the wild: Krotten, Archiveus, GPCoder, et. al[5][6]. Out of the malware families mentioned, GPCoder was the most interesting in that it was an instance of ransomware seen in the wild to using 1024-bit RSA encryption when encrypting files, making file recovery via brute force difficult.
+
+
+
+Figure 2: GPCoder was one of the first instances of ransomware in the wild utilizing strong encryption to guarantee a payout[7]. 
+
+
+
+In 2012 Reveton, a trojan based on both ZeuS and Citadel trojans, is the first observed instance of mass-deployed ransomware. The malware claims to represent different law enforcement organizations (depending on the locale being targeted). Victims would be presented with a notification on their system stating that their files were locked by a given local law enforcement organization and that in order to retrieve their files, victims were required to pay a "fine". Reveton would instruct the user to purchase cash cards or bitcoins and provide payment information through a website to get their files back.
+
+
+Figure 3: One of the many Reveton lock screens. Reveton would display a 
+notification page pretending to be local law enforcement, telling the 
+user to pay with a prepaid cash card (MoneyPak) or in some cases, 
+Bitcoins to unlock their system. Interestingly, Reveton did not utilize 
+encryption to lock the target system.
+
+
+According to an article by Brian Krebs, Reveton was a veritable cash cow. The article cited payouts of approximately $44,000 dollars USD per day for just a single country targeted[8]. That's over 1.3 million dollars per month for a single country targeted. Ransomware had just entered the big leagues.
+
+Spurred on by the success of Reveton, new ransomware variants began to pop up. Cryptolocker[9]. Torrentlocker[10]. Cryptowall (and all its variants)[11]. Teslacrypt[12]. Locky[13]. There are even javascript-based ransomware payloads, as well as variants intended to target Linux and OSX users.[14],[15],[16].
+
+
+Chapter 3: Current Events in Ransomware
+
+Angler EK Serving Cryptowall (Angler Exposed)
+
+Ransomware continues to be threat to users around the world today.; A threat that continues to grow bolder, going for larger targets and bigger payouts. According to estimates from our very own article exposing the details on how the Angler exploit kit operates, the delivery of ransomware payloads is a 60 million dollar a year industry for the Angler EK operators[17]. That's an average of 5 million dollars per month. Please bear in mind, that this is just one exploit kit and one set of operators delivering one set of ransomware payloads. The bottom line is that ransomware is big business to cyber criminals.
+
+
+
+Figure 4: Figures directly from the Talos ‘Angler Exposed' research. 
+These statistics are from a single Angler exploit kit operation. 
+
+
+
+
+
+
+Locky: A Shift from Banking Trojans to Ransomware
+
+As we implied above, the Angler EK operators are not the only actors delivering ransomware. Recently, there has been a massive wave of activity from a new ransomware variant known as "Locky." As is evident by the data we already presented, Locky is an aggressive ransomware variant. Locky may be a product that was both written and is being delivered by the operators behind the "Dridex" banking trojan. Recent research also seems to suggest an affiliate system for Locky, essentially reselling the ransomware where the admins/creators take a cut of the profits from payouts[18]. Currently there is no consensus on how many victims are infected with Locky per day. The estimates presented below are very rough and are not guaranteed to be accurate; Talos group disclaims any responsibility for them.
+
+Based on a figure from Forbes, it is believed that Locky manages to compromise 90,000 victims per day[19]. Based on statistics from the Talos Angler Exposed research, let us assume that 2.9% of the compromised victims pay the ransom. The average ransom for Locky is usually between .5 BTC and 1 BTC. 
+
+
+
+
+Figure 5: This table is an estimate on how much money (in USD) locky 
+stands to make on average over 1 day, 30 days, and a full year based on 
+90,000 infections per day, with 2.9% of victims opting to pay the 
+ransom. Rates are for .5 and 1 BTC payouts.
+
+
+
+In terms of delivery mechanisms, Locky seems to utilize the same TTPs (Tools, Techniques, and Procedures) as the Dridex campaigns — phishing campaigns utilizing weaponized office documents, with second stage delivery (the actual exploitative executables) via compromised websites and/or bulletproof hosting. This is in addition to evidence that seems to suggest that Locky is a payload being delivered by exploit kits. This makes sense; the wider the net, the bigger the profits.
+
+
+Figure 6: A typical ransomware phishing e-mail with a .doc file 
+attached. The .doc file has an embedded VB macro that is used to grab a 
+second stage payload (most often, the actual ransomware executable 
+itself)
+
+
+Recently, there has been news that suggests some Ransomware operators are increasing the stakes. There has been a shift in ransomware operators aiming for large targets that they seem to believe not only have poor security, but will result in a larger payouts.
+
+In February of 2016, a hospital was hit with a ransomware attack. This attack affected medical evaluation and diagnostic equipment, patient records and other electronic communications[20]. This was the first publicly disclosed ransomware attack on a hospital. It was initially stated/rumored that the ransom was 3 million dollars USD, but was later found to be $17,000.00 USD. Whether the initial $3 million figure was incorrect or if the ransom was reduced through negotiations is unknown at this point. The hospital contacted both the LAPD and the FBI for advice as to how to handle this situation. They suggest keeping systems patched, using up-to-date antivirus, keeping backups on-hand, and, if all else fails, pay the ransom[21].
+
+Unfortunately recent reports point to this becoming a trend. Hospitals in Germany are also reporting ransomware infections that are affecting standard operations. Fortunately, in the reported cases, the ransomware had minimum impact and they were able to successfully recover from backups[22]. More recently, a large healthcare provider in the northeastern United States found itself battling similar ransomware[23].
+
+
+
+
+Figure 7: There has been a number of ransomware attacks that have been 
+targeting the healthcare industry. It is currently unknown whether the 
+attacks are specifically targeted, or if they are targets of 
+opportunity.
+
+
+
+Portent: SamSam.exe
+These recent incidents in the healthcare industry portend what is to come with ransomware. Recently, a report was released that seems to confirm our theory: Ransomware is swinging for the fences and going for specific targets, and large payouts[24]:
+
+
+
+
+Figure 8: An excerpt from an FBI FLASH report with details on SamSam.exe
+
+
+
+Between this report and recent incidents, enterprise targeted ransomware attacks have arrived. Enterprise-targeted ransomware attacks have started to become mainstream.
+
+As detailed above, SamSam.exe (also know as MSIL/Samas.A and RDN/Ransom) is becoming a significant problem. Most ransomware attacks target end users either through exploit kits, or through mass phishing campaigns and weaponized office documents. Sometimes network shares were encrypted, but not as a primary goal of the campaign. The Locky ransomware was different in that it targeted mapped and unmapped network shares, but it was not centered around targeting enterprise networks. SamSam indicates a shift in both targeting as well as tactics. Rather than targeting individual users, these attackers target enterprise networks: they encrypt all the data they can access for a larger lump-sum payout.
+
+For all of the buzz surrounding SamSam, the attack methodology and payload are simple. First, the attackers gain access. One popular method of obtaining this access, according to some reports, is to use an open-source tool called "Jexboss" to target unpatched deployments of the popular JBoss application platform. Jexboss will fingerprint the JBoss server and perform a scan to determine if the target is vulnerable to one of the exploits it utilizes. If the check indicates the server is vulnerable, the attackers exploit the JBoss server and upload a JSP-based webshell to the system. Once the attacker has obtained a foothold on the server, they upload a tool such as "regeorg" to enable further compromise. Regeorg is a tool used to configure a proxy on a server, which is then used to gain further access to the target network. This technique is referred to as "pivoting."
+
+The attackers utilize this initial access to pivot deeper into the target network, looking for credentials to escalate their privileges. The ultimate goal for this stage of invasion is to locate and destroy networked backups before mass-distributing ransomware to as many systems on the network as they are able to access.. After finding the backup systems and destroying any local backups, or otherwise denying access to said backups, the adversary scans and enumerates as many Windows hosts as they can. After the hosts are enumerated, the attackers utilize a simple combination of a batch script, psexec, and their ransomware payload to spread the ransomware through the network in a semi-automated fashion (Notably, these are the same sort of distribution methods as legitimate systems administrators use in the course of their duties). The actual executable itself has an embedded secure deletion executable made by sysinternals that ensures the payload is deleted and unrecoverable through disk forensics. While the method used to spread the malware is crude, its results cannot be argued with: These attackers are currently in possession of ~275 bitcoins — over 115,000.00 USD[25],[26].
+
+
+
+Figure 9: This illustration shows the course of action taken by the actors responsible for deploying MSIL/Samas, aka "samsam" illustration by Microsoft Malware Protection Center.
+
+
+Why would attackers opt to attack an enterprise network for a single lump sum as opposed to standard ransomware operations that seem to measure profits in the hundreds of millions? There are significant costs maintaining the infrastructure for persistent attacks - things like proxies for exploit kits and relays for phishing. These expenses are not only monetary, but also necessary efforts to remain undetected. Ransomware campaign operators have to constantly shift IP addresses, domains, and hosting infrastructure due to security researchers discovering their payloads and having the C2 sites blacklisted or otherwise shut down by the hosting provider or via take-down. Additionally, ransomware operators must keep their real identities secret in order to avoid arrest; so long as their ransomware campaign is active, law enforcement will be looking to arrest them and interrupt their operations. This must be done for an extended period of time in order to ensure that the ransomware turns a profit. 
+
+On the other hand, ransomware like SamSam.exe does not require extensive, expensive infrastructure, and can be deployed with open-source tools quickly and effectively. This means that expenditures in an enterprise ransomware campaign are less expensive. Depending on how fast the attackers operate in the victim's network, payment can be delivered within a week or two. Infrastructure costs are reduced to a comparatively few proxies attackers will use to hide their true locations. This type of infrastructure can be cheap, and easily burned/removed after the attackers get what they want. After they have received payment, the attacker is able to lay low to avoid possible pursuit by investigators, and can focus on the comparatively low-risk laundering of their payment - generally in bitcoin - into currency more useful to them.
+
+Chapter 4: Habits of Highly Effective Self-Propagating Malware
+
+SamSam is interesting in that it indicates a change in focus from individual end user targeting to the targeting of entire networks. Additionally, the semi-automatic propagation method, while simple, is highly effective. Ransomware authors are beginning to see an opportunity in attacking enterprise networks. They are likely to develop ransomware with faster and more effective propagation methods in order to maximize impact and probability of receiving payment. Self-propagating malware has been around for decades in the form of worms and botnets. Looking at the past examples of highly-effective self-propagating malware can give us an indication of the methods these authors will use in the future for persistence and self-propagation.
+
+A worm is a piece of malicious code that has the ability to self-propagate from system to system. This means that it can copy itself from system to system with no user intervention. Once a worm is released and has a viable propagation method, it's incredibly difficult to contain the infection, let alone eradicate the worm. Malware that was released years - in some cases, decades - ago is still alive and well today[27].
+
+
+
+Figure 10: This is the dashboard for a botnet/worm tracker. The data is 
+gathered via passive and active network monitoring solutions. Some of 
+the botnets and worms tracked are over a decade old and still going 
+strong.
+
+
+
+
+When you think of powerful self-propagating malware, what comes to mind? Nimda? Sasser? Code Red? SQL Slammer? Sality? Conficker? What features are common to these prevalent, resilient strains of malware? Let's look at some of their propagation traits:
+
+Utilizes a vulnerability in a widely deployed product - Most of the successful worms of the past utilized vulnerabilities in products used across the internet. Microsoft Windows systems were and still are prevalent today, so it would make sense that these worms targeted windows systems for infection and propagation. Some of these worms were released as little as 17 days after the vulnerability was uncovered/patched, or six months or more after the initial vulnerability announcement.
+
+Copies itself to all available drives (network drives, USB drives, etc.) - Some strains of malware will enumerate local and remote drives and copy itself to said drives in order to spread and/or persist. (e.g. the malware will copy itself to the root of all local drives as an executable with both HIDDEN and SYSTEM attributes, and/or will copy itself to all USB storage devices as a HIDDEN, SYSTEM executable, with an autorun.inf that attempts to execute the malware when the USB storage is connected to another system). This allows for infection of systems that are not reachable via the public internet and/or offline systems. Conficker utilized this functionality for spreading through infected usb drives, as did sality[28],[29].
+
+File infector - File Infecting malware will either append or prepend itself to files. Specifically, they attach to executables that are not protected by Windows SFC/SFP (System File Checker/Protector). This guarantees that every time an executable is run on the system that is not considered a protected operating system file, there is a chance that the system may be re-infected. Some worms can attach themselves and spread via non-executable files as well.
+
+Limited bruteforce - Surprisingly, there are few worms that have attempted this method in the past. Some variants of conficker have a limited wordlist that they can use to attempt to access hidden "ADMIN$" shares in order to spread to other hosts. Conficker is unique in that of the self-propagating malware variants researched, it was the only malware to use this functionality[30].
+
+Resilient command and control - Some worms take into account actions normally used to disrupt command-and-control (or C2) infrastructure. These worms will implement preemptive measures to circumvent those disruptions - measures such as a set of actions to take if the C2 servers are unreachable, for instance, or non-standard network architectures for issuing commands. Many worms have no C2 infrastructure - they exhibit only a simplistic default action to spread as quickly as possible. An example of this would be the SQL Slammer worm - whose fast-spreading nature resulted in significant network slowdowns during the height of its activity. This worm spread through a widely available exploit in the very popular MS-SQL server. Its spread was helped by small size of both the infection vector and follow up instructions - just a single packet sufficed - and the ease with which it was able to find targets in the flat corporate networks that were common during its day.[31]. Sality, on the other hand, has C2 infrastructure based on P2P networks - the same kind of networks that are used, for example, by file-sharing programs to allow client-to-client spread of content without the requirement for central, attackable servers[32]. Finally, the Conficker worm, in addition to the P2P method just discussed, uses a technique called a "domain generation algorithm" (DGA) to determine from which hosts to receive instruction. The DGA is a programmatic method of generating a large number of domain names that the malware authors can purchase ahead of time to preempt defenders' blacklisting. As each domain in turn is blocked, blacklisted, or removed, the attackers can move to the next, presenting those trying to block the worm with a constantly-shifting and continually increasing threat landscape[33]. 
+
+Uses other backdoors - Some malware authors, aware that other infections may have already made an impression on a system, will piggyback on those backdoors in order to spread their own malware. This fascinating behavior was exhibited by the Nimda worm: it scanned for backdoors that were introduced by two prior worms, the 'Sadmind' and the "Code Red II" worms. If either backdoor was available, Nimda would access and infect the system by that avenue.[34],[35].
+
+
+
+Figure 11: Each of these botnets and/or worms had various mechanisms to 
+fall back to in order to ensure that they would persist, and continue to
+ propagate. They spread quickly, and were incredibly resilient. Some of 
+these botnets are still alive today.
+
+
+Please note that none of the worms in question used every method discussed. Most malware in the past has had rapid infection as its sole purpose. Several worms did not make any special effort to persist, but managed to do so for a significant length of time. What if the authors of these worms had considered ransomware as a goal?
+
+
+Chapter 5: Ransomware of the Future
+Thus far this paper has covered the history of ransomware, current events in ransomware, and the propagation traits of notorious botnets and worms of the past. This was done in order to ask the question: What would the next generation of ransomware look like? What happens when skilled attackers develop ransomware with powerful, built-in, self-propagation methods? This chapter will describe a next-generation framework for ransomware. We will then explore a tabletop scenario using that framework to answer the question of what would happen if this ransomware existed today and was released into a network?
+
+
+King's Ransom Framework
+
+The advanced attackers that are being hypothesized for this exercise, such as competent penetration testers and skilled threat actors, generally prefer to use software with a modular design. This allows them to use certain functions as-needed, which provides much better efficiency and provides the ability to switch tactics as required in the event one method is discovered or is found to be ineffective. This kind of architecture is found in many popular open-source penetration testing suites, such as Metasploit (supported by Rapid7), Armitage (an open-source framework by Raphael Mudge) Cobalt Strike (supported by Strategic Cyber, LLC ), and many others. 
+
+The framework we are going to hypothesize will make use of the lessons we have learned from previous examples. The functions that we want to include are:
+
+
+Encryption of standard locations for user files (e.g. C:\Users) as well as the provision for customizing directories and file types, allowing for per-target customization.
+Mark which systems and files have already been been encrypted to ensure we do not accidentally re-encrypt already encrypted files, both during the execution process and if we have to resume.
+Provide a helpful means to contact attackers, and instructions to turn your hard-earned money into your choice of semi-anonymous currencies to send to the attacker. Bitcoin is popular for that, but there's no reason to limit payment to just bitcoin - other, similar currencies also exist.
+Allow the attacker to set a ransom amount, and specify dual deadlines: one before a cost increase, and one where the key encrypting the data will be deleted.
+
+
+Besides these core functions, the framework will want to support different modules. This allows the attacker to customize for different environments, and change techniques to propagate more aggressively when openings are available. Some examples of these kinds of modules would include:
+
+File Infector: This module would scan the target system for executable files that are not protected by built-in security features like Windows SFC/SFP. It would attempt to add itself to the executables to try to spread further, and also in the hopes of re-executing should the original infection be cleared from the system.
+
+Autorun.Inf/USB Mass storage Propagation: This module would search the infected system to find mapped drives, both local and remote. It would then copy itself to specific locations on those drives, and set the file attributes to make those copies harder to find and delete. Then, it would write an "autorun.inf" file into those drives, to request any computer that the drives are connected to in the future to run these infecting programs. This is a classic method of propagating - similar means were used by some of the first computer viruses - and the intent for this module is to hijack authorized employee access in the hopes of crossing any air gaps that would otherwise preclude infection.
+
+Authentication Infrastructure Exploits: This module would take advantage of some of the known weaknesses in popular authentication infrastructures, such as Kerberos, that are a component of many corporate networks. There are widely available tools, such as "Mimikatz," that use well-documented means of attacking this kind of infrastructure. These credentials can then be exploited to provide access to other systems, sometimes at an administrative level. 
+
+Command and Control(C2)/Reporting infections: In order reduce the risk of discovery, the ransomware could be configured to have no command and control functionality. This module would simply transmit a beacon with a GUID (globally unique identifier) to a Command and Control domain, trying to reach this domain through common protocols/services (e.g. HTTP, HTTPS or DNS) to transmit this data. The C2 could then collect these GUIDs for statistics on the number of infected/encrypted systems in targeted network. This kind of information could be used by the attacker to determine the effectiveness of their campaign.
+
+Rate Limiter: Rate limiting: This module would ensure that the ransomware would be "polite" with system resources, making it less likely that the user will notice it executing. This means it would limit the amount of CPU usage, throttle its network usage down to a trickle, and ensure that it performs operations in as subtle a manner as possible.
+
+RFC 1918 target address limiter: The implant will be designed to only attack and implant target hosts if the host has an RFC 1918 address; that is, a 10.0.0.0/8, 172.16.0.0/12, or a 192.168.0.0/16 address. These addresses are used by internal networks, rather than being internet-wide addresses.
+
+
+The Scenario
+
+A group of skilled, financially motivated actors have been gathering information on a large company in preparation for an attack. An opportunity presents itself, and the adversary have gained initial access into the network. Our adversary is now required to escalate their privileges and identify critical targets in the network they need to control in order to increase the likelihood that their ransom demands are met.
+
+
+
+Figure 12: Depicted are common methods penetration testers and other adversaries use for establishing initial access into target networks.
+
+
+Attackers are learning to take advantage of native functionality in systems to move laterally within target networks, while reducing the risk of detection. Many operating systems have various remote access tools that can be used by attackers to move from system to system. Use of native tools to move laterally limits the capability to detect actors because they aren't dropping anything to disk, and are not performance actions that would be considered abnormal. It's not impossible to detect these things, but let's face it: Most SOCs or MSSPs won't notice it. This isn't opinion; it's fact. The average time between initial compromise and discovery is still over four months[36].
+
+The attackers aren't blindly running through the network, they have specific goals. Assuming that they acquired local administrator credentials on at least one workstation in the fleet (if not, then that is usually goal number one), These are the goals they're going for:
+
+Acquire Domain Admin level credentials and NTDS.dit - acquiring domain admin credentials allows me access to the domain controller. With access to the domain controller, attackers can acquire a copy of NTDS.dit use kerberos golden tickets to pivot through the network with little resistance. This also grants the attack all of the password hashes for every single account in the domain, which they could start attempting to crack or simply use for "pass the hash".
+Identify backup systems and/or if possible, D/R systems (NAS, SAN, Tape robot control, Sungard, etc.) - Once the adversary has domain admin and NTDS.dit, they have free reign to start mapping out the network. The next goal is to find the backup systems and servers, identify what platforms and software they're running and how best to disable/cripple them. Additionally, if there are credentials and access to recovery sights (hot/warm sites such as Sungard that the target may use for attempting to recover from the attack) identify them so as to target them for ransom or to deny access and further guarantee ransom. We aren't attacking these systems yet, just identifying targets for when our we drop our implant.
+Identify systems with critical data and services (databases, CMS, Code repositories, file shares, etc.) - At this point our attackers have the keys to the kingdom and have identified backup and disaster recovery systems. The next logical step is to map out the environment and determine high value targets. What and where on the network are the mission critical systems? Where are the databases? Web applications? HR Systems? Payroll Systems? File Shares? There's a good chance that if attackers found the backup systems and the backup network wasn't segmented (not terribly likely), that those systems dropped hints as to where everything else is that the company wants backed up is located.
+Identify messaging servers - In addition to mission critical systems, identify all messaging systems. VOIP, E-mail, Enterprise Messenger applications, etc. The hardware it is to reach anybody and coordinate during the attack, the more time that buys the attackers to maximize the spread of the ransomware.
+Identify systems responsible for performing software application pushes - SCCM, WSUS, some A/V vendors allow you to push packages, GPO, etc. - There have been a few very recent recorded instances where this was the a method of propagation for malware targeting an enterprise network: Compromise application distribution platforms and use them to distribute the payload. While our malware would certainly have capabilities to self-propagate, we would use these application distribution platforms to make our ransomware spread exponentially, making the attack much more difficult to contain. 
+
+
+
+The attackers have domain admin access, and have mapped the network as required. Access to backup systems, mission critical systems, messaging servers, and application distribution platforms has been acquired. The attackers pulled hashes from NTDS.dit and through a combination of coming across tools/scripts using hardcoded credentials and other means, came across a few passwords for other valuable domain accounts. Using that as a template along with the rockyou password cracking wordlist, a number of passwords have been cracked. The attackers have determined that it is time to strike and use the ransomware framework to generate a ransomware payload with the following settings:
+
+
+Core Functionality
+
+The payload generated demands 1 million dollars USD in bitcoin to be delivered in 8 days, tripling to 3 million dollars if payment is not made in 8 days. The instructions mention a .onion address (hidden service) and provide instructions on how to use tor2web or the Tor Browser Bundle, and how to purchase bitcoins. Since the attackers know where all the important applications, drives and data are located, they have included custom directories and file extensions for the ransomware to attempt to encrypt as a part of the core implant.
+
+
+Modules Installed
+
+
+RFC 1918 address limiter: The attackers are not interested in this implant spreading beyond the targeted network.
+Rate Limiter: This ensures that the malware isn't detected by network or CPU utilization anomalies.
+PSexec: The attackers acquired NTDS.dit and have access to all the NTLM hashes on the network, in addition to cracking a handful of the hashes and finding files that contain lists of passwords for various network assets. The wordlist can be used in combination with PSexec to upload and execute payloads across the network for rapid self-propagation.
+File Infector: upon execution, the payload determines if an executable file (dll, cpl, scr, exe) is in a directory protected by windows SFC/SFP and/or in a directory that is to be encrypted, and if neither of these conditions are met, prepends a copy of the payload to executables it finds. This also includes mapped network drives.
+
+
+
+Payload Delivery and Propagation
+
+The attackers have access to modify group policy and modify the domain's GPO to deliver an MSI wrapped version of their custom ransomware implant. They then leave the network and simply wait for the ransom to be paid. The malware spreads exponentially thanks to a combination of compromised hashes and/or username/passwords and software pushes via GPO spreading and executing the malware. Typically, most corporate networks lack network segmentation thus furthering the propagation of the ransomware payload to even more systems. While the backup tapes themselves have not been infected (on or off-site) the backup management systems are infected and cannot be used to restore backups. Core applications and systems begin to fall one-by-one as the ransomware continues to propagate. It quickly becomes evident that systems are under attack, but with messaging systems and applications being attacked and only out of band comms (cellphones, externally hosted chat systems) being viable, coordination is slow, giving the ransomware even more time to spread.
+
+
+
+Figure 13: Depicted is our fictional adversary's workflow for completely compromising the target network with their ransomware.
+
+
+
+Aftermath
+
+Once launched, the malware is more or less unstoppable. In the span of an hour, over 800 servers and 3200 workstations are compromised; half the organization's digital assets, and the vast majority of the company's data are encrypted. Disaster Recovery mode is initiated, but the DR environment was also compromised due to shared credentials and poor segmentation. The target is forced back into the 1980s: digital typewriters, notebooks, fax machines, post-it notes, paper checks and the like. The victim is left with a choice: Do we pay the ransom, set a precedent and rapidly recover? Or do we refuse to pay the ransom and potentially make the recovery much longer and more difficult with a guaranteed loss of data?
+
+In either case, there are going to be costs associated with recovery, such as hiring external incident response capability to help determine root cause and/or bolster internal incident response, capital and operational expenditures required for both security and IT staff to work around the clock to bring systems back to operational status, etc., There are numerous quantitative/qualitative damages attached when becoming a victim of such an attack. We also haven't come to the decision as to whether or not the victim will pay the ransom.
+
+As a part of the recovery process, the organization will need to make a determination as to whether or not to pay the ransom. This leads to important questions about backups: What is the organization's threshold for an acceptable loss of data? This value calculates heavily into whether or not the organization will pay the ransom in the event of a complete compromise. Here are a couple factors to consider:
+
+
+Are the local backups viable, or has everything in the tape library or SAN been erased or otherwise been made unviable?
+If the data in the tape library or SAN has been erased or is no longer viable, are the off-site backups available?
+        
+How often are backups sent off-site?
+                
+Once weekly?
+Bi-Weekly?
+Monthly?
+
+
+
+
+How critical is the data?
+        
+What is the total revenue loss the organization would incur from the loss of data during that time frame in which backups are not available?
+Is there a way to manually restore that data?
+How much would a manual restoration cost?
+
+
+
+
+These questions (and perhaps more) factor a simple calculation: If the cost associated with paying the ransom is less than the cost associated with the loss of data for that gap of time between off-site backups, then in all likelihood, the organization will pay the ransom. Otherwise, the organization will accept the loss, and begin the recovery process.
+
+
+
+Figure 14: In the event of a Ransomware breach, this flowchart may ultimately govern whether or not the victim pays the ransom.
+
+
+
+As a part of the recovery process, the organization may file a cyber insurance claim, if they have a cyber insurance policy. Cyber insurance is relatively new and immature. There are a number questions that have to be considered here, as well: 
+
+
+Will the cyber insurance provider validate the claim?
+  
+Will they find that the the victim has been negligent[37]?
+Is there a rider on the policy to cover ransomware or "cyber extortion"[38]? 
+
+
+Will the policy be sufficient cover the damages[39]? 
+
+
+In most cases, the cyber insurance policy is either insufficient to provide full coverage, or didn't attach an appropriate policy rider to cover specific damages[40].
+
+
+Chapter 6: Defense
+
+As we have established in our narrative, in the hands of skilled attackers, ransomware with self-propagating capabilities can become a nightmare. Just because it can happen, doesn't mean it has to. The scenario described was purposefully generic because by and large, most enterprise networks are architected in roughly the same manner. This means that our scenario can be applied almost universally regardless of target. Due to this homogeneity of enterprise network design, the question of "What happens when attackers target us?" results in the same answer: If solid perimeter defense is not present, then initial access is established. If initial access is established and the threat is allowed to move laterally within the network, their privileges escalate and they map the network for access to assets that help them achieve their goals. If the privileges are allowed to escalate, it results in a complete compromise and loss of service for the targeted organization after the ransomware is deployed. The question then becomes: What happens when attackers are no longer content with attacking hospitals opportunistically, but then sets their sights on a different organization, or a different vertical? Power, gas, water, shipping, air traffic control? Now more than ever, defense in depth is more than a concept, more than just words that have been preached for decades, it becomes necessary practice. 
+
+What follows is a collection of risk mitigation strategies. While none of these methods are new, when combined, these defensive techniques and methods allow resiliency against initial access, and the ability to contain the threat if they successfully gain initial access.
+
+Preventing Initial Access
+
+There are things can be done to prevent the attack before it even starts. If the attackers cannot establish initial access in the target network easily, this increases the likelihood that attackers will seek easier prey elsewhere. Our attackers are opportunistic and are looking to turn about a profit with as little effort as possible. If initial access cannot be easily established, this increases the likelihood they will seek out easier prey. Initial access usually comes in one of two forms: Exploitation of public-facing services, or phishing/social engineering. 
+
+
+DMZ Hardening tips
+
+DMZ hardening amounts to a couple of key housekeeping and maintenance tasks:
+
+Periodic port scans: Port scans can be utilized to map one's DMZ and gain a better view on actual services and operating systems an organization is exposing to the internet. Once you have a collection of exposed services, you can map the public addresses to private addresses, determine who owns the asset(s) and/or whether or not exposure of the service(s) is even necessary. The lower the number of services exposed to the public internet, the lower the attack surface available.
+Vulnerability scans/remediation: Once publicly exposed services have been verified, utilize vulnerability scanners against the exposed services. Remediate findings as soon as possible.
+Regular system maintenance:
+  
+Find and following system hardening guidelines, such as DISA's STIG[41]
+Ensure that regular patch maintenance is being performed.
+Ensure that DMZ system logs are being exported to a log collector/SIEM
+Any publicly exposed systems/services that require authentication should require strong passwords; Consider implementing two-factor authentication (where possible) instead.
+Any publicly exposed systems/services that require authentication should have rate limiting, or blocking based on the number of failed guesses to limit the success of brute force attacks
+
+
+
+
+
+Mitigating Phishing/Social Engineering
+
+While preventing initial access through phishing or social engineering is much more difficult, there are actions that can be taken to mitigate the risks:
+
+Consider investing in a company-sanctioned file-sharing program for exchanging files between users in the organization and/or company partners. Utilizing a file-sharing solution, and instructing users to never share or accept files over email can almost completely mitigate phishing attacks utilizing attachments. Instruct your users that the mail server isn't for file exchange, nor is it meant for archiving files.
+Inform users that do not have to regularly work with macro-enabled office documents to never enable macros. In fact, the majority of your userbase has no requirement to work with macros, disable office macros through group policy, only enabling them for business units with a specific need[42]. For those business units that cannot operate without office macros, consider digitally signed macros to further mitigate that risk.
+Some phishing attacks are delivered through PDFs and will specifically target vulnerabilities in certain PDF reader applications (e.g. Adobe Reader) to achieve code execution. Consider using an alternative PDF reader and disabling extra functionality (e.g. javascript in PDF).
+Ensure the email scanning gateways disallow sending and receiving executable files (exe, dll, cpl, scr), javascript (.js files) office documents with macros, and scans .zip files for contents.
+Enforce checking/verifying SPF records to mitigate spoofed e-mails.
+Ensure that you have a mail gateway solution that is updated with information on the latest phishing domains (e.g. senderbase, etc.)
+More often than not, the new gTLDs, as well as dynamic DNS domains are heavily abused in malware campaigns due to how inexpensive they are to acquire. In most cases, they can be blacklisted with little to nothing worry about; they tend to have a very low business relevance. Blacklist dynamic DNS and gTLDs default, whitelist individual domains as required, and only if there is a specific business need.
+Instruct users to trust but verify, especially for any messages from outside the company with attachments. Simply asking the sender "Did you send this?" Over the phone prior to opening the attachment is all it takes.
+If users are in any way concerned that they have been phished, instruct them to report the incident. The users shouldn't fear your SOC or security department and should NOT be punished for reporting security incidents.
+Notify users that IT and/or Security will never ask them for their passwords to reduce the effectiveness of phishing attacks that are attempting to gather user credentials.
+Disallow the mounting of USB drives. This mitigates the "print my resume for me scenario" as well mitigating self-propagating malware that attempts to jump air gaps through compromised USB drives. If removable media cannot be disabled across the enterprise, at a minimum disable autorun for removable media via GPO, and instruct employees to never accept or use thumb drives from untrusted sources. Instruct users that all thumb drives should be scanned for viruses upon insertion and before users access the files; consider configuring antivirus to perform automatic on-access scans for any USB drives plugged into systems. If utilizing thumb drives in a sensitive airgapped environment is required, consider keeping a collection of thumb drives, tagging them as company assets and signing them out on each use.
+Ensure that guests are signed in at reception, signed out, and always shadowed. Guests should have an escort with them at all times.
+Tailgating, or the practice of unauthorized individuals following authorized individuals into a restricted area, and can be a big problem. Most people have a tendency to avoid confrontation, so this makes enforcing tailgating policies a little more difficult, especially when challenging individuals who appear to "have their hands full". This can be mitigated by writing into security policy a requirement that employee badges must be present and visible at all times. Additionally, all authorized guests, vendors, etc. should be required to adhere to this policy, and badge in to all gates and be escorted/shadowed by an employee at all times.
+
+
+
+Impeding Lateral Movement and Propagation
+
+If attackers make it through your initial defenses, your goal is to make it is hard as you can for them to move laterally inside your network. Through careful architecture and password management you can make lateral movement much more difficult.
+
+Network segmentation is a massive part of impending lateral movement and containing threats easily. The majority of corporate networks are "flat" with little to no segmentation between business units, between users and data, between data specific to business units, etc. The reason you don't typically see network segmentation in large organizations is that it requires coordination and planning on a massive scale. Most networks grow as the need for capacity arises, with little to no thought on segmentation. Business acquisitions are usually focused on how to integrate additional assets quickly as opposed to securely. All of that aside however, the benefits of properly segmented networks cannot be denied. Segmentation can be used to stop and/or slow lateral movement, as well as contain threats. There are multiple components for segmented networks, and this should NOT be considered an exhaustive list, but consider implementing the following:
+  
+VLAN and subnet segmentation: Each business unit should have its own VLANs and subnets for logically separating access to data. Segmentation should NOT stop at the business unit, however. User workstations need to be segmented from the servers/services required for that business unit, as well as services that are used across business units (e.g. messaging, file sharing, e-mail, etc.) This list of VLANs and subnets should be meticulously maintained and available for both IT and Security staff. If you do not have this information by default, or are looking to try and figure out how to logically separate users, servers and business units, consider looking for DHCP scope configurations and using them as a rule of thumb for subnet and VLAN segmentation.
+Dedicated firewall/gateway segmentation: firewalls are another important part of network segmentation and an often overlooked portion of internal network design. Understand which business units have a requirement to communicate directly with one another, and which ones do not. Understand which services and ports are required for that inter-business unit communication. Do ingress as well as egress filtering (doing this requires understanding the direction in which data flows for services). Firewall policy should be reviewed regularly. IT and Security staff should have access to the firewall policies and should be included in policy review decisions.
+Host-based firewalls with ingress/egress filtering configured. Again, ingress and egress. Hosts should not be able to communicate via SMB (139/tcp, 445/tcp) between one another. If file server(s) are set up, then there should effectively be no need for this. If you can effectively disable host-to-host SMB communication, you prevent the attackers from being able to utilize the "pass the hash" for lateral movement. SMB communication should be limited to application distribution platforms, file shares, and/or Domain Controllers.
+
+
+Application Blocking/Whitelisting: Application whitelisting is a built-in feature for windows that can be implemented via software restriction policies[43]. However, not unlike network segmentation it takes a significant amount of time to implement and test, especially if different business units have different application needs. As a stopgap measure, it may be easier to try and block executables that attempt to run from specific locations, such as %TEMP% or %APPDATA% directories on windows systems, making exceptions for certain applications only as necessary[44]. Not unlike network segmentation, whitelisting is a significant time investment, but it is a tremendous boon for containing and preventing initial access AND lateral movement.
+Role-Based network share permissions (Least Privilege): File shares tend to get incredibly complex between multiple business units, folder permissions and share permissions for the network. Application of least privilege for file shares prevents the compromise of a single user resulting in the loss of most of the data on the network file share in the event of ransomware, as well as preventing compromised accounts being used to access data from different business units; If password security is poor, a compromised user account may be used by attackers to gather credentials stored on file shares with access the user should not have.
+Proper credential management: Users should be trained to utilize a password manager along with strong passwords for storing network credentials. Train users to NOT re-use 
+
+
+
+Recovery
+
+Backup recovery is your last line of defense to having to pay out a ransom to the attackers; it's your last bastion in the event that the worst has happened. Your ability to recover from this attack with minimal data loss and/or service interruption amounts to whether or not the system backups and/or disaster recovery sites were compromised as a part of the attacker methodology. Whether or not your backups were compromised depends on how well your backup systems and/or network and/or recovery sites were sufficiently segmented from your main network. Even in the event your organization does not utilize on-site backups at all, instead opting for cloud backup solutions (e.g. Amazon Glacier), if those cloud backup credentials are left in easily accessible locations, or if passwords are reused, our hypothetical adversary could easily delete all backup instances, resulting in 100% data loss if there is no other backup solution in place. The secure, off-site, enterprise backup solution could easily be defeated through password reuse and/or poor password management.
+
+For enterprises utilizing backup solutions, there are a wide variety of backup methodologies; the SANS reading room has a comprehensive document on tape rotation schemes that is incredibly helpful for reviewing different tape backup schemes[45]. Typically as a part of a tape rotation policy, a portion of those tapes are delivered to an off-site storage facility. This is for disaster recovery purposes; if there a catastrophic failure at the site hosting an organization's data, the tapes at the storage facility are still there to recover from at a backup facility. In a scenario in which local backups are deleted, removed, or otherwise made inaccessible by the attackers, off-site backups are often your only hope of restoring service without paying the ransom. Depending on how often your backups are sent off-site determines how much data (if any) would be inaccessible or lost.
+
+
+Conclusion
+
+The past few years have seen a dramatic uptick in ransomware variants and their deployment on a global scale due. Cyber criminals see an easy opportunity for profit. It is inevitable that these adversaries would look to the past for effective malware behaviors to advance the efficacy of ransomware. Combined with new methodologies in targeting, we anticipate a trend towards ransomware that can self propagate and move semi-autonomously throughout a network to devastating effect.
+
+To emphasize this, one need look no further than SamSam.exe, the malware sample recovered from a number of scattered enterprise network breaches mainly targeting the healthcare vertical. SamSam isn't complex, and it not fully self-sufficient, but it does exhibit some of the behaviors of a successful worm - rapid propagation, payload delivery (ransomware), and crippling recovery efforts. The age of self-propagating ransomware, or "cryptoworms", is right around the corner.
+
+For too long, critical security controls and best practice for enterprise network security has been publicly praised and privately ignored. Drop-in appliances and security solutions can only do so much to protect the network, and will do little to stop this threat if networks continue to be architected and expanded without defense in depth in mind. If enterprises don't start making strides towards defensible architecture today, massive ransoms may end up getting paid tomorrow.
+
+
+References
+
+
+https://en.wikipedia.org/wiki/Ransomware
+http://www.bleepingcomputer.com/news/security/the-locky-ransomware-encrypts-local-files-and-unmapped-network-shares/
+https://medium.com/un-hackable/the-bizarre-pre-internet-history-of-ransomware-bb480a652b4b
+http://ieeexplore.ieee.org/xpl/articleDetails.jsp?reload=true&arnumber=502676
+http://www.networkworld.com/article/2314306/lan-wan/files-for-ransom.html
+http://voices.washingtonpost.com/securityfix/2008/06/ransomware_encrypts_victim_fil.html
+https://www.microsoft.com/security/portal/threat/encyclopedia/Entry.aspx?Name=Ransom%3AWin32%2FGenasom.BQ
+http://krebsonsecurity.com/2012/08/inside-a-reveton-ransomware-operation/
+http://arstechnica.com/security/2013/10/youre-infected-if-you-want-to-see-your-data-again-pay-us-300-in-bitcoins/
+http://www.welivesecurity.com/wp-content/uploads/2014/12/torrent_locker.pdf
+https://www.cryptowalltracker.org/
+http://www.pcworld.com/article/3045206/security/teslacrypt-ransomware-now-impossible-to-crack-researchers-say.html
+http://www.bleepingcomputer.com/news/security/the-Locky-ransomware-encrypts-local-files-and-unmapped-network-shares/
+http://krebsonsecurity.com/2015/11/ransomware-now-gunning-for-your-web-sites/
+http://www.computerworld.com/article/3018972/security/ransom32-first-of-its-kind-javascript-based-ransomware-spotted-in-the-wild.html
+https://blog.opendns.com/2016/03/10/17123/
+http://www.talosintel.com/angler-exposed/
+http://community.hpe.com/t5/Security-Research/Feeling-even-Locky-er/ba-p/6834311#.VsacC_IrJhF
+http://www.forbes.com/sites/thomasbrewster/2016/02/18/ransomware-hollywood-payment-locky-menace/#22a04c7e75b0
+http://www.engadget.com/2016/02/19/hospital-ransomware-a-chilling-wake-up-call/
+https://www.fbi.gov/news/stories/2015/january/ransomware-on-the-rise
+http://www.dw.com/en/hackers-hold-german-hospital-data-hostage/a-19076030
+http://bigstory.ap.org/article/cf41601903fd4cc492718c12b01d9d1c/fbi-probing-virus-behind-outage-medstar-health-facilities
+http://eweb.cabq.gov/CyberSecurity/Security%20Related%20Documents/FLASH%20MC-000068-MW.pdf
+http://blog.talosintel.com/2016/03/samsam-ransomware.html
+https://blogs.technet.microsoft.com/mmpc/2016/03/17/no-mas-samas-whats-in-this-ransomwares-modus-operandi/
+https://intel.malwaretech.com/
+https://isc.sans.edu/forums/diary/Confickers+autorun+and+social+engineering/5695/
+https://www.microsoft.com/security/portal/threat/encyclopedia/entry.aspx?Name=Win32%2FSality
+https://www.microsoft.com/security/portal/threat/encyclopedia/entry.aspx?Name=Worm%3aWin32%2fConficker.B
+https://www.sans.org/security-resources/malwarefaq/ms-sql-exploit.php
+https://www.sans.org/reading-room/whitepapers/detection/60-seconds-wire-malicious-traffic-34307
+https://www.icann.org/en/system/files/files/conficker-summary-review-07may10-en.pdf
+https://www.sans.org/security-resources/malwarefaq/sadmind_iis.php
+https://www.sans.org/reading-room/whitepapers/malicious/code-red-worm-45
+http://www.scmagazine.com/companies-quicker-to-detect-breaches-hackers-more-aggressive/article/479415/
+http://www.businessinsurance.com/article/20150515/NEWS06/150519893
+http://www.irmi.com/online/insurance-glossary/terms/c/cyberextortion-coverage.aspx
+http://www.privacyanddatasecurityinsight.com/2015/03/cyber-insurance-do-i-really-need-it/
+https://c.ymcdn.com/sites/www.coloradobankers.org/resource/resmgr/Education/03-23-15_Weekly_Risk_Summary.pdf
+http://iase.disa.mil/stigs/Pages/index.aspx
+https://www.microsoft.com/en-us/download/details.aspx?id=18968
+https://www.nsa.gov/ia/_files/os/win2k/application_whitelisting_using_srp.pdf
+https://bluesoul.me/2016/03/18/ransomware-is-the-future/
+https://www.sans.org/reading-room/whitepapers/sysadmin/backup-rotations-final-defense-305
+
+
+

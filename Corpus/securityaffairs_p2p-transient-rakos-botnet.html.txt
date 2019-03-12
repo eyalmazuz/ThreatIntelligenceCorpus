@@ -1,0 +1,86 @@
+
+					The Rakos botnet – Exploring a P2P Transient Botnet From Discovery to Enumeration					
+We recently deployed a high interaction honeypots expecting it to be compromised by a specific malware. But in the first few days, instead of getting infected by the expected malware, it received a variety of attacks ranging from SSH port forwarding to “Viagra and Cialis” SPAM to XORDDoS failed deployment attempts. By the third day, it was insistently hit and compromised by Rakos, a Linux/Trojan.
+Based on the expected Rakos behavior reported last December by ESET [1], our honeypot was recruited to a botnet and immediately began attempting connections to other hosts on the Internet, both to “call home” and to search for new victims. Although it wasn’t our initial plan, we noticed that this sample didn’t behave like the one ESET described, which got us curious and made us analyze it here at Morphus Labs.
+After analyzing and exploiting this botnet’s communication channel and employing Crawling and Sensor Injection enumeration methods, we did find a network floating around 8,300 compromised devices per day spread over 178 countries worldwide. Considering the recent DDoS attack reported by Incapsula [2] against a US College, originated from 9,793 bots, which was able to generate 30,000 requests per second during 54 hours, we may infer how potentially threatening is Rakos botnet.
+To better understand this P2P Transient botnet behavior and its C&C protocol, we listened to its traffic for 24 hours, and after analyzing it, we noticed two kinds of communications: one between bots through HTTP and, the other, between bots and C&C servers through TLS/SSL. In this section, we detail the commands we mapped.
+Some definitions before start:
+A particular node may play both roles.
+The connections between Checkers and Skaros are made through SSL/TLS encrypted sessions. It was necessary to intercept the traffic using a classic man-in-the-middle attack to access the messages. See in Table 1 the list of captured commands and its descriptions.
+The communication between Checkers is essential to discover their own public IP address. The bots reach each other through HTTP requests using the high random TCP port they bind to.
+See in Table 2 the list of commands and its descriptions.
+Now that we better understand the C&C channel, let’s move on to the intelligence gathering phase. The objective here is to enumerate the population of this botnet, classify its nodes into Skaros and Checker groups and get as much information as possible about them. To this end we implemented two standard approaches to size P2P botnets, Crawling and Sensor Injection [3]
+This strategy consists of visiting as many nodes as possible and collecting information about them. The crawler starts by requesting the neighbor list from a seed node and iteratively requests neighbor lists from every newly discovered and active node until all bots are discovered [4].
+To maximize our chances of finding an ‘always available and responsive’ seed node, we investigated the lists of Skaros we collected during the man-in-the-middle process and the “/ping” commands we collected to discover prevalent IP addresses. Doing this, we found a group of three IPs both present in the section “skaro” in response to the C&C command “/upgrade/vars.yaml” and in the section “proxies” in response to the C&C command “/ping”, which could make them good seed node candidates.
+To validate this, we queried them manually issuing “/ping” commands. As a result, two didn’t respond, and the other answered with an SSL error message, as seen in Figure 1.
+
+At this moment, we realized that the bots authenticate via the SSL certificate found in the C&C command responses. Using it, we issued another “/ping” to the same Skaro that, this time, answered with the expected results, including a list of up to 30 Skaros and 50 Checkers. This botnet protection/authentication mechanism indicated to us the importance of this node to the botnet and made us choose it to be our seed node. We decided to call them “Super Skaros”.
+Finally, we wrote a script to automate the crawling process. The script, written in Python, iteratively requests the seed node for the Skaros it knows. Then is asks these Skaros for the Skaros they know and so on until there is no new Skaro to request. The script also creates a graph of the botnet while discovering it to make it easy to further analyze the nodes and its interconnections.
+The second strategy is to inject fake nodes into the botnet as sensor nodes [5]. The objective is to offer the network fake nodes to be contacted by the others while enumerating them.
+Given the restricted number of Skaros and Checkers returned by each query, the crawling approach may give us just a limited view of the whole botnet. Even when we tried to repeat the query for the same Skaro, the returned list usually included just a small number of new nodes.
+To overcome this problem and to improve que quality of our enumeration process, we decided to apply the Sensor Injection method, which, for this research, consists in inserting fake nodes (Skaros and Checkers) into the botnet and collecting information about the nodes that contact them.
+To insert the Checker Sensor, we basically ran the malware binary on a controlled environment preventing it from establishing any SSH outgoing connections and monitored the network traffic to enumerate all bots that contacted it. As the communication between Checkers isn’t encrypted, this strategy could give us the possibility to inspect any content posted to or from our sensor.
+To insert the Skaro Sensor, we prepared a “/ping” command with manipulated “available”, “running” and “addr” parameters pointing to the IP address to one of our honeypots and sent it to a valid Skaro. Next, we issued a new “/ping” command to the same Skaro and confirmed that our Sensor Node appeared in the returned Skaro list, as seen in Figure 2
+
+To receive and handle those HTTPS connections, we deployed a Nginx server and configured it with the botnet default SSL certificates. With this setup up and running, we started receiving POST and GET requests coming from Checkers, as seen in Figure 3.
+
+To capture and store the data posted to the Skaro Sensor, we created a simple PHP script to append to a file the received HTTP POST parameters. In Figure 4 there is an example of a Checker posted data using the “/ping” C&C command, as always, full of information about the victim, include credentials in clear text.
+
+Finally, to maintain our Skaro Sensor alive on the botnet, we could continually send the manipulated “/ping” command to the Skaros on the network. To implement this, we just configured the “/ping” request of the Crawling method with the appropriate values. As the Crawling would periodically visit all active Skaros, our Sensor Node would always be propagated.
+After defining the methodology and tuning the scripts, it was time to create the environment to execute the experiments, detailed in this section.
+As we were dealing with a P2P botnet, distributing the Sensor Nodes in different parts of the world could give us a better view of the botnet, especially if it imposed any kind of communication restriction or load balancing based on geographic regions or IP addresses.
+Thus, we distributed 5 Sensor Nodes in the following locations:
+In each location, we installed a honeypot with the configurations and scripts necessary to run the Crawling and Sensor Injection experiments, which include:
+Finally, we put our plan into action. The experiments were started simultaneously in all honeypots. Shortly after, the Crawling Process was already querying 30 to 60 Skaros and the Sensor Nodes were receiving connections from the botnet. All as expected.
+After 72 hours (or 3 days), we stopped the experiment and started processing all the collected data. The results are shown in the next section.
+The experiments generated approximately 5 GB of data amongst PCAP files, HTTP requests, crawled data and graph files that were handled and inserted into an Elastic Stack [6] and Gephi [7] platforms for querying and visualization purposes. The results of both enumeration methods are summarized in Table 3.
+ 
+As we expected, the crawling strategy gave us just a small view of the whole picture. In fact, it accounted for just 3,15% of the total number of discovered nodes. The other part, 96,84% or 24,839 nodes, was found by the Sensor Nodes.
+Each sensor discovered an average of 5,000 unique Checkers and 48 unique Skaros during the whole experiment. Comparing to the Crawling method, it’s interesting that although Sensor Injection could discover 50 times more Checkers, it discovered 15% less Skaros. It is also worth mentioning that the efficacy of Sensor Nodes depends on the continuous “/ping” to maintain the Sensor Nodes “alive”.
+To make it easy to represent the botnet and its interconnections, we produced graphs for each crawler.  One of those graphs, as seen in Figure 5, shows in green the discovery path from the seed node to the Checkers, in lilac, passing through Skaros, in orange. In summary, each node is connected just to the node from which it was discovered by during the crawling process.
+
+The other graph shows the real interconnection between nodes, as seen in Figure 6. Here we can see a very thick botnet where virtually all Checkers know all Skaros.
+
+Now, plotting the discovery path graph on the world map, as seen in Figure 7, we may have an idea of the botnet worldwide. To geolocalize the nodes, we used MaxMind database [8].
+
+Figure 8 represents all the connections received by “São Paulo” sensor. The big yellow node represents the sensor node. In lilac are the Checkers and in orange, the Skaros.
+
+The graph for the other sensor nodes look very much like these differing basically by the geographic position of the sensor node.
+The worldwide botnet distribution is shown in Figure 9. It’s clearly perceived a high node concentration in Europe, highlighting France, Italy and Spain.
+
+The Top 10 countries are shown in Figure 10.
+
+Another interesting finding of this research is related to the victims’ devices as seen in Figure 11. At least 45% of them are Raspberry PI followed by OpenELEC with 21.79% – which are usually deployed on Raspberries. Next, with 16,74%, comes UBNT, wireless access points devices from Ubiquiti.
+
+This botnet relies basically on default or easy guessable passwords that devices owners fail to manage. None the less, Open ELEC systems do not even offer an easy way for users to change the default password, as shown in Figure 12 The text was extracted from Open ELEC’s website [9].
+
+In this section are the IoCs (Indicators of Compromise) that could be used to search for this malware in your environment.
+strings:
+            $ = “upgrade/vars.yaml”
+            $ = “upgrade/up”
+            $ = “/tmp/init”
+            $ = “dalek”
+            $ = “skaro”
+condition:
+            4 of them
+GET /love
+User-Agent: Go-http-client/1.1
+This research revealed a network of controlled devices we defined as a “Transient Botnet”. The term transient refers to the non-persistence aspect of Rakos malware which means that a single bot remains on the network after a reboot only if it gets compromised again, just like Mirai. In other words, we are dealing with a threat that, like many others, counts on the certainty of the abundance of victims and that most them will remain vulnerable – even though this vulnerability could be avoided by a password change.
+This transient aspect was reflected in the results we found. During the experiments, the number of nodes floated during the period with peaks of 1,700 new IP addresses which could be existing victims we didn’t know yet or simply new infected or re-infected nodes. Considering this fluctuation, from the 25084 unique nodes discovered in 72 hours, we may consider an average of 8362 bots per 24 hours which certainly represents risks if they were used together in DDoS attacks, for example.
+This individual problem that potentially leads to a global threat reminds us the difficult adoption of BCP 38 (Best Current Practices) [10] that specifies how Internet Services Provides (ISPs) could individually cooperate by configuring its routers to defeat DDoS amplification attacks over the Internet. The difference is that in password vulnerability problems we don’t have a guideline or an imposed rule; it involves much more devices and, especially, people.
+Finally, it’s worth mentioning that during the 30 days we analyzed this botnet, we didn’t notice any malicious actions other them the SSH brute-force scanner itself. It seems that someone is preparing it to be sold or to offer “services” using it when it gets in the right size. Thinking this way, the innocuous-looking may be a strategy to fly under the radar.
+[1] http://www.welivesecurity.com/2016/12/20/new-linuxrakos-threat-devices-servers-ssh-scan/
+[2] https://www.incapsula.com/blog/new-mirai-variant-ddos-us-college.html
+[3] Rossow, Christian, et al. “Sok: P2pwned-modeling and evaluating the resilience of peer-to-peer botnets.” Security and Privacy (SP), 2013 IEEE Symposium on. IEEE, 2013.
+[4] J. Kang and J.-Y. Zhang. Application Entropy Theory to Detect New Peer-to-Peer Botnets with Multi-chart CUSUM. In Proceedings of the 2nd International Symposium on Electronic
+[5] Karuppayah, Shankar, et al. “On advanced monitoring in resilient and unstructured P2P botnets.” Communications (ICC), 2014 IEEE International Conference on. IEEE, 2014.
+[6] https://www.elastic.co/
+[7] https://gephi.org/
+[8] http://dev.maxmind.com/geoip/geoip2/geolite2/
+[9] http://wiki.openelec.tv/index.php?title=OpenELEC_FAQ#SSH_Password_change
+[10] https://tools.ietf.org/html/bcp38
+[11] https://isc.sans.edu/forums/diary/Exploring+a+P2P+Transient+Botnet+From+Discovery+to+Enumeration/22392/
+About the Author:
+Renato Marinho
+Edited by Pierluigi Paganini
+(Security Affairs – Rakos botnet, malware)

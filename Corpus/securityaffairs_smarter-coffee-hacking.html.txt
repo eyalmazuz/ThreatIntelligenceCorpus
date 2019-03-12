@@ -1,0 +1,29 @@
+
+					Reverse engineering a Smarter Coffee machine for fun and a security lesson					
+While security industry is stressing the need to adopt a security by design approach for IoT devices, security researchers continue to find flawed and poorly designed smart objects.
+Clearly, such kind of devices is a privileged target for crooks that could abuse them to conduct a wide range of illegal activities.
+Ok … but it’s time for a coffee break now and surfing the web I found a curious and interesting article of a popular Italian hacker, Simone Margaritelli, aka evilsocket.  Simone is a former blackhat hacker now mobile security researcher and senior ASM/C/C++ developer for Zimperium firm, he is the creators of the popular tool bettercap.
+Like me, Simone loves coffee so a few days ago he bought a Smarter Coffee machine that can be controlled via a mobile application that allows users to prepare a good coffee with many options.
+Simone Margaritelli decided to do a reverse engineering of the Smarter Coffee IoT Machine Protocol with the intent of control the coffee machine even from his terminal.
+
+The expert focused its analysis on classes and methods present in the source code of the app, then he found something of interest in the am.smarter.smarterandroid.models.a class.
+
+The researcher discovered the way the app and the machine communicate and which is the protocol they use.
+“Each of these “packets” is sent to tcp port 2081 of the machine, the protocol is very simple.
+First byte: the command number.
+Second byte to N: optional data ( depending on the command code ).
+Last byte: always 0x7e which indicates the end of the packet.
+Responses can vary, but for most of the commands they are:
+First byte: response size
+Second byte: status ( 0 = success otherwise error code )
+Last byte: always 0x7e.
+An example command and response, the one to keep the coffee warm for 5 minutes for instance, would be:
+COMMAND : 0x3e 0x05 0x7e
+RESPONSE : 0x03 0x00 0x7e”
+At this point, it was a joke for Simone to write a simple console to send commands to the Smarter Coffee machine as you can see in the video PoC published by the hacker.
+
+Simone has published the code on GitHub, below a few sample of the commands available to control the coffee machine.
+Simone Margaritelli highlighted that anyone on the same network of the machine could send commands to the device due to the absence of authentication.
+“Even if the mobile app requires you to register an account, access to port 2081 is completely unauthenticated ( in fact, I’ve found that the user account is only used for statistics using the Firebase API ), anyone on your network could access it and even flash a new firmware with no authentication required ( I reversed the UPDATE_FIRMWARE packet as well but you won’t find it on the repo  )” Simone wrote in a blog post.
+Pierluigi Paganini
+(Security Affairs – Smarter Coffee, IoT)

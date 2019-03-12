@@ -1,0 +1,96 @@
+
+A New Way to Detect Packers
+
+
+
+
+Reverse engineering executables is always a very challenging procedure especially if the analyzed executable has been packed or encrypted.  I've been talking a lot about packers and unpackers (take a look to these posts here) but the technique I am going to show you is totally new respect to those already described.  As you might know the most difficult procedure of reversing a packed (or encrypted) executable is to find out the original entry point (OE). Again, there are tons of ways to figure out if an executable is packed or not (aka PEiD) but there is no a universal known way to unpack it. The following image shows PEiD in action.
+
+
+
+
+
+
+
+
+
+PEID finds out that the executable has been packed with Aspack v2.12. Nowadays you might find specific unpackers (unpackers designed for a specific packing procedure)  but there is no way to have an ultimate universal unpacker. Here you can find many of those packers. YES, I know, there are universal unpackers too, but those unpackers are signature based, meaning that they are not able to unpack "new" packing procedure (algorithms), they must include the signature of every used algorithms. The following pictures shows one of my favorite Unpackers: Faster Universal Unpacker from RCE.
+
+
+
+
+
+
+
+
+
+A group of the New Mexico Tech designed a visualization tool based on Entropy (system calls, oriented graphs and so on) called VERA (read more here, here and here).  By using this tool you are able to distinguish between packers / encryptors STUB and unpacked / decrypted code by simply analyzing the execution of the executable. The following image shows the notepad.exe (yes the one in WinXP) traced by PIN and visualized by VERA. I traced notepad.exe by fixing 2 minutes of execution here the result:
+
+
+
+
+
+
+
+The blue label represents the Start address (which in this particular case corresponds to OE), yellow color means normal entropy, numbers in labels (you probably cannot see them because the image is too small) are the called addresses. The following image shows the same executable packet by using UPX. 
+
+
+
+
+
+
+
+As you may see the are sections (calls to addresses) that have high entropy (meaning be packed or encrypted) represented with RED labels. This alerts us about the presence of a packer / encryptor. Where the is a continuously low entropy labels (purple) we can find the OE. This because the encryptor / packer STUB finished its job and unpacked / decrypted the executable code giving to the OE the control flow. The following image shows notepad.exe packed by BroExePacker.
+
+
+
+
+
+
+
+
+
+
+
+
+
+In this case BroExePacker introduces a two levels of compression STUBs, you can easily distinguish them by looking at the red labels that are present in two points during the execution. This shows a typical two stage decompression. A first STUB decompress the function that decompress the real function who will decompress the original byte code (RED -PURPLE-RED-PURPLE). The OE is placed after the second RED labels. The following image shows the same executable (notepad.exe) compressed by the same BroExePacker but by using a different algorithm.
+
+
+
+
+
+
+
+Again, we can easily discover that this executable has been packed, this time with one level STUB. The OE could be in a couple of positions. Experience will help a lot in finding the OE, but this Visualization tool considerably decrease the complexity of such operation. VERA could be integrated to IDA pro by installing an IDA Pro plugin making IDA Pro communicating to VERA through sockets. This integration makes a lot easier the interaction between the tracer (IDA Pro) and the visualization tool VERA. I  am not going to cover in this post how to integrate VERA with IDA, but I am rather cover how to use VERA and PIN in a very quick way. Once you download and  install VERA from its website ,  you will get the visualization tool (VERA) and a small installation of PIN.  PIN is the tracer, the one who will produce the  .trace file by executing the analyzed executable, the .trace file who will get VERA to elaborate  its diagram.  The following picture shows hot to run PIN with VERA template.
+
+
+
+
+
+
+
+PIN is now running and tracing the analyzed executable. Let it running for a while (the time you decide) and then close the executable in a normal way (File -> Close, or whatever). Now opera VERA and click on Open. Select the file produced by PIN. Now VERA asks you about the original file and ask where to put its own graph file. The following image shows this process
+
+
+
+
+
+
+
+
+
+Once you done with that, VERA will take a while and finally it will show you a graphic traced path. You will find more details on VERA and PIN manual. 
+
+
+
+Summing up, I wanted to describe a new way to figure out if a executable has been packed or encrypted, and a new way to discover the Original Entry Point of the packed/encrypted executable. My experience in this field let me say that this is a great way to proceed and to learn about packers/encrypters.
+
+
+
+
+
+
+
+
+

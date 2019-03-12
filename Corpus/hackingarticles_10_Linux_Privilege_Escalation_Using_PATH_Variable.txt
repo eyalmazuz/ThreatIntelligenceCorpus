@@ -1,0 +1,66 @@
+
+Linux Privilege Escalation Using PATH Variable
+
+After solving several OSCP Challenges we decided to write the article on the various method used for Linux privilege escalation, that could be helpful for our readers in their penetration testing project. In this article, we will learn “various method to manipulate $PATH variable” to gain root access of a remote host machine and the techniques used by CTF challenges to generate $PATH vulnerability that lead to Privilege escalation. If you have solved CTF challenges for Post exploit then by reading this article you will realize the several loopholes that lead to privileges escalation.
+Lets Start!!
+Introduction 
+PATH is an environmental variable in Linux and Unix-like operating systems which specifies all bin and sbin directories where executable programs are stored. When the user run any command on the terminal, its request to the shell to search for executable files with help of PATH Variable in response to commands executed by a user. The superuser also usually has /sbin and /usr/sbin entries for easily executing system administration commands. 
+It is very simple to view Path of revelent user with help of echo command.
+/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games
+If you notice ‘.’ in environment PATH variable it means that the logged user can execute binaries/scripts from the current directory and it can be an excellent technique for an attacker to escalate root privilege. This is due to lack of attention while writing program thus admin do not specify the full path to the program.
+Ubuntu LAB SET_UP
+Currently, we are in /home/raj directory where we will create a new directory with the name as /script. Now inside script directory, we will write a small c program to call a function of system binaries.
+
+As you can observe in our demo.c file we are calling ps command which is system binaries.
+
+After then compile the demo.c file using gcc and promote SUID permission to the compiled file.
+
+First, you need to compromise the target system and then move to privilege escalation phase. Suppose you successfully login into victim’s machine through ssh. Then without wasting your time search for the file having SUID or 4000 permission with help of Find command.
+Hence with help of above command, an attacker can enumerate any executable file, here we can also observe /home/raj/script/shell having suid permissions.
+
+Then we move into /home/raj/script and saw an executable file “shell”. So we run this file, and here it looks like the file shell is trying to run ps and this is a genuine file inside /bin for Process status.
+
+
+
+
+
+
+NOTE: symlink is also known as symbolic links that will work successfully if the directory has full permission. In Ubuntu, we had given permission 777 to /script directory in the case of a symlink.
+Thus we saw to an attacker can manipulate environment variable PATH for privileges escalation and gain root access.
+
+Ubuntu LAB SET_UP
+Repeat same steps as above for configuring your own lab and now inside script directory, we will write a small c program to call a function of system binaries.
+As you can observe in our test.c file we are calling id command which is system binaries.
+
+After then compile the test.c file using gcc and promote SUID permission to the compiled file.
+
+Again, you need to compromise the target system and then move to privilege escalation phase. Suppose you successfully login into victim’s machine through ssh. Then without wasting your time search for the file having SUID or 4000 permission with help of Find command. Here we can also observe /home/raj/script/shell2 having suid permissions.
+Then we move into /home/raj/script and saw an executable file “shell2”. So we run this file, it looks like the file shell2 is trying to run id and this is a genuine file inside /bins.
+
+
+
+Ubuntu LAB SET_UP
+Repeat above step for setting your own lab and as you can observe in our raj.c file we are calling cat command to read the content from inside etc/passwd file.
+
+After then compile the raj.c file using gcc and promote SUID permission to the compiled file.
+
+Again compromised the Victim’s system and then move for privilege escalation phase and execute below command to view sudo user list.
+Here we can also observe /home/raj/script/raj having suid permissions, then we move into /home/raj/script and saw an executable file “raj”. So when we run this file it put-up etc/passwd file as result.
+
+
+Now type /bin/bash when terminal get open and save it.
+
+
+Ubuntu LAB SET_UP
+Repeat above step for setting your own lab and as you can observe in our demo.c file we are calling cat command to read msg.txt which is inside /home/raj but there is no such file inside /home/raj.
+
+After then compile the demo.c file using gcc and promote SUID permission to the compiled file.
+
+Once again compromised the Victim’s system and then move for privilege escalation phase and execute below command to view sudo user list.
+Here we can also observe /home/raj/script/ignite having suid permissions, then we move into /home/raj/script and saw an executable file “ignite”. So when we run this file it put-up an error “cat: /home/raj/msg.txt” as result.
+
+
+Now type /bin/bash when terminal gets open and save it.
+
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

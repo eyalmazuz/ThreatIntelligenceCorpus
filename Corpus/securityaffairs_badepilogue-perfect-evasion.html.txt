@@ -1,0 +1,34 @@
+
+					Italian security firm spotted BadEpilogue: The Perfect Evasion					
+Starting from May 2016, Certego Threat Intelligence platform has been detecting multiple viral spam campaigns using a new evasion technique. These attacks are able to hide malicious attachments inside a specific area of the MIME/Multipart structure and to avoid Content Filtering controls.
+Certego has verified that some of the most common email clients and web mail services, using a different way of rendering the MIME/Multipart structure, are able to identify and extract the attachment, resulting in a Malware Evasion technique that we called BadEpilogue.
+Analysis of the evasion technique
+The picture shows a snippet of the source of a malicious email message using BadEpilogue evasion technique.
+
+Rows from 53 to 57 contain the end of the HTML message, while the attachment is located within an area that RFC2046 defines as Epilogue of a MIME/Multipart message, right after the final boundary of the Multipart message located at line 59 ending with the double “-” character.
+According to RFC 2046, the message epilogue should not contain any useful text and, in particular, it should be ignored by MIME-compliant software:
+“NOTE: These “preamble” and “epilogue” areas are generally not used because of the lack of proper typing of these parts and the lack of clear semantics for handling these areas at gateways, particularly X.400 gateways. However, rather than leaving the preamble area blank, many MIME implementations have found this to be a convenient place to insert an explanatory note for recipients who read the message with pre-MIME software, since such notes will be ignored by MIME-compliant software.
+In the attack, right after the closing boundary of the MIME/Multipart message and at the beginning of the Epilogue area, there is a new boundary (see line 61) that starts another Multipart section containing the malicious attachment.”
+Certego verified that many libraries used in Antispam and Antivirus systems to extract and analyze email attachments are unable to detect files hidden in the Epilogue area. On the other hand, popular email clients such as Outlook, Thunderbird, Evolution and Web Mail services are able to detect the attachment and to show it to the user resulting in a new malware evasion technique.
+Responsible Disclosure Policy
+Certego has described this evasion technique to the developers of email clients impacted by BadEpilogue. At the same time, we have informed the vendors of major Antispam systems that some of their Content Filters are ignoring attachments hidden in the Epilogue area.
+We reported the technique to Microsoft and Mozilla. Microsoft has just released a patch for their email client in their last Security Bulletin MS16-107 (CVE-2016-3366) fixing the anomaly.
+Certego also contacted Google and TrendMicro and both vendors confirmed the problem. TrendMicro has released a hotfix for their products, while Google informed us that a solution will be released shortly.
+Is my email infrastructure affected by BadEpilogue?
+In order to be effective, BadEpilogue must fulfill two conditions.
+The first is that the Antispam filter, being compliant to RFC 2046, is unable to detect the attachment hidden in the Epilogue area. The second condition is that the email client or the web mail application is able to detect the attachment and to show it to the user.
+If you want to check if your antispam system is vulnerable to BadEpilogue, you can download the following EML file which contains an EICAR test file hidden in the Epilogue area. The EICAR file is a harmless test file for signature based virus detection software. Using any email client (better if installed on a virtual machine with no antivirus software or the antivirus will detect and block the EICAR file), you can send the file to the destination address you want to test. If the recipient receives the message, then your antispam system is probably vulnerable to the BadEpilogue evasion technique.
+If you want to check if your email client can detect and open attachments hidden with BadEpilogue, you can download a sample message from this link. The message contains a simple text attachment inserted in the Mime/Multipart’s epilogue. You can double click the file to open it with your favorite email client or use the “File -> Open” menu to manually open it. If the program lets you see the attachment, then your email client is vulnerable to BadEpilogue evasion technique.
+Detecting BadEpilogue using a SNORT signature
+Certego has created the following Snort signature to detect all incoming SMTP messages exploiting the BadEpilogue evasion technique.
+The campaigns
+As mentioned, this evasion technique has been detected in the wild since May 2016, in at least eleven different campaigns targeting Italian users. These campaigns use messages written in a fluent Italian asking the user to open an attachment labeled as invoice or payment receipt. The attachment is in ZIP format and it contains a malware in PE EXE format. This attack pattern is typical of the so-called Viral Spam campaigns that were prevalent until a few months ago, but it has now been deemed ineffective by antispam filters blocking ZIP files containing PE EXE. In this case, the BadEpilogue evasion technique allows the attacker to generate extremely effective campaigns that can reach a very high number of targets.
+While the first campaigns were spreading a malicious attachment containing a Trojan Downloader of the Fareit family which downloaded a variant of the Andromeda Infostealer, the latest campaigns have started working mainly with ransomware and in the last few days we have observed a massive amount of emails containing Zlader.
+The following picture shows the various campaigns using the BadEpilogue evasion technique as reported by our systems.
+
+The following picture shows the geolocation of IP addresses used to spread the malicious emails. Spreading patterns seem to be related to a single botnet that is expanding and contracting over time. This seems to be confirmed also by the fact that so far only Italian users have been targeted by these attacks.
+
+ 
+About the Author: Bernardino Grignaffini  
+Edited by Pierluigi Paganini
+(Security Affairs – BadEpilogue, cybercrime)

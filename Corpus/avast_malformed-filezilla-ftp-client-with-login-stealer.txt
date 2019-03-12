@@ -1,0 +1,89 @@
+Malformed FileZilla FTP client with login stealer
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 27 January 2014
+
+Malformed FileZilla FTP client with login stealerBeware of malformed FileZilla FTP client versions 3.7.3 and 3.5.3. We have noticed an increased presence of these malware versions of famous open source FTP clients.
+The first suspicious signs are bogus download URLs. As you can see, the installer is mostly hosted on hacked websites with fake content (for example texts and user comments are represented by images.)
+  
+ 
+Malware installer GUI is almost identical to the official version. The only slight difference is version of NullSoft installer where malware uses 2.46.3-Unicode and the official installer uses v2.45-Unicode. All other elements like texts, buttons, icons and images are the same.
+The installed malware FTP client looks like the official version and it is fully functional! You can't find any suspicious behavior, entries in the system registry, communication or changes in application GUI.
+The only differences that can be seen at first glance are smaller filesize of filezilla.exe (~6,8 MB), 2 dll libraries ibgcc_s_dw2-1.dll and libstdc++-6.dll (not included in the official version) and information in "About FileZilla" window indicates the use of older SQLite/GnuTLS versions. Any attempt to update the application fails, which is most likely a protection to prevent overwriting of malware binaries.
+
+
+We found a hardcoded connection detail stealer after deeper analysis. Malware authors abuse open source code and add their own stealer function to the main code.
+
+The algorithm is part of a malformed FileZilla.exe binary, therefore sending stolen log in details which bypasses the firewall. The whole operation is very quick and quiet. Log in details are sent to attackers from the ongoing FTP connection only once. Malware doesn't search bookmarks or send any other files or saved connections.
+Here is a communication when the FTP client (v3.7.3) is sending log in information:
+
+Stolen log in information is converted into the prepared format
+"ftp://username:password@ftp.domain.com:port"
+then encoded through custom base64 algorithm and sent to the attacker's server.
+Hardcoded URL:
+
+Prepared log in information and encoded to custom base64 algorithm:
+
+And finally send to attackers via WS2_32.send API:
+
+Custom User-agent:
+
+Stolen data is sent to the IP 144.76.120.243 that belongs server hosted in Germany.
+We found 3 domains that link to same IP:
+
+
+
+go-upload.ru
+created 2012.09.23
+
+
+aliserv2013.ru
+created 2013.09.09
+
+
+ngusto-uro.ru
+created 2013.09.19
+
+
+
+Unfortunately, domains are registered through the infamous Russian domain registrar Naunet.ru, which is associated with malware and spam activities. This registrar hides client contact info and ignores requests to suspend illegal domains. More info here, here and here.
+Whois of Naunet's customer:
+
+Malware authors use very powerful and inconspicuous method to steal FTP log in credentials in this case. As you can see, malware version 3.5.3 was compiled in September 2012 and it's almost without detection nowadays.
+
+
+The absence of any suspicious activity is the biggest danger for average users who can use malformed FileZilla for a very long time.
+We assume that the stolen FTP accounts are further abused for upload and spread of malware. Attackers also can download whole webpage source code containing database log in, payment system, customer private information etc.
+Connection via infected FTP client to your home or corporate network is another level of this threat.
+How to protect yourself
+We strongly recommend to download any software only from official, well-known or trusted sources. Avoid strange looking websites and portals offering software via their own downloaders or installers containing bundled adware and PUP applications.
+Malicious Installer v3.5.3:
+SHA256: 595D954C7CE574337C97A0801E779BC3DCA94FC92AFAE8F483DCDD1A053C5C24
+Malicious FileZilla.exe v3.5.3
+SHA256: 525E9ED135C1435772A774D7AD7168CECCD225E354118E621482DB61174F6734
+Malicious Installer v3.7.3
+SHA256: B9A12F9B6827144D84E65EF2BA454D77CB423C5E136F44BC8D3163D93B97F11F
+Malicious FileZilla.exe v3.7.3
+SHA256: 2451599C03B136C1848F538184F0F266973B65AFC8DD25F272A7E6B0555B657A
+
+
+
+Check 6 comments or write your comment
+
+
+
+
+
+
+
+
+

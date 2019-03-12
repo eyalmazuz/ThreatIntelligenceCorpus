@@ -1,0 +1,49 @@
+
+CAPTCHA Re-Riding Attack
+
+
+By Gursev Kalra.
+
+The CAPTCHA re-riding attack bypasses the CAPTCHA protections built into the web application. The attack exploits the fact that the code which verifies a CAPTCHA solutions sent by the user does not clear the CAPTCHA solution from the HTTP session. A typical scenario to demonstrate the vulnerability is explained below:
+
+A user visits the registration page of a website.
+The website creates an HTTP session, assigns it a SESSIONID, and returns the registration page to the user along with the SESSIONID cookie. The registration page also contains one image tag which directs the browser to retrieve a CAPTCHA and display it on screen.
+Upon parsing the image tag, the browser sends out request for the CAPTCHA. 
+The server side code creates a new CAPTCHA with random text and CAPTCHA solution is stored in the HTTP session
+The CAPTCHA image is then sent to the client and is then displayed by the browser. 
+Browser sends the CAPTCHA solution along with form fields for verification.
+Server side code retrieves the CAPTCHA solution from the HTTP Session and verifies it against the solution provided by the client.
+If verification is successful, client is sent to next logical step in the registration process. If not, client is redirected to the start registration page (step 1 above).
+
+Figure 1: Image shows an example Register page that supports CAPTCHA 
+
+Analysis of the CAPTCHA generation and verification process reveals the following:
+The captcha.php is the only page responsible for updating the HTTP session with correct CAPCHA solution. The first ingredient.
+CAPTCHA solution inside the HTTP session is not explicitly cleared during the verification process. Yes, you guess it right. This is the second and the most important ingredient for CAPTCHA re-riding attacks. 
+When registration fails (for any reason), the web applications continue to use the same HTTP session and SESSIONID. We will not look into this further.
+When registration succeeds, the user is redirected to next step and the CAPTCHA generation page (/captcha.php) is not likely to be called for current SESSION again.  This allows the CAPTCHA solution to stay in the HTTP store for as long as SESSION is valid. Following are the likely scenarios to be seen when CAPTCHA verification is successful:
+
+The web application generates a new SESSIONID for the same HTTP session for known security reasons. This implementation is most likely to be seen. Combine this behavior with first and second ingredients above and you have a successful CAPTCHA Re-Riding attack.
+The web application continues to use the same SESSIONID for the same HTTP session.  Here we have more things to worry than just the CAPTCHA. For now, combine this behavior with first and second ingredients above and you have a successful CAPTCHA Re-Riding attack again.
+The web application generates a completely new HTTP session with new or same SESSIONID. For CAPTCHA Re-riding Attack, this scenario is not exploitable.
+
+
+For scenarios 4.a and 4.b, the HTTP Session continues to hold the CAPTCHA solution as it is not explicitly cleared by the CAPTCHA verification code. Since /captcha.php is not going to be called again (and we will not let the call happen anyway), the same CAPTCHA solution continues to exist in HTTP session. Let us now see how 4.a & 4.b scenarios above can be exploited to make multiple successful submissions using a CAPTCHA solution.
+
+Exploiting Scenario 4.bLoad the register page of the target website in a web browser.
+Solve the CAPTCHA manually, and submit the form.
+Record this form submission using a web proxy. This request contains a valid SESSIONID, valid form fields and a valid CAPTCHA solution.
+Create a custom script or use any tool like Burp intruder that can repeatedly send this request to server. With each request change the unique values (like User ID) to create multiple new accounts with a single CAPTCHA solution.
+
+Exploiting Scenario 4.aLoad the register page of the target website in a web browser.
+Solve the CAPTCHA manually, and submit the form.
+To make things easy, trap this request in a web proxy and do not allow it to reach the web server. This request contains a valid SESSIONID, valid form fields and a valid CAPTCHA solution.
+Create a custom script or use any tool like Burp intruder that can repeatedly send this request to server. 
+Submit one request.
+Upon successful submission, the web application will reset the current SESSIONID and send new SESSIONID back in response headers. 
+Change the value of SESSIONID in recorded request (step 3) to the value copied from response in Step 6 above.
+Go to step 5. 
+We will be able to make multiple successful submissions with single CAPTCHA solution.
+Using one time tokens along with CAPTCHAs on the registration pages may still be exploitable with a few additional lines of attack code. The best defense is to reset CAPTCHA solution inside the HTTP session during the CAPTCHA verification stage.
+
+

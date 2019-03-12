@@ -1,0 +1,28 @@
+
+Linux Privilege Escalation using LD_Preload
+
+Hello friends, today we are going to discuss a new technique of privilege escalation by exploiting an environment variable “LD_Preload” but to practice this you must take some help from our previous article.
+Table of contents
+Shared Libraries
+Shared libraries are libraries that are loaded by programs when they start. When a shared library is installed properly, all programs that start afterwards automatically use the new shared library. 
+Shared Libraries Names
+Every shared library has a special name called the soname”. The soname has the prefix lib”, the name of the library, the phrase .so”, followed by a period and a version number.
+The dynamic linker can be run either indirectly by running some dynamically linked program or shared object. The programs ld.so and ld-linux.so* find and load the shared objects (shared libraries) needed by a program, prepare the program to run, and then run it. (read from here)
+LD_Preload: It is an environment variable that lists shared libraries with functions that override the standard set, just as /etc/ld.so.preload does. These are implemented by the loader /lib/ld-linux.so
+For more information read from here.
+It is important that logged user must have some sudo rights, therefore, we have given some sudo rights such as /usr/bin/find to be executed by sudo user. But apart from that, there is some Default specification where you can set an environment variable to work as sudo.
+To do this follow below steps:
+Raj          ALL=(ALL=ALL) NOPASSWD: /usr/bin/find
+Defaults        env_keep += LD_PRELOAD
+
+Post-Exploitation 
+To exploit such type of vulnerability we need to compromise victim’s machine at once then move to privilege escalation phase. Suppose you successfully login into victim’s machine through ssh now for post exploitation type sudo -l command to detect it. And notice the highlighted environment variable will work as sudo.
+
+Let’s generate a C-program file inside /tmp directory.
+
+Then save it as shell.c inside /tmp.
+
+As discussed let’s compile it to generate a shared object with .so extension likewise .dll file in Windows operating system and hence type following:
+Yuppieeee!!!! We got the ROOT access.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

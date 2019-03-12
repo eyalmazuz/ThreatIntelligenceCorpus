@@ -1,0 +1,161 @@
+
+Talos ShadowGate Take Down: Global Malvertising Campaign Thwarted
+
+
+This blog authored by Nick Biasini.
+
+Exploit kits are a class of threat that indiscriminately aims to compromise all users. Talos has continued to monitor this threat over time resulting in large scale research and even resulting in a large scale takedown. The focus of this investigation is on the tools and techniques being used to drive users to the exploit kits. This blog looks at the anatomy of a global malvertising campaign and how users interact with exploit kit gates, regardless of the sites they visit and the countries they reside. 
+
+Talos observed a large malvertising campaign affecting potentially millions of users visiting sites in North America, Europe, Asia Pac, and the Middle East. The research culminated in a joint effort with GoDaddy to mitigate the threat by taking back the registrant accounts used to host the activity, and taking down all applicable subdomains. This is yet another example of how organizations work together to stop threats affecting users around the globe. If you are a provider or online ad company that would like to work with Talos, please contact us.
+
+Online advertising is a key component of the Internet today, especially for sites that provide content free of charge. In this blog we will be discussing a global malvertising campaign that has affected a wide array of websites. These websites don't bear responsibility for these malicious ads; it is just the nature of online advertising. As security organizations get better at identifying and shutting down malicious content, adversaries are going to continue to move and stay agile. The advantage to malicious advertising is if you visit the same site twice you are unlikely to receive the same content from an advertising perspective. This is where protections like ad blockers, browsers with advanced sandboxing technologies, and detection/prevention technologies are paramount to ensure protection from this type of content.
+
+
+
+Gate Overview
+Gates are an initial redirection point for exploit kits. This is simply an intermediary between the initial redirection (i.e. compromised website/malicious ad) and the actual exploit kit server that does the probing, compromise, and payload delivery. This allows the adversary to quickly change the actual malicious server without having to change the initial redirection. Enabling a longer exploit kit campaign without having to constantly modify the site or ad that starts the infection chain. At any given time there are several gates that are actively pointing users to exploit kits among them are darkleech, pseudo darkleech, EITest, and ShadowGate / wordJS.
+
+The exploit kits they point to can change and evolve over time. Let's look at EITest for example. This gate started by directing users to Angler. Then as Angler disappeared, it moved on to Neutrino, and most recently has been seen directing users to Rig. This is the case for most gates and is one of the key reasons Angler we believe to be currently inactive as the gates have moved on to other exploit kits since its disappearance in June. Some gates seem to favor either compromised websites or malicious ads. EITest seems to favor compromised sites and ShadowGate seems to focus on malicious ads.
+
+ShadowGate Background
+
+
+ShadowGate is the name Talos gave to this particular gate since it uses domain shadowing to host its activity. This is not a new gate. It has been around since at least early 2015. One of the things that stands out about ShadowGate is the volume of traffic vs. the volume of redirections. In previous research Talos observed in excess of 900K examples of attempted interaction with ShadowGate, but only 0.1% of those interactions actually led to an exploit kit. This helps illustrate why malicious ads are so attractive to adversaries, they produce lots of traffic. None of these are anything more than impressions, meaning that the ad just renders on the page, no user interaction is required. This is an important distinction because impressions are cheaper and easier than ads that require user interaction.
+
+The basic syntax for this gate relies on domain shadowing, the use of two English word based subfolders, and an English word based javascript file. Below is an example of the syntax we have come to expect from shadowgate:
+
+
+praised.hillarynixonclinton[.]net/poison/performs/dropdown.js
+
+Additionally, ShadowGate tends to go dark for random periods of time. It will then start again and continue directing traffic to exploit kits. Until the Angler disappearance it was exclusively used to direct users to Angler. Today that traffic is now bound for Neutrino EK instances.
+
+Over the course of the last year ShadowGate has used various shadowed domains. This particular campaign has been active for at least the month of August and has used the following domains to shadow its activity:
+
+merrybrycemas[.]com
+
+hillarynixonclinton[.]net
+
+phillyeagleholic[.]com
+
+eagleholic[.]com
+
+hillarynixonclinton[.]com
+As is typically the case with shadowed domains these are owned by what is likely a single user although it is associated with two different email addresses. These email addresses use the same username just with different providers (i.e. Gmail & Yahoo). These domains are also registered with GoDaddy, not surprising since it is the largest domain registrar. The gate itself is not overly sophisticated. When a user is actually served a redirection it will look similar to the following:
+
+
+ShadowGate Redirection Example
+
+This is yet another Neutrino EK landing page rendering several feet to the left and several feet above the screen. This leads to the relatively "simple" landing page associated with Neutrino as shown below. The landing page performs some checks to establish if flash is installed and then downloads a malicious flash file that contains multiple exploits and compromises the user, as highlighted.
+
+
+Neutrino Landing Page
+
+This introduces a fairly simple way to avoid Neutrino all together - uninstall Adobe Flash. Since the landing page just checks for flash then serves a malicious flash file, it can be completely mitigated by removing the flash plugin from your system. If you needed another justification for removing it from your system protecting yourself from Neutrino can be that reason. It's common for exploit kits to rely heavily on flash to compromise users, but Neutrino is the only exploit kit that actually requires it before probing the system.
+
+Online Advertising
+Before we get into the specifics of how this particular malvertising campaign was operating let's discuss online advertising. Online advertising is a relatively complex subject. This particular discussion will focus on OpenX and its two ad servers, Revive, the third party open source option or OpenX Enterprise, the OpenX commercial option. OpenX is one of the largest online advertisers in the industry that uses a real-time bidding system. This basically means that in the time it takes for a browser to render the webpage advertisers are bidding on the available ad space and the highest bid wins. From OpenX website, they see more than 200 billion ad requests monthly. That's an extremely large footprint. One of the reasons is Revive. This ad server allows users to connect to multiple different ad streams including OpenX. Based on the syntax associated with this malvertising campaign it appears that most of the sites hosting the ads are using Revive or potentially OpenX Enterprise. As noted in their documentation (shown below) the default path for ads are using path /www/delivery/:
+
+
+Revive Configuration Sample
+
+This path was used by the majority of the examples Talos found for this specific malvertising campaign. As mentioned before there are two primary types of ads impressions and clicks. Impressions are calculated from the ad rendering on the page. Clicks, as the name suggests, requires the user to click the ad. Impressions and clicks have different costs associated with them, with impressions being more economical for obvious reasons.
+
+Malvertising Campaign
+One of the most interesting aspects of this particular malvertising campaign was its global reach. Malvertising campaigns are almost constantly ongoing and directing users to various threats. Talos discovered that this particular gate was active again and began gathering data on how users were being directed to the gate and where the traffic ended up. The easiest way to start is to walk through an example.
+
+This infection run begins with a trip to a site related to precious metals and their values, goldseek[.]com. The user begins by browsing to the main URL associated with the site. The page loads as normal, but upon further analysis you can see that there is an ad generated from OpenX 2.8.7 as highlighted:
+
+
+Initial Ad GET Request
+
+Let's continue down that path and see what that particular ad loads.
+
+
+Malicious Ad Pointing to ShadowGate
+
+Here you can clearly see an iframe that points to the gate. This is typical for this particular campaign and it appears that the iframe was almost "bolted on" to the ad at the top. The remainder of the infection chain is covered above, showing Neutrino compromising the system. In this particular instance it was a partial delivery of CrypMIC which is yet another ransomware variant. This entire process is invisible to the user, a video of which is shown below:
+
+
+
+This is a typical example of how this malvertising campaign worked. Now the focus will be on where this malvertising campaign was seen and some variants found along the way.
+
+Global Campaign
+As Talos dug into this campaign the true global presence started to emerge. It's not uncommon to find malvertising campaigns hitting a wide variety of sites. What was interesting about this campaign is how many different languages and countries were potentially impacted. This all began by noticing the traffic on precious metal commodity sites, as the example above walks through, but quickly it started to expand. Talos began to find the redirection appearing on a wide range of sites. Let's start with several Chinese sites that are related to Information Technology. First, there was 51cto[.]com, a leading IT technology site in China. Talos was able to find several instances of this campaign on various pages spread throughout the site.
+
+
+Image showing Ad Request and Response with ShadowGate
+
+Next up was elecfans[.]com, another Chinese based information technology site. Again this site was impacted similarly to 51cto[.]com with the same sort of ads being found throughout the site. Malvertising is expected to impact people around the world, but you rarely find examples of full Chinese language sites serving malicious ads and compromising users via exploit kit gates. There were other Chinese sites that were seen directing to the gate as well. Continuing with the Asia Pacific theme, next were a group of New Zealand based sites that were impacted.
+
+As we continued to investigate we started noticing a lot of .co.nz TLDs serving ads. One such example was particularly interesting because it added SSL to the mix. The site in question was theregister[.]co[.]nz, which is a news site for the retail industry in New Zealand. Initially it was unclear where the initial infection point came from since it appeared the redirection just appeared out of nowhere. As shown below you can see the DNS request for wood.hillarynixonclinton[.]net with some SSL preceding it.
+
+
+
+
+Encrypted Ad Traffic Capture
+
+
+
+Further analysis of the SSL traffic revealed the source of the traffic. This points to a potential compromise of an ad stream as opposed to an actual malicious ad, since all the ads for the page had the iframe added to them regardless of where they are rendered. This was something we noticed repeatedly as it would be common to see 10-15 requests for the gate in a single page load instead of a typical 1 or 2 depending on the page and the ads that loaded.
+
+
+Decoded SSL Traffic Showing ShadowGate iFrame Injection
+
+This was one example of hundreds we found from New Zealand and Australia during this campaign. Additional investigation led to yet another language and region being impacted the middle east. Talos began noticing redirections originating from alhilal[.]com, which is a website for a futbol/soccer team based out of Saudi Arabia. The site, in full arabic, had an ad similar to the ones described above ending in ShadowGate. This particular ad was slightly different than the ones shown previously. As shown below, this ad used a variable to create the URL to connect to ShadowGate. However, that was just the beginning.
+
+
+Variable Based ShadowGate
+
+As the investigation continued even more wide ranging sites were impacted beginning with a major US University serving the ads. Next was was the Newspaper webpage for a large US city; then a Polish forum for bicycle enthusiasts; and finally the website for a large city in Canada. There were groups of pages associated with financial information, gun auctions/sales, and smoking enthusiasts. Finally, Talos found several instances related to "Adult" websites, which is fairly common for malvertising in general.
+
+Once the investigation was complete Talos had found a sophisticated, global, diverse malvertising campaign that potentially could have impacted millions of users based on the reach and popularity of the sites they impacted. It widely affected Europe, Asia Pac, Middle East, and United States. This was a global attack indiscriminately compromising users around the world.
+
+Upon completion of the research Cisco Talos notified GoDaddy of the registered domains that were hosting ShadowGate. GoDaddy quickly responded and was able to mitigate the threat successfully. As of the publishing of this blog the associated malvertising campaign appears to have been successfully shut down and the malicious activity thwarted. Unfortunately, as this is using domain shadowing it's likely the campaign will only remain dormant for a while, but until then users are protected from this specific threat.
+
+Another ShadowGate Campaign
+Shortly after working with GoDaddy to shut down the domains associated with the malvertising campaign a second campaign that was running on different IP space using a different set of registrant accounts was discovered. This campaign was heavily targeting Europe with a large amount of Italian, Spanish, Bulgarian, Swedish, and Slovakian sites hosting the malicious ads. There were also several Israeli sites seen serving them. One thing of note is that the URL structure changed shortly after the initial take down. The syntax now had a couple of subtle variations:
+
+
+ShadowGate Evolution
+
+Note that the second english based subfolder was removed and in some instances there were parameters added to the URL. Talos gathered the information related to this second malvertising campaign and worked with GoDaddy to get these domains shut down and this second campaign stopped. Just like any other portion of an exploit kit infection chain, the adversaries will continue to evolve. Expect ShadowGate to continue to change as we work to shut them down whenever they start up another campaign.
+
+IOC
+ShadowGate
+IP
+212.116.121.239
+5.200.55.173
+
+Domains
+
+Neutrino
+IP
+Domains
+
+Conclusion
+This is the reason malvertising is such an attractive avenue for the bad guys. This campaign was spread all over the world and hit sites related to popular culture, weapons, universities, IT, retail, news, pornography, and many others. This is the challenge we face in 2016 and beyond. How do you balance the need for companies to make revenue offering their online content with the risks associated with those same revenue streams? 
+
+As the battle between websites and ad blockers continues to escalate, this is an issue that will have to be dealt with eventually. The other challenge with this type of activity is that the ad itself appears to come from the same domain as the websites so if you visit example.com it's likely the ad originated from ads.example.com or some other variant. It's trivial to set up an ad server to host ads on your site. It is increasingly difficult to determine where the malicious content resides, since ads move sites rapidly.
+
+Ad providers also face challenges. Being able to determine which iframes and javascripts in a particular ad are malicious. This is a difficult task and in many examples multiple tiers of servers are required. Even if each ad is analyzed, if the malicious portion of the ad isn't active it will render normally without any suspicious activity. Only when the ad becomes active does the maliciousness arrive. This campaign provides evidence to support this since the overwhelming majority of users that interact with these ads are served no content. Only a very small fraction of users are actually directed to the exploit kit. So despite there being a high volume of users interacting with it, only a small portion are actually delivered content.
+
+Users aren't left with a lot of options related to this threat. Ad blockers are an option, but as we've seen some sites are already taking a stand against ad blockers because they eliminate a primary revenue stream. In the case of Neutrino, users can simply uninstall Adobe Flash from their systems entirely. This is yet another reason to remove a plugin that is increasingly becoming obsolete in regards to rendering the images, games, and videos on the Internet today. 
+
+This is a challenge that is going to increase in the near term as the ways that content is delivered to end users moves even further into the online space. As this continues those sources are going to lean even more heavily on ads to support that information. This pushes people to either not support the organizations providing you the information, take your chances with potentially seeing malicious content via these ads, or resort to sites that sit behind pay walls requiring monthly fees to extract the data. Welcome to the information age in 2016 and beyond, don't forget those ad blockers.
+
+Coverage
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors. 
+
+
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+
+
+

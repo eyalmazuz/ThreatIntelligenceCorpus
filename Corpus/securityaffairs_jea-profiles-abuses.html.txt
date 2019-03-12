@@ -1,0 +1,22 @@
+
+					Breaking the Microsoft JEA technology to hack a system					
+Just Enough Administration aka JEA is a Microsoft technology that enables the delegated administration for carry on task with PowerShell.
+With JEA in place, it is possible to properly configure a role for administrators giving them the access to all the commands they need to complete their task but nothing more.
+Now security researcher Matt Weeks has discovered a way to abuse the Microsoft’s PowerShell feature Just Enough Administration (JEA) and escalate user’s profile to sys admin.
+The expert published an interesting analysis to explain that the JEA profiles don’t represent an obstacle for an attacker that can escalate themselves to sysadmin.
+“Even the experts who develop these operating systems usually fail, even under the strictest scrutiny of code reviews.” reads a blog post published by the expert.
+“Every JEA profile I had found Microsoft has published can be bypassed to obtain complete system administrative rights, most of them immediately, reliably, and without requiring any special configuration. System administrators who create their own custom profiles are almost certainly not going to do any better.”
+Weeks demonstrated various methods to exploit the JEA technology. In the JEA Helper Profile Attack, the security expert explained ho to use the Add-Computer “cmdlet” (used to add a computer to a domain or switch its domain) “to break the JEA security barrier, and escalate privileges to complete unrestricted system control”.
+It is important to highlight that Weeks did not exploit any zero-day flaw in the JEA, he added/switched a machine to a domain then pull group policy from a Domain Controller managed by the attacker end escalating his profile gaining full unrestricted administrative control over the system.
+“Your computer will be added to the domain. Next time it reboots, it will pull group policy settings from your new server, enabling you via a group policy configuration to change any setting, drop the firewall, execute any command as system via startup scripts or scheduled tasks, or directly log in as the domain admin.” continues Weeks.”You have broken the “security barrier” and have full unrestricted administrative control over the system.”
+Weeks explained that Microsoft manages a repository of more comprehensive JEA profiles, giving a close look at the JEA documentation on GitHub (be careful, Weeks did not use the documentation at the http://aka.ms/jeadocs, he searched it manually querying for JEA on github.com) he discovered a secret repository at https://github.com/PowerShell/JEA. This repository has 4 sample role capabilities; a “level 1” and “level 2” for general server administration and
+The analysis confirmed the existing of 4 sample role capabilities; a “level 1” and “level 2” for general server administration and IIS specific level 1 and 2.
+“I used the PowerShell commands import-module servermanager
+Install-WindowsFeature Web-Server
+Install-WindowsFeature Web-ASP
+Install-WindowsFeature Web-Asp-Net45 to install IIS and ASP.NET:”  wrote the expert.
+
+An attacker can execute the New-Service cmdlet to launch any command with full SYSTEM rights. The Get-WinEvent and Get-EventLog cmdlet allow the attacker to gain admins access to event logs, with obvious consequences.
+Weeks confirmed that Microsoft will update its JEA documentation giving more details about JEA profiles and the way they could be managed to gain administrative access.
+Pierluigi Paganini
+(Security Affairs – Just Enough Administration, hacking)

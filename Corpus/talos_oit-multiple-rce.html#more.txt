@@ -1,0 +1,59 @@
+
+Vulnerability Spotlight: Multiple Code Execution Vulnerabilities in Oracle Outside In Technology
+
+
+These vulnerabilities were discovered by Aleksandar Nikolic of Cisco Talos.
+
+
+Summary 
+
+Oracle's Outside In Technology (OIT) is a set of SDKs that software developers can use to perform various actions against a large number of different file formats. According to the OIT website: "Outside In Technology is a suite of software development kits (SDKs) that provides developers with a comprehensive solution to extract, normalize, scrub, convert and view the contents of 600 unstructured file formats." Talos recently discovered vulnerabilities in the RTF and PDF parsers used by OIT that can be used to achieve arbitrary code execution on affected systems. Specially crafted files that leverage these parsers can be used to create conditions that could be leveraged by an attacker to obtain the ability to execute arbitrary code on affected systems.
+
+
+TALOS-2016-0198: Oracle Outside In Technology PDF Parser Confusion Code Execution Vulnerability (CVE-2016-3271)
+
+In applications that are using the OIT SDK for parsing PDF files the presence of a malformed /Index entry can lead to the misinterpretation of a string pointer as an integer value leading to an out of bounds memory access condition. By carefully manipulating the memory and PDF layout, an attacker could leverage this condition to achieve code execution on affected systems. In PDF files, the /Index entry generally contains an array of numbers. The existence of a string in the /Index entry can trigger this condition.
+
+Below is an example PDF that triggers this condition.
+
+
+
+Figure A: Example PDF Test Case
+
+The existence of the exclamation point within the /Index entry causes the third element in the /Index array to be interpreted as a string, leading to the placement of a pointer to the string where an integer is expected. This pointer is then used in subsequent offset calculations by the application. By manipulating the /Size parameter in the PDF, the integer overflow can be controlled and an arbitrary pointer can be obtained. By controlling the value of the pointer, an attacker could further manipulate memory and ultimately achieve code execution. 
+
+
+TALOS-2016-0215: Oracle Outside In Technology RTF Code Execution Vulnerability (CVE-2016-3293)
+
+While parsing a specially crafted RTF file, Oracle Outside In Technology can be manipulated to cause the reuse of a reference to a previously freed memory location. This condition can be further leveraged to allow for remote code execution on affected systems. Below is an example RTF file that illustrates the issue.
+
+
+
+Figure B: Example RTF Test Case
+
+When the \par parameter included in the above example is processed by the RTF parser used by OIT, it results in the allocation of memory for an object that is later freed. Later, when the final \footer parameter is processed by the RTF parser, the same memory region that was previously freed is reused without proper reallocation. By manipulating the contents of this memory region, an attacker could successfully execute arbitrary code on affected systems.
+
+
+Conclusion
+
+Talos has worked to disclose these vulnerabilities to Oracle. Oracle has released a security update which addresses both of these vulnerabilities. As these vulnerabilities can be leveraged by an attacker to obtain arbitrary code execution on affected systems, it is recommended that the security update be applied as quickly as possible. Ensuring that systems remained patched against the latest software vulnerabilities is essential to ensuring that environments remain protected. 
+
+For full details regarding these vulnerabilities, please see the advisories here and here.
+
+Research efforts to identify zero-day vulnerabilities in software will remain an ongoing effort by Talos. Our work in developing programmatic methods to identify zero-day vulnerabilities and making sure they are addressed in a responsible manner is critical to improving the overall security of the internet.
+
+Our vulnerability reporting and disclosure policy can be found here.
+
+
+Coverage
+
+The following Snort IDs have been released to detect this vulnerability: 40773-40774, 41108-41109.
+
+Please note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+For further zero day or vulnerability reports and information visit:
+
+http://talosintelligence.com/vulnerability-reports/
+
+
+

@@ -1,0 +1,44 @@
+SpeedFlash and ScrnSize: Fake Flash Updates with a Side of Domain Shadowing
+Fake Flash download pages have come to be a marker for all manners of malicious activity. We’ve seen it in conjunction with exploit kits, banking Trojans, watering hole attacks, malvertising, adware, phishing, digital currency miners, and multitudes of other digital threats. Often, there are traffic distribution systems or other means of traffic filtering upstream of these sites and many campaigns use decoy sites to which they dump unwanted traffic rather than serving up the malicious payload. 
+Today, we’ll be looking at a redirection sequence that brings many of these malicious tactics together, showing evidence of a campaign that uses fingerprinting and filtering, domain infringement, domain shadowing, indicators of cookie tracking, and malicious downloads using fake Flash. From one redirect, we were able to uncover thousands of artifacts pointing to a more extensive malicious campaign preying on potentially thousands of victims.
+Below is a typical redirection sequence from this particular malicious campaign leading from an initial fingerprinting and redirection page to a page serving fake Flash to a “speed test” decoy page:
+Fig-1 Sequence leading from fingerprinting page a page serving fake Flash which redirects to a speed test decoy page.
+The gniedin.redirectme[.]net page retrieves screen size and resolution for fingerprinting purposes. As part of its redirection, the “scrn” size value (hence the name of the redirector) along with other identifiers used for campaign tracking such as search terms and unique identifiers for clicks, post to a form called “form1.”
+Fig-2 Screen size and resolution fingerprinting.
+There’s evidence of several possible scams and lures in the document object model (DOM) captured by RiskIQ’s crawlers, including fake streaming services, fake financing, fake software, fake dating fake gift cards, and, of course, fake Flash.
+Fig-3 Screen size retrieval and various scam elements.
+Within ten days of creating our detection for this redirector, we had over 68,000 unique hits on 1,049 domains, the majority of which appear to have been designed for this malicious purpose. The addresses follow a pattern of randomness that makes their use as legitimate domains unlikely—a third-level domain of random letters and more random letters for the second-level domain name on a top-level domain like ‘.loan’ or ‘.review.’ The directory for these addresses are also random, e.g., kjm.ikfkdj[.]loan/i70. However, about a third of our detections did point to legitimate domains and businesses that had been compromised and used maliciously.
+A significant portion of the addresses hosting this redirector exhibit evidence of domain shadowing, which involves compromising credentials used to register a legitimate domain, or otherwise gaining access, to create new subdomains for malicious purposes.
+Fig-4 Domain shadowing victim littleelkartsandfloral[.]com.
+
+Fig-5 A malicious subdomain created by domain shadowing littleelkartsandfloral[.]com.
+
+Once under attacker control, each victim domain spawns numerous malicious subdomains, which in turn are loaded with hundreds of files full of nonsense text and links to other sites that are part of this widespread scam infrastructure. The high-entropy nature of these subdomains is also found in the ScrnSize not created by domain shadowing.
+Fig-6 Files loaded onto malicious subdomain created via domain shadowing.
+ 
+Fig-7 File with nonsense text and links to other scam infrastructure.
+A RiskIQ Community Project containing all the suspected domain shadowing victims and a Project made up all the domains serving this redirector can be viewed at the following links: https://community.riskiq.com/projects/a1eaa121-8546-26bd-f735-8994ad848cbd
+https://community.riskiq.com/projects/6804bb25-556d-c60d-a9f5-68c1c9d0c5cb
+Downstream of the ScrnSize pages, victims redirect through several layers of shady ad networks. We previously observed one of these, xmlfeed[.]info, in conjunction with a fake tech support campaign. According to our data, this network appears to be solely handling traffic for this campaign. Since the beginning of the year, we have observed 48,000 hosts on 2,837 domains sending traffic through xmlfeed[.]info, all of which match the addressing scheme we identified with the above redirector. All of these hosts appear to be hosting the same or similar code.
+The next notable part of our sequence is another redirector at sshuuslqju.jargonpacific[.]win. However, this one adds a distinctive tracking cookie:
+Fig-8 c-mm-mac-installer cookie observed on a malicious redirector.
+In fact, there are several unique cookies associated with this domain that can be found in RiskIQ Community (https://community.riskiq.com/search/sshuuslqju.jargonpacific.win), each of which is related to several other domains. The c-mm-mac-installer cookie alone is associated with 17,076 unique domains, a subset of which can be seen here: https://community.riskiq.com/search/cookies/name/c-mm-mac-installer.
+Fig-9 Other cookies associated with malicious redirector sshuuslqju.jargonpacific[.]win.
+The ‘rvis,’ ‘clickid,’ and ‘subid’ cookies shown above are not useful for tracking this campaign because they’re used by legitimate services as well. The others, those beginning with “c-,” represent a fraction of the number of domains associated with c-mm-mac-installer but still connect this infrastructure with thousands of other sites. 
+Referring to Fig. 8, the headers for sshuuslqju.jargonpacific[.]win set its location to ocmup.claudiaopinion[.]win, which causes another redirect, then another, until we end up on a ocmup.claudiaopinion[.]win page. This page contains the info about the system and browser and the tracking data that was gathered through the series of fingerprinting and redirection pages, as well as fake Flash player social engineering elements and download links.
+Fig-10 System and browser data and fake Flash elements.
+ 
+Fig-11 System and browser data and fake Flash elements.
+ 
+Fig-12 fake Flash download page redirected to through this malicious campaign.
+A RiskIQ Community project containing all of our indicators around this campaign can be viewed here: https://community.riskiq.com/projects/aeb748e4-692f-0fc5-1f62-e8267d303014
+One final wrinkle in this campaign is the use of decoy pages purporting to be sites for testing internet speeds: ispeed[.]club and ispeedtest[.]club on the dedicated IP address 206.217.193[.]173. These speed test pages (from which we named the campaign SpeedFlash) were either purpose-built or co-opted as a page for malicious campaigns to dump off unwanted traffic and allay suspicions of people that these bad actors wouldn’t want to look at their stuff.
+Fig-13 A decoy speed test page.
+Links:
+https://community.riskiq.com/projects/a1eaa121-8546-26bd-f735-8994ad848cbd
+https://community.riskiq.com/projects/6804bb25-556d-c60d-a9f5-68c1c9d0c5cb
+https://community.riskiq.com/projects/aeb748e4-692f-0fc5-1f62-e8267d303014
+https://community.riskiq.com/search/sshuuslqju.jargonpacific.win
+https://community.riskiq.com/search/cookies/name/c-mm-mac-installer
+The DOM and redirect sequences collected by RiskIQ’s crawling network coupled with our comprehensive internet data sets and machine learning methods told us a detailed story about this group’s tactics, strategies, and targets. With a massive infrastructure—both hijacked and created themselves—and a cocktail of several battle-tested methods, this threat group attempts to victimize thousands of people. However, with data that encompasses the entire internet and the ability to look at infrastructure from the outside-in, RiskIQ can take a tour of this threat campaign from end-to-end—every pitstop through a shady ad network that sends users between thousands of malicious pages that each have a unique ability to harm them. 
+To avoid becoming a part of malicious threat infrastructure, you need to be able to map your digital presence, knowing precisely what you own, and monitor it for vulnerabilities and compromises. To find out more about how RiskIQ can help your organization tackle digital threats, contact us today. 

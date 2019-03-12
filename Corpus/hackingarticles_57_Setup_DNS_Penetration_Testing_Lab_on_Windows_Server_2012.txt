@@ -1,0 +1,86 @@
+
+Setup DNS Penetration Testing Lab on Windows Server 2012
+
+From Wikipedia
+Domain Name System is used for name translation into IP address or you can say that it is used for name resolution.
+This name is only for the benefit of the human. It is translated into IP addresses to reach the destination. The translation process of a name is called name resolution.
+Name resolution starts from right to left. There is another “.” after com but it is hidden. This is called root level domain. Winner request is sent to the root domain for translation it forwards this request to com domain which is called Top Level Domain. Com passes the request to yahoo domain which is called 2ndlevel domain .Yahoo then sends the request to www which is called host name.
+Structure of the DNS is distributed over the internet. It means that the name resolution task is not assigned to only computer rather it is distributed over the internet. 
+Steps to Install DNS server
+Configure Static IP setting of your server; here we had assigned 192.168.1.104 IP to our machine moreover we had assign server IP also as preferred DNS server.
+
+We have to open Server Manager and then click on Add Roles and Features in order to install role services and features. A new window will come up on screen. Now click on next as shown below in given image.
+
+Select installation type “role based or feature based installation” which is also select as default option and then click on next for further step.
+
+Select the desire server from server pool for configuration of DNS server. From given below image you can observe that  from inside pool 1 computer is found with IP 192.168.1.104 that has been selected as server, now click on next.
+
+Select DNS server checkbox as role to install it on selected server and click on Next.
+
+Now Just Click on Next after reading brief description of DNS.
+
+To install selected role and feature on selected server click on install.
+
+DNS server installation process begins which may takes few minute for installation, at last click on close once the installation has been completed.
+
+This is all about DNS installation now in next step we will configure DNS server.
+Database of DNS is called zone or partition of Domain Name Space represented by Domain Name is called Zone. When you click on zone then you will see two zones one is Forward Lookup Zone and Reverse Lookup Zone.
+Forward Lookup Zone sends name and get IP address of the computer.
+While Reverse Lookup Zone sends IP address of the computer then why we need name of the computer. The answer is that if firewall is installed on the computer then firewall stop or allow traffic on the basis of name that is why reverse lookup zone is used to convert IP address in the name.
+Steps to create a Forward Lookup zone: 
+
+When we select DNS in server Manager it will open a new window as DNS Manager.
+Now we will configure Forward lookup zone as well as Reverse Lookup Zone. So to create Forward Lookup Zone, select Forward Lookup Zones and right click on it and select New Zone from menu box to take up the New Zone Wizard then click on next.
+It will show the list of Different types of Zones and storage such as Primary Zone, Secondary Zone & Stub Zone.
+Primary Zone:  A primary DNS zone has authority of read / writes for DNS server also known as master server. It stores the master copy of zone data in a local file or in AD DS. 
+Secondary Zone:  A Secondary DNS Zone is Read-Only copy of a Primary Zone; this DNS server is a secondary resource for information about this zone.
+Active Directory Integrated DNS Zone: It is also writeable zone. To make Active Directory Integrated zone the machine must be a domain Controller. RODC (read only domain controller).feature is only available in server 2008 R2.The domain controller must be writeable not read only because it is more secure. There is a security tab in the AD integrated zone, it is a multi master structured. In case of AD integrated zone, DNS database will be replicated as a part of domain replication.
+Stub zone: It is nature secondary. It has no database of its own. Its load the database from master DNS. It only takes selective records not the complete database. Three records NS, SOA and Glue A will transfer into stub zone. Stub is read only.
+DNS uses port 53 for communication and it uses both TCP and UDP protocols. Dynamic DNS (DDNS) is used to automatically update IP addresses in DNS when changed by DHCP. You will enable DDNS option in the zone properties to secure only.
+
+Select primary zone and click on next.
+
+Give desired Zone name like raj and click on next.
+
+Save this into a new zone file as raj.dns and click on next.
+
+Select Do not allow dynamic updates option, if you want to update these records manually .Click on next then Finish.
+
+Now we had completed the configuration for Forward Lookup Zone; next we will configure reverse lookup zone.
+Reverse Lookup Zone:
+Domain Name system (DNS) servers can enable clients to determine the DNS name of a host based on the host’s IP address by providing a special zone called a reverse lookup zone. A reverse lookup zone contains pointer (PTR) resource records that map IP addresses to the host name. Some applications, such as secure web applications, rely on reverse lookups.
+A reverse lookup takes the form of a question, such as “can you tell me the DNS name of the computer that uses the IP address 192.168.1.120?”
+A special domain, the in-addr.arpa  domain, was defined in the DNS standards and reserved in the internet DNS namespace to provide a practical and reliable way to perform reverse queries . In reverse lookup zone the address is written in reverse order.
+Step to create a Reverse Lookup Zone:
+To create Reverse Lookup Zone, make right click on it and click on New Zone from the inside the menu box to take up the New Zone Wizard.
+
+Select primary zone and click on next.
+
+Click on first radio button for IPv4 reverse Lookup Zone to translate IP address into DNS name then click on next.
+
+Type Network ID field as 192.168.1 which is the first three octets of IP-address of our DNS Server then click on next.
+
+Save this in a new zone file and select first radio button for this step then click on next.
+
+Select Do not allow dynamic updates option, if you want to update these record manually. Click on next.
+
+We have successfully completed configuration for new zone of reverse Lookup. Now just click on finish.
+
+Now you can observe that on the right side of DNS Manager Window, Reverse Lookup Zone is now created that contains two records i.e. SOA and NS in it.
+
+Here we require host name in order to create new resource record, click on browse to select the record.
+Resource Records
+Resource records are the DNS database entries to answer DNS client queries. Name, type and data. The client query is always shown under the name title; DNS server answer always shown under the data title, in type different types of records is shown. Common recorded in DNS are A (Name to IP), PTR (reverse of A), SRV, MX, MS, SOA, etc.
+
+Select 2ndfile i.e. name server (NS) record as shown in given below image and click on OK.
+
+DNS Queries
+There are two types of queries in DNS:
+Verify DNS configuration
+Open command prompt and type following command which will search for the Domain Name System (DNS) to find domain name or IP address mapping.
+Nslookup 192.168.1.104 (server’s ip)
+From given below image you can read the name of NS record/domain name i.e. raj.
+
+Similarly using command nslookup raj we found host IP i.e. 192.168.1.104
+
+Author: Mukul Mohan is a Microsoft Certified System Engineer in Security and Messaging. He is a Microsoft Certified Technology Specialist with high level of expertise in handling server side operations based on windows platform. An experienced IT Technical Trainer with over 20 years’ Experience. You can contact him at mukul@ignitetechnologies.in

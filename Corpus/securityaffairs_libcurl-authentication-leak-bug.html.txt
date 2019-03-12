@@ -1,0 +1,20 @@
+
+					libcurl has had authentication leak bug dated back to before September 1999					
+libcurl is a free and easy-to-use client-side URL transfer library, it builds and works identically on numerous platforms.
+According to a security advisory, libcurl is affected by a couple of issues, one of them might cause the leakage of authentication data to third parties.
+The problem is related to the way it handles custom headers in HTTP requests.
+“When asked to send custom headers in its HTTP requests, libcurl will send that set of headers first to the host in the initial URL but also, if asked to follow redirects and a 30X HTTP response code is returned, to the host mentioned in URL in the `Location:` response header value.” states the advisory.
+“Sending the same set of headers to subsequest hosts is in particular a problem for applications that pass on custom `Authorization:` headers, as this header often contains privacy sensitive information or data that could allow others to impersonate the libcurl-using client’s request. We are not aware of any exploit of this flaw.”
+Applications that pass on custom authorization headers could leak credentials or information that could be abused by attackers to impersonate the libcurl-using client’s request.
+This vulnerability tracked as CVE-2018-1000007 has been present since before curl 6.0, back to before September 1999. Affected versions are libcurl 7.1 to and including 7.57.0, later versions (7.58.0) are not affected, the patch was published on GitHub.
+“In libcurl version 7.58.0, custom `Authorization:` headers will be limited the same way other such headers is controlled within libcurl: they will only be sent to the host used in the original URL unless libcurl is told that it is ok to pass on to others using the `CURLOPT_UNRESTRICTED_AUTH` option.” states the advisory.
+“this solution creates a slight change in behavior. Users who actually want to pass on the header to other hosts now need to give curl that specific permission. You do this with [–location-trusted](https://curl.haxx.se/docs/manpage.html#–location-trusted) with the curl command line tool.”
+libcurl is also affected by an “HTTP/2 trailer out-of-bounds read” vulnerability tracked as CVE-2018-1000005.
+The issue is related to the code that creates HTTP/1-like headers from the HTTP/2 trailer data that appends a string like `”:”` to the target buffer (it was recently changed to `”: “` (a space was added after the colon) but the associated math wasn’t updated correspondingly.
+“When accessed, the data is read out of bounds and causes either a crash or that the (too large) data gets passed to the libcurl callback. This might lead to a denial-of-service situation or an information disclosure if someone has a service that echoes back or uses the trailers for something.” reads the advisory.
+
+The second issue, CVE-2018-1000005, is described as an “HTTP/2 trailer out-of-bounds read”. The advisory says “reading an HTTP/2 trailer could mess up future trailers since the stored size was one byte less than required.”
+“When accessed, the data is read out of bounds and causes either a crash or that the (too large) data gets passed to the libcurl callback. This might lead to a denial-of-service situation or an information disclosure if someone has a service that echoes back or uses the trailers for something.”
+Affected versions are libcurl 7.49.0 to and including 7.57.0, experts are not aware of any exploit of this vulnerability in the wild.
+Pierluigi Paganini
+(Security Affairs – hacking)

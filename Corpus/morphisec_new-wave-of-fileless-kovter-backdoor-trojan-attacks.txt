@@ -1,0 +1,77 @@
+
+New Wave of Fileless Kovter Backdoor Trojan Attacks Via “Targeted” Macro-Based Malspam Campaign
+
+Posted by
+Michael Gorelik on October 22, 2016 at 4:31 PM
+                           
+
+Find me on:
+
+LinkedIn
+Twitter 
+
+
+
+
+
+UPDATED POST  - NOW WITH DETAILED TECHNICAL ANALYSIS!
+During October 17 to 21, Morphisec identified and prevented several malicious and sophisticated macro-based documents at the site of one of our customers delivering a fileless Kovter backdoor Trojan attack. This and similar attacks illustrate the troubling trend that macro-based malspam campaigns are attacking enterprises with modified evasion techniques now on a weekly basis. With antivirus products updating their signatures within 3-7 days of the detection of an attack, the window of opportunity is big enough for cybercriminals to score.
+In many respects, this current malspam campaign demonstrated unique qualities: Better targeted emails (see screenshots below), modified macro with click-based execution, modified payloads and persistency mechanism. 
+Kovter is notorious for its sophistication and for attacking in waves: It evolved from previously pretending to be a Firefox or Chrome update to being delivered through JavaScript inside Zip files in August 2016.  
+A description of a previous fileless Kovter backdoor variant can be found here: http://blog.airbuscybersecurity.com/post/2016/03/FILELESS-MALWARE-%E2%80%93-A-BEHAVIOURAL-ANALYSIS-OF-KOVTER-PERSISTENCE.
+The following analysis describes the attack chain in full detail, starting from the emails and ending with the persistent Kovter backdoor. The full report is also available as PDF. 
+Monitoring the latest campaigns, we found the often used “invoice/bill” email pattern. The subject and content pretends to inform the recipient about a due invoice and that payment needs immediate attention.  A sense of urgency is created by threating the recipient with consequences in case this email is ignored.
+The Kovter attack under discussion is of a more targeted nature:  The attackers name the attached files with the company name, and on some of the mails they address the employee by his/her name and job title.
+All the emails in this campaign originated from Cox email service users, as you can see by looking at the “from” field. [Cox allows to use its service in a 60-days free trial.]
+Email Example 1
+ 
+ Email Example 1
+ 
+This time the macro has a slight modification in its delivery method. It is not enough to just enable the macro content.
+The code is activated if the macro is enabled and the user clicks on one of the images in the macro: This way it can easily evade simple sandbox services which have simulated the enable macro content only.
+To make detection even harder, the macro writers restricted the edit and view of the macro mapping to the different image clicks. Adding a restriction password on image edit also disables the sandbox to automatically map the macro procedures which will be activated.
+ 
+The macro code activates a decrypted PowerShell code that downloads the Kovter downloader from hxxp://demitartgourmet[.]com/changelog/bindata[.]exe. Note that any image click will eventually result in the execution of the same PowerShell code.
+ 
+To gain persistency, Kovter uses both the Run key in HKCU (*) and the “Start Menu/Programs/Start” path.
+[* For description of the use HKEY_CURRENT_USER…\Run see also https://blogs.technet.microsoft.com/mmpc/2016/07/22/kovter-becomes-almost-file-less-creates-a-new-file-type-and-gets-some-new-certificates/]
+In the “HKCU\Software\Microsoft\Windows\CurrentVersion\Run” technique we can find two persistency methods which are both activated to reassure the execution of Kovter upon user login. We use RegmagiK to show you the persistent code in the registry, because regular regedit.exe is not sufficient as a result of non-ASCII characters that the attackers inserted intentionally.
+The first “mshta” procedure will activate a JavaScript eval () function that executes a registry parameter written in a different registry location [described further below].
+ 
+The second Run persistency method will activate a link file that is created in the local directory. This link file just activates a stub [filename].50fec (random name). The activation of the file is less interesting, but as it looks from registry, Kovter has created an open command registry to trigger a code execution when the associated files are activated (c56e and 50fec), in this case again a mshta JavaScript code will be activated with the same code from registry. [ For detailed description see https://blogs.technet.microsoft.com/mmpc/2016/07/22/kovter-becomes-almost-file-less-creates-a-new-file-type-and-gets-some-new-certificates/ ]
+ 
+The second persistency mechanism - as can be seen from process monitor - is the addition of a link file (.lnk) in the Startup directory. Upon login this file is activated as well as a very similar stub file (*.50fec) and the same mshta script that is registered in the open command registry path will be activated as a trigger.
+ 
+ 
+After observing the persistency steps, we are diving into the JavaScript code that is activated through the mshta (and is written in HKCU/Software/<RANDOM>/<random>). We notice that the JavaScript pattern is not very different from previous Kovter patterns.
+ 
+This JavaScript code eventually activates a PowerShell script. The PowerShell stage 1 script just writes to environment variable the second stage script and then activates it.
+ 
+ 
+The second stage script (described previously here - https://blogs.technet.microsoft.com/mmpc/2016/07/22/kovter-becomes-almost-file-less-creates-a-new-file-type-and-gets-some-new-certificates/  ), has the main goal to stay in-memory. It creates a shellcode on the fly and injects it directly into the same PowerShell process (described further below).
+We can notice the usual pattern of allocating code in the process, mem copying the code into the allocated space, and using the CreateThread function to execute the shellcode.
+ 
+The first shellcode again will evade security solution by staying in-memory and getting its Kernel32 and Advapi32 functions from PEB.
+ 
+
+ 
+As was expected, Kovter (PowerShell stage) creates Regsrv32 processes, which communicate to many different IPs, sending computer, OS and user encrypted information and waiting for the next command to execute. Notice that it modifies the security Zone settings by disabling UNCAsIntranet and AutoDetect keys in the Internet Settings\ZoneMap registry.
+ 
+ After we wrote the decrypted Kovter code to the disk (the encrypted code resides in one of the registry keys), we uploaded it to VirusTotal. [ Note that Kovter will not write the executable it uses to the disk.]
+The upload results in:
+Sha256: 7178d1babda77e159936fe4e3841c7a3dad3b78a6737ba7dd9a1f3c370f6dc34
+We see immediately that most of the AV solutions do recognize the Kovter signatures when written to disk.
+ 
+ 
+Doc File - 97f3fb12837db7d4e27b11d310d8f441d00e65a43e95e9af2435e5e47abb1668
+Kovter URL - hxxp://demitartgourmet[.]com/changelog/bindata[.]exe
+Kovter Executable – 7e57dca4b9dec787e3fdbc983ee8111f97f75fa772e77a166ec18c49e1358f50
+Sandbox report for the same executable - https://www.hybrid-analysis.com/sample/7e57dca4b9dec787e3fdbc983ee8111f97f75fa772e77a166ec18c49e1358f50?environmentId=100
+ 
+ hbspt.cta.load(1534169, '10ece2d6-ff5a-4170-b046-2e75a3373a42', {}); 
+ 
+ 
+ 
+ 
+ 
+ 

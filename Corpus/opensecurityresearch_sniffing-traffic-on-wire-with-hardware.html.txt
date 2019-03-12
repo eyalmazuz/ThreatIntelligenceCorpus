@@ -1,0 +1,164 @@
+
+Sniffing Traffic on the Wire with a Hardware Tap
+
+
+By JP Dunning. 
+
+Capturing network traffic is a great way to learn more about a target network, harvest credentials, and even monitor user habits.  In the Wi-Fi world, it’s easy: simply specify a channel and set the wireless card to monitor mode (assuming driver support).  However, capturing traffic on a wired network is a little trickier.  In this article we’ll walk through setting up a LAN tap and capturing traffic with it. 
+Software Taps
+
+There are a variety of options for sniffing traffic via software on a wired network -  Wireshark is probably the most common choice for a free and powerful network sniffer.  If you are logged onto the computer, install Wireshark and select a capture interface.  
+
+If the target has been exploited remotely with Metasploit, Meterpreter can capture local traffic with the sniffer script. Though, there is a chance it may be picked up by Anti-Virus and it will most likely also be capturing Meterpreter’s traffic.  In addition, sniffing network traffic on most Operating Systems requires Administrative privileges. So, how else can the network traffic be captured? 
+Hardware Taps
+
+How about instead of using the host computers software, we tap directly into hardware.   A Network Tap is hardware which taps into the physical connection between devices on a network.  Taps are sometimes used by network engineers when debugging network issues.  Some professional Port Mirroring TAPs can be fairly expensive. 
+Thowing Star LAN Tap
+A cheaper alternative is to use a basic LAN tap, like the Throwing Star LAN Tap.  When in place on the network, the LAN tap passively allows traffic to pass though unaltered. Think of it as a standard Ethernet coupler.   What differentiates the LAN tap from a normal coupler are the two additional ports which tap the inbound and outbound traffic on the network cable. 
+NOTE: This hardware is designed to be used on 10BASET and 100BASET networks (which are still in use in the vast majority of networks). 
+Setting up Hardware
+
+The setup requires the following: 
+1 LAN tap
+1 computer to sniff the traffic
+4 network cables (including the one is already connected to the target computer)
+2 network interfaces (for sniffing)
+
+The LAN tap is not a complex machine, in fact it is essential just a few wires and jacks.  A computer needs to be in place to capture from the LAN tap.  (I recommend something small like a plug computer, UMPC, or ultabook).  Since most laptops do not come with more than one Ethernet interface, pick up a few USB Ethernet adapters to use for capturing. 
+
+There are four ports on the LAN tap.  Two ports (J1 and J2) pass traffic unaltered two devices on the network.  The other two ports (J3 and J4) are the monitoring ports.   These ports physically connect to the inbound and outbound traffic wires of the network cable, but do not allow traffic to be transmitted on the network.  Tapping passively keeps a misconfiguring interface on the sniffing computer from accidentally sending traffic on the network. 
+
+
+
+Connecting Components
+Setting up the LAN tap should only take a few minutes once all the equipment is on hand.  If you move quickly, the target computer should only have a few seconds of interruption from the network.  Most operating systems and services should handle a temporary network outage with little issue.  (Though it may cause issues with some real time network services). 
+
+For a quick installation:
+
+Connect an Ethernet cable to each of the 2 monitoring ports (J3 and J4) and 1 LAN port (J1).  This leaves one port (J2) open. 
+Connect the network cables from J3 and J4 to Ethernet jacks on the sniffing computer.   These will be the Ethernet USB adapters (or any space Ethernet jacks) mentioned earlier.
+Disconnect the network cable from the target computer. (It does not really matter at which end of the network cable the tap is placed.  If it is more convenient to place the tap closer to the router, then unplug the cable from the router instead.)
+Connect the cable plugged into J1 to the now open port on the target computer (or router).  Then, connect the network cable (previously connected to the target computer) to J2.
+
+
+Now all the hardware is in place to start capturing.  The connection to the network should be restored.  (If the connection is still down, make sure all the cables are plugged into the correct ports.) From this point on, the presence of the LAN tap will not be detectable by the target computer or network (other than a slight loss in power).
+
+Unlike monitoring traffic on local network ports, the LAN tap requires capturing inbound and outbound traffic on two separate ports.  Sniffing this traffic will create two separate capture file, one for each interface. 
+Capturing Traffic
+
+After you are done sniffing, the two captures can be combined into one network flow.   mergecap is a tool which can combine two captures according to the frame timestamps of each packet.  This means that packets from both capture files will be placed in order according to the time at which they appeared on the network.  mergecap is a part of Wireshark, but may need to be manually installed from a repository.
+ root@bt:~# sudo apt-get install mergecap
+
+
+
+
+I put together the lantapcap.sh script to automate the capture and merging process.  It configures two interfaces to capture passive traffic from the LAN tap, and then combine the two captures into a single net flow.  Copy and paste the following into your favorite text editor and save as lantapcap.sh.
+
+I've also uploaded a copy here:
+https://github.com/OpenSecurityResearch/LANTapCap
+ #!/bin/bash
+#
+# lantapcap.sh
+#
+
+NET0=eth0
+NET1=eth1
+CAPNAME=name
+CONTINUE=go
+
+printf "\nUse LanTapCap for capturing network traffic with a LAN Tap\n"
+printf "\nInterfaces:\n\n"
+ifconfig -a | grep "Link encap:" | awk '{print $1}'
+
+printf "\nSpecify interfaces for sniffing."
+printf "\nInterface 1 of 2 [eth0]: "
+read NET0
+
+printf "Interface 2 of 2 [eth1]: "
+read NET1
+
+printf "Packet capture name [Capture]: "
+read CAPNAME
+
+printf "\nDisable interfaces ...\n\n"
+ifconfig $NET0 down
+ifconfig $NET1 down                                                                                                                                                                             
+
+printf "Enable interfaces ...\n\n"
+ifconfig $NET0 up
+ifconfig $NET1 up
+
+printf "Set interfaces to promiscuous mode ...\n\n"
+ifconfig $NET0 promisc
+ifconfig $NET1 promisc
+
+sleep 1
+
+printf "Starting capturing ...\n\n"
+
+sleep 1
+
+xterm -bg blue -fg white -geometry 90x10-0+0 -T "Capturing on $NET0" -e tcpdump -i $NET0 -w $CAPNAME-$NET0.pcap -v &
+
+sleep 2
+
+xterm -bg blue -fg white -geometry 90x10-0+120 -T "Capturing on $NET1" -e tcpdump -i $NET1 -w $CAPNAME-$NET1.pcap -v &
+
+sleep 2
+
+printf "\n\nPress ANY KEY to end capturing.\n\n"
+read CONTINUE
+
+printf "Produced capture file $CAPNAME-$NET0.pcap from $NET0\n\n"
+printf "Produced capture file $CAPNAME-$NET1.pcap from $NET1\n\n"
+
+printf "Halting captures ...\n\n"
+
+if [[ ! -z $(pidof tcpdump) ]]; then kill $(pidof tcpdump); fi
+
+printf "Merging captures ...\n\n"
+mergecap $CAPNAME-$NET0.pcap $CAPNAME-$NET1.pcap -w $CAPNAME-Full.pcap
+
+printf "Disable interfaces ...\n\n"
+ifconfig $NET0 down
+ifconfig $NET1 down
+
+printf "Produced capture file $CAPNAME-$NET0.pcap from $NET0\n\n"
+printf "Produced capture file $CAPNAME-$NET1.pcap from $NET1\n\n"
+printf "Produced capture file $CAPNAME-Full.pcap from merging captures\n\n"
+printf "... done\n"
+ 
+ 
+
+
+Run the script with root privileges.  Provide the two sniffing Ethernet interfaces when prompted.
+
+ root@bt:~# ./lantapcap.sh
+
+
+
+
+
+
+Click back into the main terminal.
+
+
+
+
+When you are done capturing traffic, hit any key in the original terminal.  This will stop the capturing and merge the capture files.  
+
+
+
+
+Unplug cables from the LAN tap and plug the original network cable back into the target computer.  Again, this will cause a momentary drop in network connectivity.
+Now, feel free to examine the traffic any way you like.  All three capture files can be parsed by network analysis tools like Wireshark. 
+References
+
+https://en.wikipedia.org/wiki/Network_tap
+http://www.greatscottgadgets.com/throwingstar/
+https://www.wireshark.org/
+http://www.offensive-security.com/metasploit-unleashed/Packet_Sniffing/
+https://www.wireshark.org/docs/man-pages/mergecap.html
+
+
+

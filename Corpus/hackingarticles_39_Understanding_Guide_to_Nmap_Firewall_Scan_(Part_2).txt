@@ -1,0 +1,65 @@
+
+Understanding Guide to Nmap Firewall Scan (Part 2)
+
+In our previous article we had demonstrated “Nmap firewall scan (part 1)” by making use of Iptable rules and then try to bypass firewall filter to perform NMAP Advance scanning, today we are going to discuss second part of it.  
+Requirement
+Attacker: Kali Linux
+Target: Ubuntu  
+Allow TCP Packet from Specific Mac Address
+If network admin wants to establish TCP connect from specific MAC address and do not want to connect with other system then he could use following Iptable rules to apply firewall filter in his network.  
+
+Now when attacker will perform basic network scanning on target’s network, he could not able to enumerate ports and running service of victim’s system.
+nmap 192.168.1.117
+
+In order to bypass above applied filter attacker may run netdiscover command or nmap Host Scan in Kali Linux terminal to identify the active host in the network. As result he will get a table which contains MAC address and IP address of active host in local network.
+
+Now either use one by one all MAC address in nmap command or save all MAC address in a text file and give its path in nmap command but to perform this attacker first need to enable “Promiscuous mode” of his network. Well, to do so type given below commands first for Promiscuous mode and second for nmap scanning.
+Hence if you are lucky to spoof correct Mac address then you can easily bypass the firewall filter and able to establish TCP connect with victim’s network for port enumeration.
+Nice!!! If you will notice in given below image you will observe open ports of target’s network.
+
+Allow TCP Packet from Specific IP
+If network admin wants to establish TCP connect from specific IP and do not want to connect with other system then he could use following Iptable rules to apply firewall filter in his network. 
+
+Now when again attacker will perform basic network scanning on target’s network, he could not able to enumerate ports and running service of victim’s system.
+nmap 192.168.1.117
+
+In order to bypass above applied filter attacker may again run netdiscover command or nmap Host Scan in Kali Linux terminal to identify the active host in the network. As result he will get a table which contains MAC address and IP address of active host in local network.
+Now either use one by one all IP address in nmap command or save all IP address in a text file and give its path in nmap command and then execute following command:
+Hence if you are lucky to spoof correct IP address then you can easily bypass the firewall filter and able to establish TCP connect with victim’s network for port enumeration.
+Great!! If you will notice in given below image you will observe open ports of target’s network.
+
+Allow TCP Packet from Specific String
+If network admin wants to establish TCP connect from a system which contain specific string and do not want to connect with other system does not contain that special string packets then he could use following Iptable rules to apply firewall filter in his network. 
+In above rule you can see we had used “Khulja sim sim” as special string to establish TCP connection. Hence only those TCP connection could be establish which contain “Khulja sim sim”in packets.
+
+Now when again attacker will perform basic network scanning on target’s network, he could not able to enumerate ports and running service of victim’s system because traffic generate from his network does not contain special string in packets thus firewall of target system will discard all TCP packet of attacker’s network.
+nmap 192.168.1.117
+
+If attacker somehow sniffs special string “khulja sim sim” to connect with target’s network then he could use –data-string argument in nmap command to bypass the firewall.
+Hence if you are lucky to sniff correct data string then you can easily bypass the firewall filter and able to establish TCP connect with victim’s network for port enumeration.
+Wonderful!! If you will notice given below image you will observe open ports of target’s network.
+
+Allow TCP Packet from Specific Hex String
+If network admin wants to establish TCP connect from a system which contain hexadecimal value of particular string and do not want to connect with other system does not contain hexadecimal value of that special string in packets then he could use following Iptable rules to apply firewall filter in his network. 
+In above rule you can see we had used hex value for “RAJ” as special string to establish TCP connection. Hence only those TCP connection could be established which contain hex value of “RAJ” in packet.
+
+Now when again attacker will perform basic network scanning on target’s network, he could not able to enumerate ports and running service of victim’s system because traffic generate from his network does not contain hex value of special string in packets thus firewall of target system will discard all TCP packet of attacker’s network.
+nmap 192.168.1.117
+
+If attacker somehow sniffs special string “RAJ” to connect with target’s network then he could used its hex values with –data argument in nmap command to bypass the firewall.
+Hence if you are lucky to sniff correct hex value of particular data string then you can easily bypass the firewall filter and able to establish TCP connect with victim’s network for port enumeration.
+Hence, if you will notice given below image you will observe open ports of target’s network.
+
+Reject TCP Packets contains tcp-option 
+By default nmap sends 24 bytes of TCP data in which 4 bytes of data is reserve for TCP Options if network admin reject 4 bytes tcp –option packet to discord tcp connection to prevent his network from scanning. Type following iptable rule to reject 4 bit tcp-option in his network:
+
+Now when attacker will perform TCP scanning [sT] on target’s network, he could not able to enumerate ports and running service of victim’s system. Since tcp-option is 4 bytes hence firewall discard tcp packet of attacker’s network.
+nmap -sT 192.168.1.117
+
+The IP protocol gives numerous options that could be placed in packet headers. Contrasting the omnipresent TCP options, IP options are seldom observed because of security reasons. The most powerful way to specify IP options is to simply pass in hexadecimal data as the argument to –ip-options.
+Precede every hex byte value with \x. You may repeat certain characters by following them with an asterisk and then the number of times you wish them to repeat. For example, \x01\x07\x04\x00*4 is the same as\x01\x07\x04\x00\x00\x00\x00 this is also called NuLL bytes
+Now type following command with ip-option argument as shown below:
+Note that if you denote a number of bytes that is not a multiple of four; an incorrect IP header length will be set in the IP packet. The reason for this is that the IP header length field can only express multiples of four. In those cases, the length is computed by dividing the header length by 4 and rounding down. 
+GOOD! If you will notice given below image you will observe open ports of target’s network.
+https://nmap.org/book/nping-man-ip-options.html
+

@@ -1,0 +1,61 @@
+Credit Card Data and Other Information Targeted in Netflix Phishing Campaign
+January 09, 2017 | by Mohammed Mohsin Dalla | Advanced Malware
+Introduction
+Through FireEye’s Email Threat Prevention (ETP) solution, FireEye Labs discovered a phishing campaign in the wild targeting the credit card data and other personal information of Netflix users primarily based in the United States.
+
+This campaign is interesting because of the evasion techniques that were used by the attackers:
+
+The phishing pages were hosted on legitimate, but compromised web servers.
+Client-side HTML code was obfuscated with AES encryption to evade text-based detection.
+Phishing pages were not displayed to users from certain IP addresses if its DNS resolved to companies such as Google or PhishTank.
+At the time of posting, the phishing websites we observed were no longer active.
+
+Attack Flow
+The attack seems to start with an email notification – sent by the attackers – that asks the user to update their Netflix membership details. The phishing link inside the email body directs recipients to a page that attempts to mimic a Netflix login page, as seen in Figure 1.
+
+
+
+Figure 1: Fake login page mimicking the Netflix website
+
+Upon submitting their credentials, victims are then directed to webpages requesting additional membership details (Figure 2) and payment information (Figure 3). These websites also attempt to mimic authentic Netflix webpages and appear legitimate. Once the user has entered their information, they are taken to the legitimate Netflix homepage.
+
+
+
+Figure 2: Fake webpage asking users to update their personal details
+
+
+
+Figure 3: Netflix phishing webpage used to steal credit card information
+
+Technical Details
+The phishing kit uses techniques to evade phishing filters. One technique is the use of AES encryption to encode the content presented at the client’s side, as seen in Figure 4. The purpose of using this technique is code obfuscation, which helps to evade text-based detection. By obfuscating the webpage, attackers try to deceive text-based classifiers and prevent them from inspecting webpage content. This technique employs two files, a PHP and a JavaScript file that have functions to encrypt and decrypt input strings. The PHP file is used to encrypt the webpages at the server side, as seen in Figure 5. At the client side, the encrypted content is decoded using a defined function in the JavaScript file, as seen in Figure 6. Finally, the webpage is rendered using the ‘document.write’ function.
+
+Figure 4: Client-side code obfuscation using AES encryption
+
+
+
+Figure 5: PHP code used at server side for encryption
+
+
+
+Figure 6: JavaScript code used at client-side for decryption
+
+Another technique is the host-based evasion, as seen in Figure 7. The host name of organizations such as ‘phishtank’ and ‘google’ are blacklisted. The host name of the client is compared against a list of blacklisted host names. If there is a match against the blacklist, a “404 Not Found” error page is presented.
+
+
+
+Figure 7: Server side code for blacklisting known hosts. Click image to enlarge.
+
+As with the majority of phishing attacks, this campaign uses PHP mail utility to send the attacker the stolen credentials. The advantage of using this technique is that the attacker can host their phishing kits on a number of websites and still get the stolen credentials and other information from a single email account. This enables attackers to extend their reach.
+
+
+
+
+
+Figure 8: Stolen information is sent to an email address using mail() function
+
+Tips to Secure your Netflix Account
+To learn more about securing your Netflix account, Netflix provides additional information on how to keep your account safe from phishing scams and other fraudulent activity at https://www.netflix.com/security.
+
+This entry was posted on Mon Jan 09 11:00 EST 2017 and filed under Advanced Malware, Mohammed Mohsin Dalla, and credit card security.
+

@@ -1,0 +1,366 @@
+
+TeslaCrypt 3.0.1 - Tales From The Crypt(o)!
+
+
+This post is authored by Andrea Allievi and Holger Unterbrink
+
+
+
+
+
+
+Executive Summary
+
+
+Ransomware is malicious software that is designed to hold users' files (such as photos, documents, and music) for ransom by encrypting their contents and demanding the user pay a fee to decrypt their files. Typically, users are exposed to ransomware via email phishing campaigns and exploit kits. TeslaCrypt is one well-known ransomware variant, infecting many victims worldwide. It is in the top 5 of ransomware we see most often in our analysis systems. The core functionality of TeslaCrypt 3 remains the same as it continues to encrypt users’ files and then presents a message demanding the user to pay a ransom. 
+
+While the Information Security community has responded to the ransomware threat by disrupting distribution mechanisms and developing better detection methods, adversaries realize they must also continue to adapt and evolve their capabilities. Unfortunately, this has lead adversaries to iterating and improving upon previous releases of TelsaCrypt, leading to the release of TelsaCrypt 3. In response to this latest TeslaCrypt variant which is compromising users, Talos reversed engineered TeslaCrypt 3 to better understand its functionality, how it works, and what's changed since the last release.
+
+The former variant had a weakness in its way to store the encryption key, which enabled researchers to provide a tool for decryption of the files encrypted by TeslaCrypt [1]. Unfortunately, so far we are not aware of any tool which can do the same for this variant of TeslaCrypt.
+
+This analysis gives an overview about the encryption algorithm used by TeslaCrypt 3.0.1. which is the latest as of the writing of this article. To improve readability, we will refer to this as TeslaCrypt 3 for the remainder of the blog. We will explain the cryptographic details in a way that they can be understood using high school mathematics. Nevertheless, expect a tough cryptographic journey.
+
+
+
+
+If you are not very familiar with Elliptic Curve Encryption(ECC) you might want to first read the cryptography refresher  section in Appendix B before proceeding. We will also refer to some of the technical terms from the refresher section during the report.
+
+
+
+
+TeslaCrypt 3 simplified encryption scheme
+Before we are looking into the gory details of the real encryption algorithm of TeslaCrypt 3, let’s first look at it in a simplified way. The people behind TeslaCrypt are using a derivation of the ECDH algorithm which we described in Appendix B.
+
+
+   
+
+
+Figure A
+
+
+
+
+First the adversaries generate the public key (Pb) and include it in the ransomware binary file which later on infects the PC (Alice).
+The ransomware on the infected PC (we call it Alice from now on) can now calculate a random value (ka). 
+This means Alice has everything to calculate the shared secret (S = Pb * ka). 
+Alice now encrypts all files with a temporarily generated AES key.
+Alice then encrypts this temporary AES key with the (x-coordinate of the) shared secret (S) from step 3. We will call this encrypted AES key the 'recovery key'.
+Now the trick: after the encryption is done, Alice's private key (ka) and the shared secret (S) is deleted. This means that Alice can no longer calculate the shared secret(S) using the equation S = Pb * ka to decrypt the recovery key. 
+BUT, the shared secret can still be restored by using the equation from Bob's side: S = Pa * kb. Unfortunately, Alice does not have Bob’s (the C&C server) private key (kb). Only the C&C server has it. This means only the C&C server can perform the calculation. Alice (the victim) pays the ransom and sends her public key (Pa) to the C&C server. Now it can send the calculated shared secret back to Alice to decrypt the recovery key.
+
+
+In practice TeslaCrypt 3 is using a more complex implementation. Please see below.
+
+
+
+Real encryption scheme and technical detail
+Fasten your seat belts now as we look into the gory details of the TeslaCrypt 3 cryptographic algorithm. As mentioned in the beginning, this new version is able to overcome the factorization attack used by TeslaCrack[1] to crack the weak recovery key implementation[4]. A factorization attack is an algorithm which is able to find the two factors in an equation faster than if they were brute forced. In case of the former TeslaCrypt variant, the two factors were the Shared Secret and the Private Key in the equation Recovery Key = Shared Secret Key * Private Key .
+Due to the implementation flaw and depending on the chosen factors, it took from a couple of seconds to several days to factorize them.
+The new version of TeslaCrypt has fixed this issue by introducing a new way to generate the recovery keys. They are using a kind of cascaded version of the ECDH algorithm and AES encryption for encrypting the secret keys, plus using a SHA256 hash of the shared secret as the symmetric encryption key. 
+
+e.g. Recovery Key = public key | AES256(private key, SHA256(shared secret))
+
+In other words, there are no keys left in clear text anymore in the recovery keys, which could be used for factorization. See below to understand the details.
+
+
+TeslaCrypt execution and encryption/decryption flow:
+At startup, after a couple of Anti-Sandbox actions, the dropper tries to open the “HKCU\Software\<derived from the workstation ID>\data” registry value, where it later stores its main configuration.
+
+
+The core encryption functionality mainly happens in three functions, GenerateMasterKeys, GenerateRecoveryKeys and GenerateAESRecoveryKey. The former version only used two functions.
+
+The following overview flow diagrams (Figure B and Figure C) and the description below will give you an idea about how the encryption and decryption process works:
+
+
+
+
+
+
+
+Figure B - encryption process
+
+
+
+Figure C - decryption process
+
+
+
+
+
+
+
+1. CheckKeyData:
+
+Like the former version of TeslaCrypt, this version is still generating global keys and additionally, for every new session, e.g. if the computer was rebooted while the encryption process was still running, session encryption keys. The global keys are used to create a global recovery key(Rx). The session keys are used to create a session recovery key(Ra). Together they can later be used to restore the session shared secret(Sa) which is used to encrypt the actual AES master key, in other words the key which is used to encrypt the files with AES256. The dropper starts with a function which checks if the global key material was already generated or if it can directly jump to the session key generation.
+
+
+
+
+Figure D
+
+
+
+2. GenerateMasterKeys 
+
+As mentioned before, this function is called if there is no configuration data (global key material) found or the data is invalid. This function generates the global master keys. These keys are only generated once. They are reused if the encryption process session is restarted. The new algorithm used in this version of TeslaCrypt, generates the global private key(Gpri) and calculates the SHA256 of it. It then derives the global public key(Gpub) from this SHA256 and stores it in the registry data value (offset + 0xB0). The TeslaCrypt authors use the elliptic curve standardized in secp256k1, so the value for the generator in the equation Gpup = Generator * Gpri-sha is defined there. 
+Finally, it calls the GenerateRecoveryKey function with handing over Gpri to it. This algorithm is identical to the one used in the previous version, except for the final recovery key calculation.
+
+
+3. GenerateRecoveryKey
+The algorithm starts by importing the C&C server public key from the dropper. The people behind TeslaCrypt have stored the X and Y coordinates of their public key inside the dropper. They are importing them by using the “EC_POINT_set_affine_coordinates” routine. At this point they perform an important step: first they create a random temporary private key(Xpriv), then they calculate the corresponding public key(Xpub). A “CalculateSharedSha256Secret” routine takes the C&C public key and the temporary private key(Xpri) and calculates the global shared secret key(Sx) using the standard equation for the shared secret which we saw in the first section of this report. It calculates and returns the SHA256 of the shared secret and returns the execution to the GenerateRecoveryKey routine. At this point the function encrypts the victim’s global private key(Gpri, passed as a parameter) with an AES-256 CBC algorithm, using the SHA256 of the shared secret as the key for the AES encryption. The temporary public key (Xpub) and the AES encrypted global private key(Rx-aes) are finally concatenated and returned to the caller function in the following way:
+
+
++ 0x00 - Temporary EC public key  (Xpub)+ 0x41 - AES encrypted private key (Rx-aes)
+
+
+The algorithm of the GenerateMasterKeys routine, as with the previous version, ends with some SHA256s and MD5s math used to encode the first 0x30 bytes of the "data" registry value and the addition of the startup time at the bottom of the "data" registry value. Execution proceeds to the BuildTeslaSessionEncKeys function.
+
+4. BuildTeslaSessionEncKeys
+
+This function is the equivalent of the previous TeslaCrypt versions BuildTeslaEncKeys routine. The AES master encryption key(Amaster) is generated by using the CryptGenRandom API function to get some random values and extending it with some other random data that belongs to the victim’s workstation e.g. number of pkts received, number of processes, etc. Finally, it calls the function GenerateAESRecoveryKey, which is calculating the recovery key(Ra) that belongs to the file encryption session. Of course, the recovery key(Ra) is also calculated every time the encryption process is interrupted and restarted.
+
+
+5. GenerateAESRecoveryKey
+
+The algorithm is similar to the one in the GenerateRecoveryKey function. It is also generating a temporary public/private key pair, but then calculating the shared secret by using the global public key(Gpub) instead of the C&C server public key(C2pub). Don’t get confused with the name AES in the function name, it is still elliptic curve public key encryption, the name is derived from the fact that it is used to encrypt the AES master key at the end.
+Like the GenerateRecoveryKey function, it calculates the SHA256 hash for the shared secret, but then it AES encrypts the AES master key, by using the sessions SHA’ed shared secret(Sa-sha) instead of the global SHA’ed shared secret. Again, the returned recovery key is composed as follows:
+
+
++ 0x00 - Temporary public key (Ypub)  + 0x41 - AES encrypted AES master key (Ra-aes)
+
+
+After successfully returning, the BuildTeslaEncKeys function then generates the buffer containing the header that is written at offset 0 of each encrypted file.
+
+Here is the summary of the data stored in the 2 main places:
+Note that the important data for the decryption process is stored redundantly most likely to have a backup in case something happens to the registry.
+
+
+Configuration registry data:
+
+
+
+
+
+Offset
+Value
+
+
++ 0x30
+Global recovery key(Rx) in HEX (0x80 bytes)
+
+
++ 0xB0
+Global public key (Gpub) generated from the SHA256 
+
+
++ 0xF8
+Startup time QWORD
+
+
+
+Encrypted file header:
+
+
+
+
+
+Offset
+Value
+
+
++ 0x00
+8 bytes filled by 0, 8 bytes filled by random data, and again 8 bytes
+  sets to 0
+
+
++ 0x18
+Global recovery key(Rx) in HEX (0x80 bytes) 
+
+
++ 0x98
+Global public key(Gpub) generated from the SHA256 of the global
+  private key (0x41 bytes)
+
+
++ 0xDC
+AES recovery key (Ra) in HEX (0x80 bytes) 
+
+
++ 0x15C
+AES Initialization vector (16 bytes)
+
+
++ 0x16C
+Original file size (4 bytes)
+
+
+
+
+Tesla Crypt Decryption Process
+To properly recover the AES master encryption key (Amaster) which was used to encrypt the file content, TeslaCrypt authors starts from the recovery key (Rx) stored inside the configuration registry value and/or file headers:
+
+1. The first step is to calculate the global shared secret(Sx) for the corresponding file by using the equation:
+
+global shared secret(Sx) = C&C private key(C2pri) * X public key(Xpup) 
+
+C2pri is the private key possessed by only the adversaries. It is never transmitted or stored on the victim's machine. It is likely that this equation is not calculated on the victim's machine, but on the C&C server. With this private key all encrypted files of all TeslaCrypt victims of this version, could be decrypted. This is the holy grail of the adversaries. The global X public key(Xpub) is stored in the global recovery key(Rx) which is stored in the registry and in the file header as a backup.
+
+2. Next step is calculating the SHA256 of the global shared secret and decrypting the user’s global private key (Gpri)
+
+3. Calculate the SHA256 of the global private key (Gpri-sha) and re-calculate the AES shared secret (Sa). Remember that Sa = Ypri * Gpub = Ypub * Gpri-sha , see EC basics in the first section.
+
+4. Decrypt the AES master key (Amaster) by using the SHA’ed AES shared secret (Sa-sha) and reversing the result of the encryption function AES256(Amaster, Sa-sha), which is stored in the second part of the AES recovery key(Ra) (Ra = Ypub | AES256(Amaster, Sa-sha)).
+
+Amaster = AES256decrypt(Ra-AES, Sa-sha)
+
+5. Finally, start the file decryption process:
+
+Org. file = AES256decrypt(Encrypted-File, Amaster)
+
+6. Done. Next file.
+
+
+
+Summary
+We have shown why TeslaCrypt 3 is one of the most advanced ransomware systems in the wild at the moment. It brings strong cryptography and is easy to use for the bad guys. The C&C servers only need to do some very simple calculations. Nevertheless the private key never has to leave the C&C server and the ransomware uses a different key for each victim. In other words, if one victim pays the ransom and gets the file decryption key, it is only valid for this machine. 
+We can not say it loud and often enough, ransomware has become the black plague of the internet, spread by highly sophisticated Exploit Kits and countless spam campaigns. The adversaries are modifying and improving it in every version. Anyone can become a victim if you are hit by a new version, as yet undetected by your AV software. Don’t rely on decryption tools, make sure you have BACKUPS and that they are up to date.
+
+
+
+Protection
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors. CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors. ESA can block malicious emails sent by threat actors as part of their campaign.
+
+
+
+
+
+
+IOC
+
+SHA256: 
+2FEA8FC0C2BD437D1BEAA49B0138E14619626F82D2A3F26209846C39D37DB6B0
+8FC45DA2B164034DC558EC4E78A003EC8845A130AC2D305A5F33885C133E8062
+362C4ACFCF96F5CD923C8C225D1EB968175C57854029154EECD9832E62B1ECF1
+
+(Version 4, currently under investigation) 
+58318AED25FB94E053D3D0E2662D5358CEE6E444C2A1893E47DEA1E305E50581 
+
+
+
+
+Coverage
+
+SNORT signatures:
+33893, 34280, 35788, 35789, 35790, 35791, 35792, 35793, 35794, 37052
+
+
+
+
+
+References
+
+[1] https://github.com/Googulator/TeslaCrack
+[2] http://andrea.corbellini.name/2015/05/17/elliptic-curve-cryptography-a-gentle-introduction/
+[3] https://en.wikipedia.org/wiki/Elliptic_curve
+
+[4] http://www.bleepingcomputer.com/news/security/teslacrypt-decrypted-flaw-in-teslacrypt-allows-victims-to-recover-their-files/
+
+
+
+
+
+
+
+
+Appendix B
+
+
+
+Cryptography refresher:
+
+
+Diffie-Hellman:
+
+Most of you are probably familiar with the Diffie-Hellman key exchange illustrated below (Figure E).
+
+
+Figure E
+
+
+Simplified is the generator(g) a number out of the natural numbers (in detail it should be a member of the group Z(p;*)) e.g. 3 and the Modulus (n) should be a prime number e.g. 7. In secure real world implementations (g) can be a small integer and (n) is very large prime e.g. a 2048 bit or more (RFC3526). An example with numbers:
+
+Generator(g) = 3
+
+Private Keys:
+Alice’s private key (ka) = 2
+Bob’s private key (kb) = 5
+
+Public keys:
+pa = g^ka = 3^2 = 9 = 2 (mod 7)
+pb = g^kb = 3^5 = 243 = 5 (mod 7)
+
+Shared secret:
+S = pb^ka = 5^2 = 25 = 4 (mod 7) # same shared secret
+S = pa^kb = 2^5 = 32 = 4 (mod 7) # on both sides
+
+
+The negotiated shared secret (S) can now be used in a symmetrical encryption function, such as AES, as an encryption secret. In real world implementations the shared secret (S) is usually hashed with a hashing algorithm such as SHA to make sure that the length is compatible with the symmetric encryption key length.
+
+Elliptic curves cryptography (ECC):
+Disclaimer: the following is not a full introduction into ECC, it should give you a brief overview with much simplification. If you are interested, you can find many documents on the internet describing ECC in more detail, e.g. [2].
+
+Before we start talking about ECC, DH works for encryption, because it is hard to find the discrete logarithm, which means a^x = b mod n is easy and fast to calculate on a PC, but x = dLog_a * b is hard and time consuming. Nevertheless, under certain circumstances the classical DH algorithm is more vulnerable against crypto attacks (e.g. Index Calculus) than ECC based ones. Another minor advantage is that the keys are shorter for the same or better cryptographic strength. Malware which embeds the keys in the binary need less memory.
+
+
+
+
+Source: http://www.nsa.gov/ia/programs/suiteb_cryptography/
+
+
+To be clear on this, Elliptic Curves(EC) alone are not a cryptographic algorithm, it becomes one if it is combined with an algorithm which is based on the discrete logarithm problem, for example Elliptic Curve Diffie-Hellman (ECDH) or Elliptic Curve DSA (ECDSA). This is what we call Elliptic Curve Cryptography (ECC). We will show the details later on, let’s first have a look at what is an Elliptic Curve.
+There are many different Elliptic Curves. They have to fulfill certain criteria to be safe to be used in crypto algorithms, but this is out of scope of this document. You can see two EC examples below (red lines). The important part for cryptography is that you can add and multiply points on these curves e.g. P1 + P2 = P3.
+In a graphical way, you add points by drawing a line through the points (e.g. P1 and P2) which will identify a third point where the line crosses the curve again (we are leaving out the exceptions of this rule). Through this point, you draw a line parallel to the y axis and where this line crosses the curve, is the sum of the addition. This result is, of course, again a point (P3) on the curve. See below.
+
+
+
+
+Figure F
+
+You can also multiply points almost the same way. If you want to add a point to itself (P1 + P1) or in other words, multiply P1 * 2, you are using the tangent at the point (P1), instead of a line through P1 and P2.
+
+
+
+Figure G
+
+You can repeat this multiple times to compute P1+P1+P1 or in other words, P1 * 3 or P1+P1+P1+P1 = P1 * 4 and so on.
+We can do the same in a computer with equations. We have two points, P1 and P2, and we want to add them to get P3. You can see both cases below, for P1 and P2 are different points and P1 and P2 are the same point. The arrow above the P’s should show that it is a point, constructed out of an x coordinate and an y coordinate in a coordinate system.
+
+
+
+
+Figure H - You can find details about Weierstrass here [3]
+
+So we have seen that we can do some of the known math operations (addition, multiplication and therefore also exponentiation) with these Elliptic Curves.
+
+The most important thing is that in ECC you can easily do a multiplication e.g. P2 = P1 * 3, but the reverse operation, a division between a point and a number e.g. P2 / 3, can’t be done easily. One could only brute force the result.
+
+In other words we can use an EC in our DH algorithm from above, to replace the generator (g), with a point on the EC. We call this G in our example. There are several standards for elliptic curves like secp256k1, they usually define the point on the curve where G has to be. Because of the fact that you can multiply points, the equation P = G * kb (see below) is perfectly fine, even if G is a point and not a number like in classical DH. If G gets multiplied by a number, the result is again a point (P) on the curve. The picture below describes the full ECDH algorithm. As you can see, it is pretty much the same as before, except we are using now points on an EC, instead of numbers.
+
+
+
+
+Figure I
+
+It is important to note, that in real world implementations, e.g. openssl, only one coordinate (usually the x coordinate) is taken from the shared secret (S) for further calculations. This x-coordinate is a big number, not a point.
+
+By using an EC point as generator in DH, the discrete logarithm problem is even harder to solve for an attacker. The so called cryptographic smoothness of the algorithm is better. Which means, that it is impossible or extremely difficult, to improve on brute force cracking the encrypted data, by feeding a random value to the crypto algorithm and making a guess, if the result is bigger or less. For example, if you compute 2^3 = 8 and we assume you only know the 8 and the 2 of the calculation and want to find the 3. You first try a random number e.g. 5 and calculate 2^5 = 32, as far as 32 is bigger than 8, you know that you have to take a smaller value than 5 in your next try. In classical DH this is one of the reasons for the modulus calculation. If you have a system using modulus 9 for the example above, the result is 2^5 mod 9 = 5. Now it is much harder to guess if you need to use a bigger or smaller value in the next attempt. The problem in real systems is that the modulus is much bigger than the value of 9 used in our example, which leaves a rest smoothness. In ECC systems the randomness of these points is much higher and it is much harder or impossible to guess if the value is smaller or bigger.
+
+
+
+
+
+
+

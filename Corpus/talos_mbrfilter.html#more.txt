@@ -1,0 +1,52 @@
+
+MBRFilter - Can't Touch This!
+
+
+ This post was authored by Edmund Brumaghin and Yves Younan
+
+Update: 10/20/2016 - MBRFilter has been intentionally made difficult to remove to 
+prevent malware from simply disabling or removing this protection during
+ the infection process. Test thoroughly before deploying within 
+production environments. 
+
+
+Summary
+
+Ransomware has become increasingly prevalent in the industry, and in many cases, unless there is a publicly released decryptor available, there is often not an easy means of retrieving encrypted files once a system has been infected. In addition to the creation and maintenance of regular system backups, it is increasingly important to focus on a multi-tiered defense-in-depth network architecture in an effort to prevent initial endpoint infection. This is often difficult in an evolving threat landscape where new ransomware families are being developed and deployed seemingly every day by threat actors of varying levels of sophistication.
+
+While many ransomware families focus on the encryption of all or portions of a target system’s files others, such as Petya, rely on overwriting the contents of the Master Boot Record (MBR) to force a system reboot then only encrypt the Master File Table (MFT) of the hard drive on infected systems as a way to coerce users into paying the threat actors to retrieve the encryption keys required to decrypt their files.
+
+To help combat ransomware that attempts to modify the MBR, Talos has released a new tool to the open source community, MBRFilter, a driver that allows the MBR to be placed into a read-only mode, preventing malicious software from writing to or modifying the contents of this section of the storage device.
+
+
+Details
+
+The MBR is a special storage location at the very beginning (Sector 0) of mass storage devices. It is used to store information related to how the storage device is partitioned, as well as details regarding the filesystem configuration on the device. Additionally, the MBR is used to store the operating system’s boot loader, which is used to load the operating system installed on the system when it is powered on. 
+
+Petya is a ransomware variant that functions by overwriting the MBR of infected systems and replacing the boot loader with a malicious one. This malicious boot loader is then used to encrypt the Master File Table (MFT) located on the storage device. NTFS filesystems use the MFT to store detailed information about all files and directories stored within the filesystem. Although Petya does not fully encrypt the entire contents of the storage device, because it renders the MFT unreadable, it is extremely difficult to retrieve or restore files once a system has been infected.
+
+In an effort to prevent malware, such as Petya, from being able to manipulate contents of the MBR, including the MFT, Talos has released the MBRFilter driver to the open source community. MBRFilter is a simple disk filter based on Microsoft’s diskperf and classpnp example drivers. It can be used to prevent malware from writing to Sector 0 on all disk devices connected to a system. Once installed, the system will need to be booted into Safe Mode in order for Sector 0 of the disk to become accessible for modification. 
+
+The AccessMBR utility functions by reading Sector 0 on Physical Drive 0 and writes that sector back to disk. AccessMBR allows testing of the MBRFilter driver but is not required if one is simply using the driver to protect a computer.
+
+Below is a demonstration video that shows how the MBRFilter driver can be used to protect against malware that attempts to manipulate the MBR of a system, in this case Petya Ransomware:
+
+
+
+
+
+Conclusion
+
+By releasing this application to the open source community, Talos is helping the community address the threats associated with various MBR-based malware and ransomware.  
+
+The open source release can be obtained here.
+
+In addition to the open source code being released, Talos is also releasing a signed driver that can be installed on 32-bit and 64-bit Windows installations. Installation is performed by right-clicking on the INF file included in the linked Zip archive and selecting Install. The installation does require a system restart.
+
+The 32-bit installation can be obtained here.
+(SHA256: 3696aaa457d611eb1843fa7ab9b2235ab09b4af7f4ba09c7b56603e87a5551e3)
+
+The 64-bit installation can be obtained here.
+(SHA256: a1aa4c59258f3459fb9612eea81c3805ba23e2bd8ff28bad5cf40c94c099fd19)
+
+

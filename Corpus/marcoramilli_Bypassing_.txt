@@ -1,0 +1,37 @@
+
+Bypassing Windows 7 ASLR
+
+
+
+
+Hi Folks,
+
+few days ago Stefan Le Berre from NES security labs wrote an interesting document about Windows 7 ASLR.  Most of my readers know that exploiting a randomized user space is quite difficult, and  I am sure they appreciated NES effort. In ASLR attackers are forced to use heap spraying and other padding techniques that make difficult the whole exploiting process. Keeping trace of the randomized address by rebooting the system many times is always a good solution for understanding how randomization works, but this time Microsoft made things in the right way making impossible a statistic attack over ASLR.
+
+
+
+A first study to attempt to analyze the user space randomization came in September from Oleksiuk Dmytro who discovered that a static memory zone is always mapped at 0xFFDF0000 within RWX rights. This is pretty different from a statistic analysis on ASLR. Oleksiuk made a simple "show diff" of the memory contents over multiple system reboots. After a month or so, NES laboratories discovered that more areas are always statically allocated. The following picture shows (in green) the static allocated piece of memory.
+
+
+
+
+Now, why this is such an important finding ? Well, if there are some static allocated memory spaces, it means you know what is in there ! And why is so important knowing what is in there ? Well you should know something about Return Oriented Programming  :D :D (if you don't please read some of my posts on ROP: here, here, here, here, here, here, here ). If you are familiar with it you know that by "ropping" you might find useful gadgets to build your own exploit! The "paper" (more then a paper it looks like a presentation slides) follows by saying they had issues on finding useful gadgets (they had some issues to use RET2LIBC attack). I wonder how they looked for ROP and how many misalignment bytes they used. Probably if they used more then one byte of misalignment they might find more useful gadgets ...  Anyway, they exploited the address space layout randomization by using the RWX rights over the memory static allocated addresses and by controlling one register.
+
+
+
+
+
+
+
+By setting the desired instruction on a register (lets say %EAX) and %EBP to the next address they where able to control the stack. When the processor executes the instruction it will overwrite the next instruction by arbitrary values. If "POP %EAX" is the first value to set (see picture above) and last byte is "RETN" it is possible to force a new execution of the gadget over time. Making a loop.  For every loop it is possible to execute new data (for setting arguments or for setting up the stack)  and after loops it's possible to execute the shellcode.
+
+
+
+
+
+
+
+NES laboratory made up a PoC. The above picture (taken from the original "paper") shows that what they did succeed in bypassing Windows 7 ASLR. Actually they didn't proved that the machine in which the PoC run was a Windows 7 machine ;), but we trust them ;). Again, I still did not test it, so I am not saying that it really works, I am only reporting on my personal blog an interesting piece of security history that I consider important to keep in mind. I suggest the reading as soon as they will come out with a full paper on the great work they did ! Good job Stefan !
+
+
+

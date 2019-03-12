@@ -1,0 +1,17 @@
+What Had Happened Was: Page Sequences and Digital Threat Detection
+Previously, I have written on the use of PassiveTotal for identifying infrastructure associated with malicious or fraudulent behavior. In this week’s post, I’ll focus on a vital component of that investigation, using page sequences to detect digital threats. 
+To identify patterns of behavior and develop rule-based detections of digital threats or carry out in-depth threat infrastructure investigation, we must move up or down through the sequence of pages that lead to the particular behavior that first caught our attention. RiskIQ’s network of crawlers, sensors, and proxy users emulates human users with a fully instrumented browser to store the entire chain of events that may have lead to a digital threat, such as a redirection leading to a page serving malware. With this information, security teams can reconstruct an event and what led to it—just like a detective might do at a crime scene. 
+Typically, we find multiple distinct behaviors we can flag throughout a sequence of pages. This week, we’ll look at a crawl associated with RIG exploit kit and examine the different components and detections throughout the sequence of pages captured within the crawl.
+Fig-1 RIG blacklist incident
+Fig-2 RIG Sequence
+Above, we have a blacklist incident as well as the captured sequence resulting in the RIG exploit kit landing page. The topglaze.com[dot]au* domain contains an iframe which redirects to the malware page we detected and blacklisted.
+Fig-3 This iframe is sending traffic to the malware page.
+The response body of the malware page at art.WEIGHTCOACHMD[dot]NET, captured by RiskIQ’s crawlers, contains particular constructions (seen below) we can use to flag the page via detection logic:
+Fig-4 Malware page response body.
+But, bad actors intermittently change how these pages are constructed or create new variants, requiring us to tweak or create new logic to continue detecting malicious behavior. One way to counter these changes is to move up the sequence and examine other, more recent crawls involving the pages we have seen leading to malware. Like a detective trying to pinpoint a perpetrator,  we look for common clues that are present at the scenes of similar crimes. In this case, that means looking for new RIG pages downstream from the script-injected ‘topglaze’ domain.
+Fig-5 RIG Sequence
+Above, we have another sequence captured more recently than our initial detection. As you can see, the ‘topglaze’ domain is still script injected but is now leading to a different address with a similar URI pattern to the previous malware page. Looking at the response body of this new page reveals an entirely different construction than the previously detected page.
+Fig-6 RIG bot filter pre-landing page.
+This page is intended to act as a bot filter in between the compromised ‘topglaze’ page and the actual RIG landing page. Without the ability to easily identify sequential relationships such as that between ‘topglaze’ and RIG exploit kit pages, we would not be able to find and write detection logic for new behaviors such as this nearly as quickly or efficiently.
+By breaking down these page sequences, we’re able to analyze the anatomy of a digital threat and better understand how they change over time, allowing us to be nimble when changes do occur and maximize our ability to detect malicious behavior.
+*Top Glaze Roofing Systems was notified that their site has been compromised

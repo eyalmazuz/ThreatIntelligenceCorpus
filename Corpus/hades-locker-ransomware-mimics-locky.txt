@@ -1,0 +1,44 @@
+Hades Locker Ransomware Mimics Locky
+Overview
+Proofpoint discovered another new ransomware strain on October 4, called Hades Locker, which mimics Locky’s ransom message. Hades Locker appears to be an evolution of Zyklon Locker and Wildfire Locker [1] which we observed using the same sending botnet (Kelihos [2]) earlier this year. The recently documented CryptFile2 [3] and MarsJoke [4] campaigns also used the same sending spam botnet and similar distribution techniques (transportation-related email lures). However, while CryptFile2 and MarsJoke campaigns targeted state and local government agencies, the current Hades Locker campaign targeted Manufacturing and Business Services verticals.
+Email Campaigns
+On October 4, Proofpoint detected a Hades Locker ransomware email campaign. Emails contained URLs linking to a Microsoft Word document named "levering-1478529.doc" (random numbers; "levering" is Dutch for delivery) hosted on various sites with recently registered domains, apparently for the purpose of supporting this campaign. This is a departure from the much more frequent attached document campaigns we have observed recently with a range of malware, including the widely distributed Locky ransomware, but matches the technique we observed with the MarsJoke campaign.
+
+Figure 1: The document that downloads the final payload
+This campaign was small (hundreds of messages) and targeted primarily Manufacturing and Business Services verticals in Western Europe.
+Analysis
+To alert the victim that they are infected and their files are encrypted, this ransomware creates several types of files scattered throughout the victim’s file system, similar to many other types of ransomware:
+Encrypted files get a new extension appended, such as “.~HL233XP”, “.~HLJPK1L”, or “.~HL0XHSF”. The first four character of the new extenision, “.~HL”, are always the same, while the remaining 5 vary.
+
+Figure 2: Modified files with new extension
+The ransom message is dropped to the victim’s Desktop, as a text file, HTML file, and an image.
+
+Figure 3: Hades Locker ransom message image
+
+Figure 4: Hades Locker ransom message text file
+
+Figure 5: Hades Locker ransom message HTML file
+The message urges the victim to “buy the decryption password belonging to your files.” In order to do this, the victim is instructed to visit a web page or an onion site. The decryption site currently demands one bitcoin (600 USD at current exchange rates) in order to provide the decryptor.
+
+Figure 6: Landing page of the Hades Locker decryption site
+The “Helpdesk” tab gives user the option to submit an example encrypted file, and promises that the actors will send back the decrypted file within 24 hours. This is meant to prove that decryption is possible and encourage victims to pay the ransom.
+
+Figure 7: Helpdesk allows chatting with the malware authors
+Finally, a “Decryption Tutorial” is provided, presumably to help the victim run the decryptor tool that will be made available after payment. We do not know if such tool is actually provided.
+
+Figure 8: “Decryption Tutorial” tab
+Similarities to Locky
+Hades Locker appears to at least visually mimic Locky in some ways. For example, Figure 9 highlights the similarities in the ransom message displayed to the user.
+
+Figure 9: Similarities between the ransom message of Hades Locker (on left) and Locky (on right). The Locky ransom image shown here is an early version, with later versions becoming slightly more sophisticated.
+
+Figure 10: Similarities in the text version of the ransom notes used for Hades Locker (left) and Locky (right).
+Network traffic analysis
+The malware first attempts to to determine the victim’s external IP address, region, country, and ISP via a request to ip-api.com. Following that, it tries to check in to a command and control (C&C) server using one of its hardcoded domains.
+
+Figure 11: Hades Locker traffic observed during malware execution
+During the check-in to the C&C server, we observe various fields being reported, such as unique id, tracking id (likely a campaign id), user and computer name, external IP address, and the victim’s country (determined via the call to ip-api.com). The server responds with a status message and a “PASSWORD” field in cleartext. We suspect that this password may be used for encryption, making decryption trivial if the victim captures network traffic.
+
+Figure 12: C&C server check-in
+Conclusion
+Hades Locker is the latest in an ongoing series of ransomware variants we observe in the wild. It appears that the Kelihos botnet was used to send both predecessors to Hades Locker (Wildfire and Zyklon) as well as the CryptFile2 and MarsJoke campaigns we covered recently. The ransomware itself visually mimics early versions of Locky, but, regardless of the precise lineage of the variants, ransoms are increasing and actors are exploring new distribution methods such as links to hosted malware. As ransomware is increasingly commoditized and ransomware variants share features and aesthetics, we will continue to monitor the evolution of the market and its impact on businesses and individuals.

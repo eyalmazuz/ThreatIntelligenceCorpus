@@ -1,0 +1,205 @@
+Pulling the Brake on the Magnitude EK Train
+
+This blog goes into detail on recent work that Unit 42 has done to identify malicious sites associated with the Magnitude Exploit Kit (EK). It details the investigation process involved in identifying the algorithm used to generate domains used by the Magnitude EK. Defenders can use the provided data to identify possible domains that may be associated with the Magnitude EK before they’re used and block them pre-emptively and so block Magnitude EK attacks before they happen.
+Initial Assessment
+While hunting for new malware in Palo Alto Networks AutoFocus, I stumbled across some Adobe Flash files being used in what appeared to be an active exploit kit to which some users were being redirected. As I started to collect the URLs from these sites, a pattern began to emerge with which I was not immediately familiar. Below is a sample of the URLs.
+
+
+
+
+ffp495bf1aw.itshis[.]party/d8667t121
+
+89pd19n3d7d3x9cuf.maylink[.]space/766p3d35i8ze
+
+131n35co4o895a35ga.seemif[.]faith/6i0218b05
+
+96ax4b1cc77f0h76q.tinhes[.]trade/1tb20dc3f46h3n
+
+
+
+
+1234567
+
+ffp495bf1aw.itshis[.]party/d8667t121 89pd19n3d7d3x9cuf.maylink[.]space/766p3d35i8ze 131n35co4o895a35ga.seemif[.]faith/6i0218b05 96ax4b1cc77f0h76q.tinhes[.]trade/1tb20dc3f46h3n
+
+
+
+
+
+The third-level domains are a mix of alphanumeric characters, followed by a second-level domain made up of two combined English language words, followed by unusual, legitimate top level domains (TLDs), and then finally a path made up of alphanumeric characters. Within a few minutes of refining my search criteria, I was seeing pages of session data covering this type of activity indicating this was an active threat so I decided to dive in further.
+I was able to use AutoFocus in conjunction with YARA to accurately identified the container files as being dropped from Magnitude EK. Additionally, I found multiple blog posts such as this one on Malware Traffic Analysis which confirmed this pattern was in fact Magnitude.
+
+Great, now that I know what I’m dealing with, I can get down to the business at hand and further enumerate Magnitude EK URLs.
+Pulling the Brake
+In research, we typically start the process of enumeration by identifying a pattern and then using that pattern to further target and collect information. Then we take that information and repeat the process. In this case, I extracted around 100,000 sessions that contained Adobe Flash files from URLs that matched a handful of the TLD’s I observed, including things like “stream”, “space”, “review”, “webcam”, “trade”, “date”, “party”. This provided a solid body of data that I could use to try and create a pattern from by using the previously discussed rules with alphanumeric characters and the like.
+Below is a Pearl Compatible Regular Expression (PCRE) that I crafted to identify the initial landing pages for Magnitude EK.
+
+
+
+
+^http:\/\/(?![a-z]+\.)[a-z0-9]{7,22}\.[a-z]{5,9}\.(?!com|org|net)[a-z]{2,7}\/(?![a-z]+$)[a-z0-9]{8,128}$
+
+
+
+
+1
+
+^http:\/\/(?![a-z]+\.)[a-z0-9]{7,22}\.[a-z]{5,9}\.(?!com|org|net)[a-z]{2,7}\/(?![a-z]+$)[a-z0-9]{8,128}$
+
+
+
+
+
+Using this PCRE, I successfully identified 1113 unique landing pages across 1056 unique domains (856 unique second level domains). These are included in “magek_landing.txt” on the Unit 42 GitHub IOC repository. This file also contains the PCREs described in this blog.
+While creating the PCRE I noticed there was another URL pattern that frequently showed up on these domains. After additional research, I identified that this secondary URL pattern is the actual exploit Magnitude delivers once the landing page has profiled the browser/version(s) of Adobe Flash.
+The following URLs are examples of this second pattern.
+
+
+
+
+hxxp://1a3efi03i622219em.ohquite[.]stream/WIN%2020,0,0,228
+
+hxxp://7c1x34o504ldc926g.hotfear[.]review/win%2021,0,0,197
+
+hxxp://8d822k096y.sortman[.]bid/win%2020,0,0,272
+
+hxxp://d8dkfla60f24wd71o.owedloop[.]loan/win%2018,0,0,366
+
+
+
+
+1234567
+
+hxxp://1a3efi03i622219em.ohquite[.]stream/WIN%2020,0,0,228 hxxp://7c1x34o504ldc926g.hotfear[.]review/win%2021,0,0,197 hxxp://8d822k096y.sortman[.]bid/win%2020,0,0,272 hxxp://d8dkfla60f24wd71o.owedloop[.]loan/win%2018,0,0,366
+
+
+
+
+
+Building on the previous PCRE, the PCRE below will identify the exploit part being delivered by this kit.
+
+
+
+
+^http:\/\/(?![a-z]+\.)[a-z0-9]{7,22}\.[a-z]{5,9}\.(?!com|org|net)[a-z]{2,7}\/(?![a-z]+$)(?:[a-z0-9]{8,128}\?)?[WwIiNn]{3}%[0-9]{4},[0-9]{1},[0-9]{1,3},[0-9]{1,3}$
+
+
+
+
+1
+
+^http:\/\/(?![a-z]+\.)[a-z0-9]{7,22}\.[a-z]{5,9}\.(?!com|org|net)[a-z]{2,7}\/(?![a-z]+$)(?:[a-z0-9]{8,128}\?)?[WwIiNn]{3}%[0-9]{4},[0-9]{1},[0-9]{1,3},[0-9]{1,3}$
+
+
+
+
+
+I didn’t identify any new domains with this new PCRE. Nevertheless, it provides another opportunity for defender blue teams to identify and catch this activity at their proxy or URL filtering devices.
+Clearing the Track
+At this point, we have good coverage from the PCREs of the Magnitude EK infrastructure but I wanted to see if the coverage could be extended even further. So far, everything I’ve identified has been actively seen in an attack but, as every blue teamer knows, it’s better if you can stop a threat before they are able to carry out an attack. To do this, I need to shift focus from known attack domains to unknown attack domains.
+Taking the previously mentioned 1056 domains, I started reviewing the registration information for them and noticed several interesting characteristics as I collated the data from PassiveTotal.
+1. There were 110 registrants that registered 26 domains, which was roughly the average number of domains per registrant. On the low end, 16 registrants registered exactly 52 domains. In Table 1 you can see the top ten registrant addresses and the number of times they were used.
+
+
+
+ 404 
+ Klarkson avenue 25
+
+
+ 343 
+ 32 Glendale Crescent
+
+
+ 318 
+ Densell st. 199
+
+
+ 298 
+ Henbamo 33
+
+
+ 286 
+ 1299 Still Street
+
+
+ 212 
+ Nolenpark 88
+
+
+ 183 
+ Haringo 399
+
+
+ 172 
+ 1043 Mattson Street
+
+
+ 160 
+ Idorkalben 1928
+
+
+ 159 
+ hotberry road 38
+
+
+
+Table 1 Top 10 registrant addresses used.
+2. There was heavy re-use of addresses and telephone numbers, with one phone number being used for 1411 domains while another phone number is tied to 2421 registrations.   
+3. There was a lot of information that is just plain wrong in the registration details, which I feel would be worth its own research effort. For example, Table 2 shows entries wherein the city doesn’t exist in the listed state.
+
+
+
+Domain        
+ Email                   
+Country       
+State   
+City    
+
+
+listworth.top
+antonvarvutov@yandex[.]ru
+united states
+florida
+moscow
+
+
+goingtill.gdn
+adamdalnet@gmail[.]com
+united states
+kansas
+tolens
+
+
+basefew.bid
+benfansyl@gmail[.]com
+united states
+ohio
+colorado city
+
+
+rateshell.gdn
+bovengals@gmail[.]com
+united states
+indiana
+florida
+
+
+liftrush.date
+briangarret@gmail[.]com
+united states
+delaware
+gasanter
+
+
+
+Table 2 Example domain registrants with cities listed for states in which they do no exist
+Given this, I took 223 identified unique e-mails from our domains observed being used in attacks and used that to enumerate a list of 6089 second level domains for Magnitude EK that match our known pattern. These domains can also be found in “magek_domains.txt” on the Unit 42 GitHub IOC repository.
+By leveraging this data, defenders can now proactively block domains that could be used for Magnitude EK before they are used for attacks. In addition, defenders can use the provided PCRE’s to block future domains. For Palo Alto Networks customers, all domains are properly identified as malicious and the below tag was created in AutoFocus for those who wish to explore the activity further.
+MagnitudeEKFlashContainer
+Happy hunting! Choo chooo!
+Acknowledgements: A big “thank you” to Juan Figuera for tightening up these PCRE’s and testing them, along with Nathan Fowler, who both helped make sure these are false-positive adverse for the greater good of the community.
+
+Ignite ’17 Security Conference: Vancouver, BC June 12–15, 2017
+Ignite ’17 Security Conference is a live, four-day conference designed for today’s security professionals. Hear from innovators and experts, gain real-world skills through hands-on sessions and interactive workshops, and find out how breach prevention is changing the security industry. Visit the Ignite website for more information on tracks, workshops and marquee sessions.
+ 
+

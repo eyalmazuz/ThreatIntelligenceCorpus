@@ -1,0 +1,53 @@
+Defying the Madness: DDoS Bot Evaluation
+By Levi Gundert on March 30, 2016
+Recorded Future Entity Alert
+On March 28, 2016 we received a strategic Recorded Future alert for a distributed denial of service (DDoS) entity identified in a criminal forum.
+
+Over seven unique mentions in the past 24 hours means that this new reference to the DDoS entity is attracting notice, and because these specific alerts are configured only for contextually malicious Web sources, it’s likely to be a reference from a threat actor. Additionally, the Madness DDoS crimeware is at least four years old, thus this may be a repackaging of an older version or it may be legitimately updated with new features.
+Assessing the impact of a crimeware tool with new features and/or a change in status from privately held to publicly available is a strategic threat intelligence activity. Denial of service is a directly applicable threat topic for all businesses and governments, regardless of industry vertical. A relevant analysis focuses on new bot functionality, a change in public accessibility, general author/user attribution, and new/improved security control rules to address the specific threat.
+Additionally, the analysis should assess the likelihood of future impact. A public crimeware kit release is also a fantastic opportunity to test functionality and measure the efficacy of current security controls in a penetration testing/Red Team created scenario. Since threat actors seize on “freebie” opportunities, operational defenders should do the same to tangibly and measurably decrease operational risk.
+
+A visit to the Web source referenced in the Recorded Future alert confirms that this DDoS entity reference is in fact the announcement of an updated Madness version, specifically version 3.0.1. The release features (translated from Russian) appear below:
+
+Fortunately the forum post author — “Admin” — links to the alleged malware suite hosted by Yandex. 
+A PHP control panel directory (mad) and executable (madbuilder.exe) are contained in the downloaded file — 66209_release.rar (use password “hh” to unzip the file). The following is a strategic analysis of this Madness v3.0.1 release, the alleged authors, indicators of compromise (IOCs), and historical security control rules.
+The mad directory contains a number of typical HTML, CSS, and PHP files designed to provide the botnet operator with a pleasant control panel experience once the files are uploaded to a live Web server. When the Madness bot is installed on victim computers it will communicate with the pre-configured Web server and the control panel will display the number of victim installations, country of origin, and additional victim metadata. The botnet operator will issue DDoS commands that victims’ computers will execute, participating in a distributed denial of service attack against the botnet operator’s target of choice.
+The installation guide walks threat actors through the installation process which typically relies on LAMP (Linux, Apache, MySQL, PHP), and the author expects basic knowledge of Linux navigation and MySQL database creation. 
+
+The config.php files contain multiple user-defined variables which are passed to additional PHP files.
+
+The correct database values are necessary for a properly functioning control panel. This version of Madness was apparently released on November 15, 2015.
+One interesting file included in the mad directory is “logo.gif,” which is a small image that appears to be the logo for “intellect design.” A Google Image Search returns results for five domains where the image is located including: koval503.prv[.]pl, antvz.ts9[.]ru, kova.cba[.]pl, cvn6[.]tk/panel/, and megaxaker[.]ru. Perhaps the company was hired to build the frontend design theme and graphics for the Madness control panel, or perhaps the authors included the image logo for other unknown reasons.
+
+
+
+Executable — madbuilder.exe SHA256: 93d240ef7d1b4cd4648f2f436846c2845fd31e1476f8ac56ae10ae8a3dfa1796
+Even though the executable is unpacked, a Jotti scan reveals only six out of 19 anti-virus engines detect the file as malicious, with “trojan” being the only common definition label between the six companies that did detect the file as malicious.
+
+Team Cymru’s malware intelligence platform identified two additional samples from 2016 with two of the same AV verdicts respectively — wi32.hllw.autoruner2.22958 and deepscan:generic.malware.fp!dldpk!.68e4aeff. The associated metadata from Team Cymru’s runtime analysis is included below in the IOC section.
+One of the samples initiates HTTP POST traffic to r-rai.ru using the same URI structure as contained in the Madness PHP control panel directory structure. FarSight Security’s passive DNS (pDNS – DNSDB) data provides multiple A record and authoritative nameserver (NS) changes over the past two years for the r-rai.ru domain (listed in the IOC section). Domain Tools reports 304 additional websites hosted on the same server (185.42.12.11 – AS56784 MULTIHOST, Moscow). Recorded Future IP address summarizations and risk scores are also included below in the IOC section.
+Running strings on madbuilder.exe produces the URI structure for the bot to use when communicating with the pre-configured command and control (C2) server, including index.php, lib/md.sys, and lib/bs.sys which, of course, matches the structure of the Madness PHP control panel. 
+
+The base64 strings “U09GVFdBUkVcTW” decode to “SOFTWARE\MG.”
+Additional strings reveal attribution for the current Madness version: “Reversed by abbat-v | Coded by hdsckr.” 
+
+Recorded Future provides quick historical background on these two actors including Pastebin posts that have since been deleted or removed. There’s evidence that both actors have previously been involved in malware propagation and PII (personally identifiable information) theft.
+
+
+
+
+History has proven that advertising free crimeware is like chumming the water for sharks. The announcement of Madness DDoS bot version 3.0.1 on a criminal forum with corresponding free download is likely to entice threat actors into installing the control panel on a Web server and locally launching the builder (executable) to create a customized Madness DDoS bot.
+To summarize, a relatively recent version of Madness produced by abbat-v and hdsckr was repackaged by “Admin” to empower (or potentially victimize, if the builder contains a hidden back door) the criminal masses. At least one live instance of the Madness botnet is operating on r-ai.ru based on a linked malware sample and identical Web server directory structure. If this version of the Madness control panel contains the same SQL injection, (SQLi) vulnerability discovered by Cylance, then unsuspecting criminals may be in for a future surprise.
+Collecting and analyzing the latest version of a crimeware kit is often useful to identify evolving patterns and behaviors in crimeware generation, dissemination, and ultimate use. The exercise is worthwhile particularly when the malware functionality is specifically designed to impact business operations, as is the case with denial of service attacks. Obtaining a copy of the crimeware kit and using it in penetration testing/Red Team scenarios is a valuable exercise for measuring the efficacy of current security controls.
+Original Sample
+Team Cymru (Related Samples)
+FarSight Security
+Historical A records (Epoch time notation) for r-ai.ru:
+Historical Authoritative Nameserver (NS) records for r-ai.ru:
+Malwr 2015 sample linked via the string “apoKALiplis=uebok” here.
+Recorded Future IP Address Summarizations and Risk Score
+Recorded Future Intel Cards serve as a starting point for investigation or incident response. The following example is for IP address 62.109.30.161 which is one of the IOCs delivered by FarSight Security.
+
+Madness strings Yara Rule on GitHub here.
+BAMF (Botnet Analysis Modular Framework) original Madness python module (2014) on GitHub here.
+Updated BAMF Madness python module (2015) on GitHub here.

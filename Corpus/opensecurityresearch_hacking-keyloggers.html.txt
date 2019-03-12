@@ -1,0 +1,147 @@
+
+Hacking KeyLoggers
+
+
+By Mike Spohn and Brad Antoniewicz. 
+
+Our forensics investigations often result in us having to identify odd devices left over by attackers. So when we recently had to investigate a suspicious USB device connected between the keyboard and USB port on the rear chassis of a senior executive’s desktop computer, my job (I chose to accept it) was to discover what the device was and if it was evil.
+Identifying the Device
+
+The device was a very non-descript in appearance. It measured exactly 1” in length from the rear edge to the beginning of the male connector. The edges were beveled and the universal USB symbol was imprinted on the top and bottom. There were evenly spaced vertical striations on the sides. Here's an image of a keylogger from a competitor's site that resembled the device we were investigating. 
+
+
+
+
+Being the suspicious sort I am, this device and I did not become instant friends. A colleague scoured the Internet and notified me he found a very similar device manufactured by a company who specializes in hardware keystroke loggers. Since the device was relatively cheap (< $80), I ordered one for experimentation in the forensic lab. I'm intentionally not disclosing the actual manufacturer of the device so that they won't figure out a way to protect themselves against our attacks described below. 
+
+When the keylog device arrived, I visually compared it with the suspicious device provided by the client. They appeared identical. I next used an ohmmeter to measure the electrical properties of each device. Measuring the resistance between the front and rear USB pins determined both devices had the exact same electrical properties. The ohmmeter also indicated the devices had resistive/capacitive (RC) characteristics due the obvious RC time constant resistance behavior. At this point, I knew the device was not passive – it has an electronic brain.
+The Unlock Code
+
+Reading the documentation for the keylog device I learned it had a simple, elegant design. When the device is plugged into a computer and the O/S interrogates the device via Plug-N-Play (PNP), the device does not respond. Instead, the device goes into keyboard capture mode and logs every keystroke to a simple text file. All keystrokes are then passed on to the computer.
+
+To retrieve a keystroke log from the keylog device, the owner must enter a three-key combination of keystrokes. The three keys must be alpha-numeric and must be pressed at the same time. For example, if the unlock key combination is ‘ABC,’ the owner must press the ‘A’ ‘B’ abd ‘C’ keys at the same time. Case does not matter. The unlock code can be changed from the default by placing a config.ini file on the device with a “Password=” entry.
+
+Once the correct unlock key combination is entered, the device will send a PNP signal to the O/S. The device will advertise itself as a removable disk device, and the O/S will mount it. Once mounted, the owner can retrieve the keystroke log.
+
+I attempted to unlock the clients’ device using the ‘default’ unlock code and it did not mount. If this was, in fact, a keylog device, the owner changed the unlock code. My challenge now was - how do I unlock the device?
+
+The solution seemed obvious. Figure out a way to emulate a USB keyboard and send all combinations of three-key codes to the device until the right combination is sent. Simple – right? Not so fast Sherlock. Remember, you have to send the unlock code to the rear (keyboard) side of the device, not from the host computer.
+USB Keyboard Emulation
+
+The first thing that came to mind was a Teensy. This device, about the size of a postage stamp, provides a complete development environment for emulating a USB device and USB keyboard emulation. Even better, the device costs $16 US.
+
+
+
+Once I had a Teensy 2.0 in the lab, I wrote a quick test program in C and transferred it to the device. After some experimentation, I had a complete program that would send all three-key alpha-numeric key combinations out the mini-usb port of the Teensy device. To crack the keylog unlock code I had to perform three steps: 
+
+Burn my key-crack application on the Teensy device
+Connect the keylog device to a computer
+Connect the Teensy device to the rear connector of the keylog device
+
+Using The Teensy 2.0 To Brute Force The Unlock Key
+You'll have to configure your system if you've never used the Teensy before. Our test system will be using Backtrack 5 R3. Windows was used originally, but once Windows 7 couldn't find the driver for my USB keyboard I jumped over to Linux. In the end the OS doesn't make much of a difference because once you identify the unlock code, it automatically mounts itself as a storage device accessible by all modern operating systems.
+
+First up, we'll need to install our prerequisites: 
+ root@bt:~# apt-get install gcc-avr binutils-avr avr-libc
+
+
+
+You can flash the Teensy a variety of ways, here we'll do it using the Teensy Loader CLI utility:
+ root@bt:~# wget http://www.pjrc.com/teensy/teensy_loader_cli.2.0.tar.gz
+ root@bt:~# tar -zxvf teensy_loader_cli.2.0.tar.gz
+ root@bt:~# wget http://www.pjrc.com/teensy/hid_listen_1.01.zip
+ root@bt:~# unzip hid_listen_1.01.zip
+
+
+
+The Makefile included in the repository will perform the flash, which we'll go over in a couple of steps. For now, it's just important that the loader is on your system and decompressed. Next will grab a copy of the repository:
+ root@bt:~# git clone https://github.com/OpenSecurityResearch/usb-keylog-crack.git
+ root@bt:~# cd usb-keylog-crack
+
+
+
+Edit the Makefile and set TEENSY_LOADER_CLI with the path  to the teensy_loader_cli binary. By default it's set to ../teensy_loader_cli/teensy_loader_cli:
+ root@bt:~/usb-keylog-crack# grep "TEENSY_LOADER_CLI " Makefile
+# Be sure to set TEENSY_LOADER_CLI variable below
+TEENSY_LOADER_CLI = ../teensy_loader_cli/teensy_loader_cli
+
+
+
+With the appropriate values set, you can build the cracker:
+ root@bt:~/usb-keylog-crack# make all
+
+
+
+To flash, insert the Teensy and press the "Reset" button, this will put it into it's HalfKay bootloader. Now we can flash the usb-keylog-crack code:
+  root@bt:~/usb-keylog-crack# make program
+../teensy_loader_cli/teensy_loader_cli -mmcu=atmega32u4         -v usb_keylog_crack.hex
+Teensy Loader, Command Line, Version 2.0
+Read "usb_keylog_crack.hex": 5008 bytes, 15.5% usage
+Found HalfKay Bootloader
+Programming........................................
+Booting
+root@bt:~/usb-keylog-crack#
+
+
+
+usb-keylog-crack uses the Teensy's USB debugging functionality to provide information during the cracking. We'll use the hid_listen utility to grab this debugging info:
+ root@bt:~/usb-keylog-crack# cd ~/ 
+ root@bt:~# wget http://www.pjrc.com/teensy/hid_listen_1.01.zip
+ root@bt:~# unzip hid_listen_1.01.zip
+ root@bt:~# cd hid_listen
+ root@bt:~/hid_listen# make
+ root@bt:~/hid_listen# ./hid_listen
+Waiting for device:...
+
+
+
+Now we're ready - Insert the Teensy 2.0 into the Keylogger, then insert the Keylogger into the computer. Sit back and relax, after a few minutes you should see the banner and brute force attempts:
+ root@bt:~/hid_listen# ./hid_listen
+Waiting for device:...
+Listening:
+Keylog crack application
+Written by Michael G. Spohn
+June 3, 2012
+0001) Trying: QWQ (0014 001A 0014)
+0002) Trying: QWE (0014 001A 0008)
+0003) Trying: QWR (0014 001A 0015)
+0004) Trying: QWT (0014 001A 0017)
+0005) Trying: QWY (0014 001A 001C)
+0006) Trying: QWU (0014 001A 0018)
+0007) Trying: QWI (0014 001A 000C)
+0008) Trying: QWO (0014 001A 0012)
+0009) Trying: QWP (0014 001A 0013)
+000A) Trying: QWA (0014 001A 0004)
+000B) Trying: QWS (0014 001A 0016)
+000C) Trying: QWD (0014 001A 0007)
+000D) Trying: QWF (0014 001A 0009)
+000E) Trying: QWG (0014 001A 000A)
+000F) Trying: QWH (0014 001A 000B)
+0010) Trying: QWJ (0014 001A 000D)
+0011) Trying: QWK (0014 001A 000E)
+0012) Trying: QWL (0014 001A 000F)
+0013) Trying: QWZ (0014 001A 001D)
+0014) Trying: QWX (0014 001A 001B)
+
+
+
+I threw everything together in a quick video:
+
+Attacking the Attacker
+
+I tested my key-crack rig against the R&D device. It worked - but it was inconsistent. Occasionally, the test keylog device would mount after successfully guessing the unlock keycode, but the keystroke log file was gone. In fact, it appeared the device had been wiped.
+
+More experimentation determined there was an ‘undocumented’ feature of the device. A specific three-key unlock code had been assigned by the manufacturer as a ‘reset’ code. This is used in the event someone forgets their unlock keycode.  Whenever my Teensy sent this combination down the wire – the keylog device was wiped. I modified my key-crack app to bypass the unlock code. After some more thorough testing, I was confident my Teensy would unlock the clients’ keylog device.
+
+
+
+It took less than 30 seconds. The clients’ keylog device mounted and I was able to retrieve the keystroke log file and the config.ini file. Since the keystroke log has no concept of time, the client had to review the file content and correlate how much sensitive data might be somewhere it does not belong. Needless to say, providing this keystroke log file to the client was a truly valuable service.
+Final Thoughts
+
+These types of engagements always remind me of the importance of the physical security component of any security program. The keystroke log bandit who placed the device on the clients’ computer had to have physical access to it.
+
+You read a lot these days about businesses and governments trying to re-invent themselves by focusing on innovation and ingenuity. This also applies to the digital security incident response universe. Innovation and adaptation to the constantly changing environment during a hot incident is essential. To all my fellow white-hats out there – never ever give up the good fight. If we do, we all lose.
+
+Hack the planet.
+
+

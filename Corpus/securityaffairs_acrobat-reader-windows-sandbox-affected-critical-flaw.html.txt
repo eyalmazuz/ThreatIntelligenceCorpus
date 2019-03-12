@@ -1,0 +1,11 @@
+
+					Acrobat Reader Windows sandbox is affected by critical flaw					
+Google security researcher James Forshaw claims that the Acrobat Reader Windows sandbox is affected by critical vulnerability that could allow attackers to compromise a system and gain higher privileges.
+“The Acrobat Reader Windows sandbox is vulnerable to NTFS junction attack to write an arbitrary file to the filesystem under user permissions. This could be used to break out of the sandbox leading to execution at higher privileges.” states Forshaw in an advisory for version 11.0.8 (10.* not tested).
+The vulnerability discovered by the researcher is a race condition in the handling of the MoveFileEx call hook. The race can be won by the sandboxed process by using an OPLOCK to wait for the point where the MoveFileEx function opens the original file. Winning the race condition, the code in the sandbox could write an arbitrary file on the file system.
+
+The flaw is similar to another vulnerability previously discovered in the NtSetInformationFile, but it is different because it exploited a time of check to time of use race, this is possible because the broker opened the file rather than the sandboxed process.
+“While this is similar to the previous reported issue with NtSetInformationFile it’s different in that it doesn’t rely on the bug in the processing of the filepath instead exploits a TOCTOU race. It’s only possible in this case to race as it’s the broker which opens the file rather than the sandboxed process. It would probably be recommended to ensure that you cannot creation junctions ever, although this isn’t trivial in all cases where you passing back raw handles to the callee.”  Forshaw adds. 
+Forshaw included in the post a the source for proof-of-concept on the sandscape escape that on successful exploitation would create a file named ‘abc’ on the desktop.
+Pierluigi Paganini
+(Security Affairs –  Windows Acrobat Reader 11 Sandbox, hacking)

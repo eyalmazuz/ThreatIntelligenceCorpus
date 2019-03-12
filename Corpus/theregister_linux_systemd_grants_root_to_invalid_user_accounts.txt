@@ -1,0 +1,17 @@
+Create a user called '0day', get bonus root privs – thanks, Systemd!
+To obtain root privileges on a Linux distribution that utilizes systemd for initialization, start with an invalid user name in the systemd.unit file.
+Linux usernames are not supposed to begin with numbers, to avoid ambiguity between numeric UIDs and alphanumeric user names. Nevertheless, some modern Linux distributions, like RHEL7 and CentOS, allow this.
+The systemd software will not allow unit files to be created with an invalid user name. But other tools can create such files.
+Curiously, if systemd encounters an invalid name in a unit file, like "0day," it will ignore the parameter and create the requested service. As the documentation states, "If systemd encounters an unknown option, it will write a warning log message but continue loading the unit."
+But it will run the unit with root privileges instead of rejecting it or adopting more restrictive permissions.
+The issue was raised through a GitHub Issues submission a week ago, but Lennart Poettering, one of the lead maintainers of systemd, insisted the software is working as intended and declined to implement changes.
+"I don't think there's anything to fix in systemd here," he wrote. "I understand this is annoying, but still: The username is clearly not valid."
+Yet with forty down-votes on his response, it's evident that not everyone in the Linux community agrees there's nothing to be done.
+In a blog post on Sunday, Mattias Geniar, a developer based in Belgium, said the issue qualifies as a bug because systemd's parsing of the User= parameter in unit files falls back on root privileges when user names are invalid.
+It would be better, Geniar said in an email to The Register, if systemd defaulted to user rather than root privileges. Geniar stressed that while this presents a security concern, it's a not a critical security issue because the attack vectors are limited.
+To exploit the issue, an attacker would have to convince an administrator – someone who already has root access – to install a unit file with an invalid user name. There may also be some risk in configurations where unit files are generated automatically.
+Ultimately, it's a trivial bug to fix; the project's refusal to address it has frustrated users and developers. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

@@ -1,0 +1,143 @@
+Malicious PowerShell Detection via Machine Learning
+July 10, 2018 | by Victor Fang
+Introduction
+Cyber security vendors and researchers have reported for years how PowerShell is being used by cyber threat actors to install backdoors, execute malicious code, and otherwise achieve their objectives within enterprises. Security is a cat-and-mouse game between adversaries, researchers, and blue teams. The flexibility and capability of PowerShell has made conventional detection both challenging and critical. This blog post will illustrate how FireEye is leveraging artificial intelligence and machine learning to raise the bar for adversaries that use PowerShell.
+
+In this post you will learn:
+
+Why malicious PowerShell can be challenging to detect with a traditional “signature-based” or “rule-based” detection engine.
+How Natural Language Processing (NLP) can be applied to tackle this challenge.
+How our NLP model detects malicious PowerShell commands, even if obfuscated.
+The economics of increasing the cost for the adversaries to bypass security solutions, while potentially reducing the release time of security content for detection engines.
+Background
+PowerShell is one of the most popular tools used to carry out attacks. Data gathered from FireEye Dynamic Threat Intelligence (DTI) Cloud shows malicious PowerShell attacks rising throughout 2017 (Figure 1).
+
+
+Figure 1: PowerShell attack statistics observed by FireEye DTI Cloud in 2017 – blue bars for the number of attacks detected, with the red curve for exponentially smoothed time series
+
+FireEye has been tracking the malicious use of PowerShell for years. In 2014, Mandiant incident response investigators published a Black Hat paper that covers the tactics, techniques and procedures (TTPs) used in PowerShell attacks, as well as forensic artifacts on disk, in logs, and in memory produced from malicious use of PowerShell. In 2016, we published a blog post on how to improve PowerShell logging, which gives greater visibility into potential attacker activity. More recently, our in-depth report on APT32 highlighted this threat actor's use of PowerShell for reconnaissance and lateral movement procedures, as illustrated in Figure 2.
+
+
+Figure 2: APT32 attack lifecycle, showing PowerShell attacks found in the kill chain
+
+Let’s take a deep dive into an example of a malicious PowerShell command (Figure 3).
+
+
+Figure 3: Example of a malicious PowerShell command
+
+The following is a quick explanation of the arguments:
+
+-NoProfile – indicates that the current user’s profile setup script should not be executed when the PowerShell engine starts.
+-NonI – shorthand for -NonInteractive, meaning an interactive prompt to the user will not be presented.
+-W Hidden – shorthand for “-WindowStyle Hidden”, which indicates that the PowerShell session window should be started in a hidden manner.
+-Exec Bypass – shorthand for “-ExecutionPolicy Bypass”, which disables the execution policy for the current PowerShell session (default disallows execution). It should be noted that the Execution Policy isn’t meant to be a security boundary.
+-encodedcommand – indicates the following chunk of text is a base64 encoded command.
+What is hidden inside the Base64 decoded portion? Figure 4 shows the decoded command.
+
+
+Figure 4: The decoded command for the aforementioned example
+
+Interestingly, the decoded command unveils a stealthy fileless network access and remote content execution!
+
+IEX is an alias for the Invoke-Expression cmdlet that will execute the command provided on the local machine.
+The new-object cmdlet creates an instance of a .NET Framework or COM object, here a net.webclient object.
+The downloadstring will download the contents from <url> into a memory buffer (which in turn IEX will execute).
+It’s worth mentioning that a similar malicious PowerShell tactic was used in a recent cryptojacking attack exploiting CVE-2017-10271 to deliver a cryptocurrency miner. This attack involved the exploit being leveraged to deliver a PowerShell script, instead of downloading the executable directly. This PowerShell command is particularly stealthy because it leaves practically zero file artifacts on the host, making it hard for traditional antivirus to detect.
+
+There are several reasons why adversaries prefer PowerShell:
+
+PowerShell has been widely adopted in Microsoft Windows as a powerful system administration scripting tool.
+Most attacker logic can be written in PowerShell without the need to install malicious binaries. This enables a minimal footprint on the endpoint.
+The flexible PowerShell syntax imposes combinatorial complexity challenges to signature-based detection rules.
+Additionally, from an economics perspective:
+
+Offensively, the cost for adversaries to modify PowerShell to bypass a signature-based rule is quite low, especially with open source obfuscation tools.
+Defensively, updating handcrafted signature-based rules for new threats is time-consuming and limited to experts.
+Next, we would like to share how we at FireEye are combining our PowerShell threat research with data science to combat this threat, thus raising the bar for adversaries.
+
+Natural Language Processing for Detecting Malicious PowerShell
+Can we use machine learning to predict if a PowerShell command is malicious?
+
+One advantage FireEye has is our repository of high quality PowerShell examples that we harvest from our global deployments of FireEye solutions and services. Working closely with our in-house PowerShell experts, we curated a large training set that was comprised of malicious commands, as well as benign commands found in enterprise networks.
+
+After we reviewed the PowerShell corpus, we quickly realized this fit nicely into the NLP problem space. We have built an NLP model that interprets PowerShell command text, similar to how Amazon Alexa interprets your voice commands.
+
+One of the technical challenges we tackled was synonym, a problem studied in linguistics. For instance, “NOL”, “NOLO”, and “NOLOGO” have identical semantics in PowerShell syntax. In NLP, a stemming algorithm will reduce the word to its original form, such as “Innovating” being stemmed to “Innovate”.
+
+We created a prefix-tree based stemmer for the PowerShell command syntax using an efficient data structure known as trie, as shown in Figure 5. Even in a complex scripting language such as PowerShell, a trie can stem command tokens in nanoseconds.
+
+
+Figure 5: Synonyms in the PowerShell syntax (left) and the trie stemmer capturing these equivalences (right)
+
+The overall NLP pipeline we developed is captured in the following table:
+
+NLP Key Modules
+
+Functionality
+
+Decoder
+
+Detect and decode any encoded text
+
+Named Entity Recognition (NER)
+
+Detect and recognize any entities such as IP, URL, Email, Registry key, etc.
+
+Tokenizer
+
+Tokenize the PowerShell command into a list of tokens
+
+Stemmer
+
+Stem tokens into semantically identical token, uses trie
+
+Vocabulary Vectorizer
+
+Vectorize the list of tokens into machine learning friendly format
+
+Supervised classifier
+
+Binary classification algorithms:
+
+Kernel Support Vector Machine
+Gradient Boosted Trees
+Deep Neural Networks
+Reasoning
+
+The explanation of why the prediction was made. Enables analysts to validate predications.
+
+The following are the key steps when streaming the aforementioned example through the NLP pipeline:
+
+Detect and decode the Base64 commands, if any
+Recognize entities using Named Entity Recognition (NER), such as the <URL>
+Tokenize the entire text, including both clear text and obfuscated commands
+Stem each token, and vectorize them based on the vocabulary
+Predict the malicious probability using the supervised learning model
+
+Figure 6: NLP pipeline that predicts the malicious probability of a PowerShell command
+
+More importantly, we established a production end-to-end machine learning pipeline (Figure 7) so that we can constantly evolve with adversaries through re-labeling and re-training, and the release of the machine learning model into our products.
+
+
+Figure 7: End-to-end machine learning production pipeline for PowerShell machine learning
+
+Value Validated in the Field
+We successfully implemented and optimized this machine learning model to a minimal footprint that fits into our research endpoint agent, which is able to make predictions in milliseconds on the host. Throughout 2018, we have deployed this PowerShell machine learning detection engine on incident response engagements. Early field validation has confirmed detections of malicious PowerShell attacks, including:
+
+Commodity malware such as Kovter.
+Red team penetration test activities.
+New variants that bypassed legacy signatures, while detected by our machine learning with high probabilistic confidence.
+The unique values brought by the PowerShell machine learning detection engine include:
+
+The machine learning model automatically learns the malicious patterns from the curated corpus. In contrast to traditional detection signature rule engines, which are Boolean expression and regex based, the NLP model has lower operation cost and significantly cuts down the release time of security content.
+The model performs probabilistic inference on unknown PowerShell commands by the implicitly learned non-linear combinations of certain patterns, which increases the cost for the adversaries to bypass.
+The ultimate value of this innovation is to evolve with the broader threat landscape, and to create a competitive edge over adversaries.
+
+Acknowledgements
+We would like to acknowledge:
+
+Daniel Bohannon, Christopher Glyer and Nick Carr for the support on threat research.
+Alex Rivlin, HeeJong Lee, and Benjamin Chang from FireEye Labs for providing the DTI statistics.
+Research endpoint support from Caleb Madrigal.
+The FireEye ICE-DS Team.
+This entry was posted on Tue Jul 10 12:00 EDT 2018 and filed under machine learning, Artificial Intelligence, Powershell Attacks, and Victor Fang.

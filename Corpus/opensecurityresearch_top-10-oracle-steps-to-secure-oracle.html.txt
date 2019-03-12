@@ -1,0 +1,293 @@
+
+Top 10 Oracle Steps to a Secure Oracle Database Server
+
+
+By Chris Stark.
+
+There are numerous resources on the Internet that detail secure configurations for Oracle;  CISecurity, NIST, SANS, and Oracle just to name a few.  Despite this, however, Foundstone continues to encounter vulnerable Oracle databases in our internal and external penetration tests.  More often than not, we consultants are able to leverage the vulnerable Oracle databases to compromise additional hosts.  A single vulnerability in an Oracle database can eventually be escalated to privileged credentials in Active Directory or LDAP.
+
+Why do we continue to encounter Oracle servers with misconfigurations and other vulnerabilities that can easily avoided by just a little effort by DBAs?
+There are many reasons, but in my opinion these are some of the most common: 
+Understaffed Security Teams - Simply a lack of internal or third-party security professionals to bring visibility to the importance of database security.  If there are no security professionals in the organization, or ones that lack the skills or resources to perform periodic security assessments of databases, database misconfigurations will often go undetected. 
+DBA's "don't do" security - The reality in many organizations is that DBA’s are administrators that are focused on database availability and performance and not security.  DBA’s might be reluctant to implement secure configurations due to a lack of full understanding of the security risks- the vulnerability and exposure of not implementing the secure configuration, or due to fear that the secure configuration will unintentionally break some functionality.  To boil it down, DBA’s might have some fear, uncertainty, and doubt (FUD) about implementing secure database configurations. 
+!"secure by default" - Since the release of Oracle 9, Oracle has made a public effort to change their installation routines so that they are “secure by default”. However, as you will see in the settings discussed in this blog, for various reasons the majority of them are not set “secure by default”.
+
+Even though there are excellent resources on the Internet for implementing secure Oracle configurations, they aren’t being followed.   The purpose of this article is to discuss the configurations that will have the greatest impact on securing your Oracle database implementations.  Hopefully, if at least these top 10 configurations are implemented on your Oracle servers, you will never be in a situation where the Oracle servers were the chink in the armor that hackers used to pwn your network.
+
+At the time of this article, there are only two supported versions of Oracle, 10g and 11g.  Therefore, the focus of the recommendations in this article are in relation to those two versions of Oracle.  The following 10 recommendations  are ordered by severity, with the recommendations that will have the greatest benefit to the security posture of the database server, at the top of the list.
+
+1. Lock Down Default Accounts!Default privileged Oracle accounts continues to be the highest risk issue that we commonly encounter.  It is an incredibly easy issue to fix and prevent. 
+
+After installation, Oracle has a number of default accounts, each with a default preset value.  Post database install, the Oracle database configuration assistant (DBCA) automatically locks and  expires the majority of the default database user accounts.  Additionally DBCA changes the SYSTEM account to the value specified during the installation routine.
+
+If an Oracle database is manually installed, the DBCA never executes, and those dangerous default privileged accounts are never locked and expired.  By default, their password is the same as their username.  These will be the very first credentials that a hacker will attempt to use to connect to the database!  As a best practice, configure each of these accounts with a strong unique password, and if they are not required, they should be locked and expired.
+
+To change the password, execute the following SQL code:
+
+sqlplus> connect mydba
+sqlplus> alter user SYSTEM account lock and expire
+
+
+The following SQL can be used to lock and expire those default accounts:
+
+sqlplus> connect mydba
+sqlplus> alter user SYSTEM account lock and expire
+
+
+The default accounts installed with Oracle vary by version.  Here is a quick reference of the accounts that are installed by default (if the DBCA is never executed) in Oracle 9, 10, and 11 in an open state.
+
+ Oracle 9 Oracle 10 – Release 1 and 2 Oracle 11  
+ SYSTEM SYSTEM SYSTEM 
+ SYS SYS SYS 
+ SCOTT   SYSMAN 
+ DBSNMP   MGMT_VIEW 
+     DBSNMP 
+
+
+Starting with Oracle version 11g, DBA’s can easily locate any accounts with default passwords (same as username) by using the database view DBA_USERS_WITH_DEF_PWD.
+
+2. Require all database connections to use a strong SIDThe Oracle System ID, or SID is a unique value that is required for all clients to connect to the Oracle database.  Because it must be unique, you cannot have more than one database with the same SID on the same Oracle server.
+
+If a client connection uses a wrong SID to connect to an Oracle database, they'll get the message “ORA-12505: TNS:listener does not currently know of SID given in connect descriptor"  SIDs can be brute forced.  There are numerous tools to brute force the Oracle SID; Metasploit modules, OAT, OAK, SIDGuess, etc. 
+
+The key to thwarting SID brute forcing is to select a SID that is strong.  When creating an Oracle SID, select one that includes the following elements. 
+Not a dictionary word
+At least 10 characters in length
+Includes at least one special character
+Incorporating these elements will the SID is strong, that is, difficult for an attacker to brute force.
+
+Why does a strong SID matter when the SID is stored as a clear-text value within the Oracle client configuration file, tnsname.ora, on every single system that is configured to connect to the database?
+This is true - as long as an attacker could compromise at least one system that is configured to connect to the Oracle database, getting the SID from the TNSNAMES.ORA file is trivial.  But, think about the instances where the attacker is external to the organization and has compromised a single host that does not have an Oracle client connection configured.  A strong SID will not in itself prevent a hacker from gaining a connection to your Oracle database, but it is a good practice as an additional layer as a part of a Defense in Depth approach to security.
+
+For a good white paper on the methods that can be used to obtain an Oracle SID, check out Alexander Polyakov’s white paper. The white paper is bit old, but most of the methods discussed are still relevant.
+
+3. Apply Oracle Critical Patch Updates ASAPThis is one of those security best practice recommendations which most organizations commonly struggle. Depending on the database schema, Oracle Critical Patch Updates (CPU’s) can have significant impact on the Oracle database.   Significant enough, that the organization might have to perform extensive regression testing to ensure that applying the latest Oracle CPUs would have no impact on database functionality.
+
+Oracle releases Critical Patch Updates every quarterly on the Tuesday closest to 17th day of the month. Oracle has a special bulletin page that describes all of the most Oracle Critical Patch Updates and Advisories.  Fortunately, CPU’s are cumulative in nature.  You just need to install the latest Oracle CPU to gain all of the security patches from the product’s initial release.
+
+The key to an effective CPU patch process is creating a regimented regression testing process that corresponds to Oracle’s scheduled 4 releases every year.  Even in organizations with the most stringent regression testing processes, they can usually be architected in such a manner that they can be applied no more than 3 months after the last CPU release. Additionally, all DBA’s should register with the Oracle email Security Alert Advisory service, to ensure timely notification of Oracle patches and Security Alerts.
+
+There is also a mechanism Oracle can employ if a critical vulnerability is discovered that warrants immediate patch release.  Oracle calls patches released immediately under that program as off-schedule Security Alerts.  Since the CPU program was begun in 2005, there has only been a few times when Oracle released patches under that emergency process.  Organizations should work a method for applying these emergency released patches, but given their historic low volume, the focus should be on the routine of applying the CPU patches every quarter.  Oracle has a good whitepaper on recommendations for applying CPU patches.  It is an excellent resource for any organization implementing an Oracle Patch Management process.
+
+4. Remove all unnecessary privileges from the PUBLIC roleIn Oracle extended routines exist that allow a minimally privileged user to execute functions that they otherwise would not be able to execute.  These extended routines are called packages, and are roughly equivalent to Extended Stored Procedures in Microsoft SQL Server.  A special role, called PUBLIC, acts as a default role assigned to every user in the Oracle database.   Any database user can execute privileges that are granted to PUBLIC.  This is commonly exploited for database privilege escalation.
+
+These packages and subtype should be revoked from PUBLIC and made executable for an application only when absolutely necessary!
+
+In order of descending risk, the following table lists the most dangerous packages assigned by default that are assigned to the PUBLIC role:
+ Package or Subtype Description 
+ DBMS_SQL* This package provides an interface to use dynamic SQL to parse any data manipulation language (DML) or data definition language (DDL) statement from within PL/SQL.
+
+David Litchfield discovered the vulnerability in this package and presented it at Blackhat in 2007.  He demonstrated that a user could escalate their privileges through cursor snarfing and cursor injection. This problem has been fixed in Oracle 11g, but is still present in other versions.    Given that this package is extremely dangerous, and any database user can escalate to SYS, its necessity should be closely scrutinized.  If native dynamic SQL is not required, the package should be removed.
+ 
+ DBMS_XMLGEN The DBMS_XMLGEN package converts the results of a SQL query to a canonical XML format in real-time.  
+
+An attacker can exploit this package with SQL injection. Similarly to the DBMS_SQL package, all data, including user credentials can be extracted from the database.  Given that this package is extremely dangerous, its necessity should be closely scrutinized.  If dynamic XML database queries are not required, the package should be removed.
+ 
+ UTL_TCP* This package facilitates outgoing network connections to be established by the database server to any receiving (or waiting) network service. Granting this package to PUBLIC may permit arbitrary data may to be sent between the database server and any waiting network service. 
+ DBMS_RANDOM This package can be used to encrypt stored data. Generally, most users should not have the privilege to encrypt data- since encrypted data may be non-recoverable if the keys are not securely generated, stored, and managed, etc. 
+ UTL_HTTP* This package allows the database server to request and retrieve data using HTTP.    By default, it allows every user to access data over the Internet from HTTP.   An attacker could exploit this package with an HTTP request to send a SQL injection to the database to dump user’s credentials, and other sensitive data.
+
+According to the least privilege principle, revoke all grants to this package if your applications do not need it.
+ 
+ HTTPURITYPE This subprogram is a subtype of the UriType that provides support for the HTTP protocol. It uses the UTL_HTTP package underneath to access the HTTP URLs.  By default, it allows every user to transfer data from the database via HTTP.   An attacker could exploit this package with an HTTP request to send a SQL injection to the database to dump user’s credentials, and other sensitive data.
+
+According to the least privilege principle, revoke all grants to this package if your applications do not need it.
+ 
+ DBMS_ADVISOR This package DBMS_ADVISOR is part of the Server Manageability suite of Advisors, a set of expert systems that identifies and helps resolve performance problems relating to the various database server components.
+
+Because this package allows direct file system access, it can be used by an attacker to interact with the file system, outside of the database.
+ 
+ UTL_SMTP This package permits arbitrary mail messages to be sent from one arbitrary user to another arbitrary user. An attacker could use this as a part of a larger social engineering attack.  Most likely your application will not need this type of functionality from the database, and you should revoke all grants to this package. 
+ UTL_INADDR This package allows arbitrary domain name resolution to be performed from the database server, which could allow an attacker to enumerate your internal resources.  According to the least privilege principle, revoke all grants to this package if your applications do not need DNS resolution. 
+
+5. Enable Database AuditingAudit SYS OperationsBy default Oracle databases do not audit SQL commands executed by the privileged  SYS, and users connecting with SYSDBA or SYSOPER privileges.  If your database is hacked, these privileges are going to the be the hackers first target.  Fortunately auditing SQL commands of these privileged users is very simple:
+sqlplus>  alter system set audit_sys_operations=true scope=spfile;
+Enable Database AuditingAgain, by default Oracle auditing of SQL commands is not enabled by default.  Auditing should be turned on for all SQL commands.  Database auditing is turned on with the audit_trail parameter:
+
+sqlplus>  alter system set audit_trail=DB,EXTENDED scope=spfile;
+Note:  The command above would enable auditing from the database, but not the database vault information, into the table SYS.AUD$.  There are actually four database auditing types:  OS, DB, EXTENDED, and XML.
+
+Enable Auditing on Important Database ObjectsOnce auditing has been enabled, it can be turned on objects where an audit trail is important.  The following is a list of common objects that should be audited:
+
+AUDIT CREATE USER BY ACCESS;
+AUDIT ALTER USER BY ACCESS;
+AUDIT DROP USER BY ACCESS;
+AUDIT CREATE ROLE BY ACCESS;
+AUDIT SELECT ON DBA_USERS BY ACCESS;
+AUDIT CREATE EXTERNAL JOB BY  ACCESS; -- 10g Rel.2
+AUDIT CREATE JOB BY ACCESS;    -- 10g Rel.1
+AUDIT CREATE ANY JOB BY ACCESS;
+AUDIT CREATE ANY LIBRARY BY ACCESS;
+AUDIT ALTER DATABASE BY ACCESS;
+AUDIT ALTER SYSTEM BY ACCESS;
+AUDIT AUDIT SYSTEM BY ACCESS;
+AUDIT EXEMPT ACCESS POLICY BY ACCESS;
+AUDIT GRANT ANY PRIVILEGE BY ACCESS;
+AUDIT GRANT ANY ROLE BY ACCESS;
+AUDIT ALTER PROFILE BY ACCESS;
+AUDIT CREATE ANY PROCEDURE BY ACCESS;
+AUDIT ALTER ANY PROCEDURE BY ACCESS;
+AUDIT DROP ANY PROCEDURE BY ACCESS;
+AUDIT CREATE PUBLIC DATABASE LINK BY ACCESS;
+AUDIT CREATE PUBLIC  SYNONYM BY ACCESS;
+AUDIT EXECUTE ON DBMS_FGA BY ACCESS;
+AUDIT EXECUTE ON DBMS_RLS BY ACCESS;
+AUDIT EXECUTE ON DBMS_FILE_TRANSFER BY ACCESS;
+AUDIT EXECUTE ON DBMS_SCHEDULER BY ACCESS;
+AUDIT EXECUTE ON DBMS_JOB BY ACCESS;
+AUDIT SELECT ON SYS.V_$SQL BY ACCESS; 
+AUDIT SELECT ON SYS.GV_$SQL BY ACCESS;
+AUDIT EXECUTE ON SYS.KUPP$PROC BY ACCESS;
+AUDIT EXECUTE ON DBMS_XMLGEN BY ACCESS;
+AUDIT EXECUTE ON DBMS_NETWORK_ACL_ADMIN BY ACCESS; -- 11g
+
+
+
+6. Setup Database Triggers for Schema Auditing and Logon/Logoff Events In order to effectively audit schema changes, and logon and logoff events, Oracle provides DDL triggers to audit all schema changes and can report the exact change, when it was made, and by which user.  There are several ways to audit within Oracle with Triggers, but the three following are recommended by Alexender Kornblast with Red-Security- and  I recommend all DBA’s consider implement them:
+
+Logon TriggerBy using a logon trigger, you can send logon and logoff events in real-time to another system.  Think of it as a syslog daemon for your database events.
+
+This example below would send all logon and logoff events to a web server in real-time.
+
+Command (as user SYS):
+SQL>  create or replace trigger sec_logon after logon on database
+DECLARE
+rc VARCHAR(4096);
+begin
+begin
+rc:=utl_http.request('http://192.168.2.201/logon_user='||user||';sessionid
+='||sys_context('USERENV','SESSIONID')||';host='||sys_context('USERENV','H
+OST')||';ip='||ora_client_ip_address||';sysdate='||to_char(sysdate, 'YYYY-MM-DD hh24:mi:ss'));
+exception 
+when utl_http.REQUEST_F AILED then null; end;
+End sec_logon;/
+NOTE: Change the IP address to your web server’s address.
+
+
+
+DDL_TriggerUsing the Data Definition Language (DDL) triggers, an Oracle DBA can automatically track all changes to the database, including changes to tables, indexes, and constraints. The data from this trigger is especially useful for change control for the Oracle DBA.
+
+The example below will send events for GRANT, ALTER, CREATE, DROP.
+Command (as user SYS):
+
+SQL> create or replace trigger DDLTrigger
+AFTER DDL ON DATABASE
+DECLARE
+rc VARCHAR(4096);
+BEGIN
+begin     
+rc:=utl_http.request('http://192.168.2.201/user='||ora_login_user||';
+DDL_TYPE='||ora_sysevent||';DDL_OWNER='||ora_dict_obj_owner||';DDL_NA
+ME='||ora_dict_obj_name||';sysdate='||to_char(sysdate, 'YYYY-MM-DD 
+hh24:mi:ss');
+exception 
+when utl_http.REQUEST_FAILED then null; end;
+END;
+/
+NOTE: Change the IP address to your web server’s address.
+
+Error TriggerError triggers are Oracle error messages.  They can be useful for detecting attacks from SQL injection and other attack methods.
+
+Command (as user SYS):
+SQL>  CREATE OR REPLACE TRIGGER after_error
+AFTER SERVERERROR ON DATABASE
+DECLARE pragma autonomous_transaction; id NUMBER;
+sql_text ORA_NAME_LIST_T; v_stmt CLOB; n NUMBER;
+BEGIN
+n := ora_sql_txt(sql_text);
+IF n >= 1  THEN
+FOR i IN 1..n LOOP
+v_stmt := v_stmt || sql_text(i);
+END LOOP;
+END IF;
+FOR n IN 1..ora_server_error_depth LOOP
+IF ora_server_error(n) in (  
+'900','906','907','911','917','920','923','933','970','1031','1476','1719'
+,'1722','1742','1756','1789','1790','24247',' 29257','29540') THEN
+INSERT INTO system.oraerror VALUES (SYS_GUID() , sysdate, ora_login_user, 
+ora_client_ip_address, ora_server_e rror(n), ora_server_error_msg(n), 
+v_stmt);
+END IF; END LOOP; 
+END after_error; /
+
+NOTE: Change the IP address to your web server’s address.
+
+
+
+7. Implement a Database Activity Monitoring (DAM) SolutionIf you can afford the extra expense of an additional software product, a Database Monitoring Solution can be very useful.  It solves a problem where you might not be able to monitor your DBA’s activity at an organizational level.  It also provides useful insight to dangerous SQL queries and role modifications that might indicate an attacker has compromised your database.  The key to all of the DAM solutions is that they operate within memory of the Oracle server and operate independently of the databases native auditing and logging functions. For anyone familiar with network Intrusion Detection Systems (IDS), DAMs have an analogous function, they just operates within the database layer on the server rather than at any of the network layers.
+
+I’ve had really good feedback from our clients that McAfee’s Database Activity Monitoring (Formerly Sentrigo Hedgehog) is easy to implement and provides immediately useful alerts; however, I have no personal experience with the product.
+8. Enable Password Management for all Oracle LoginsOracle provides fairly robust password management for Oracle logins.  Unfortunately, none of these are applied in the default Oracle account profile.  
+
+In Oracle, logins are assigned an account policy through an Oracle profile.  Every login can only be applied one Oracle profile.  If no Oracle profile is specified when the login is created, it is assigned the default Oracle profile.
+
+Oracle covers the syntax for Oracle profiles well, but here are the recommended settings at a high level:
+Creating ProfilesOracle profiles are created with: 
+
+CREATE PROFILE profilename LIMIT SQL statement
+
+Users are added to the profile with: 
+
+ALTER USER login(s) PROFILE profilename
+
+
+
+Account LockoutLocking accounts after 5 invalid attempts for 30 days greatly reduces the risk of brute force attacks. If 30 days is not feasible, even a setting of 1 day will greatly reduce the risk of brute force attacks.
+
+The following two parameters are used to specify account lockouts in an Oracle profile.
+
+FAILED_LOGIN_ATTEMPTS 5
+PASSWORD_LOCK_TIME 30
+
+Password ExpirationBy expiring passwords, you can help ensure that they are being changed on a periodic basis. Expiring user passwords at least at every 90 days is a security best practice.
+
+The following parameter is used to specify how many days can lapse before a user must change their password:
+PASSWORD_LIFE_TIME  90
+
+Password History
+Without password history, users will most likely use the same password that they remember well each time they’ve changed it.  To ensure that user’s don’t reuse passwords there are two parameters.  The important thing to note that these settings are cumulative and both thresholds must match true before a user is able to change their password.
+
+In general, a password reuse time of 1 day is sufficient in conjunction with a password reuse maximum of 10 or more.
+
+Setting the password reuse time higher than 1 day may be problematic if users frequently change their password.  
+
+The important thing to note with these two settings is that they both should NOT be set to unlimited.
+
+PASSWORD_REUSE_TIME 1
+PASSWORD_REUSE_MAX 10
+
+
+
+Password Complexity VerificationWithout a password complexity verification function, users will most likely choose simple dictionary words that are easy to remember, and easy for a hacker to guess.
+
+In Oracle a user PL/SQL script must be set to check the complexity of a user’s password.  For specific example password verification PL/SQL scripts, refer to Oracle’s documentation.
+
+In general, the password verification function should ensure user’s passwords incorporate the following criteria:
+
+Differs from their username
+Not a dictionary word
+At least 10 characters in length
+Include at least 1 alpha, 1 numeric, and 1 special character
+
+9. Perform Regular Database Security AssessmentsEvery secure configuration that has been discussed in this article could be easily detected with an automated database vulnerability tool. I’m a big fan of automated database vulnerability tools as they provide an excellent quick way to quickly validate your Oracle secure configurations.  Obviously these kinds of tools are only useful if you have privileges- they are intended for DBAs, auditors, and security professionals to run for regular assessments.  These tools are prone to false-positives, and unfortunately they can also miss items (false-negatives), but their benefits greatly outweigh their risks.  
+
+An important thing to note with these tools is that in organizations that use them, I commonly see the special accounts that are used for performing the automated security scans are mishandled.  These accounts are either highly privileged or have extensive query capabilities with query access to all objects on the database.  By their nature they should be safeguarded, and a secure password profile should be applied.  Ideally they should be left in an unlocked state when not actively in use.
+
+The two products I’ve used over the years are AppDetectivePro and McAfee Security Scanner for Databases (formerly Sentrigo’s RepScan).  I’ve use McAfee’s product more extensively over the past year, so I’m naturally biased.  Given that bias, I prefer McAfee’s product as it easier to dynamically query the database with the tool and collect data that can be analyzed offline and outside of the tool.  Some people prefer AppDetectivePro, however, as it tends to be more automated.
+
+10. Encrypt Database TrafficThis last recommendation is rarely implemented, except in the most secure organizations.  Oracle supports network level encryption by both SSL, using X.509v3 signed certificates, and native encryption without certificates.
+The take away here with network level encryption, is not only that sensitive data in transit is protected when encryption is employed, but it also that the SID is protected.  Without encryption, the SID can be easily enumerated through man-in-the-middle attacks.
+
+Implementing network level encryption is too large of a topic to post the steps in this article, but Oracle has the following excellent resources on the topic:
+
+
+Oracle 10g- Configuring Network Data Encryption and Integrity for Oracle Servers and Clients
+Oracle 11g- Configuring Network Data Encryption and Integrity for Oracle Servers and Clients
+
+*ReferencesAs I've mentioned throughout this post, there are a lot of great resources on the internet. Here are some of the ones that were referenced from during the writing of this article. Note that some of the permission descriptions, etc... where taken from the below sources to be used in this article 
+
+http://www.oracle.com/technetwork/database/security/twp-security-checklist-database-1-132870.pdf
+http://www.red-database-security.com/wp/sentrigo_webinar.pdf 
+
+
+

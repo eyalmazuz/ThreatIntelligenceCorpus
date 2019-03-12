@@ -1,0 +1,26 @@
+
+The First Time Against Calling Conventions
+
+
+This morning I've been fascinated by a non standard "Calling Convention" Function. Usually I play with cdecl (C calling convention), stdcall (the Microsoft standard calling convention) or from time to time I've also exploited some fastcall (fast calling convention) but I've never seen something like that:
+
+
+ arg_0           = dword ptr  8
+ arg_4           = byte ptr  0Ch
+                 push    ebp
+                 mov     ebp, esp
+                 mov     ecx, [ebp+arg_0]
+                 lea     eax, [ebp+arg_4]
+                 push    eax             ; va_list
+                 push    ecx             ; char *
+                 push    esi             ; size_t
+                 push    edi             ; char *
+                 call    __vsnprintf
+                 add     esp, 10h
+                 mov     byte ptr [edi+esi-1], 0
+                 pop     ebp
+                 retn
+
+Variable in eax, ecx, esi and edi ? What's kind of convention is this?
+
+

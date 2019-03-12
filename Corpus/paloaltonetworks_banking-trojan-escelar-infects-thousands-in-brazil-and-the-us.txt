@@ -1,0 +1,287 @@
+Banking Trojan Escelar Infects Thousands In Brazil and the US
+
+Unit 42 for the past three months has been tracking a banking Trojan targeting victims in Brazil and the United States. Escelar originally surfaced in January of this year, and has since had roughly 100,000 instances of attempted infections.
+Attackers deliver the Trojan using generic Portuguese language phishing emails and are currently targeting seven Brazilian banks. Once delivered, Escelar has multiple installation stages where malware is downloaded using direct connections to multiple Microsoft SQL servers. These SQL servers are also used for command and control (C2) functionality.
+The most recently discovered Microsoft SQL server being used as Escalar infrastructure contained records of 1660 infections that all connected in a two-day time frame.
+The malware is able to control banking transactions conducted using Internet Explorer, and harvest email credentials, which are in turn used to spread the malware further.
+
+Figure 1. AutoFocus map of victims receiving Escalar Trojan
+Infection
+Escelar is distributed almost exclusively through phishing emails. A large number of emails were originally seen in the January 2015 period, and more e-mails have continued coming since then at a somewhat slower rate.
+
+Figure 2. Graph of sessions carrying Escalar each week in 2015
+These emails are often labeled using the current date, and contain a generic message to entice the victim into running the attachment.
+
+Figure 3. Example email containing Escelar
+The following top file names have been observed in attempted infections against Palo Alto Networks customers. Many of them include resume/curriculum vitae themes using female names.
+
+
+
+Name
+Count
+
+
+Curriclo_2015.exe
+10227
+
+
+Curriculum_Vitae_Bruna.exe
+9110
+
+
+Curriculum_Fernanda _Paiva.exe
+6310
+
+
+Curriculum_Izadora.exe
+4242
+
+
+Curriclo_Ana_Caroline2015.exe
+2435
+
+
+Seg-via-Boleto.exe
+1880
+
+
+Imprimir_2015.exe
+1556
+
+
+Curriculum_Laura.exe
+1547
+
+
+Curriculu_VItae-2015.exe
+1453
+
+
+Currculo_2015.exe
+1428
+
+
+
+Escalar Execution – Stage 1
+After the victim unzips and executes the attached file, an executable written in .NET will be run. These executables are often obfuscated to thwart reverse engineers and any security controls that may be in place on the victim’s machine.
+Important string names within Escelar samples are obfuscated using various cryptographic libraries. We have identified samples using both RijndaelEnhance and TripleDES.
+
+Figure 4. Cryptographic function contained in Escelar
+
+Figure 5. Encrypted string and decrypted version stored as a comment
+This executable has limited functionality, and is only responsible for downloading an additional executable and establishing persistence via the Run registry key.
+It begins by generating a random path of 8 alphabetic characters in the %APPDATA% directory. An executable name of 15 random alphabetic characters will hold to a soon-to-be-downloaded file. Escelar then makes a direct connection to a remote Microsoft SQL server and downloads a raw binary file to this local location.
+
+Figure 6. Microsoft SQL connection
+
+Figure 7. Acquiring raw binary image from Microsoft SQL server
+
+Figure 8. Raw binary image
+After this file successfully downloads, the following registry key is written to ensure persistence across reboots.
+HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run [Computer Name] : [Path to Executable]
+Finally, the downloaded malware is executed via a call to Interaction.Shell().
+Escelar Execution – Stage 2
+The second stage of the Escelar malware family shares many characteristics with the first stage. Both samples make use of direct Microsoft SQL connections, as well as encryption of important strings within the binary. They’re also both written in .NET and are often obfuscated.
+This sample is once again another downloader, grabbing a raw binary image from a remote Microsoft SQL server and storing it to the following path:
+%TEMP%\\JO[Computer Name][Computer Virtual Memory].exe
+
+Figure 9. Stored image in Microsoft SQL server
+Finally, the malware is executed via a call to Interaction.Shell().
+Escelar Execution – Stage 3
+The third stage of the malware contains the banking Trojan itself. Once again this binary is written in .NET and makes direct connections to Microsoft SQL servers. It begins by dropping JCS.Components.NeroBar.dll in the Startup folder. This DLL is used to generate progress bars and is used when the attacker chooses to generate a ‘blocker’ on the victim’s banking webpage, which we discuss later in this section.
+The malware proceeds to identify the following DLLs, which are used by various Brazilian banks to prevent malicious activity. The identifier is stored in the Microsoft SQL database in order to alert the attacker as to what plugins are installed.
+
+
+
+File
+Identifier
+
+
+%ProgramFiles%\\GbPlugin\\gbieh.dll
+B.B
+
+
+%ProgramFiles%\\GbPlugin\\gbiehcef.dll
+C.E.F
+
+
+%ProgramFiles%\\GbPlugin\\gbiehuni.dll
+I.T.A
+
+
+%ProgramFiles%\\GbPlugin\\gbiehabn.dll
+S.A.N.T.A
+
+
+%ProgramFiles%\\GbPlugin\\gbiehscd.dll
+S.I.C.R.E.D
+
+
+%ProgramFiles%\\Scpad\\scpLIB.dll
+B.R.A.D.A
+
+
+
+The IdPC identifier in the following image is made up of the following data.
+
+Computer Name
+Processor ID
+HD Serial
+Physical Memory
+Virtual Memory
+
+
+Figure 10. Victim infections of Escelar listed in the Database
+The malware monitors the victim’s browser activity. In the event they user attempts to navigate to one of the following Brazilian banking websites, the malware takes action.
+
+https://internetbanking.caixa.gov.br/SIIBC/index.processa
+http://www.bradesco.com.br/
+http://www.bb.com.br/
+https://www.itau.com.br/
+https://www.santander.com.br
+https://www.sicredi.com.br
+http://www.hsbc.com.br/1/2/br/para-sua-empresa
+
+Should the victim try to open any of these banking websites in a browser other than Internet Explorer, the malware will generate a false error, close the current browser, and re-open the link in Internet Explorer.
+
+Figure 11. False error displayed to the victim when viewing a targeted page in Google Chrome
+The attacker has the ability to send a number of different commands in the ‘fun’ column of the Microsoft SQL server.
+
+Figure 12. Commands being sent to victims
+Escalar can accept the commands show below (with their translations).
+
+
+
+Command
+Translation
+
+
+xclick
+click
+
+
+xclick2
+click 2
+
+
+xtexto
+text
+
+
+xtextopost
+text post
+
+
+xtexto2
+text 2
+
+
+xtextopost2
+text post 2
+
+
+xtexto3
+text 3
+
+
+xtextopost3
+text post 3
+
+
+xmultiplotexto
+multiple text
+
+
+xBloq
+locked
+
+
+xdesbloq
+unlocked
+
+
+xAss1
+unknown
+
+
+xAss2
+unknown
+
+
+xreiniciar
+reset
+
+
+xapagartexto
+delete text
+
+
+xsetacima
+up arrow
+
+
+xsetabaixo
+down arrow
+
+
+xtab
+tab
+
+
+xtab2
+tab 2
+
+
+xcenter
+center
+
+
+xcenter2
+center 2
+
+
+xfecharie
+ie close
+
+
+xsenhacert
+cert password
+
+
+xtoken
+token
+
+
+xcelular
+cell
+
+
+
+These commands allow the attacker to manipulate a victim’s banking web session and perform fraudulent transactions among other functions.
+The following screenshot shows an image that is used by the malware in order to trick victims into entering the unique authentication code sent by banks to the victim’s cellular telephone. This data is uploaded to the attackers in order to conduct fraudulent transactions.
+
+Figure 13. Escelar tricking a victim into entering the authentication code sent to their cell phone
+The following screenshot shows examples of an attacker blocking a victim’s banking web session in Internet Explorer.
+
+Figure 14. Blocking of victim’s banking web session
+These pages are specific to the bank the victim is using, as we can see in the following second example.
+
+Figure 15. Blocking of victim’s banking web session
+E-mail Harvesting and Spreading
+Escelar includes a component that is responsible for harvesting credentials from the following web services.
+
+Gmail
+Hotmail
+Webmail (any website containing the string “webmail” in the URL)
+
+These credentials are stored in a remote Microsoft SQL server. The harvested email credentials are then used by the attackers to send additional e-mails containing Escelar. The total sum of emails in the database displayed below indicated that 3,057 emails had been sent from these addresses. The SQL server keeps track of the number of emails sent by each email address.
+
+Figure 16. Table containing email addresses and tallies of spam emails sent
+By harvesting email credentials from Escelar victims, the malware authors are able to further propagate Escelar in the event a portion of the email senders are blocked.
+Conclusion
+The Escelar threat has been active for approximately seven months, targeting primarily Brazil- and US-based users. We have collected over 600 variants of to date, with roughly 100,000 attempted infections. The malware provides the attacker with multiple capabilities, including the ability to harvest email credentials and manipulate banking transaction sessions. Additionally, due to the way the malware is architected, it can easily update itself, along with the infrastructure supporting it.
+Users located in Brazil and the United States that use Brazilian banking services should be aware of this threat and take necessary precautions against it, such as ensuring that suspicious emails are not opened.
+Palo Alto Networks customers using the AutoFocus service can use the Escelar tag to determine if they have been impacted and conduct additional analysis, and customers using WildFire or Traps with WildFire integration are automatically protected against this threat. Organizations should monitor their networks for unexpected outbound Microsoft SQL traffic (App-ID mssql) that may indicate an Escelar infection.
+For a list of SHA256 hashes of identified instances of Escelar and identified Microsoft SQL server domains being used by Escelar, please refer to this link.
+ 
+

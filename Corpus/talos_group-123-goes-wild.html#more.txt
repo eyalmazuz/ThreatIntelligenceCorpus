@@ -1,0 +1,108 @@
+
+Flash 0-Day In The Wild: Group 123 At The Controls
+
+
+This blog post is authored by Warren Mercer and Paul Rascagneres.
+
+
+Executive Summary
+
+The 1st of February, Adobe published an advisory concerning a Flash vulnerability (CVE-2018-4878). This vulnerability is a use after free that allows Remote Code Execute through a malformed Flash object. Additionally KISA (Korean CERT) published an advisory about a Flash 0-day used in the wild. Talos identified that an attacker exploited this vulnerability with a Flash object embedded in a Microsoft Excel document. By opening the document, the exploit was executed in order to download an additional payload from a compromised website.
+
+We identified that the downloaded payload is the well-known Remote Administration Tool named ROKRAT. We already extensively spoke about this RAT on several articles in this blog: here, here, here and here. It is particularity used with cloud platforms in order to exfiltrate documents and manage infected systems.
+
+
+
+
+Flash 0-Day: CVE-2018-4878
+
+The campaign started by a malicious Microsoft Excel sheet:
+
+
+
+
+
+This malicious document contains an ActiveX object. This object is a SWF file (Flash). The CVE-2018-4878 use after free vulnerability is used in order to download an additional payload from a compromised web server. This payload is a shellcode loaded in memory and executed. We identified Flash exploits from November 2017. Here is the exploit workflow:
+
+
+
+
+
+CC & ROKRAT Payload
+
+As explained previously, the purpose of the exploit is to download and execute an additional payload on the Internet. Here are some URLs where this additional payload was downloaded:
+
+
+
+hxxp://www[.]1588-2040[.]co[.]kr/conf/product_old.jpg
+
+hxxp://www[.]1588-2040[.]co[.]kr/design/m/images/image/image.php
+
+hxxp://www[.]korea-tax[.]info/main/local.php
+
+hxxp://www[.]dylboiler[.]co[.]kr/admincenter/files/board/4/manager.php
+
+
+
+All these URLs are compromised websites located in South Korea. We identified that several of these URLs hosted a shellcode used to unpack and execute a ROKRAT variant. Here is the PDB of this sample:
+
+
+
+d:\HighSchool\version 13\2ndBD\T+M\T+M\Result\DocPrint.pdb
+
+
+
+
+It's the same PDB that was previously identified during our investigations. The exploit was used to drop ROKRAT on compromised systems. One of the ROKRAT samples identified used a naming reference to Hancom Secure AnySign. It is a reference to a legitimate application developed by Hancom Secure for PKI & authentication mechanisms. It is a software application used to protect user data and is massively used in South Korea.
+
+
+Conclusion
+
+Group 123 have now joined some of the criminal elite with this latest payload of ROKRAT. They have used an Adobe Flash 0-day which was outside of their previous capabilities - they did use exploits in previous campaigns but never a net new exploit as they have done now. This change represents a major shift in Group 123s maturity level, we can now confidentially assess Group 123 has a highly skilled, highly motivated and highly sophisticated group. Whilst Talos do not have any victim information related to this campaign we suspect the victim has been a very specific and high value target. Utilizing a brand new exploit, previously not seen in the wild, displays they were very determined to ensure their attack worked.
+
+In January 2018 we produced a write up 'Korea In The Crosshair' detailing the campaigns previously carried out by Group 123. In this write up we explained this would not be the last time we witness attacks from this threat actor and that we would expect them to continue to evolve. Within a few weeks we have witnessed the evolution of Group 123 and we will continue to monitor the threat landscape for this group.
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+Open Source Snort Subscriber Rule Set customers can stay up to date by downloading the latest rule pack available for purchase on Snort.org.
+
+
+IOCs
+
+Flash exploits:
+
+fec71b8479f3a416fa58580ae76a8c731c2294c24663c601a1267e0e5c2678a0
+3b1395f620e428c5f68c6497a2338da0c4f749feb64e8f12e4c5b1288cc57a1c
+
+ROKRAT sample:
+
+E1546323dc746ed2f7a5c973dcecc79b014b68bdd8a6230239283b4f775f4bbd
+
+URL:
+
+hxxp://www[.]1588-2040[.]co[.]kr/conf/product_old.jpg
+hxxp://www[.]1588-2040[.]co[.]kr/design/m/images/image/image.php
+hxxp://www[.]korea-tax[.]info/main/local.php
+hxxp://www[.]dylboiler[.]co[.]kr/admincenter/files/board/4/manager.php
+
+
+

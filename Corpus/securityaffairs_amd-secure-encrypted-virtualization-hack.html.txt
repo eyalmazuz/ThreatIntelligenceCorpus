@@ -1,0 +1,24 @@
+
+					Experts show how to defeat AMD’s Secure Encrypted Virtualization					
+The attack could allow them to exfiltrate data in plaintext from an encrypted guest via a hijacked hypervisor and simple HTTP requests to a web server running in a second guest on the same machine.
+The Secure Encrypted Virtualization feature allows to encrypt and decrypt virtual machines on the fly while stored in RAM to protect them from snooping on VMs.
+Thanks to the Secure Encrypted Virtualization, hijacked hypervisor, kernel, driver, or malware should be able to snoop on a protected virtual machine.
+The team of Fraunhofer AISEC researchers, composed of  Mathias Morbitzer, Manuel Huber, Julian Horsch and Sascha Wessel, demonstrated that the SEVered technique could to bypass Secure Encrypted Virtualization protections and copy information from a virtual machine.
+“We present the design and implementation of SEVered, an attack from a malicious hypervisor capable of extracting the full contents of main memory in plaintext from SEV-encrypted virtual machines. SEVered neither requires physical access nor colluding virtual machines, but only relies on a remote communication service, such as a web server, running in the targeted virtual machine.”  reads the research paper published by the researchers.
+“We verify the effectiveness of SEVered on a recent AMD SEV-enabled server platform running different services, such as web or SSH servers, in encrypted virtual machines”
+An attacker at the host level can alter a guest’s physical memory mappings through standard page tables, causing the failure of the Secure Encrypted Virtualization mechanism in isolating and scrambling parts of the VM in RAM.
+“We base SEVered on the observation that the page-wise encryption of main memory lacks integrity protection. While the VM’s Guest Virtual Address (GVA) to Guest Physical Address (GPA) translation is controlled by the VM itself and opaque to the HV, the HV remains responsible for the Second Level Address Translation (SLAT), meaning that it maintains the VM’s GPA to Host Physical Address (HPA) mapping in main memory.” continues the paper.
+“This enables us to change the memory layout of the VM in the HV. We use this capability to trick a service in the VM, such as a web server, into returning arbitrary pages of the VM in plaintext upon the request of a resource from outside”
+
+The researchers set up a test environment running an AMD Epyc 7251 processor with SEV enabled and Debian GNU/Linux installed, running an Apache web server and an OpenSSH in two separate virtual machines.
+By modifying the system’s Kernel-based Virtual Machine KVM hypervisor, the experts demonstrated that it is possible to observe when software within a guest accessed physical RAM.
+Then the researchers sent a large number of requests at one of the services, for example fetching an HTML webpage from Apache. In this scenario, the hypervisor was able to see which pages of physical memory are being used to hold the file, then by switching the page mappings an encrypted page in another virtual machine is used by Apache to send the requested webpage, and therefore sends the automatically decrypted memory page of the other VM instead.
+With this trick, the attacker could force the Apache service in leaking data from another guest.
+“With the knowledge about the location of the resource, we were able to reliably extract the entire memory of the target VM on our prototype implementation,” continues the paper. 
+“The resource was always sticky over the whole process. While preserving the VM’s stability at all times, the extraction of its entire 2 GB also worked under the noise model introduced for the identification phase.”
+The experts demonstrated the efficiency of the SEVered attack in extracting the entire memory from an SEV-protected VM.
+Experts also analyzed countermeasures, the best one consists in providing a full-featured integrity and freshness protection of guest-pages additional to the encryption.
+“The best solution seems to be to provide a full-featured integrity and freshness protection of guest-pages additional to the encryption, as realized in Intel SGX. However, this likely comes with a high silicon cost to protect full VMs compared to SGX enclaves,” the experts concluded.
+“A low-cost efficient solution could be to securely combine the hash of the page’s content with the guest-assigned GPA.”
+Pierluigi Paganini
+(Security Affairs – SEVered, hacking)

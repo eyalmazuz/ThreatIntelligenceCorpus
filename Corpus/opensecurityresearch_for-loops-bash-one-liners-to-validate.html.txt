@@ -1,0 +1,111 @@
+
+for loops! Bash One-liners to Validate Vulnerabilities on Multiple Hosts
+
+
+By Amit Bagree.
+
+This is a quick blog post on one-liners. Recently I was working on manually validating vulnerabilities for a customer with a very large Internet presence. There were a lot of findings - each with hundreds of affected systems and I needed a quick way to confirm the vulnerability on each system and weed out false positives. I achieved this by using common *nix commands and tools. This might not get you a standing ovation or pick up a partner but they'll help you wrap up the automated scanning to give you time to spend on the real hax!
+CVE-2011-1473
+McAfee Vulnerability Manager: Web Server Supports Outdated SSLv2 Protocol
+Nessus: SSL Version 2 (v2) Protocol Detection 
+ root@bt:~# for i in `cat Affected-SSLv2-IPs.txt`; do echo -e "\n----START "$i"----" ; echo -e "HEAD / HTTP/1.0\n\n" | openssl s_client -connect "$i" -ssl2; echo -e "\n----END "$i"----"; done > SSLv2-Output.txt
+
+
+CVE-2009-3555
+McAfee Vulnerability Manager: TLS / SSL Man-In-The-Middle Renegotiation Vulnerability 
+Nessus: SSL / TLS Renegotiation DoS & SSL / TLS Renegotiation Handshakes MiTM Plaintext Data Injection  
+  root@bt:~# paste SSL-Renego-IPs.txt | while read IP port; do echo "----START "$IP":"$port"----"; echo -e "HEAD / HTTP/1.0\nR\n\n" | ncat --ssl "$IP" "$port"; echo -e "\n----END "$IP":"$port"----\n"; done
+
+
+
+Where SSL-Renego-IPs.txt has an IP address and port number on each line separated by a space. You can use OpenSSL instead of Ncat as well. An online test tool is available here.
+CVE-2008-1447
+McAfee Vulnerability Manager: ISC BIND DNS Out-Of-Bailiwick Cache Poisoning 
+Nessus: Multiple Vendor DNS Query ID Field Prediction Cache Poisoning 
+  root@bt:~# for i in `DNS-CachePoison-IPs.txt`; do dig @"$i" +short porttest.dns-oarc.net TXT; done; > DNS-CachePoison-Output.txt
+
+
+CVE-2006-0987
+Nessus: DNS Server Spoofed Request Amplification DDoS 
+  root@bt:~# for i in `cat DNSRootAmpDoS-IPs.txt`; do dig @"$i" . NS; done > DNSRootAmpDoS-Output.txt
+
+
+CVE-2002-1623
+McAfee Vulnerability Manager: Internet Key Exchange (IKE) Aggressive Mode with Pre-Shared Key
+Nessus: IKE Server Allows Aggressive Mode for Shared Secret Authentication 
+  root@bt:~# for i in `cat IKE-AggresiveMode-IPs.txt`; do sudo ike-scan -M -A "$i"; done > IKE-AggresiveMode-Output.txt
+
+
+CVE-2003-1567, CVE-2004-2320, CVE-2010-0386
+McAfee Vulnerability Manager: Web Server HTTP TRACE or TRACK Methods Enabled 
+Nessus: HTTP TRACE / TRACK Methods Allowed 
+  root@bt:~# paste Trace-IPs-SSL.txt | while read IP port; do echo "----START "$IP":"$port"----"; echo -e "TRACE / HTTP/1.0\n\n" | ncat --ssl "$IP" "$port"; echo -e "\n----END "$IP":"$port"----\n"; done > Trace-SSL-IPs-Output.txt
+
+
+CVE-2006-3918, CVE-2007-5944
+McAfee Vulnerability Manager: F-Secure Policy Manager Expect Header Cross-Site Scripting
+Nessus: Web Server Expect Header XSS 
+  root@bt:~# for i in `cat ExpectHeaderXss-IPs.txt`; do echo -e "\n----START "$i"----" ; echo -e "GET / HTTP/1.0\nExpect: <script>alert(1)</script>\n\n" | openssl s_client -quiet -connect "$i":443; echo -e "\n----END "$i"----"; done > M-ExpectHeaderXss-Output.txt
+
+
+CVE-2007-6203
+Nessus: Apache HTTP Method Request Entity XSS 
+  root@bt:~# for i in `cat ApacheMethodRequestXSS-IPs.txt`; do echo -e "\n----START "$i"----" ; echo -e "<script>alert(1)</script> / HTTP/1.1\nHost: foundstone.com\nConnection: close\nContent-length: -1\n\n" | nc "$i" 80; echo -e "\n----END "$i"----"; done > ApacheMethodRequestXSS-Output.txt
+
+
+SSL Ciphers and Certs
+Couple of quick tips/tools for checking weak SSL ciphers, expired SSL certificates, certificates with weak signature algorithms, etc...
+SSLSmart
+Download here. Simply import your IPs with port info like 127.0.0.1:8080 from a text file and click ‘Start Test’. The advantage with SSLSmart is that if you perform a ‘Content’ test you can catch that pesky system which would allow a weak cipher connection but then display a page saying you are not good enough to connect to it. The two methods below won’t catch this false positive.
+SSLAudit.pl
+
+Another nice tool is this Perl script SSLAudit.pl. The nice feature about this is that the results are graded as per the SSLLabs SSL Server Rating Guide. If you are providing a list of IPs, you will notice quickly that the tool errors out without performing the checks if there is a hostname mismatch (Errors - Hostname verification failed, Hostname mismatch). Worry not! just disable the mismatch check. To apply the patch: 
+root@bt:~# wget https://sslaudit.googlecode.com/files/SSLAudit%20r6%20%2820100119%29.zip
+root@bt:~# unzip SSLAudit\ r6\ \(20100119\).zip 
+root@bt:~# wget https://github.com/OpenSecurityResearch/pentest-scripts/blob/master/SSLAudit-r6-20100119-RemoveHostnameCheck.patch
+root@bt:~# patch -p1 < SSLAudit-r6-20100119-RemoveHostnameCheck.patch
+
+
+
+Then you're all ready to:
+  root@bt:~# cat All_SSL_IPs.txt | while read IP port; do echo -e "\n----START "$IP":"$port"----”; perl SSLAudit.pl "$IP" "$port"; echo -e "\n----END "$IP":"$port"----\n"; done > All_SSLAudit_Output.txt
+
+
+
+Oh by the way you would need the following modules for SSLAudit to work:
+
+inifiles
+libio-socket-ssl-perl
+libtime-modules-perl
+
+ssl-enum-ciphers.nasl
+  root@bt:~# nmap --script ssl-enum-ciphers -p port/s IP-Address/es
+
+
+Non-Recursive DNS Queries
+  root@bt:~# for i in `cat DNS-NonRecursive-IPs.txt`; do dig @"$i" www.google.com A +norecurse; done > DNS-NonRecurive-Output.txt
+
+
+
+Assuming www.google.com would be cached. You can make it cache first if you wish.
+Checking Remote NTP version
+  root@bt:~# for i in `cat NTPVersion-IPs.txt`; do echo -e "\n----START "$i"----" ; ntpq -c readvar "$i"; echo -e "\n----END "$i"----"; done > NTPVersion-Output.txt
+
+
+Check XSS in URL/URL parameter using Curl
+  root@bt:~# curl 'http://127.0.0.1/<script>alert(1)</script>' | grep 'alert(1)'
+
+
+Download a specific file from multiple IPs
+  root@bt:~# for i in `cat IPs.txt`; do curl -o "$i"_crossdomain.xml “http://"$i"/crossdomain.xml”; done
+for i in `cat IPs-SSL.txt`; do curl -k -o "$i"_robots.txt “https://"$i"/robots.txt”; done
+
+
+
+
+Ok, you get the point :)  One final tip - use grep & wc or vim (:%s/pattern//gn) to check for number of occurrences of a pattern in your output.
+Hope you find these helpful and please share if you have some favorites as well.
+
+
+
+

@@ -1,0 +1,40 @@
+Rare Glimpse into a Real-Life Command-and-Control Server
+Recently, CrowdStrike has been tracking the activities of an adversary we’ve named Viceroy Tiger. During our research, we happened upon an interesting file written in Microsoft’s Visual Basic 6 (VB6). What makes this particular file interesting is that it offers a rare glimpse into the adversary’s view of a targeted attack. So often in our line of work, we only have access to the client or victim side of the equation; however, in this case, the adversary made the mistake of using a server configured to be more or less wide open to the web, and as a result, we were able to retrieve a copy of the tool used as the Command-and-Control (C2) server.
+Technical Details
+The malware calls itself “Dragon Eye – Mini”, and claims to have been written by an individual named “YASH”, part of “MATRIX-TEAM” according to strings displayed from the resource section. Also, the authors of this malware are not particularly knowledgeable in the VB6 file format, and they’ve neglected to scrub the VB project name and path from the binary, which is “D:YASHPROMYDELIVEREDRATDragon-EyeDe-MiniClientfrmFileman.vbp”. With this information, individuals with access to various malware feeds and the appropriate tools should be able to easily locate other VB6 based malware samples written by this individual.
+The code, as mentioned before, was written in VB6 and is compiled to x86 machine code vs. the default p-code compilation, which looks something like this:
+
+As can be deduced from the above image, API calls are not cleanly displayed by common tools such as OllyDbg or IDA, and as a result, manual resolution of the API calls must be performed absent any automated tools, of course.
+Luckily, detailed understanding of the code was not required for this analysis, and what essentially amounted to blackbox analysis under a debugger was sufficient, as we had copies of both a functioning client as well as the server. As such, knowing which API calls would be required for them to communicate with each other was all that was needed.
+Let’s take a look at the actual malware now. We’ll start by executing the C2 server binary and see what we get:
+
+From here, we can see an empty list of connections, the ability to set the listening port, a “Stop” button, whose text says “Start” when the server is not active, and an “Open Folder” button that merely opens an Explorer window to the directory in which the server resides.
+When a client connects to the server, information about the client is displayed:
+
+When the entry is double clicked, a window resembling a crude file manager appears:
+
+Here, we have the option to set some URL that apparently can be downloaded; however, testing has shown that the “Start Download” button merely sends this URL to the client, yet the client does not actually attempt to download from the URL. If we were to right click any of the files in the list, we are presented a menu that allows us to execute, delete, or download the selected file. Additionally, an upload option is displayed, but that action will upload a file to the current directory and is not dependent on the currently selected file. Downloaded files will appear in the “Downloads” subdirectory of the RAT’s parent directory.
+The last bit of functionality offered by this cheap RAT is a remote shell implementation:
+ 
+
+The options are to start/stop the shell and to send commands to it.
+The network traffic from this RAT is exceptionally straight forward to detect. The protocol is plain text and uses the first four bytes as the command. The below Snort rules detect what are thought to be the most common bits of traffic originating to and from this C2 server.
+alert tcp $HOME_NET any -> $EXTERNAL_NET any (msg: “[CrowdStrike] – Viceroy Tiger – DragonEye C2 Communication – Beacon”; 
+flow:from_client,established;
+content: “Auth”; offset: 0; depth: 4;
+content: “\#/”; distance: 0; within: 30;
+sid: 1981305001; rev: 20130514;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg: “[CrowdStrike] Viceroy Tiger – DragonEye C2 Communication – Remote Shell Start”; 
+flow:from_server,established; dsize: 4;
+content: “SheA”;
+sid: 1981305007; rev: 20130514;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg: “[CrowdStrike] Viceroy Tiger – DragonEye C2 Communication” – Remote Shell Stop; 
+flow:from_server,established; dsize: 4;
+content: “SheD”;
+sid: 1981305008; rev: 20130514;)
+alert tcp $EXTERNAL_NET any -> $HOME_NET any (msg: “[CrowdStrike] Viceroy Tiger – DragonEye C2 Communication – Remote Shell Command”; 
+flow:from_server,established;
+content: “SheC”; offset: 0; depth: 4;
+sid: 1981305009; rev: 20130514;)
+Conclusion
+This is an interesting case because there’s not really a lot of functionality to the RAT, but it was very successful as a cyber-weapon, showcasing both the failures of traditional antivirus software and just how little effort is required to bypass traditional antivirus software. Given its success, the RAT is essentially a remote file manager with a remote shell. Implementing a remote shell is fairly trivial; we at CrowdStrike see various implementations every day, but it’s the one feature that delivers a huge return on investment, so to speak, as a remote shell offers near-complete control over an infected machine, and when coupled with a file manager, complete control over the infected system is achieved.

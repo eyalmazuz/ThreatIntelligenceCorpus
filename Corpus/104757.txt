@@ -1,0 +1,17 @@
+Weak Random Number Generator Threatens iOS 7 Kernel Exploit Mitigations
+VANCOUVER – A revamped early random number generator in iOS 7 is weaker than its vulnerable predecessor and generates predictable outcomes.
+A researcher today at CanSecWest said an attacker could brute force the Early Random PRNG used by Apple in its mobile operating system to bypass a number of kernel exploit mitigations native to iOS.
+“The Early Random PRNG in iOS 7 is surprisingly weak,” said Tarjei Mandt senior security researcher at Azimuth Security. “The one in iOS 6 is better because this one is deterministic and trivial to brute force.”
+The Early Random PRNG is important to securing the mitigations used by the iOS kernel.
+“All the mitigations deployed by the iOS kernel essentially depend on the robustness of the Early Random PRNG,” Mandt said. “It must provide sufficient entropy and non-predictable output.”
+The PRNG launches at boot and provides entropy to various kernel exploit mitigations, Mandt said.
+Those mitigations include physical kernel map randomization, stack-check guard, zone cookie protections, and kernel map randomizations. Those mitigations are important memory protections that keep the kernel safe from buffer overflow attacks and other exploits targeting how memory is allocated and where code is safely allowed to execute.
+IOS 6’s PRNG, Mandt said, suffered from poor entropy sources and poor use of seed data used to generate outputs. Similar to its deployment in OS X, Mandt said, the PRNG in iOS 6 used Mach Absolute Time to derive outputs.
+“It could return the same value over and over because it was reliant on clock information,” Mandt said.
+This was supposedly addressed in iOS 7 where time-based correlation issues were avoided through the use of a Linear Congruential Generator (LCG). The LCG in iOS 7 leverages information from four state generations, Mandt said, each one producing 16 bits of output. Each time, the lower three bits of each piece of output are discarded because they are considered weak.
+Mandt said there are generally known problems associated with LCGs, including serial correlation between outputs making them susceptible to brute force attacks.
+Mandt stressed that it is difficult to defend against an attacker who has already exploited an existing vulnerability in iOS or even OS X and is able to then monitor PRNG outputs.
+“Having fewer state generations per output makes this less practical,” he said. “This prevents brute forcing of the internal state using a single output.”
+Mandt also suggested Apple could avoid the usage of weak bits by passing output through a temper function or choosing a PRNG with less correlation. Hardening mitigations could help too, he said; that could include XOR encryption of stack cookies.
+Mandt said he did not disclose the issue to Apple, representatives of which, he said, requested to see his slides 15 minutes before his presentation today.
+“Quite a bit of mitigations rely on the PRNG,” Mandt said. “If the generator is broken, all of this is pretty much useless.”

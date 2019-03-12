@@ -1,0 +1,40 @@
+
+Hack the Padding Oracle Lab
+
+The main purpose to solve this lab was to share the padding oracle attack technique with our visitors
+The padding oracle attack enables an attacker to decrypt encrypted data without knowledge of the encryption key and used cipher by sending skillful manipulated cipher texts to the padding oracle and observing of the results returned by it. This causes loss of confidentiality of the encrypted data. E.g. in the case of session data stored on the client side the attacker can gain information about the internal state and structure of the application. A padding oracle attack also enables an attacker to encrypt arbitrary plain texts without knowledge of the used key and cipher. If the application assumes that integrity and authenticity of the decrypted data is given, an attacker could be able to manipulate internal session state and possibly gain higher privileges.
+www.owasp.org/index.php/Testing_for_Padding_Oracle
+ First you need to download padding oracle from here. Now install the iso image in VM ware and start it.
+Start kali Linux as well as explore target IP: 192.168.1.29 on browser. Now at this point you need to create a user account, click on register option.
+
+Now register username with its password and then login to exploit this vulnerability. I registered as raj: 123
+
+Once you create a user account get on login panel and at the same time use burp suite to capture the cookies.
+
+Turn up burp suite and don’t forget to set manual proxy of your browser. Now open proxy tab and hit intercepts on button to capture the request of target. When this is done you will get fetched data under intercept window. Here you will find that I try to login with credential raj: 123
+
+Now right click on its window and a list of options will appear. Further click on send to repeater. Come across over screenshot here you will find two panel left and right for request and response respectively.
+In left panel send username: raj and password: 123 as request; click on GO button to forward this request and which will further generate a cookie for auth as response in right panel.
+Copy the highlighted cookie and this will be use in below command.
+
+Next open terminal to run command shown in the given image which contains target URL and above copied cookie
+Python-paddingoracle is a Python implementation heavily based on PadBuster, an automated script for performing Padding Oracle attacks, developed by Brian Holyfield of Gotham Digital Science. This command will decrypt the encrypted value of auth into plaintext. 
+Further type 2 where it asked ID recommended.
+
+Last part of screenshot has captured three decrypt values in base64, HEX and ASCII. The cookie of auth is combination of username with its password from padbuster we come to know what is encrypted value of username for raj.
+
+We are very near to our goal just encrypt this auth cookie with user as admin once again. Here we have our plaintext as admin and lets encode it using padbuster.
+Further type 2 where it asked ID recommended.
+
+Here the highlighted part is our encrypted value for admin. Copy It”BAit——–AAAA”.
+
+Go to burp suit once again and click on params under intercept frame; it contains two fields as username and password, now add third field for auth value. Click on ADD button on the right side of frame which will add another row in params.
+
+Here it has three columns: type, name, and value; paste the above encrypted value in these columns as type: cookie, name: auth, value: BAit——AAAAAA which we have got from padbuster. Then Click on forward to send this request on web server.
+
+Again click on forward to send it.
+
+As request sent by burp suite automatically on web server you will get logged in as admin account.
+Congrats!!! We meet the goal of this lab.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

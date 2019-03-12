@@ -1,0 +1,18 @@
+
+					Remotely unlock doors exploiting a flaw in HID Door Controllers					
+Security experts at Trend Micro have discovered a serious flaw in door controllers developed by the HID access control systems manufacturer that could be exploited by hackers to send one malicious UDP request to a door and automatically unlock it and/or deactivate the alarm if the door has that feature enabled.
+HID door controllers have the appearance of a black box that is located next to securitized doors. Users can swipe their card to open the door, once the door is unlocked the LED turns green.
+Some HID door controllers also offer the possibility to connect the devices to a local network in order to allow system administrators to manage them.
+The expert Ricky “HeadlessZeke” Lawshae from Trend Micro discovered that the models of door controllers VertX and Edge are affected by a design flaw in their management protocol.
+
+The experts discovered that HID door controllers run a special daemon dubbed discoveryd, which listens on port 4070 for UDP packets that carry on instruction for the door controllers
+“HID’s two flagship lines of door controllers are theirVertX and Edge platforms. In order for these controllers to be easily integrated into existing access control setups, they have a discoveryd service that responds to a particular UDP packet. ” states TrendMicro.
+“A remote management system can broadcast a “discover” probe to port 4070, and all the door controllers on the network will respond with information such as their mac address, device type, firmware version, and even a common name (like “North Exterior Door”).”
+The expert also discovered another security issue related to the above service that also implements a debugging function that allows a remote administrator to instruct HID door controllers to blink its LED for a number of times.
+The admin can instruct a specific controller to blink by sending a “command_blink_on” command with the door’s ID. The researcher noticed that by appending a Linux command after the ID, wrapped in backticks, the device will execute it due to improper input sanitization.
+In response to a blink command, the Discoveryd service builds up a path to /mnt/apps/bin/blink and calls system() to run the blink program passing the number of blink as an argument.
+“A command injection vulnerability exists in this function due to a lack of any sanitization on the user-supplied input that is fed to the system() call. Instead of a number of times to blink the LED, if we send a Linux command wrapped in backticks, like `id`, it will get executed by the Linux shell on the device.”
+The attacker can exploit The system() call, which runs with root privileges, to instruct the door controllers to execute a generic command with one single UDP packet.
+If you use the HID door controllers, you need to urgently download the latest firmware versions.
+Pierluigi Paganini
+(Security Affairs – HID door controllers, hacking)

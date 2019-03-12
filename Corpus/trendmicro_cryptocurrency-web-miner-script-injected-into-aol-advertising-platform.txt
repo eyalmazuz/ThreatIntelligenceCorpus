@@ -1,0 +1,34 @@
+Cryptocurrency Web Miner Script Injected into AOL Advertising Platform
+by Chaoying Liu and Joseph C. Chen
+On March 25, we saw that the number of cryptocurrency web miners detected by the Trend Micro Smart Protection Network suddenly spiked. Our team tracked the web miner traffic and found that the bulk of it was linked to MSN[.]com in Japan. Further analysis revealed that malicious actors had modified the script on an AOL advertising platform displayed on the site to launch a web miner program.
+We notified the AOL team about our findings. AOL removed the injected miner and resolved the issue by March 27.
+Initial analysis of the AOL advertising cryptocurrency web miner
+As mentioned above, we found a web miner (detected by Trend Micro as COINMINER_COINHIVE.E-JS) script that was injected into an AOL advertising platform. The compromised ads created a large number of web miners, which we detected and evaluated.
+We saw a 108% increase in unique web miner detections from March 24 to 25—a significant jump that showed the effectiveness of the compromised advertising platform. The advertisement was on the front page of MSN[.]com (usually the default page of Microsoft’s browser), which is a possible factor that contributed to the dramatic increase in detections. This would have automatically redirected a significant number of users to the page.
+The web miner traffic was linked to the malicious domain www[.]jqcdn[.]download, which was created on March 18. We discovered that this incident could be classified as part of a campaign since there were four more domains associated with this particular mining script since 2017.
+
+Figure 1. Detection for unique web miners rising steeply from March 24 to 25
+Further analysis revealed that this same campaign compromised more than 500 websites. The websites were linked to the page www[.]datasecu[.]download, which contained the same mining scripts we found on the AOL advertising platform.
+A detailed look at the AOL advertising web miner
+The malicious script was injected on advertising.aolp.jp, the AOL advertising platform. If a user visits MSN and the compromised advertisement is displayed, their browser will run the web miner program. The user does not need to click on the ad for the coin miner to run, and the miner will stop after closing the web page.
+After de-obfuscating the web miner (which has the file name ricewithchicken.js), we saw that the JavaScript code is based on Coinhive.
+
+Figure 2. Code showing how advertising.aolp.jp was compromised
+This miner uses private web mining pools, which is typically done to avoid paying fees established for public pools. The private mining pools used in this instance resolve to the same IPs: wss://wsX[.]www[.]datasecu[.]download/proxy and wss://www[.]jqcdn[.]download:8893/proxy.
+
+Figure 3. Cryptocurrency mining pools used by the miner
+We closely examined compromised sites that this campaign modified and noticed that much of the malicious content was hosted on Amazon Web Service (AWS) S3 buckets. The names of the S3 buckets were visible in some of the compromised URLs, allowing us to investigate them further. We found that the buckets were completely unsecured, left open for anyone to list, copy, and modify.
+We suspect that the legitimate AWS administrator didn’t properly set the permissions of their S3 bucket, which allowed the attacker to modify the hosted content. Unsecured Amazon S3 servers have been a problem since 2017, and several cryptocurrency-mining schemes already used them this year. During our analysis, we noted that some websites fixed the permissions of the buckets, but they didn’t notice the malicious code injected into the content.
+In the case of the AOL advertising platform, it is possible that the server was unsecured and modified like the others. We found that the same type of Amazon server also hosted the advertising script. However, we did not have access to the actual S3 bucket, preventing us from checking the permission.
+The campaign injected malicious script at the end of a JavaScript library on the unsecured S3 buckets. Website administrators can easily check for any script injected with code similar to the one shown below or the mining domains we listed in the Indicators of Compromise section to verify if their sites have been modified.
+
+Figure 4. Injected malicious script to load cryptocurrency miner
+Organizations should secure and always properly configure their servers to prevent these types of threats. To further protect themselves, they should choose the right cloud security solution based on their specific needs. Trend Micro Deep Security for Cloud can provide proactive threat detection and prevention, while Hybrid Cloud Security provides optimal security for hybrid environments that incorporate physical, virtual, and cloud workloads.
+Trend Micro Deep Security as a Service is optimized for AWS, Azure, and VMware to protect servers instantly. It reduces strain on your overburdened IT department by offloading security set-up, management, and system updates to Trend Micro. Deep Security as a Service can start securing servers immediately without system installation or configuration.
+We worked with the AOL team to address this issue, and appreciate the team’s quick response.
+Indicators of Compromise (IoC)
+SHA256
+c6c5b88e5b641484c9f50f1abdbebb10e5a48db057e35cb7f556779c5684003b
+ 
+Updated April 12, 2018 10:00 AM
+The graph on Figure 1. was mislabeled, it has been corrected.

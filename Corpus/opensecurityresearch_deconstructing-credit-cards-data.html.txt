@@ -1,0 +1,239 @@
+
+Deconstructing a Credit Card's Data
+
+
+By Brad Antoniewicz.
+
+Modern credit cards in the United States have three interfaces:
+
+Physical
+MagStripe Data
+RFID/NFC Data
+
+This obviously varies from bank to bank and card manufacturer to card manufacturer. The purpose of this post is to evaluate all three interfaces of the card and see how they differ. Note that some data has been changed to protect the card holder's (my) information. 
+
+Physical AttributesThis interface is probably the most widely known and understood because its been around the longest and its the easiest to inspect. It's sort of good to understand the components of this interface because they're present in to the other interfaces (but a little different). 
+
+From a physical perspective, your card should have four main attributes:
+Name
+Expiration Date
+Credit Card Number
+Card Verification Value
+
+Names and Expiration dates are pretty straightforward and don't need much explaining. 
+
+Credit Card Number - Also known as "Primary Account Number" (PAN). The one thing to point out is that credit card numbers have some unique properties. For instance, the first number of the card number will vary depending on the type of card.
+
+CardStarting Number
+Visa4
+MasterCard5
+Discover6
+
+A great article about credit card numbers is "Anatomy of Credit Card Numbers". 
+
+Another notable thing about the card number is it is actually created using a particular algorithm and thus there is a check, called the Luhn 10 check that verifies that the card number was generated in accordance with this algorithm. More info can be found here - http://www.visacemea.com/ac/ais/uploads/ais_guide_stepspcicompliant.pdf [PDF]
+
+Card Verification Value (CVV2) - Note the version number. This is a three (MasterCard, Visa, Discover) or four (American Express, called the "CID") code printed on the card to help prevent against fraud. The idea behind it, is it proves possession of the card and is required when the card is not present. On American Express cards, this value is printed on the front, while MasterCard, Visa, and Discover cards have it printed on the back, usually in the signature box.
+
+MagStripe Data
+The magnetic stripe on the back of the card is broken up horizontally into three "tracks", the tracks often contain duplicate data and most times track 3 doesn't really contain any data. 
+
+ISO/IEC 7813 Defines the attributes of this data,  and these sites describe the data available on each track in detail: 
+http://en.wikipedia.org/wiki/ISO/IEC_7813
+http://www.gae.ucm.es/~padilla/extrawork/tracks.html
+http://www.tech-faq.com/layout-of-data-on-magnetic-stripe-cards.html
+To read the data, you'll need a magstripe reader that will support reading all three tracks. Most magstripe readers emulate a HID (human input device), so its surprisingly easy to read from them - just open a text capturing program and swipe a card. 
+
+The reader I'm using is the  MagTek SureSwipe 21040145. 
+
+So lets see what data we'll get from the magstripe:
+ %B5XXXXXXXXXXXXXX2^ANTONIEWICZ/BRAD^1103101000000001000000003000000?;5XXXXXXXXXXXXXX2=1103101000000300001?  
+
+Lets break down this data:
+
+Track 1 Data
+ Track Data Value 
+ % Start 
+ B Format Code (B=Bank) 
+ 5XXXXXXXXXXXXXX2 Primary Account Number (PAN) 
+ ^ Separator 
+ ANTONIEWICZ Last Name 
+ / Name Separator 
+ BRAD First Name 
+ ^ Separator 
+ 11 Expiration Year 
+ 03 Expiration Month 
+ 101 Service Code 
+ 000000001000000003000000 Discretionary Data 
+ ? End 
+Track 2 Data
+ ; Start Track 2 Data 
+ 5XXXXXXXXXXXXXX2 Primary Account Number (PAN) 
+ = Separator 
+ 11 Expiration Year 
+ 03 Expiration Month 
+ 101 Service Code 
+ 000000300001 Discretionary Data 
+ ? End 
+
+
+So you can see that Track 2 actually contains much data already present in track 1. You'll also notice that there is a difference in the discretionary data between track 1 and 2. 
+
+But where the heck is that Track 3 data? Well.. it doesn't appear that any data is written to it, or at least my reader isn't picking it up.  
+
+RFID Interface (EMV Chip)
+In the last couple of years, the RFID Interface has been most talked about. Something about the idea of an attacker reading your credit card out of your pocket, seems to bother people :)
+
+The RFID Interface specifications were designed by a group of representatives from Europay, MasterCard, and Visa (EMV) and is thus often referenced as the "EMV Chip" or just "EMV". The three things that differentiate this interface from the others are:
+Card Holder Name - On most cards the cardholder name is not stored within the chip, instead its replaced by something like "VALUED CUSTOMER" or "NOT SUPPLIED"
+Service Code - The service code that permits where the card is used (and for what) changes on the contactless interface. 
+iCVV or Dynamic CVV - Rather then using the same CVV that is stored on the MagStripe, the smartcard capabilities allows for extended functionality, and so the designers created something called a Dynamic CVV. This CVV changes which each read of the card.
+The RFID Interface is defined mostly in ISO/IEC 7816 and the EMV Specifications.
+
+VivoPay 4500Probably the easiest way to read the RFID interface of a credit card is to buy an equipped point of sale (POS) reader and connect it up to your computer. The VivoPay 4500 will handle all of the RFID communication and output the data on the RFID interface in plaintext over it's serial connection. 
+
+Prolific PL-2303The Prolific PL-2303 is a USB to Serial adapter which helps when connecting to the VivoPay's Serial output. If you want to make this all work on Mac OS X 10.7.3 (like i am) you have to do a little bit of work:
+
+First download the 64-bit open source PL2303 driver: 
+http://sourceforge.net/tracker/download.php?group_id=157692&atid=804837&file_id=363913&aid=2952982
+
+Then decompress and install:
+ unzip osx-pl2303.kext.zip  
+ sudo cp -R osx-pl2303.kext /System/Library/Extensions/  
+ cd /System/Library/Extensions/  
+ sudo kextload osx-pl2303.kext  
+
+Insert your USB adapter then check to make sure the driver created a device interface (your interface might be named differently):
+ system:Extensions user$ ls /dev/tty.PL*  
+ /dev/tty.PL2303-000013FA  
+
+pwnpass.py
+pwnpass.py is a python script created by Eric Johnson (and others) which allows you to interact with VivoPay Devices. To use it, you may have to first install py-serial to get it running. I'm using mac ports to manage all of the python packages.
+ sudo port install python26 py26-serial
+
+Next edit line 103 of pwnpass.py so that your device is appropriately defined. The default timeout for the open source driver is 1 second, I've changed it to 0.3 which seems to work better. 
+return serial.Serial('/dev/tty.PL2303-000011FD', 19200, timeout=0.3)
+
+So if we run it on the same card we used before, we see the following raw data:
+ %B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000637291901?;5XXXXXXXXXXXXXX2=11035020000072029191?I  
+
+OmniKey CardMan 5321 ConfigIf you want to be a little more conventional, you can use a standard, off the shelf RFID reader, like the OmniKey CardMan 5321.
+
+BackTrack SetupIn BackTrack 5, you'll have to manually install the drivers to make it all work. I explained the process here but the post needs a little updating:
+
+As of today, you can download the HID driver from http://www.hidglobal.com/drivers/omnikey/ifdokrfid_lnx_i686-2.9.1.tar.gz. If they ever update it again, you'll have to go here and select the appropriate drop downs.
+It looks like the script in the post got a little messed up by the code formatter i used. I made it directly downloadable from http://www.opensecurityresearch.com/files/cardman_fix.sh
+Mac OSX 10.7.3 Setup Making it all work on Mac OS X 10.7.3 can be a bit of a pain to figure out, but I should have most of the difficulties worked out here. First off, you'll need to install Python 2.6, and the Crypto modules.
+ sudo port install python26 py26-crypto  
+Next select and download the Mac OSX drivers from HID. Initially, the driver version that was available to download was ifdokrfid_mac_10.6_i386-2.4.0.1.pkg, which didn't work with 10.7.3. I had to modify the installer so that it worked for 10.7:
+ vi ifdokrfid_mac_10.6_i386-2.4.0.1.pkg/Contents/Resources/InstallationCheck   
+and change line 31 from this: 
+ if [ ${MACOS_VER_MAJOR} -ne 10 -o ${MACOS_VER_MINOR} -ne 6 ]; then   
+to this:  
+ if [ ${MACOS_VER_MAJOR} -ne 10 -o ${MACOS_VER_MINOR} -ne 7 ]; then  
+then everything should install fine. 
+
+As it turns out, HID has since released a newer version of the driver that "just works" (ifdokrfid_mac_universal-2.5.0.2.pkg). I did notice some problems with connecting the reader before running pcscd, so keep that in mind. 
+
+You can just launch pcscd from the command line:
+ sudo pcscd  
+If something isn't working, you can enable debugging and tell it to run in the foreground with:
+ sudo pcscd -f -d
+With the driver installed, pcscd running, and the reader connected, you can use RFIDiot to check if the reader was properly detected: 
+ RFIDIOt-1.0a user$ python2.6 cardselect.py -L  
+ PCSC devices:  
+ No: 0 OMNIKEY CardMan 5x21 00 00  
+ No: 1 OMNIKEY CardMan 5x21 00 01  
+TouchaTag (ACR122U) Reader Config 
+The Touchatag reader is another commercial off the shelf reader like the Omnikey Cardman 5321. It's popular because of its libNFC support, however with the tasks we're doing using RFIDiot, it doesn't really matter. I'm providing configuration information here for diversity. Once you connect the reader to your system, you'll likely notice its light seems to blink rather then staying lit. To fix this, it will require a quick little driver configuration change:
+ sudo vi /usr/libexec/SmartCardServices/drivers/ifd-acsccid.bundle/Contents/Info.plist  
+On line 53 (under ifdDriverOptions) change
+      <string>0x00C0</string>    
+to this:
+      <string>0x0005</string>  
+Then to make sure its working properly:
+ ~ user$ nfc-list   
+ nfc-list use libnfc 1.4.0 (r833)  
+ Connected to NFC device: ACS ACR38U-CCID 00 00 / ACR122U102 - PN532 v1.4 (0x07)  
+Once that's all set up, just start pcscd if its not already running:
+ sudo pcscd  
+and then check RFIDiot's cardselect.py:
+ RFIDIOt-1.0a user$ python2.6 cardselect.py -L  
+ PCSC devices:  
+   No: 0          ACS ACR38U-CCID 00 00  
+
+Using RFIDiot to Read Card DataIn most situations, RFIDiot's ChAP.py should be able to query the card's data. On an RFID level, the card is first queried with a generic "tell me your file structure" method, and if the card doesn't respond, the reader sends requests for specific application ID's (AIDs) that are known structures for different vendors (Mastercard, Visa, etc...). In the rare case that ChAP.py doesn't work well, you may have to define your own specific AID in ChAP.py or write your own parser like I did for the Chase Visa PayPass cards. 
+
+By default ChAP.py will attempt to parse the data from the card and translate it so we can make sense out of each byte. Instead, I'll tell ChAP.py not do that and just display the raw data (-r).
+ RFIDIOt-1.0a user$ python2.6 ChAP.py -r  
+ insert a card within 10s  
+  Found AID: MASTERCARD - a0 00 00 00 04 10 10  
+ 6f 17 84 07 a0 00 00 00 04 10 10 a5 0c 50 0a 4d 61 73 74 65 72 43 61 72 64  
+ o............P.MasterCard  
+  Processing Options: 77 0a 82 02 00 00 94 04 08 01 01 00  
+ w...........  
+   SFI 01: starting record 01, ending record 01; 00 offline data authentication records  
+    record 01: 70 81 90 9f 6c 02 00 01 9f 62 06 00 00 00 00 01 c0 9f 63 06 00 00 00 00 00 3c 56 3e 42 35 34 36 35 30 33 32 30 36 38 39 39 38 30 31 32 5e 53 55 50 50 4c 49 45 44 2f 4e 4f 54 5e 31 31 30 33 35 30 32 30 30 30 30 30 30 30 30 31 30 30 30 30 30 30 30 30 30 30 30 30 30 30 30 9f 64 01 03 9f 65 02 00 e0 9f 66 02 00 1e 9f 6b 13 5X XX XX XX XX XX X2 d1 10 35 02 00 00 00 00 00 00 0f 9f 67 01 03 9f 68 0e 00 00 00 00 00 00 00 00 5e 03 42 03 1f 03  
+ p...l....b........c......<V>B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000000000000.d...e....f....k.Te. h.....5.........g...h.........^.B...  
+An important thing to note here is the ChAP.py isn't pulling the track two data by default. 
+
+
+RFID vs MagStripeLets look at the differences between the raw data obtained from the RFID interface with the VivoPay and that from the MagStripe. Here's the VivoPay data:
+ %B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000637291901?;5XXXXXXXXXXXXXX2=11035020000072029191?I  
+
+The following table breaks out the raw data from the magstripe and RFID interface to make it a little easier when comparing the two. 
+
+Track 1 Data
+ MagStripeRFID Value
+ % %Start 
+ B BFormat Code (B=Bank) 
+ 5XXXXXXXXXXXXXX2 5XXXXXXXXXXXXXX2Primary Account Number (PAN) 
+ ^ ^Separator 
+ ANTONIEWICZ SUPPLIED Last Name 
+ / /Name Separator 
+ BRADNOT First Name 
+ ^ ^Separator 
+ 11 11 Expiration Year 
+ 03 03Expiration Month 
+ 101 502 Service Code 
+ 000000001000000003000000 000000001000000637291901 Discretionary Data 
+ ? ?  End 
+Track 2 Data
+ ; ;Start Track 2 Data 
+ 5XXXXXXXXXXXXXX25XXXXXXXXXXXXXX2 Primary Account Number (PAN) 
+ = =Separator 
+ 11 11Expiration Year 
+ 03 03Expiration Month 
+ 101 502 Service Code 
+ 000000300001 0000072029191 Discretionary Data 
+ ? ? End 
+ N/A I Trailing Data (Unknown) 
+
+
+Service Code - One interesting thing to note is the Service code differs. According to ISO/IEC 7813:2006(E), page 6, the service codes break down to: 
+
+
+101 - Can be used internationally with normal authorization, for any goods, with no PIN requirements
+502 - Can be used nationally with normal authorization, for goods and services with no PIN requirements
+
+So there are clearly some restrictions for where and how you can use the card. 
+
+You'll notice that the discretionary data on both track 1 and track 2 differ from that of the magstripe. Although the contents of the data stored within the discretionary data field are particular to the card manufacturer, we know that in here is where the CVV is stored.  On the magstripe, CVV1 is used, while the RFID interface uses iCVV or Dynamic CVV. 
+
+Look what happens if we query the RFID interface a couple more times:
+ %B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000294292801?;5XXXXXXXXXXXXXX2=11035020000018129281?E  
+ %B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000939293101?;5XXXXXXXXXXXXXX2=11035020000054629311?;?  
+ %B5XXXXXXXXXXXXXX2^SUPPLIED/NOT^1103502000000001000000191297701?;5XXXXXXXXXXXXXX2=11035020000099829771???  
+You'll notice that the discretionary data changes on both tracks. That's the "dynamic" part of dynamic CVV. 
+
+Kristen Paget just gave a talk a Shmoocon and said that "check digits" (I believe the dynamic CVV is the only check that this applies to) can only be used once and if it is used a second time, the card is immediately frozen and the RFID chip can no longer be used. 
+
+Overall, there isn't much explanation of exactly how the iCVV or the dynamic CVV is actually generated, so if feel free to use the comments below to let me know what you know!
+
+Here are some more useful links about the different CVVs and how they're generated:
+http://www.cl.cam.ac.uk/techreports/UCAM-CL-TR-711.pdf [PDF]
+http://answers.google.com/answers/threadview/id/402632.html
+iCVV Patent Application? - http://www.google.com/patents/US7922082 
+
+
+

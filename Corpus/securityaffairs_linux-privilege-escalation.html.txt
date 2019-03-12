@@ -1,0 +1,14 @@
+
+					Linux kernel affected by a local privilege escalation vulnerability					
+On Friday, Cisco issued a security advisory on a local privilege escalation vulnerability in the Advanced Linux Sound Architecture (ALSA).
+The vulnerability in the Linux Kernel, tracked as CVE-2017-15265, is due to a use-after-free memory error in the ALSA sequencer interface, an attacker could exploit it by running a crafted application on a vulnerable system.
+“A vulnerability in the Linux Kernel could allow a local attacker to gain elevated privileges on a targeted system.” reads the Cisco security advisory.
+“The vulnerability is due to a use-after-free memory error in the ALSA sequencer interface of the affected application. An attacker could exploit this vulnerability by running a crafted application on a targeted system. A successful exploit could allow the attacker to gain elevated privileges on the targeted system.”
+According to a discussion at SUSE’s Bugzilla, a patch for the Linux Kernel vulnerability was added to the ALSA git tree on October 11, .
+“We may fix this in a few different ways, and in this patch, it’s fixed simply by taking the refcount properly at snd_seq_create_port() and letting the caller unref the object after use.” states the description on the ALSA git tree.
+The use-after-free is triggered by a bug in snd_seq_create_port() as explained in the advisory:
+“There is a potential race window opened at creating and deleting a port via ioctl, as spotted by fuzzing. snd_seq_create_port() creates a port object and returns its pointer, but it doesn’t take the refcount, thus it can be deleted immediately by another thread. Meanwhile, snd_seq_ioctl_create_port() still calls the function snd_seq_system_client_ev_port_start() with the created port object that is being deleted, and this triggers use-after-free” continues the description.
+
+Kernel.org has confirmed the vulnerability, the good news is that to exploit this vulnerability, the attacker must have local access to the targeted system, a circumstance that drastically reduces the likelihood of a successful exploit.
+Pierluigi Paganini
+(Security Affairs – Linux Kernel, privilege escalation)

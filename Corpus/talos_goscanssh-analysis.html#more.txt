@@ -1,0 +1,206 @@
+
+Forgot About Default Accounts? No Worries, GoScanSSH Didn’t
+
+
+This blog post was authored by Edmund Brumaghin, Andrew Williams, and Alain Zidouemba.
+
+
+
+Executive Summary
+
+During a recent Incident Response (IR) engagement, Talos identified a new malware family that was being used to compromise SSH servers exposed to the internet. This malware, which we have named GoScanSSH, was written using the Go programming language, and exhibited several interesting characteristics. This is not the first malware family that Talos has observed that was written using Go. However, it is relatively uncommon to see malware written in this programming language. In this particular case, we also observed that the attacker created unique malware binaries for each host that was infected with the GoScanSSH malware. Additionally, the GoScanSSH command and control (C2) infrastructure was observed leveraging the Tor2Web proxy service in an attempt to make tracking the attacker-controlled infrastructure more difficult and resilient to takedowns. 
+
+
+Initial Infection Process
+
+The initial infection vector leveraged by GoScanSSH was likely an SSH credential brute-force attack against a publicly accessible SSH server that allowed password-based SSH authentication. In this particular series of attacks, the attacker was leveraging a word list containing more than 7,000 username/password combinations. Once the attacker has discovered a valid credential set that allows successful SSH authentication, a unique GoScanSSH malware binary is then created and uploaded to the compromised SSH server. The malware is then executed, thus infecting the system. 
+
+The username/password combinations used by this malware appear to target weak or default credentials across a range of Linux-based devices. The following usernames are used by the malware to attempt to authenticate to SSH servers:
+
+    admin
+    guest
+    oracle
+    osmc
+    pi
+    root
+    test
+    ubnt
+    ubuntu
+    user
+
+Among others, these credential combinations specifically targeted the following:
+
+
+
+Open Embedded Linux Entertainment Center (OpenELEC)
+
+Raspberry Pi
+
+Open Source Media Center (OSMC)
+
+Ubiquiti device default credentials
+
+Jailbroken iPhones
+
+PolyCom SIP phone default credentials
+
+Huawei device default credentials
+
+Asterisk default credentials
+
+Various keyboard patterns
+
+Well-known commonly used passwords
+
+
+Additional details regarding the specific operation of the GoScanSSH malware and available functionality found within this malware can be found in the following section.
+
+
+Malware Operations
+
+GoScanSSH is a malware family written using the Golang (Go) programming language targeting Linux systems. During the course of our analysis, Talos discovered more than 70 unique malware samples associated with the GoScanSSH malware family. We have observed examples of GoScanSSH samples that were compiled to support multiple system architectures including x86, x86_64, ARM and MIPS64. While analyzing the MIPS64 version of GoScanSSH, Talos identified a thread where a Ubiquiti Enterprise Gateway Router user found the malware running on their router, indicating that this malware is also being distributed and executed on a variety of device types. Talos has also observed multiple versions (e.g, versions 1.2.2, 1.2.4, 1.3.0, etc.) of this malware active in the wild, indicating that this threat is continuing to be actively developed and improved upon by the attackers.
+
+Immediately following infection, the GoScanSSH malware attempts to determine how powerful the infected system is. This is accomplished by determining how many hash computations can be performed within a fixed time interval. The result of this process is then transmitted to the C2 server, along with basic survey information about the victim machine when the malware sends a "checking_in" message to the C2 server. This message is encrypted prior to being sent to the C2 server. Decrypting this message shows that it is being transmitted using JSON and uses the following format:
+
+
+The malware also obtains a unique identifier, which is also sent to the C2 server as shown in the request above. Talos observed a multitude of these identifiers across the samples that were analyzed, with the same identifier occurring only twice. Examples of different identifiers that were observed are below:
+
+
+In the GoScanSSH sample that Talos analyzed, the malware was configured to reach out to the following C2 server domains:
+
+    hXXp://5z5zt3qzyp6j4bda[.]onion[.]link
+    hXXp://5z5zt3qzyp6j4bda[.]onion[.]to
+    hXXp://3xjj3i6rv3bdxd6p[.]onion[.]link
+    hXXp://3xjj3i6rv3bdxd6p[.]onion[.]to
+    hXXp://b4l7gbnyduslzhq4[.]onion[.]link
+    hXXp://b4l7gbnyduslzhq4[.]onion[.]to
+
+These domains are being accessed using the Tor2Web proxy service. This service allows systems on the standard internet to access resources hosted on Tor without requiring the system to install a Tor client. Talos has observed malware making increased use of these proxying services as described in a blog post here. By leveraging Tor2Web, attackers can host their C2 infrastructure within the Tor network, without requiring them to include additional Tor functionality within their malware.
+
+The communications between the compromised host and the C2 infrastructure are authenticated to ensure that the compromised hosts cannot be hijacked. To implement this, the messages transmitted between infected systems and the C2 servers are encrypted with AES encryption using randomly generated secret keys. The secret keys are also encrypted using RSA asymmetric encryption. The RSA public key is hardcoded within the malware binary. The encrypted secret key and the contents of the JSON being transmitted are concatenated and base64 encoded. This is then sent to the C2 server as the URI portion of an HTTP GET request. 
+
+Prior to initiating SSH scanning activity, the malware waits for the C2 server to respond to the aforementioned HTTP GET request with the SHA256 hash of the JSON data structure associated with the "checking_in" message. If this has not been received, the malware implements a sleep function and will retry this process.
+
+Using Investigate from Cisco Umbrella to analyze DNS requests attempting to resolve a single C2 domain from the ones listed above, Talos identified a marked increase in attempts to resolve it, which may be indicative that the number of compromised hosts is continuing to increase.
+
+
+In analyzing passive DNS data related to all of the C2 domains collected from all of the samples Talos analyzed, resolution attempts were seen dating back to June 19, 2017, indicating that this attack campaign has been ongoing for at least nine months. Additionally, the C2 domain with the largest number of resolution requests had been seen 8,579 times. 
+
+A graph showing the total amount of DNS activity for all of the malicious domains we identified is below:
+
+
+The full list of the 250 domains that Talos identified as related to this ongoing activity can be found in the Indicators of Compromise (IOC) section of this blog.
+
+
+Scanning for Vulnerable SSH Servers
+
+One of the main functions the GoScanSSH malware performs is scanning and identifying additional vulnerable SSH servers exposed to the internet that can be further compromised by the attacker(s). This is performed by first randomly generating an IP address, avoiding special-use addresses. It then compares the IP address to a list of CIDR blocks that the malware will not attempt to scan. The contents of this list are network ranges primarily controlled by various government and military entities, specifically avoiding ranges assigned to the U.S. Department of Defense as listed here. Additionally, one of the network ranges in the list is assigned to an organization in South Korea. If the selected IP falls into these network ranges, it is discarded and a new IP address is generated.
+
+The malware then attempts to establish a TCP connection to the selected IP address on TCP/22. If the connection is successfully established, the malware will then perform a reverse DNS lookup to determine if the IP address resolves to any domain names. If the reverse DNS lookup returns a domain, it is compared against a list of domains related to various government and military entities. If the domain matches any of the entries on the list, the connection is terminated, the IP is discarded and a new one is generated. A list of the CIDR blocks and domains included in this process can be found in Appendices A and B.
+
+Once it has been determined that the selected IP address is an ideal candidate for additional attacks, the malware attempts to obtain valid SSH credentials by attempting to authenticate to the system using the aforementioned wordlist containing username and password combinations. If successful, the malware reports back to the C2 server. The communication back to the C2 server transmits a banner and other information about the status of the attack in JSON using the following format:
+
+
+Talos believes the attacker then compiles a new malware binary specifically for the compromised system, and infects the new host, causing this process to repeat on the newly infected system.
+
+
+Conclusion
+
+These attacks demonstrate how servers exposed to the internet are at constant risk of attack by cybercriminals. Organizations should employ best practices to ensure that servers they may have exposed remain protected from these and other attacks that are constantly being launched by attackers around the world. Organizations should ensure that systems are hardened, that default credentials are changed prior to deploying new systems to production environments, and that these systems are continuously monitored for attempts to compromise them. Talos is continuing to monitor and track this attack, as well as others across the threat landscape to ensure that customers remain protected as these threats continue to evolve over time.
+
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella,
+ our secure internet gateway (SIG), blocks users from connecting to 
+malicious domains, IPs, and URLs, whether users are on or off the 
+corporate network.
+
+Open Source Snort Subscriber Rule 
+Set customers can stay up to date by downloading the latest rule pack 
+available for purchase on Snort.org.
+
+
+Indicators of Compromise (IOCs)
+
+A list of binary hashes (SHA256) associated with this malware can be found here.
+
+A list of domains associated with this malware can be found here.
+
+
+Appendix A: IP Blacklist 
+
+The following list is used to determine whether the randomly generated IP that the malware uses should not be used to attempt to compromise the system.
+
+0.0.0.0/8
+10.0.0.0/8
+100.64.0.0/10
+127.0.0.0/8
+169.254.0.0/16
+172.16.0.0/12
+192.0.0.0/24
+192.0.2.0/24
+192.88.99.0/24
+192.168.0.0/16
+198.18.0.0/15
+198.51.100.0/24
+203.0.113.0/24
+224.0.0.0/4
+240.0.0.0/4
+255.255.255.255/32
+6.0.0.0/8
+7.0.0.0/8
+11.0.0.0/8
+21.0.0.0/8
+22.0.0.0/8
+26.0.0.0/8
+28.0.0.0/8
+29.0.0.0/8
+30.0.0.0/8
+33.0.0.0/8
+55.0.0.0/8
+214.0.0.0/8
+215.0.0.0/8
+211.238.159.0/24
+
+
+Appendix B: Domain Blacklist
+
+The following list is used to determine based on the results of a reverse DNS lookup whether to continue attempting to compromise the system. If the domain is in the following list, it is discarded.
+
+.mil
+.gov
+.army
+.airforce
+.navy
+.gov.uk
+.mil.uk
+.govt.uk
+.mod.uk
+.gov.au
+.govt.nz
+.mil.nz
+.parliament.nz
+.gov.il
+.muni.il
+.idf.il
+.gov.za
+.mil.za
+.gob.es
+.police.uk
+
+
+

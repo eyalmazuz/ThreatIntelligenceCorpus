@@ -1,0 +1,31 @@
+
+Automating Exploitation of Remote PC using Metasploithelper
+
+Metasploit contains port-based modules as well as URI-based modules (web servers). This tool bridges Nmap XML file with Metasploit and generates a resource script containing matching Metasploit modules. that you can run against the target servers.
+first clone Metasploithelper repository from github, to do so type:
+git clone https://github.com/milo2012/metasploitHelper.git
+
+Now open the terminal and scan the target with nmap and store the results in a xml file.
+Here the target is 192.168.0.126 and the results are stored in 126.xml file.
+nmap -sV -oX 126.xml 192.168.0.126
+
+Now enter in the metsploithelper folder and open the metasploitHelper.py with leafpad
+
+Now change the path in above file to the “/usr/share/metasploit-framework/modules/”
+
+Now run metasploitHelper giving output of the nmap stored above as an input.
+python metasploitHelper.py -i 126.xml
+
+The above command will generate two rc scripts namely runAux.rc and runExp.rc.
+runAux.rc contains the auxiliary modules and runExp.rc contains all the exploit modules .
+Now give those scripts as input to the msfconsole .first we will give runAux.rc for using auxiliary modules by command.
+msfconsole  -r  runAux.rc
+
+Now ,if a auxiliary module is successful it will show us the result, like in my case it found the vnc login password of the target machine.
+
+Now we will run thr runExp.rc script to run all the exploits found by the metasploitHelper.
+ msfconsole -r runExp.rc
+
+Now if there is a exploitable vulnerability in target machine it will exploit it and give the shell or meterpreter depending upon the exploit. like in my case ,it exploits the vsftpd vulnerability to get a reverse shell. Now we can run any command depending on the OS.
+
+Author: Himanshu Gupta is a Information Security Researcher | Technical writer. You can follow him on LinkedIn .

@@ -1,0 +1,22 @@
+
+					A bug in Gnome pic parser can be exploited to run malicious VBScripts					
+Another day, another bug in a popular application. A bug in your image thumbnailer could represent a new attack vector for hackers that can exploit it for script injection.
+To create image thumbnails, Gnome Files allows users providing filenames as an executable input.
+The flaw was detailed by the researchers Nils Dagsson Moskopp who provided useful suggestions to avoid being hacked.
+“Thumbnail generation for MSI files in GNOME Files executes arbitrary VBScript.” states Moskopp.
+“Delete all files in /usr/share/thumbnailers. Do not use GNOME Files. Uninstall any other software that facilitates automatically executing parts of filenames as code”.
+Dagsson Moskopp published a PoC code leveraging Wine to execute VBScript. He tricks Gnome Files into creating an MSI file called badtaste.txt.
+
+Create MSI Files
+
+Execute the following Bourne Shell code:
+Start GNOME Files and navigate to the folder with the MSI files. An empty file with the name badtaste.txt should appear.
+“Whenever an icon for a Microsoft Windows executable (EXE), installer (MSI), library (DLL), or shortcut (LNK) should be shown, Gnome Files calls /usr/bin/gnome-exe–thumbnailer to either extract an embedded icon from the file in question or deliver a fallback image for the appropriate filetype.” explained the expert.
+The expert highlighted that the problem is triggered due to the presence of just one line of code in /usr/bin/gnome-exe-thumbnailer:
+“Instead of parsing an MSI file to get its version number, this code creates a script containing the filename for which a thumbnail should be shown and executes that using Wine. The script is constructed using a template, which makes it possible to embed VBScript in a filename and trigger its execution.” Dagsson Moskopp added. 
+In order to avoid problems, Dagsson Moskopp suggests developers should not use “ad-hoc parsers” to parse files, should “fully recognise inputs before processing them”, and should use unparsers.
+Below the remedy suggestions for both users and developers:
+Remedy (for users)
+
+Pierluigi Paganini
+(Security Affairs – Gnome, input validation)

@@ -1,0 +1,44 @@
+
+Meltdown and Spectre Q&A
+
+Posted by
+Morphisec Team on January 15, 2018 at 3:11 PM
+                           
+
+Find me on:
+
+LinkedIn
+Twitter 
+
+
+
+
+
+The Meltdown and Spectre CPU vulnerabilities disclosed earlier this month generated a lot of noise and a lot of confusion. Our security experts received a deluge of questions from customers and industry personnel alike. Responding to this need, Morphisec CTO and VP R&D Michael Gorelik went on air to provide some answers. If you missed the webinar, you can watch it here.
+The first part of the session goes over the vulnerabilities, how they work and likely consequences. Michael explains why the biggest threat is not information theft but that they potentially expose the internal memory structure for cybercriminals to leverage as a pre-stage to remote code execution. The remainder of the webinar was devoted to a live Q&A. With confusion still lingering about the vulnerabilities, the mitigations and their impact, we are sharing these questions and Michael's answers below.
+Question: It seems to me that Microsoft/Apple/Linux updates are just “protecting” against Meltdown except for IE/Edge. Could you please confirm if Spectre has to be patched by each application editor? And if it does, is Morphisec a sure way to protect Computer against Spectre exploitation codes?
+Answer: Yes, the current number of OS vendors released a KPTI patch to limit the leakage due to meltdown vulnerability (user mode protected processes are still vulnerable), other OS vendors like Solaris haven't released a patch.
+There is no proper protection against Spectre, and the existing update candidates only limit some of the tools used to make the attack successful (limit the timer resolution in a specific browsers). There will be still methods to achieve the same behaviour as demonstrated in the article and not all vendors are capable of updating their code.
+Morphisec protects against the code execution that follows the Spectre vulnerability and therefore allows a wider patching gap while remaining protected. In other words, you don’t have to rush to implement updates that may not work to be protected (and not all will work).
+UPDATE, Jan 15 - Microcode Spectre patches available
+Microcode patches are now available for Spectre, but not for all the relevant CPUs. Some applications will still need to recompile their code to include the additional opcodes. This is likely to cause significant performance degradation.
+Although the focus is currently on exploiting browsers using a JavaScript sandbox bypass, we shouldn’t lose sight of potential attacks on additional sandboxed applications like Acrobat or additional programming languages (e.g. ActionScript - Flash, Visual Basic in IE, Silverlight in IE). All those attack scenarios may greatly benefit from this very effective read primitive.
+Question: What will be the impact post applying the patch? Is there any CPU performance degradation?
+Answer: Meltdown - the impact will be more influential on applications that use more system calls (on each context switch there is a tremendous impact of TLB Kernel page flush). Some database benchmarks show about 20% impact and therefore it is not recommended to update servers with current processes that drain the current resources to the limit.
+Question: In my mind you are morphing process memory and not kernel memory. So how could you detect that attackers try to get kernel memory using the Meltdown vulnerability?
+Answer: Morphing of kernel memory may lead to a risk of operation disruption and blue screens, this is why Morphisec chooses not to cover this layer and not cause any customer disruption.
+Meltdown requires the attacker to drop and execute an executable on the system - the same executable may get to the system using different attack vectors (Web, email, network through exploitation or social engineering). The executable needs to evade all other solutions to be executed successfully - Morphisec prevents the attack even before the memory scraping.
+Question: What are the ways to avoid these attacks?
+Answer: KPTI updates will certainly limit the privilege escalation attempts made by the executable through isolating the kernel cache pages from user mode, but will also cause a performance penalty.
+1) Meltdown and Spectre - Get the microcode updates from the CPU vendors as soon as those are out.
+2) Meltdown (relevant with respect to privilege escalation exploits) - Maintain a security stack that can identify and prevent a malicious executable that is executed on the system. In addition to AV, maintain a next generation prevention solution like Morphisec that can prevent advanced evasive executables.
+3) Spectre (relevant with respect to remote code execution exploits) - Maintain a security stack solution and anti-exploit solution like Morphisec to prevent the remote code execution.  Most likely, browsers will soon release updates as well that may limit the time resolution issues that are used for side channel attacks - although take into account that some browser add-ons may break.
+The current updates for the OS do not cover all aspects of the attack and therefore there will be new attacks to come - a proper solution stack is necessary.
+Question: After applying KPTI patches, the context switches will cause the processor to reload in-memory cache. Will this only increase kernel overhead or open up a wider attack surface?
+Answer: Correct, the KPTI will increase the kernel overhead based on the workbench. When using a program with many system calls to kernel you will have a performance penalty on TLB Kernel flush. Note that the impact differs a bit on Windows vs Linux since they cache Kernel pages differently. Some benchmarks show a 30% overhead and others do not show any impact.
+Regarding a possible increase in attack surface: On one hand, the ring 3 user process can no longer access the kernel pages since those are flushed on the context switch.  But on the other hand, and theoretically, attackers could develop a timing attack using side channel.  In this way they can identify whether the system is patched, if it is Linux or Windows, based solely on the amount of time it takes to context switch. (You may run heavy applications based on system calls and measure
+This is basically also a type of info leakage and I suspect there will be more in the near future.
+I would worry less about the Meltdown leakage that is patched by the KPTI since this will require executable code executed on system and will be very difficult to find privilege escalation information in the 64 bit kernel space. Although it is limited by 40 bits, it is still huge, and just enough to raise the suspicions of any heuristic engine.
+I would worry more about the Spectre vulnerability, which is still not really patched and allows a process to read its own memory outside the sandbox. This will allow attackers to develop trivial exploits to bypass browser, Office, Acrobat sandboxing and, eventually, remotely execute code on a compromised system. (Meltdown can only be executed locally and will not help to execute code.) 
+ hbspt.cta.load(1534169, '6886dd71-77fc-4416-b6fc-3f125818d456', {}); 
+ 

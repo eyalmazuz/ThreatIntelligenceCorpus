@@ -1,0 +1,83 @@
+
+Remediation Help:  Microsoft Windows Remote Desktop Protocol Server Man-in-the-Middle Weakness
+
+
+By Tony Lee.
+
+If your organization has had an vulnerability scan recently, you have probably run across a "Microsoft Windows Remote Desktop Protocol Server Man-in-the-Middle Weakness" (or similiar) finding.  In order to address the issue, it helps to understand it first.  The aim of this article is to help YOU, the security practitioner, understand the vulnerability and work towards addressing the issue. 
+Note:  If your servers are not running at least Windows 2003 SP1, options are limited as they do not support server authentication.  For example, legacy Windows 2000 servers may have to be firewalled off or an IPSec tunnel may be needed until they can be replaced.
+
+Security references:
+CVE: 2005-1794
+BID:  13818
+The Test Environment
+
+The following explanation of the RDP MiTM vulnerability is explained using a Windows 7 client (can easily be a Windows XP client with RDP 5.2 or higher) and a Windows 2003 SP2 server.
+
+The reason why this setup was chosen is because it resembles what we see organizations currently running.  Clients are being upgraded as new laptops or desktops are being distributed, however there are still a significant number of Windows 2003 Servers in the environment because as long as it works and it is supported--why upgrade?
+
+If you are blessed enough to be running all Windows 2008 servers and all Windows 7 clients, you are well ahead of the game and may not even be affected by this issue as both of those operating systems natively support NLA with Kerberos.  But who lives in such a dreamland?  Let’s get back to reality.
+Examining the Server
+
+In Windows 2003 SP2, it is possible to view the Terminal Services server configuration by opening “Terminal Service Configuration”, selecting “Connections”, right-clicking on “RDP-Tcp”, and clicking “Properties” (as shown in the screenshot below).  Under the General tab you will find the “Security Layer” and “Certificate” settings.  
+
+
+
+With no certificate present, the only options available for “Security Layer” are “RDP Security Layer” and “Negotiate”.  Neither of these can provide server authentication as there is no certificate present.  The descriptions for these two settings are:
+
+RDP Security Layer - Communication between the server and the client will use native RDP encryption
+Negotiate - The most secure layer that is supported by the client will be used.  If supported, TLS 1.0 will be used.
+
+
+Note that neither of the settings mention server authentication--more on this later.
+Examining the Client
+Part of what makes this issue so complicated to address is that it is not a server-only issue.  A configuration change must be made on the clients as well as the servers.
+
+For Remote Desktop Clients v5.2 and later, you should have at least three options.  The Microsoft Help Documentation describes them as such:
+
+Connect and don't warn me - With this option, even if Remote Desktop Connection can't verify the identity of the remote computer, it connects anyway
+Warn me - With this option, if Remote Desktop Connection can't verify the identity of the remote computer, it warns you so that you can choose whether to proceed with the connection or not
+Do not connect - With this option, if Remote Desktop Connection can't verify the identity of the remote computer, you won't be able to connect
+
+
+After examining the settings above, you could imagine that the most frustrating occurrence would be to fix the issue on the servers and have the clients ignore a certificate mismatch because they are set to “Connect and don’t warn me”.  These settings should remind you that this is a client as well as a server issue.
+"Testing, 1, 2… Is this thing on?"
+
+For all of our connection tests, we will use an RDP client that is setup to “Warn Me”, as shown in the RDP client screenshot below.
+
+
+
+When connecting to an RDP server that does not have a certificate generated for it (the same as the server configuration in Figure 1), a simplistic warning will appear stating that the server cannot be verified (as seen in the screenshot below).
+
+
+
+
+When providing the server a certificate, as shown in the screenshot below, a new Security Layer option becomes available,  “SSL”.  The description for SSL reads as follows:
+
+SSL - “SSL (TLS 1.0) will be used for server authentication as well as for encrypting all data transferred between the server and the client.”
+
+
+
+
+
+Now that the server is configured to use “SSL” for the Security Layer settings, (enabling server authentication), the client now receives a more descriptive warning if an error occurs.
+
+If the user forgets to use the Fully Qualified Domain Name (FQDN) and instead uses the IP address, they can get a name mismatch error as shown in the screenshot below:
+
+
+
+Now that the user uses the FQDN, if anything is amiss, they will still receive an error message, such as the screenshot below which states that the certificate chain is invalid.  This is because the certificate that was issued to this server is self signed and not in the Trusted Root Certificate Authority store.
+
+
+
+To fix this error, certificates can be purchased from a certificate authority that is already in the Trusted Root Certificate Authority Store, however that is a very expensive fix--especially if you have hundreds of servers.  A more economical approach is to use an internal certificate authority and add that to the Trusted Root Certificate Authority Store for each host in the domain.  Clients will no longer get this error message and will be alerted to any MiTM attempts.
+It All Makes Sense… Now, I Need a Fix
+
+Remember, any hosts prior to Windows 2003 SP1 will require Network Layer Protection (NLP) such as an IPSec tunnel or another creative fix until they can be upgraded.
+
+Windows 2003 SP1 and above can be fixed using the method above by issuing Server Certificates from an Internal CA that all clients trust.  Much of this can be accomplished via registry hacks, scripts, and GPO.  All clients must then be configured to NOT ignore certificate issues.
+
+Windows 2008 environments can use the certificate method as well as Network Level Authentication (NLA) with Kerberos.  For more information on this and other fixes see the article below:
+http://blogs.msdn.com/b/rds/archive/2008/07/21/configuring-terminal-servers-for-server-authentication-to-prevent-man-in-the-middle-attacks.aspx
+
+

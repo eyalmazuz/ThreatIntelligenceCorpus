@@ -1,0 +1,36 @@
+
+					Exclusive – ELF Linux/NyaDrop, a new IoT threat in the wild					
+After the Krebs DDoS attacks the enrollment of new IoT botnets is going to grow and new large “zombie army” made by of web-ip-cam, DVR/NVR, routers/modems are invading the cyberspace.
+The evidence of this comes from the finding of a new undetected malware codenamed NyaDrop by the same security researcher has discovered and reverse engineered the now famous Mirai, MalwareMustDie!
+As MalwareMustDie reports in his research published yesterday on his blog, the new undetected malware NyaDrop, like the most IoT malware emerging today, relies on a kind of infection, which make use of an initial brute-force attack through which it tries to exploits the default credentials of the device. We have to remember that often the web-ip-cam, DVR/NVR, routers/modems are deployed without changing the default credentials.
+Once the NyaDrop succeeded to connect – using Telnet protocol – to the IoT device infect the system dropping (downloading) in the guest host the real NyaDrop binary code: that’s why the size of NyaDrop initially is a small executable file.
+Figure 1: strings contained in the binary code of NyaDrop
+From the NyaDrop binary is not possible to extract too many strings except “nyABa” and from this the codename “Nya”. This string anyway is “a good way to grep for the easy filtration or one of the conditions in filtering this malware version for the mitigation purpose / signature.”
+But let’s give a look to the binary code of the malware.
+“If you see the size, we are dealing with a small executable file. It’s a clean libc compiled ELF from coded in C in such form that we see much in shellcodes. Insides are filled with the MIPS opcodes. We dealt before with the similar small ELF malware before in the following posts in here [link] and here [link], I will try to deal with this one too :)”
+Figure 2: The NyaDrop ELF
+ 
+Small size yes? But it is amazing to see what this small malicious ELF can do..
+In the MalwareMustDie analysis, the experts confirms that NyaDrop then will try to connect from the infected device to the C&C host in order to download the Nya trojan if the IoT device uses “MIPS CPU architecture, implying routers and similar networking devices, with 32bit clock. “
+MIPS-based CPUs are often found within devices such as routers, DVRs, CCTV cameras, and other embedded systems, as we mentioned above.
+So we have here a very selective environment malware and this means that the NyaDrop author didn’t want to attack any IoT platform, but on the contrary, he wanted to avoid infecting “useless”device: to target the best devices with the most powerful bandwidth, and avoiding to “drop” on incompatible system the precious binary code that could be unable to be executed.
+The interview of @unixfreaxjp from MalwareMustDie in exclusive for Security Affair about Linux/NyaDrop
+But let’s go to the interview with MalwareMustDie.
+Q: What makes the sighting of NyaDrop is so low, even maybe some seen the attacks/efforts to infect?
+A: We can summarize those key points:
+Q: Why do you think he is asking MIPS architecture in your case? How the herder made effort for the infection in that architecture?
+A: I am not sure why, but obviously, next to ARM, MIPS devices are plenty on the internet, especially the networking boxes such as gateways, routers, switch, modems etc. He made hard effort, to make the binary as small as possible with a limited set of buffer size, you can see it in the reversing part I made. The total binary size is 621 bytes, with the complete functionalities using syscalls (socket, connect, recv, open, write, close), NyaDrop was designed as backdoor to be pwn tools of routers.
+Q: How do you think the effectively in using Telnet to inject/install Nyandrop to the targeted machine?
+A: It’s only if you know Telnet flaw of the device or hardcoded pwd then one are aiming this sector. In this season, we have about 2million device with Telnet running on the internet, the effectivity to aim this protocol to gain shell privilege is fairly high. The way the coder inject the binary using echo commands it’s not smart and can raise a risk to break  some shell on handling those data, this is also why the successfully injected binary spotted is low.
+Sorry, but I am not going to suggest the best way for do this.
+Q: You mentioned it was originated in Russia, why?
+A: Seeing the way it is coded & compiled, it is good, it trimmed the ELF into the minimum running state… it is very hard to imagine that skiddies that we know is having such knowledge. 
+I investigated deeper the source IP used, such connection will not be easily contracted by westerners.
+ 
+Q: Do you think it is a new concept to infect IoT using the dropper/injector backdoor like Linux/NyaDrop?
+A: For the malware, the concept is not new, for IoT it is new since IoT was never being aimed as hard as now also. But I see many types of socket connect()/back_connect() ELF dropped in server side plenty of time, during the Shellshock era we had tons of these, the concept is not new at all. 
+In fact, I know exactly what, where, and how to look when this type is starting to hit IoT.
+About the Author: Odisseus
+Independent Security Researcher involved in Italy and worldwide in topics related to hacking, penetration testing and development.
+Edited by Pierluigi Paganini
+(Security Affairs – NyaDrop malware, IoT)

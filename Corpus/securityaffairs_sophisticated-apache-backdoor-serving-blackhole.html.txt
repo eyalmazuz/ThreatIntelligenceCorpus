@@ -1,0 +1,22 @@
+
+					Sophisticated Apache backdoor serving Blackhole exploit kit detected					
+Securi security firm detected a new sophisticated  Apache backdoor used to hijack traffic to malicious website serving the popular Blackhole exploit kit.
+The company published a blog post describing the new Apache backdoor that according security experts already affects hundreds of web servers.
+The backdoor, named Linux/Cdorked.A, is considered one of the most sophisticated Apache backdoor detected, it operate stealthy and leaves no traces of compromised hosts on the hard drive other than its modified httpd binary.
+In the last months the security researchers have tracked server level impairments that utilized malicious Apache modules such as Darkleech to inject malware into websites. The researchers noted a change in how the injections were being implemented, on cPanel-based servers, “instead of adding modules or modifying the Apache configuration, the attackers started to replace the Apache binary (httpd) with a malicious one.”
+The experts at Securi collaborated with colleagues from the ESET company to qualify the Apache backdoor, following interesting features discovered by the two teams:
+ESET researchers provided an interesting analysis of the binary of the back door, all instances analyzed contains a total of 70 strings that are encoded with a function with a static XOR key. In the following image the key used for encoding the data 27A4E2DADAF183B51E3DA7F6C9E6239CDFC8A2E50A60E05F.
+Very tricky the redirection in Linux/Cdorked.A Apache Backdoot, when redirecting a client, the malicious code adds base64 encoded string to the query containing information like the original visited URL and whether or not the request was originally to a javascript file so the server could provide the right payload.
+Following an example of redirection provided by ESET post:
+After decoding, the following parameters appear:
+Note that The “surl” parameter shows the infected host and the “suri” indicates what the original requested resource was.
+“After the redirection, a web cookie is set on the client so it is not redirected again. This cookie is also set if a request is made to a page that looks like an administration page. The backdoor will check if the URL, the server name, or the referrer matches any of the following strings : ‘*adm*’, ‘*webmaster*’, ‘*submit*’, ‘*stat*’, ‘*mrtg*’, ‘*webmin*’, ‘*cpanel*’, ‘*memb*’, ‘*bucks*’, ‘*bill*’, ‘*host*’, ‘*secur*’, ‘*support*’.  This is probably done to avoid sending malicious content to administrators of the website, making the infection harder to spot. The following screenshot shows part of the code responsible for handling the web cookie.”
+The Apache backdoor allows the attackers to gain full control of victims, the researcher discovered in fact also 23 commands in Linux/Cdorked.A that can be submitted to the server via a POST to a specifically crafted URL.
+ie. command list : ‘DU’, ‘ST’, ‘T1′, ‘L1′, ‘D1′, ‘L2′, ‘D2′, ‘L3′, ‘D3′, ‘L4′, ‘D4′, ‘L5′, ‘D5′, ‘L6′, ‘D6′, ‘L7′, ‘D7′, ‘L8′, ‘D8′, ‘L9′, ‘D9′, ‘LA’, ‘DA’.
+Using the commands the attackers can modify configurations or inject modules and replacing binaries.
+The discovery of Securi specialists is concerning, authors of Apache backdoors are implementing even more sophisticated tactics to avoid detection by administrators of compromised servers.
+Are you interested to know if your system has been compromised? Following suggestion provided by Securi firm:
+“As previously mentioned, the permissions on the shared memory allocation are loose. This allows other process to access to memory. We have made a free tool (dump_cdorked_config.py) to allow systems administrators to verify the presence of the shared memory region and dump its content into a file. We also recommend using debsums for Debian or Ubuntu systems and `rpm –verify` for RPM based systems, to verify the integrity of your Apache web server package installation. (However, remember to temper this advice with the reality that the package manifest could have been altered by an attacker.) Checking for the presence of the shared memory is the recommended way to make sure you are not infected. We would be interested in receiving any memory dumps for further analysis.”
+The investigation is going on, the security specialists have no information of how the servers are initially attacked, the most plausible hypothesis is through SSHD-based brute force attacks.
+Pierluigi Paganini
+(Security Affairs – Malware)

@@ -1,0 +1,42 @@
+
+Combatting AppScan's "Scan out of session"
+
+
+By Kunal Garg.
+
+Web application scanners may be full of repetition and obvious vulnerabilities but they do have their place in a web application penetration test. While they should never be used as the sole way to identify vulnerabilities, they can provide baseline and act as another available tool to achieving maximum results. All web application scanners are different and some require finer tuning then others. One common issue we see with IBM's AppScan is the "Scan out of session" error. This blog post aims to give advice around setting up the scan and working around the issue.
+
+When running post authentication scans “In-session” detection is important concept to maximize scan coverage. Anytime the scan will go out of session, notification “scan out of session”will be displayed to user and scan will be suspended. 
+
+With the in session management we basically select a unique pattern on an in-session page, which Appscan continually polls to find out if scan is in session or not. This pattern needs to be unique and should be available on post authentication pages. It can be any text such as “welcome userabc” displayed after a specific user logs on or it can be a logout button (if present on all the pages).
+Recording the login
+
+First step in configuring the in-session pattern is to record the login using Appscan macro. Once the login is recorded, tick the checkbox “I want to configure In-session  detection” and click on next.
+ 
+
+Notice all the URL’s recorded in login macro previously appear here, and select the page which is post authentication and contains our unique identifier. In our case, test application after login routes to “main.apsx”, this page therefore is selected as In-session page (Right click and set as In-session).
+
+
+
+Now, it’s time to select the In-session pattern this can be selected using the “Select in session pattern” button. 
+
+Usually, Appscan will select the session identifier on its own. But it is always advisable to look into the pattern and change the pattern if it’s not unique. In my personal experience with the automatically selected identifiers scans tend to run out of session.
+
+Session pattern can be either selected from the page or its response body in the appscan browser window as shown below.
+ 
+
+
+Session pattern is marked as “signoff”.
+
+If the scan goes out of session there are certain points which we need to consider:
+
+Session cookies are not properly tracked.  If the session cookies are not getting tracked it can be marked for tracking from “Login management”.
+ 
+
+Check if the application is still accessible.
+Check if the user account is not locked out.
+
+
+Note:  While run In-session scans make sure that, login and logout pages are out of scope, and please take due care while running automated scans and configuring them.
+
+

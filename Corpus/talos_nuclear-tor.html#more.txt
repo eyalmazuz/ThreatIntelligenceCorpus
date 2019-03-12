@@ -1,0 +1,83 @@
+
+Nuclear Drops Tor Runs and Hides
+
+
+
+Introduction
+Exploit kits are constantly compromising users, whether it's via malvertising or compromised websites, they are interacting with a large amount of users on a daily basis. Talos is continuously monitoring these exploit kits to ensure protection, analyze changes as they occur, and looking for shifts in payloads. Yesterday we observed a new technique in the Nuclear kit and found a new payload and technique we’ve not seen before.
+
+
+Details
+It's been awhile since we've discussed Nuclear so let's start with an overview of how users are infected. Like most exploit kits it has a couple of key components: a gate, a landing page, and an exploit page with payload.  Let's start by describing the gate that we have been observing associated with Nuclear and specifically this instance associated to a novel payload. 
+
+
+Gate
+This particular infection begins with a compromised website. Buried on the website is a couple lines of javascript, which you can find below:
+
+
+
+The portion to focus on is the very end where there is a call to another script hosted on googletrace <.>asia.  Gates usually involve several different layers of obfuscation to make tracking the actual infection path slightly more difficult as well as hide the true intentions of the adversaries. Once the page is requested a familiar HTTP code is found:
+
+
+This technique what is referred to as “302 cushioning”, which we have seen in exploit kits such as Angler. HTTP 302's are a part of everyday life on the Internet, so it makes sense for adversaries to start using them to avoid detection. 302's provide an easy way for administrators to redirect users, temporarily, without any user interaction required. This 302 is followed immediately by another:
+
+This 302 redirection leads to the Nuclear landing page. The Nuclear landing page is a heavily obfuscated javascript that is shown below:
+
+
+Landing Page
+
+After the landing page is delivered to the user their OS, Web Browser, and plugins are probed. Once this data is returned to the malicious server a exploit page with payload is delivered. In this particular instance an Adobe Flash exploit is delivered to the user. This isn't surprising considering it is the plugin of choice for exploit kits and a 0-day vulnerability that was recently released. After the exploit page, which is shown below, is delivered to the user the payload is then executed and the unique aspects of this particular infection are revealed.
+
+
+Exploit Page
+
+
+
+Payload
+Exploit kits are always dropping various payloads. The most common, by far, is Ransomware. Different variations of Ransomware are being delivered by exploit kits to users around the globe daily. This infection was different, instead of Nuclear dropping something like Locky or another Ransomware variant, it dropped a Tor client for Windows. The file, aptly named tor.exe, is then executed and we begin to see the system making requests via Tor and a secondary payload is downloaded. We looked at the Tor traffic and were able to find several domains listed in the network traffic. None of these domains have ever been registered and we were not able to find any DNS traffic associated with them. There also appears to be several time stamps from both 2016 and 2015 included as well.  Below are a couple screen captures showing the tor activity.
+
+
+
+
+
+This is a real change for exploit kits, as previously they would drop a malicious executable that could be easily tracked by the C2 communications used. In this case Tor was being leveraged to anonymize the actual final malicious payload and increase the difficulty in tracking back to the hosting system.
+
+
+
+IOC
+Domains
+googletrace.asia (Gate)
+lin.absorptionspbs.top
+
+
+IP
+188.166.27.134
+
+
+Hashes
+8796955247DFCADDE58243D8CFDCB416B1B40FD66950433C82A05FC87E803850 (tor.exe)
+
+
+
+Conclusion
+
+The amount of money involved in the current exploit kit landscape is mind blowing. This allows our adversaries to hire professional development teams which continue to evolve the threat landscape. This a recent example of Nuclear adjusting to compete with the sophistication of exploit kits like Angler. As they become more effective at delivering payloads and bypassing security devices, their profits will continue to rise. This will create a feedback mechanism continuing the EK’s evolution, much like we have already seen with ransomware.
+
+Stay tuned for details that will be released in the coming weeks with regards to Nuclear. We have lots more to share!
+
+
+Coverage
+
+The domains observed are blocked via Cisco’s Domain reputation systems as soon as we see them, as well as the Flash files being used for exploit in the wild.
+
+For the most current rule information, please refer to your Defense Center, FireSIGHT Management Center or Snort.org.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+

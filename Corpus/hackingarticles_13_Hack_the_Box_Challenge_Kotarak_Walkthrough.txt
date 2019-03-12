@@ -1,0 +1,57 @@
+
+Hack the Box Challenge Kotarak Walkthrough
+
+Hello friends!! Today we are going to solve another CTF challenge “Kotarak” which is available online for those who want to increase their skill in penetration testing and black box testing. Kotarak is retired vulnerable lab presented by Hack the Box for making online penetration practices according to your experience level; they have the collection of vulnerable labs as challenges from beginners to Expert level.
+Level: Hard
+Task: find user.txt and root.txt file on victim’s machine.
+Since these labs are online available therefore they have static IP and IP of sense is 10.10.10.55 so let’s begin with nmap port enumeration.
+From given below image, you can observe we found port 22, 8009, 8080, 60000 are open in victim’s network.
+
+As port 8080 and 60000 are running HTTP, we open the IP in our browser and access the page through port 8080. As soon as we open the ip in our browser we get a tomcat authentication prompt asking for username and password.
+
+When we access the target machine through port 60000, we find a page that is hosted on the machine can be used to access the internet.
+
+Now we need to use the dirb tool to enumerate the directories of the target machine.
+From given below image you can observe the highlighted directory that is put up by dirb in its output result.
+
+We now try to check if the page is vulnerable to SSRF or not by trying to access a forbidden page on the target machine.
+
+when we open server-status through the vulnerable page, we are able to access the forbidden content. We then find that port 888 is listening locally on the target machine.
+
+Then we opened http://localhost:888 through URL and it contains a few links to different files.
+
+We open backup and find that it was empty.
+
+To gain further information we used curl to access the page and find that it is an XML file that contains a username and password.
+
+We use the above credentials to login into tomcat manager application that is hosted on port 8080.
+
+As we were able the right credentials for tomcat server, we found that it was vulnerable to this exploit here. We used metasploit to exploit this vulnerability.
+Finally, we got the meterpreter session as shown in the below image
+
+After gaining the reverse shell we start enumerating the target system. In /home/tomcat/to_archive/pentest_data we find a few interesting files.
+
+In /home/tomcat/to_archive/Pentest_data we find a directory information tree file and binary file.
+We download both the files into our system
+
+We used impacket-secretsdump to dump hashes inside the files.
+
+We were able to crack one of the hashes and find it to be f16tomcat!
+
+We use this to login as atanas, we then move into /root/ folder and find a file called flag.txt. When we open it we find that it was a dummy flag file.
+
+In the root directory, we also find a log file when we take a look at the content of the file we find that it contains log that we were created using wget. We also find that the wget version used is 1.16
+
+Searching on the Exploit-DB site we find that this version of wget was vulnerable to remote code execution.
+
+We follow the instructions given on exploit-db.com about how to exploit this vulnerability.
+
+Then we had opened the wgetrc file through vim for changing the path of Post_file from /etc/shadow into /root/root.txt
+
+We download the code of this exploit from exploit-db.com and upload it to the target machine through meterpreter.
+
+We then give read, write and execute permission to the file.
+
+We then use authbind to run the file, as authbind allows a program to that would normally require super user privileges to access privileged network services to run as a non-privileged user.  As soon as we run the exploit we get the root flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

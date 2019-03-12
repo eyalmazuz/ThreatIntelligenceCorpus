@@ -1,0 +1,58 @@
+Snowshoe Spamming Brings Scale to Savvy Subdomain Phishing Attacks
+Subdomain spoofing is not a new phenomenon. For years, threat actors have attempted to use a company’s (potentially unmonitored) subdomains either to add credibility to their phishing or spam emails or to fool existing ISP heuristic checks by distributing attacks across a large number of subdomains with a technique known as “snowshoe spamming.”
+What is new is the scale at which attackers are implementing subdomain spoofing and snowshoe spamming together, making detection and mitigation far more difficult. Beyond the scale, which is unprecedented, we are also observing these techniques used systematically and regularly rather than haphazardly. In this blog we describe one of these large-scale attacks and outline best practices for mitigation with DMARC (Domain-based Authentication Reporting and Conformance), a technology that is highly effective but which must be implemented correctly to avoid unintended problems and time-consuming maintenance.
+A New Kind of Subdomain Spoofing
+Proofpoint researchers have identified a new variation of subdomain spoofing. Instead of targeting one company at a time and using many and varied words, phrases or characters as the subdomain element, this new approach takes all of the sending domains of a large number of companies and prepends them with an established and trusted brand. In this case, the threat actors used LinkedIn.
+LinkedIn has spent years building trust in engagement with its community of members and, as a result, faces the risk—like any trusted global brand—of having its domain and profile spoofed while imposters take advantage of that community of trust. The table below shows several examples of the way in which threat actors leverage the LinkedIn brand to create spoofed subdomains.
+Legitimate Domains
+Spoofed Subdomains
+example.com
+↔
+LinkedIn.example.com
+example.co.uk
+↔
+LinkedIn.example.co.uk
+example.ie
+↔
+LinkedIn.example.ie
+us.example.com
+↔
+LinkedIn.us.example.com
+uk.example.com
+↔
+LinkedIn.uk.example.com
+ie.example.com
+↔
+LinkedIn.ie.example.com
+In this campaign, the emails themselves are, not surprisingly, phishing emails intended to trick victims into supplying their LinkedIn credentials. However, because attackers send them over subdomains of other companies and not over LinkedIn domains, LinkedIn is unable to use DMARC in the traditional way to block the messages.
+Figure 1 shows an example of one such email:
+
+Figure 1: Example phishing email using spoofed LinkedIn subdomain
+The phony “Click here” link now takes the user to a .ru hosted pharmaceutical site but it is likely that it previously pointed to a convincing LinkedIn clone page, designed to harvest the users’ credentials.
+Although these emails are not designed to specifically attack the customers or partners of example.com, they are exploiting its domains. Over time, this attack could prove damaging to the reputation of the brand in the eye of the consumer and, equally important, to the reputation of the domain at consumer mailbox providers: if users see enough of these emails and flag them as spam, then mailbox providers may begin to penalize emails sent from example.com and its subdomains.
+There are few companies for which we have not observed this practice and it seems nearly every domain is fair game. What we see for example.com, .co.uk, and .ie we are seeing for acme.com, .co.uk, and .ie – and so on.
+In fact, since observing a recent LinkedIn subdomain attack, we have seen a resurgence in wider, more general subdomain spoofing. Whereas in the first instance we were seeing a LinkedIn. subdomain appearing for each of our customers’ sending domains, threat actors have now started to use many and varying words, names and phrases as subdomains.
+This has resulted in a massive increase for some customers in “Suggested Domains” where we are seeing multiple, fraudulent subdomains for each affected parent domain, as shown in the figure below.
+
+Figure 2: Proliferation of subdomain spoofing; in this case, we observed 5,509 subdomains appear over a seven-day period
+How to Leverage DMARC Inheritance to Block Bad Email
+We owe our visibility into this phenomenon to the principle of DMARC inheritance. If a subdomain does not have its own DMARC record in the DNS at the subdomain level, any emails sent using that subdomain as the visible email address (Header From domain) will inherit the attributes of the DMARC record of its Parent Domain.
+That is, if LinkedIn.example.com does not have an explicit DMARC record, then it will inherit the DMARC attributes (policy level and reporting addresses) of example.com, sending any relevant reports to the same reporting addresses.
+Furthermore, if example.com is using a DMARC policy p=none because it has not yet been able to move to p=reject, then LinkedIn.example.com will, by inheritance, also be at p=none and fraudulent emails over this subdomain could be delivered.
+Administrators could also add a DMARC p=reject record to each of these subdomains as and when they are reported, but this is reactionary and will be an endless battle as more and more subdomains crop up.
+_dmarc.LinkedIn.domain    IN    TXT    v=DMARC1; p=reject; fo=1; rua=mailto:dmarc_rua@emaildefense.proofpoint.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com
+It is much more effective and efficient to use the principle of inheritance to allow the owners of the affected domains to block these emails. However, this approach still needs to be taken with caution, because whatever is inherited by fraudulent subdomains without DMARC records will also be inherited by those subdomains that organizations legitimately use. The following is a best practice for organizations implementing DMARC:
+Step 1: Prepare all subdomains
+The first step is to ensure that all legitimate subdomains either are ready to inherit the Reject policy or have their own explicit DMARC records to prevent accidental inheritance.
+_dmarc.subdomain    IN    TXT    v=DMARC1; p=none; fo=1; rua=mailto:dmarc_rua@emaildefense.proofpoint.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com
+Step 2: Consider parent domains
+Next, consider the relevant (or all) Parent Domains. If they themselves are ready to move to a DMARC reject policy, all possible subdomains that sit below the Parent Domains that do not have their own DMARC record will inherit the same reject policy.
+_dmarc.domain    IN    TXT    v=DMARC1; p=reject; fo=1; rua=mailto:dmarc_rua@emaildefense.proofpoint.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com
+Step 3: Add necessary tags
+If the Parent Domains are not ready for Reject, organizations can still use inheritance by adding in the Subdomain Specific sp=reject tag to the Parent Domains’ DMARC record. This tag allows organizations to keep the Parent Domains at whatever policy is appropriate while they complete any email governance work. At the same time, this will instruct ISPs and email recipients that any subdomains lacking their own DMARC record should be treated as if they are at Reject.
+_dmarc.domain    IN    TXT    v=DMARC1; p=none; sp=reject; fo=1; rua=mailto:dmarc_rua@emaildefense.proofpoint.com; ruf=mailto:dmarc_ruf@emaildefense.proofpoint.com
+Avoid Accidental Inheritance 
+Again, the risk of accidental inheritance is very real so these steps need to be taken with caution, but if organizations are able to implement this properly not only do they block this particular LinkedIn. subdomain spoofing attack, they block an immensely broader threat landscape. ANY subdomain then would be treated in the same way.
+By way of reference, the case shown in Figure 2 was also mitigated in the same way; the solution is the same regardless of the format of the fraudulent subdomain. For this particular customer, the 5,509 subdomains seen over a seven-day period could be distilled back to only 41 parent domains. We had already addressed subdomain spoofing (using the aforementioned methods) for 26 of these, meaning that only 15 simple DMARC changes needed to be made to ensure that no further Subdomain spoofing would be possible.
+Again, it was imperative that due diligence was completed to ensure that no legitimate subdomains would accidentally inherit any Reject instructions prematurely.
+Conclusion

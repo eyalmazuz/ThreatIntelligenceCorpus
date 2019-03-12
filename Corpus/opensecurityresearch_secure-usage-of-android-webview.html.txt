@@ -1,0 +1,66 @@
+
+Secure Usage of Android Webview:
+
+
+By Naveen Rudrappa
+
+The WebView class is one of the most powerful classes and it renders web pages like a normal browser. Applications can interact with WebView  by adding a hook, monitoring changes being made, add JavaScript, etc. Even though this seems like a great feature; it brings in security loopholes if not used with caution. Since WebView can be customized, it creates the opportunity to break out of the sandbox and bypass the same origin policy. 
+
+WebView allows sandbox bypass in two different scenarios: 
+
+JavaScript can invoke Java code.
+Java code can invoke JavaScript.
+
+
+Sample code to Invoke Java from JavaScript:
+ wv.addJavascriptInterface(new FileUtils(), "file");
+< script> 
+filename = '/data/data/com.Foudnstone/data.txt';
+file.write(filename, data, false);
+< /script> 
+
+
+
+
+Sample code to Invoke JavaScript from Java:
+ String javascr = "javascript: var newscript=document.createElement(\"script\");";
+javascr += "newscript.src=\"http://www.foundstone.com\";";
+javascr += "document.body.appendChild(newscript);";
+myWebView.loadUrl(javascr);
+
+
+
+Another way to support sandboxing is to implement addJavascriptInterface. However any class declared using addJavascriptInterface allows for commands to be run on android device from JavaScript, leading to complete compromise. Hence implementing addJavascriptInterface is also not safe.
+
+Hence to implement secure usage of WebView follow the below mentioned solutions:
+
+Compile application against Android API level equal or more than 17. This API forces developer to add @JavascriptInterface to any method that is to be exposed to JavaScript. This also prevents access to operating system commands (via java.lang.Runtime).
+Disable Support for JavaScript. If there is no reason to support JavaScript within the WebView, then it should be disabled. The Android WebSettings class can be used to disable support for JavaScript via the public method:
+
+ setJavaScriptEnabled.webview = new WebView(this); webview.getSettings().setJavaScriptEnabled(false);
+
+
+Send all traffic over SSL. Any traffic in clear is easy to sniff and manipulate using a Man-in-The-Middle attack. Thus an hacker cannot inject script  via MITM and can not break sandbox of webview.
+
+To avoid security issues from the WebView, always restrict users to the application domain using code as below which prevents WebView security issues. By restricting user to known domain we are secure from Javascript being loaded from untrusted websites.
+
+
+ WebViewclient wvclient = New WebViewClient() {
+// override the "shouldOverrideUrlLoading" hook.
+public boolean shouldOverrideUrlLoading(WebView view,String url){
+if(!url.startsWith("http://clientlocation.com")){
+Intent i = new Intent("Android,intent.action.VIEW",Uri.parse(url));
+startActivity(i);
+// override the "onPageFinished" hook.
+public void onPageFinished(WebView view, String url) { ...}
+}
+webView.setWebViewClient(wvclient);
+// override the "onPageFinished" hook.
+public void onPageFinished(WebView view, String url) { ...}
+}
+webView.setWebViewClient(wvclient);
+
+
+
+
+

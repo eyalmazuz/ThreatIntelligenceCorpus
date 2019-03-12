@@ -1,0 +1,83 @@
+
+Hack the DonkeyDocker (CTF Challenge)
+
+Today we are going to solve a fun Vulnerable Lab DonkeyDocker, download this VM Machine from here.
+The credit for developing this VM machine is goes to Dennis Herrmann who has hide 3 flag inside this lab as a challenge for hackers.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.120 but you will have to find your own)
+netdiscover
+
+Use nmap command for port enumeration
+nmap -sV 192.168.1.120
+As you can see port 22 for ssh and 80 for http are open, so let’s explore port 80 through Browser
+
+After browsing I found three tabs Home, About and Contact but didn’t found any clue for next step, then I decided to scan the target directory using dirb scan.
+
+Now open the terminal in kali Linux and type following command:
+dirb http://192.168.1.120
+From scanning result I choose the highlighted directory http://192.168.1.120/mailer/examples/ for further enumeration.
+
+Here, we get to know that PHPMailer is running on targeted system. Let try to find out its version.
+
+So After browsing a bit about PHP Mailer, we came know that how to get the version of phpmailer
+http://192.168.1.120/mailer/VERSION
+We got the version of PHPMailer i.e. 5.2.16.
+
+From Google we came to known that PHPMailer 5.2.16 is vulnerable to Remote Code Execution (python) {CVE-2016-10033}. Exploiting PHPMail with back connection (reverse shell) from the target. You can download this exploit from here.
+
+After Downloading the Python File and make following changes:
+
+Now start natcat at port same port on which the payload is bind i.e. 4444 for establishing reverse connection with target.
+nc -lvp 4444
+
+Before you run the python script, type following command in a new terminal which will install the exploit dependency.
+Now run the script in order to exploit the target as shown in given image.
+python 40974.py
+
+Move back netcat shell and here you will find that it is connected to victim but not able to access proper shell of victim system therefore type given command in order to access victim shell properly as shown in image.
+
+Once you got the victim shell type following commands for finding hidden flag.
+ls
+cat main.sh
+Here we found user smith which is a directory has flag.txt let approach toward this directory.
+cd home 
+ls 
+While again opening smith directory, we got Permission denied.
+Then we used su smith to instead of sudo, because sudo is not accessible in this shell
+su smith
+For Password we tried “smith” and successfully get smith’s shell
+
+Now we are inside smith shell, type following command to get the flag
+ls
+cd /home/smith
+ls
+flag.txt
+cat flag.xt
+Great!! Successfully capture 1st flag
+Moreover if you notice the given image you will find next clue “I like 1984 written by Geoge ORWELL” it could be possible that it might be a user name having 2nd flag inside it.
+
+Type following command to view all directory list
+ls -al
+We got the authorized keys, id_ed25519 and id_ed25519.pub in SSH directory, lets open these key one by one
+cat authorized_keys
+cat id_ed25519
+cat id_ed25519.pub
+In id_ed25519 we get the Openssh Private Key and this key is authorized for orwell@donkeydocker. Now copy the private key and past inside the text file.
+
+We have Save this Private Key in a file as id_rsa as shown in given below image.
+
+Now using ssh login by
+Here you will be greeted by the Donkey Docker Shell. Now check directory list for 2nd flag
+ls
+Flag.txt
+Cat flag.xt
+ Nice!! Successfully got 2nd shell
+
+Now for the last flag we tried and a lot of different tricks but nothing seems to get through and you can read an article from here, which help in finding the 3rd flag.
+Type following command
+This created a user named Jessie and gave it root access through privilege escalation; check all directory lists inside it, here we get the flag.txt file.
+
+Now to open this file we will use the previous command just with slight modification as shown:
+Awesome we got 3rd flag also.
+
+Author: Pavandeep Singh is An Ethical Hacker, Cyber Security Expert, Penetration Tester, India. Contact here

@@ -1,0 +1,89 @@
+
+Understanding Guide for Nmap Ping Scan (Firewall Bypass)
+
+In this article we are going to scan the target machine with different Nmap ping scans and the response packets of different scans can be confirmed by analysis of Nmap traffic through Wireshark.
+Ping scan in nmap is done to check if the target host is alive or not. As we know that ping by default send the ICMP echo request and gets an ICMP echo reply if the system is alive. Ping scan by default send an ARP packet and gets a response to check if the host is up.
+Nmap scans changes their behavior according to the network they are scanning.
+In this article we are using —disable-arp-ping attribute for changing the behavior of nmap scans to treat a local network as an public network.
+Let’s Start!!
+In order to identify live host without using ARP request packet Nmap utilize –sP option which is known as Ping Sweep Scan. We can use –sn flag which mean no port scan also know as ping scan.
+From given below image you can observe it found 1 Host is up. Since we have disables Arp request packet for local network scans by using parameter –disable-arp-ping therefore here it will treat it as an external network and behave accordingly that as discussed above.
+
+Demonstrating working of Ping Sweep using wireshark
+From given below image you can observer following packet of request and reply between both network IP
+
+Now let’s put some firewall rules in IPTABLES to drop ICMP packets, TCP SYN packets on port 443 and TCP ACK on port 80 which will block Ping Sweep scan
+
+Now repeat again ping sweep scan for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+Again demonstrating request packets of Ping Sweep scan with wireshark and if you notice given below image then you will found that this time it has not received any reply packet.
+
+Now, we’ll try to bypass the firewall rules by using ping scan with TCP SYN packets, for that we’ll use –PS attribute. –PS sends TCP SYN packet on port 80 by default; we can change it by specifying the ports with it, like: -PS443.
+From given below image you can observe that observe it found 1 Host is up.
+
+From given below image you can observe that it is showing result which similar to NMAP stealth scan. Here it is following TCP Half connection mechanism where SYN packet is send on port 80 and received SYN, ACK from port 80 and then RST packet for reset connection
+The difference between –sP packet on port 80 and –PS packet on port 80 is as following:
+
+Sometimes network admin apply filter as given below using Iptables on TCP SYN packet to drop all SYN packet to initiate TCP connection with all TCP Port in their network.
+As result it block the NMAP TCP SYN Ping probes so that it could not identify state of live host.
+
+Now repeat again TCP SYN Ping for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+In order to bypass this, we’ll use ping scan using TCP ACK packets, for that we’ll use –PA attribute. –PA sends TCP ACK packet on port 80 by default, we can change it by specifying the ports with it, like: -PA443
+From given below image you can observe that observe it found 1 Host is up.
+
+When you will notice given below packets captured by wireshark you will found that here ACK packet is sent on port 80 as reply received RST packet from port 80.
+
+Sometimes network admin apply filter as given below using Iptables on TCP ACK packet to drop all ACK packet to established TCP connection with all TCP Port in their network.
+As result it block the NMAP TCP ACK Ping probes so that it could not identify state of live host.
+
+Now repeat again TCP ACK Ping for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+In some scenario network admin apply firewall filter on TCP flag to resist unwanted TCP communication in network, here let’s consider that network admin had blocked TCP communication by applying filter on SYN as well on ACK flag.
+In order to bypass this rule we’ll use ping scan with ICMP packets, for that we’ll use –PE attribute. –PE sends ICMP echo request packet [ICMP type 8] and received ICMP echo reply packet [ICMP type 0].
+From given below image you can observe that observe it found 1 Host is up.
+
+Usually most of network admin apply ICMP filter on their network so that other system or network cannot able to Ping their network.
+As result it block the NMAP ICMP echo Ping probes so that it could not identify state of live host.
+
+Now repeat again TCP ICMP Ping for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+Demonstrating NMAP ICMP echo Ping with wireshark shows only ICMP request packet in network and didn’t received any reply packet from host network as shown in given below image.
+
+In order to bypass this rule we’ll use ping scan with ICMP packets, for that we’ll use –PP attribute. –PP sends ICMP timestamp request packet [ICMP type 13] and received ICMP timestamp reply packet [ICMP type 14].
+From given below image you can observe that observe it found 1 Host is up.
+
+Demonstrating NMAP ICMP timestamp Ping with wireshark shows ICMP timestamp request packet send  in network and  received any timestamp reply packet from host network as shown in given below image.
+
+It might be possible that network admin had block entire types ICMP message by dropping all ICMP packets using following iptables filter.
+As result it block the NMAP ICMP Ping probes so that it could not identify state of live host.
+
+Now repeat again ICMP Ping either –PP or PE for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+We have seen multiple ways to check if the system is live. Now, you can determine whether a system is up or not whether it is on local network or public network.
+We had observed that ping scan with ICMP ping is not working or even if TCP packet filter is also enabled in host network then it become difficult to identify live host, now to bypass such types of rule we’ll use ping scan with UDP packets, for that we’ll use –PU attribute.
+ –PU sends UDP packet when no ports are specified, the default is 40125, as reply received ICMP message such as “ICMP destination unreachable” which means host is live.
+From given below image you can observe that observe it found 1 Host is up.
+
+Demonstrating NMAP UDP Ping with wireshark shows UDP request packet send on 40125 in network and  received ICMP destination unreachable as reply packet from host network as shown in given below image.
+
+Now let’s put some firewall rules in IPTABLES to drop ICMP packets, TCP SYN packets on port 443 and TCP ACK on port 80 which will block Ping Sweep scan as well as Drop UDP packet. Might be network admin had blocked entire TCP packet.
+As result it will resist NMAP for making TCP Ping, ICMP Ping and UDP ping so that it could not identify state of live host.
+
+Now repeat again UDP Ping for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+Using Protocol Ping scan we can identify live host when ICMP, TCP and UDP has been blocked, for that we’ll use –PO attribute. –PO sends IP packet with the particular protocol number place in their IP header, If no protocols are precise, the default is to send multiple IP packets for ICMP (protocol 1), IGMP (protocol 2), and IP-in-IP (protocol 4).
+From given below image you can observe that observe it found 1 Host is up.
+
+From given below image of wireshark we can observe the following mechanism followed by Protocol ping scan.
+
+Now let’s put some firewall rules in IPTABLES to drop ICMP packets, TCP SYN packets on port 443 and TCP ACK on port 80 which will block Ping Sweep scan as well as Drop UDP packet and IP protocol too in network to prevent the network from any kind of Ping scan. Might be network admin had blocked entire TCP packet.
+As result it will resist NMAP for making TCP Ping, ICMP Ping, UDP ping and Protocol ping so that it could not identify state of live host.
+
+Now repeat again Protocol Ping for identifying state of live host. From given below image you can observe this time it shows that 0 host is up which means firewall has blocked packets send by this scan.
+
+Now when above all Ping scan get failed to identify state of Host is up or down then we choose the last and best option “No Ping” for we will use –PN/-P0/-Pn and basically perform TCP port scan for top 1000 ports.
+ If you want to prevent Port scan and ping scan use sweep ping with no ping as given below to identify state of host is up or down.
+From given below image you can observe that observe it found 1 Host is up.
+
+Auhtor:  Deepanshu is a Certified Ethical Hacker and a budding Security researcher. Contact here.

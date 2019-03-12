@@ -1,0 +1,48 @@
+
+Getting a Grip on Your Cuckoo Reports
+
+
+By Melissa Augustine.
+
+I recently had a forensics case where I had to test a lot of files for malicious behavior. “No problem!” I thought, “I can just use my watcher script to automatically push all 50 files to my cuckoo instance... I'll just sit back and watch the CPUs crunch by...”
+
+That was all well and good... until I realized I needed to go through the 50 reports manually to look for suspicious behavior.
+
+Not cool. 
+
+I like how on malwr.com (the online instance of Cuckoo) if you have an account you can get a quick summary of all your submissions such as Filename, Antivirus detections, and file type. 
+
+And I wondered if I could create such a thing for my personal Cuckoo Sandbox at home... and so the Cuckoo Scraper Script was born!
+Cuckoo Scraper Script
+Download:
+https://github.com/OpenSecurityResearch/CuckooScraperScript
+Prerequisites: Jinja2 (which if you are generating reports on Cuckoo, you already have!)
+Usage:
+
+--path: Where your analyses folder is for Cuckoo, this is generally at /home/$USER/cuckoo/storage/analyses
+--template: the Jinja template to be used for the output. I have included in the script a basic template (called template.html)
+--output: Where you want the created HTML file to be saved to
+Example
+
+
+This will generate a HTML file based on the analyses you have in the given path, pulling from the JSON report certain attributes:
+
+Filename
+Yara Hits (if any)
+Virus Total Response Code
+Virus Total Verbose Response
+Number of Positive Hits from VT (if any)
+URL to VirusTotal report (if there are hits)
+Link to the Cuckoo HTML Report
+
+Sample Output
+
+
+
+The script iterates through all the folders in the path you give as a parameter and then for each of those folders, looks for the report.json file. If it can’t find the report files (i.e. cuckoo couldn’t generate a report for whatever reason), the script lets you know and moves on. 
+
+From there, the script parses the JSON and stores the desired fields as variables. These are then passed to Jinja, which renders them using the template provided with the ‘-t’ argument. The result is the pretty (OK not so pretty) output seen above in the last Figure.
+
+The cool thing is with a little knowledge on Jinja, you can add more fields to the output as your analysis requires. 
+
+

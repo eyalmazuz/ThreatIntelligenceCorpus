@@ -1,0 +1,37 @@
+Linking Infrastructure from Phishing Data Exfiltrations
+Phishing is still one of the most relentless and quickly evolving threats facing today’s businesses. 
+At RiskIQ, we process tons of web-related threat data, including phishing incidents. From various sources, we receive URLs which may be indicative of phishing, examine the pages with our web-crawling infrastructure, which experiences them as a real user would, and feed the data it collects through our machine-learning technology to classify each detected phishing page appropriately.
+Phishing pages’ infrastructure usually takes two forms: self-maintained custom infrastructure and abused or compromised infrastructure belonging to someone else. Below is an instance of a phishing page for email involving the latter. It’s somewhat generic, but an excellent example of something commonly leveled against businesses: 
+Fig-1 Phishing page
+Looking through some sources online, I dug up some additional instances of this phishing kit:
+llyyuia.com/sendmail/index2.htm   
+brazilconsul.cc/teste/drop/index2.htm
+alpinenatureexperience.com.au/wp-admin/js/prank/solorous/sendmail/index2.htm
+www.corneliacafe.com/css/sendmail/index2.htm
+www.genest.com.mx/sendmail/index2.htm
+infonetcomm.com/css/sendmail/index2.htm
+www.ciembolivia.com/js/sendmail/index2.htm
+www.webkeyit.com/sendmail/index2.htm
+eduquersonenfant.com/wp-admin/css/sendmail/index2.htm
+folhadojalapao.com.br/wp-admin/css/sendmail/index2.htm   
+pdqmei.com/wp-admin/css/sendmail/index2.htm
+www.pdqmei.com/wp-admin/css/sendmail/index2.htm
+reisu.com/sendmail/index2.htm
+As you can see, there seems to be a theme in the names of these phish examples,  with each URL containing ‘sendmail.’ Also, each phish appears very similar in their design. 
+At RiskIQ, when we explore these pages, we first check if the host is compromised (the majority are) and if so, find where the compromise happened. There are some obvious ones, of course, such as when there’s a ‘/wp-admin/‘ path in the URL, which indicates it’s likely a WordPress instance. In the phish above, when removing the trailing filename ‘index2.htm,’ from its URL, some of the hosts reveal the structure of the phishing kit:
+Fig-2 Phishing kit structure
+There are three files—index2.htm, sub.php, and rop.php—for which we can find a reference to ‘rop.php’ in the crawl linked at the beginning of this report. The source of the phishing page shows that it sends its stolen credentials to this script via a POST request:
+Fig-3 Script to which stolen credentials are sent as captured by RiskIQ Crawlers
+This leaves us with sub.php from which we have no idea of its functionality. Digging through more instances of this phishing kit, we found another directory index, only this time the live instance of the phishing kit was gone—however, the actor left his install!
+Fig-4 Phishing kit install
+We can pull down the disruptive.zip file and take a look; it contains all three files we found in the directory listing above. Let’s take a look at rop.php‘s source code:
+Fig-5 Source code
+We can see the general method of credential exfiltration, used in the majority of phishing kits, send out an email with the credentials. We find the criminal’s exfiltration email address, parkerfred2.0@mail.ru. We can also see the usage of sub.php where a user is redirected after the credentials are emailed out and which contains the following:
+Fig-6 sub.php
+This script redirects victims to a specific page on the Microsoft Windows website. Digging through more of instances of this phishing kit we found another case where a zip file was left:
+Fig-7 Phish kit structure containing a zip file
+In this one, we also saw an email address in rop.php which had some interesting ties to our data. The email address we uncovered was langmesserpp@gmail.com, which you can find in PassiveTotal’s WHOIS search linked to one single domain:
+Fig-8 WHOIS for langmesserpp@gmail.com
+The website itself has had quite a few IP resolutions but currently isn’t functional. What is interesting is that the domain name closely matches a Florida based law firm named ‘McClean Law Group’ and their domain, mccleanlawgroup.com. We haven’t found anything linking these two websites other than their name, nor do we have any insight into what the website looked like if it was ever a working site at all—something to keep an eye on.
+Knowing your Risk
+RiskIQ provides access to our unique phishing detection capabilities with our External Threats product line. Knowing your phishing risk is only half the battle; our product line offers real-time monitoring and web enforcement capabilities. Protect your assets with RiskIQ’s industry-leading security intelligence.

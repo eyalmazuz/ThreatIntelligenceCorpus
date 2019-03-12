@@ -1,0 +1,76 @@
+
+Working of Traceroute using Wireshark
+
+Hello Friends!! Today we are going to discuss working with traceroute using UDP/ICMP/TCP packets with help of Wireshark.
+Traceroute or Tracert: It is a CUI based computer network diagnostic tools used in UNIX and Windows-like system respectively. It traces the path of a packet from the source machine to an Internet host such as Goole.com by calculating the average time taken each hop. Traceroute sends a UDP packet to the destination by taking benefit of ICMP’s messages. It uses the ICMP error-reporting messages –Destination Unreachable and Time exceeded.
+TTL: The time-to-live value, also known as hop limit, is used in determining the intermediate routers being traversed between source to the destination. 
+Hop: A hop is one portion of the path between source and destination. Data packets pass through bridges, routers and gateways as they travel between source and destination. On the internet, before the data reach its final destination, it goes through several routers and a hop occurs when an incoming packet is forwarded to the next router.
+Asterisk (*): Denotes probe timeout which means that the router at that hop doesn’t respond to the packet received from the source used for the traceroute due to firewall filter.
+ 
+Read below steps:
+The TTL time exceeded ICMP message is sent after the TTL value of a UDP packet gets zero. In typical condition, a network doesn’t have such a diameter that lead the TTL=0. This could be possible when there is a routing loop. In this case, as the packet is sent back and forth between the looping points, the TTL keeps getting decremented until it becomes zero. And at last source receives ICMP Error message sent by the router.
+ As discusses above tracert is CLI utility for windows system to trace the path of a packet from source to destination. So here with help of the following command, we can observe the path of packet travels to reach Google DNS.
+Syntax: tracert [options] Host IP
+tracert 8.8.8.8
+or
+tracert -d 8.8.8.8
+Traceroute generates a list of each hop by entering IP of routers that traversed between source and destination and average round-rip time. As result hop 22 denotes entry of destination i.e. Google DNS.
+In order to notice the activity of traceroute, we have turned on Wireshark in the background.
+ Note: Result of tracert can vary each time for hop count but does not go beyond 30 hops because it is maximum hop limit. 
+
+At Wireshark we notice following points:
+
+Form this image we can observe ICMP echo reply message is sent from 8.8.8.8 (destination) to 192.168.1.101 (source) for TTL 22.
+
+As discussed above traceroute in utility for Unix -like the system to trace the path of a packet from source to destination. So here with help of the following command, we can observe the path of packet travels to reach Google DNS.
+Syntax: traceroute [options] Host IP
+traceroute 8.8.8.8
+ 
+Traceroute generates a list of each hop by entering IP of routers that comes between source and destination and average round-rip time. As result hop 21 denotes entry of destination i.e. Google DNS.
+In order to notice the activity of traceroute, we have turned on Wireshark in the background.
+ Note: Result of traceroute can vary each time for hop count but does not go beyond 30 hops because it is maximum hop limit. 
+At Wireshark we notice following points:
+
+In tracert we have seen that each TTL value between source to the first router proceeds 3 times, similarly same techniques followed by UDP. To demonstrate this we have explored UDP packets 5,6,7 and 8th continuously.
+In the 5th packet, we observe the UDP packet sent by source (192.168.1.102) to destination 8.8.8.8 on port 33435 and count as Hop #1, attempt #1.
+
+In the 6th packet, we observe the UDP packet sent by source (192.168.1.102) to destination 8.8.8.8 on port 33436 and count as Hop #1, attempt #2.
+
+Similarly, in the 7th packet, we observe the UDP packet sent by source (192.168.1.102) to destination 8.8.8.8 on port 33437 and count as Hop #1, attempt #3.
+
+In the 8th packet, we observe the UDP packet sent by source (192.168.1.102) to destination 8.8.8.8 on port 33436 and count as Hop #2, attempt #1 and repeat so on process till reaches the destination.
+
+In packet 79th we observe the last hop captured was hop #10 attempt #3 when the UDP packet sent by source (192.168.1.102) to destination 8.8.8.8 on port 33464 and Time exceeded ICMP message is NOT sent back to the source after this.
+
+As result, at last source received ICMP message Destination Port Unreachable which means our UDP packet reaches on the destination address.
+At last from given below image we observed following:
+
+As you know by default traceroute use UDP packet but with help of -I option you can make it work as tracert which uses ICMP request packet.
+traceroute -I 8.8.8.8
+
+It generates a list of each hop by entering IP of routers that comes between source and destination and average round-rip time. As result hop 22 denotes entry of destination i.e. Google DNS. In order to notice the activity of traceroute, we have turned on Wireshark in the background.
+At Wireshark we notice following points:
+First ICMP echo request packet will be sent to the first router with TTL 1 and it will send back an ICMP error message time exceed which follow same technique as explain above in tracert with Wireshark.
+At last from given below image we observed following:
+
+As you know by default traceroute use UDP packet with use ICMP error message for generating a response but with help of -T option you can use TCP packet, which uses syn request packet via port 80. It is most useful in diagnosing connection issues to a specific service eg. Web server.
+tcptraceroute – 8.8.8.8
+or
+traceroute -T 8.8.8.8 
+As we know the maximum hop is 30 and but here till 30th hop we didn’t find desirable output. TCP traceroute basically follow TCP half communication and waits for the sys-ack packet from destination till the last hop.  
+
+In order to notice the activity of tcp traceroute, we have turned on Wireshark in the background where we noticed that, it work same as UDP but here syn packet are used to send the request to the destination. Tcptraceroute does not measure the time it takes to complete the three-way handshake because that never occurs in such situation. It only measures the time from the initial SYN to the SYN/ACK.
+Since Wireshark also didn’t noticed any syn-ack packet from destination to source, therefore, Tcptraceroute didn’t edit destination response in its record list this is due to because it is useful while diagnosing web server.
+
+Therefore let’s check the path of Google.com and notice the behaviour of tcptraceroute. And you compare both result and behaviour of TCP in case of Google DNS server and Google web server.
+ tcptraceroute google.com
+Here we can clearly observe the response of destination machine through SYN, ACK and a complete entry recorded by traceroute.
+
+It is as similar as above, the source sent the TCP-SYN packet to the destination machine on port 80 and received ICMP error message from router for time exceed and repeat the process till it receives ACK_SYN from destination.
+
+Here we can observe ACK-SYN packet from the destination (172.168.161.14) is sent to source (192.1681.103) from port 80 and source again sent RST packet to the destination via port 80.
+
+At last from given below image we observed following:
+This entry will get recorded by traceroute in its record list.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,73 @@
+
+WAPT Workaround:  Following Redirects without Downloading Content
+
+
+By Tony Lee and Amit Bagree.
+
+We get some very unique requests from time to time—such as:  “Please walk the site with sequential file IDs in order to gather file type statistics.  Oh yeah, do this from outside the network and consume minimal bandwidth.”
+
+Yes, we realize that this is not an ideal scenario because you could just go to web server locally, but how many ideal scenarios do you really come across?  Plus we love a challenge. :)
+Mission if you choose to accept it
+A redirect page in a client site takes an object parameter called ID.  These are potentially sensitive files and you want to traverse all of the redirect URLs and resolve the redirect names to their full path to check for sensitive names and gather statistics.  Unfortunately, your client is bandwidth sensitive and does not want you downloading their entire website (some files are +10MB in size) – you don’t want that either...  However, you still need to obtain a site map, parse the file names for potentially sensitive titles and gather statistics.
+One Possible Solution
+
+A few of us kicked the problem around for the optimal answer.  We finally settled on the spider option contained within wget.
+
+From the wget man page:
+
+“--spider
+           When invoked with this option, wget will behave as a Web spider, which means that it will not download the pages, just check that they are there. “
+
+
+Now that we have a way to resolve the redirects, yet ignore the content, we will need some Linux scripting foo to help with traversing the IDs and parsing the output.
+Solution: Steps (High Level)
+
+Run “script” to capture the output for grepping
+Create a bash shell script that counts from the lower range to the upper range…
+Kill “script” with CTRL + D
+Grep like there is no tomorrow
+
+Step 1: Run Script
+ root@bt:~# script
+
+
+Step 2: for Loop
+ root@bt:~# for i in {110000..110002}; do wget --spider --force-html https://site.com/crazy/long/directories/Redirect.aspx?ID=$i; done
+
+
+Step 3: CTRL+D
+(CTRL+D)
+
+
+Typical Output
+After letting that run for a while, we finally have some output.  It appears that wget resolved the location and followed it to check to see if the file exists.  Just as we planned!  On top of that, we did not download the file.  Now we need to make the output actionable—grep to the rescue.
+--snip--
+
+Spider mode enabled. Check if remote file exists.
+--2012-01-09 13:29:11--  https://site.com/crazy/long/directories/Redirect.aspx?ID=120305
+Resolving www.site.com... 10.1.2.7
+Connecting to www.site.com|10.1.2.7|:443... connected.
+HTTP request sent, awaiting response... 302 Found
+Location: /crazy/long/directories/someexcelfile.xls [following]
+Spider mode enabled. Check if remote file exists.
+--2012-01-09 13:29:11--  https://site.com/crazy/long/directories/someexcelfile.xls
+Connecting to www.site.com|10.1.2.7|:443... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 50688 (50K) [application/vnd.ms-excel]
+Remote file exists.
+
+--snip--
+
+
+Step 4: grep grep grep
+You could grep on just about anything in the output above.  You could grep on “Location” or the second date tag if you wanted.  Below is just one example.  We are using two greps piped together.  The first one grabs the lines with the double dash and the second looks for file extensions.  We pipe that into word count with a ‘–l’ to count the number of lines that match that as shown below.
+ root@bt:~# grep "\-\-" <script file name> | grep “.pdf” | wc -l
+ 9065
+
+
+
+You could now change the grep to xls, doc, docx, etc.  “wc –l” will continue to give you the number of instances or leave it off in order to grab the full paths to the files.
+What do you think?
+This is just one possible method in obtaining full path names by sequentially walking a website.  This also avoids downloading the large files to save on bandwidth.  We would be very interested in other (possibly more efficient) ideas on how to tackle this using free software. :) 
+
+

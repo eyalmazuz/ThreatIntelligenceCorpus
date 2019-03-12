@@ -1,0 +1,185 @@
+
+Macro Intruders: Sneaking Past Office Defenses
+
+
+This blog was written by Matthew Molyett with contributions from Martin Lee .
+
+
+Introduction
+
+Macros have been used since the mid 1990s to spread malware and infect systems. Increased user awareness of the need to disable the macro function within Microsoft Word during the late 90s and early 2000s sent these malware into decline. However, a change in Microsoft (MS) Office file formats dating from 2007 is now being actively exploited to hide the presence of macros and distribute malware at an increasing rate.
+
+In this article, I show how MS Office file formats are being abused and obfuscated, and the extent of distribution of macro malware.
+
+
+Figure 1: file utility identification of five separate Microsoft Word files
+
+
+What do you mean by Macros in Document Files?
+
+Documents & Macros
+
+Microsoft Office offers Visual Basic for Applications as a fully functional programming language that can be embedded within files to provide task automation. This functionality was abused by self-propagating viruses, such as Melissa in the late 1990s, leveraging the power of macro functionality with the default behavior of execution.
+
+Beginning with MS Office 2003, this behavior was curtailed with macro execution being disabled by default and GUI pop-ups informing users when macros are present. MS Office 2007 took a gigantic step forward in macro protection by having the default MS Word document file format unable to support macros. To achieve this, Microsoft introduced four separate file formats based on the OfficeOpen XML standard:
+
+
+
+File Extension
+File Type
+Macros Permitted
+DOCX
+compressed document
+No
+DOTX
+compressed template
+No
+DOCM
+compressed document
+Yes
+DOTM
+compressed template
+Yes
+
+
+Unlike Unix-based operating systems that inspect the file contents to determine the file type, MS Windows uses file extension, i.e. the characters following the list ‘.’ as the basis to determine which application will open a file when the file is clicked. When MS Office is installed, it associates itself with the above extensions. Thus, all of the the above file types will be opened by MS Word when clicked.
+
+
+DOCX - There are no macros here!
+
+
+
+Figure 2: Attempting to save macro code to a DOCX
+
+DOC files, used by MS Word prior to MS Office 2007 allowed numerous components, including macros, to be embedded within the document. Users couldn’t be certain that a document was safe before opening the file. The OfficeOpen XML (OOXML) standard integrated in MS Office 2007 removed this ambiguity. Each of these file formats are zip archives that include XML files according to a common layout.
+
+The [Content_Types].xml component, found within the archive, provides the MIME type information for the other components within the file. Each of the four file formats supported by MS Word have unique MIME types. Only two, those associated with DOCM and DOTM, can save or run macros. If the Content_Types component asserts the MIME type for DOCX or DOTX then MS Word will not save or run macro code.
+
+
+Can I just rename my DOCX to DOCM to add macro code?
+
+One might reasonably ask if a DOCX can have macros added if the file is renamed to a DOCM. OOXML file formats are checked for filename extension - MIME type agreement, thus the answer is ‘No’.
+
+When Microsoft Word begins to open a document the filename is checked to see if the document is an OOXML file. Opening a false DOCM file will cause an error popup due to incorrect MIME type for DOCX being found inside the file data.
+
+
+Figure 3: A renamed DOCM file being opened with a DOCX file name
+
+
+
+File Extension
+Mime Type
+DOCX
+application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml
+DOCM
+application/vnd.ms-word.document.macroEnabled.main+xml
+DOTX
+application/vnd.openxmlformats-officedocument.wordprocessingml.template.main+xml
+DOTM
+application/vnd.ms-word.template.macroEnabledTemplate.main+xml
+
+
+
+So OOXML documents with macros must be named DOCM?
+
+In general, MS Word opens files based on the file data, not based on the file name extension. So long as MS Word can identify the data structure, it will open the file correctly. If a file is identified as a MS Office 2007 file, the file must internally present with the proper MIME type or it will cause a validation failure and the file will not open.
+
+OOXML file types are validated by the MS Office component WWLIB.DLL, which confirms the MIME type of the file is as expected. When the file extension does not hint at a OOXML file type this step of validation always passes, even if the MIME type is actually OOXML. This means an OOXML document with macros included (DOCM or DOTM) will load successfully if it has a different filename extension. This is true even if OOXML files have non-OOXML file extensions, so long as MS Word is registered to handle the format.
+
+Hence, DOCM files containing embedded macros can be disguised as other file formats by changing the file extension. For example, the RTF file format does not support MS Office macro code, but a DOCM file renamed to RTF will open within MS Office and can run embedded macro code. This tactic is currently being exploited in the wild.
+
+
+Figure 4: MIME Type Validation if DOCX File Name in WWLIB.DLL
+
+Naive File Data Identification and OOXML
+In May 2016, we started seeing samples send with DOC, RTF, and DOT extensions, although the underlying MIME type was actually application/vnd.ms-word.template.macroEnabledTemplate.main+xml, or DOTM. Naively identifying the file type programmatically revealed “Microsoft Word 2007+” (see Figure 1), so they were executed as a DOCX file. These samples did not display their malicious behavior, they just caused pop-up error boxes such as this in Figure 3.
+
+
+Why would you tell me all this?
+
+These Attacks are in the Wild
+
+Talos has been tracking the appearance of these Macro-Enabled Templates (referred to in this section as DOTM) files and has seen a rapid increase in the deployment rate over the past months. We have collected every DOTM discovered between March 18 and July 13 and inspected the macro payload.  The analysis revealed a pattern of machine obfuscated macros being reused across the documents.
+
+Once the collision was discovered, the macro collisions occurring in at least four distinct DOTM files were pulled out for further inspection. This accounted for a whopping 64% of all DOTMs discovered over a four month period.
+
+Collection Technique
+
+Virus Total’s repository of files was used as the source of DOTM files used for this analysis. DOTM files are identifiable based on the MIME type string "application/vnd.ms-word.template.macroEnabledTemplate" and individual files were selected based on the First Submission date.
+
+Isolation Methodology
+
+ClamAV provides an assistance command line component to facilitate signature creation: sigtool which extracts the macro text from a Microsoft Office document file. To identify the macros, we decompressed all of the DOTM archives and targeted the included ./word/vbaProject.bin file. Distinct vbaProject.bin files would collapse to the same code after extraction by sigtool, which allowed the identification of macro repetition.
+
+Of all the macros collected, 5% accounted for 64% of the DOTM files. Within the top 255 collisions, we discovered one was an empty file: a DOTM that did not contain any vbaProject.bin. We excluded this file from analysis results in a count of 254 studied collisions.
+
+Table 2: DOTM and Macro file counts
+
+
+Total Distinct Macros
+6054
+Total Distinct DOTM
+16377
+Unique Macros
+5641
+Rare Macros (Less than 4)
+99
+Common Macros (4 or more)
+314
+DOTM with Common Macro
+10518
+
+
+
+Graph 1: Direct Macro collisions, 254 distinct samples
+
+
+Grouping Methodology
+
+Once macro collisions were identified, it was clear there were attack campaigns occurring throughout the month of May. Despite the lack of spikes in Graph 1, over 5000 of the collected DOTM files were from June and July. The obfuscation or diversification technique in use had been improved, or more sophisticated actors had joined in on the success seen in May. Further grouping was required for which we turned to the ClamAV scanning engine.
+
+Nineteen individual LDB signatures were generated to segment the 254 samples. Nine signatures could be generated based on automated analysis of string usage within the macro scripts and nine were hand crafted to cover the many generations of a single obfuscation technique. From those 18 signatures, all but three of the top collisions could be identified. Two of those collisions were inspected identifying  that they were trivial macros, one being empty. The last collision though had a unique obfuscation which avoided all of the other 18 signatures, so a specially handcrafted signature was created.
+
+The signatures separated the macros into four distinct sets. Many of the signatures overlapped between groups and were not helpful in partitioning the macros. Signatures detecting macros triggering on file closure formed one set.  A second set was defined by the construction of direct arrays, the construction of complex arrays a third, and the final group was formed by the detection of shared data embedded in strings.
+
+
+Figure 5: Clear machine generated macro, only 8 collisions
+
+
+Graph 2: Grouped Attack Macros, 4 groups labelled A, B, C, D
+
+
+Further Scope for Exploitation
+
+This article has focussed on MS Word, but similar OOXML formats exist for MS Excel and PowerPoint. PPTM files with embedded macros can masquerade as innocuous PPT presentations. Even worse, the same technique can be used to disguise MS Excel XLSM files with embedded macros as text-only CSV spreadsheet files, which Excel will happily open and execute the included code.
+
+
+Defeating the Attack
+
+Patching WWLIB validation to verify that the file extension is as expected when a DOCM or DOTM MIME type is encountered could easily detect and block the attack.
+
+macroEnabledTemplates is a very rarely used and distributed file type. Blocking the ingress of the file format at the network gateway is unlikely to interfere with business practices and can keep malicious files away from end users.
+
+
+Conclusion
+
+Since 2003 Microsoft Word has included many protections against the execution of malicious macros embedded within documents. MS Office 2007 file formats distinguish between file types which can include macros and those that cannot. However the enforcement of this protection by file type is incomplete. Threat actors have discovered it is possible to disguise OOXML documents containing embedded macros as other file types and evade file type detection by Microsoft Office. Until this validation is fixed, users should continue to be wary of unexpected MS Office documents since ‘safe’ file formats may still contain malicious code.
+
+
+Detection Indicators
+
+Ways our customers can detect and block this threat are listed below.
+
+
+
+
+
+ Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware.
+ CWS or WSA web scanning prevents access to malicious websites and detects malware.
+ ESA can block malicious emails sent by threat actors as part of their campaign.
+ ClamAV detects these attacks as OXmlEvader.
+
+
+
+
+

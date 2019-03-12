@@ -1,0 +1,123 @@
+
+Detect SQL Injection Attack using Snort IDS
+
+Hello friends!! Today we are going to discuss how to “Detect SQL injection attack” using Snort but before moving ahead kindly read our previous both articles related to Snort Installation (Manually or using apt-respiratory)and its rule configuration to enable it as IDS for your network.
+Basically In this tutorial we are using snort to capture the network traffic which would analysis the SQL Injection quotes when injected in any web page to obtain information of database system of any web server. Snort will generate the alert for malicious traffic when caught those traffic in its network and network administers will immediately get attentive against suspicious traffic and could take effective action against the attacking IP.
+Requirement
+IDS: Snort (Ubuntu)
+Web application: Dhakkan
+You can configure your own web server by taking help of our article “Configure Web server for penetration testing”
+Let’s Begin!!
+As we know in Error based SQL injections the attacker use single quotes (‘) or double quotes (“) to break down SQL query for identify its vulnerability. Therefore be smart and add a rule in snort which will analyst Error based SQL injection on the server when someone try to execute SQL query in your network for unprivileged access of database.
+Execute given below command in ubuntu’s terminal to open snort local rule file in text editor.
+sudo gedit /etc/snort/rules/local.rules
+Now add given below line which will capture the incoming traffic coming on any network IP via port 80.
+alert tcp any any -> any 80 (msg: “Error Based SQL Injection”; content: “%27” ; sid:100000011; )
+alert tcp any any -> any 80 (msg: “Error Based SQL Injection”; content: “22” ; sid:100000012; )
+If you read above rule you can notice that I had applied filter for content “%27” and %22 are URL encoded format use in browser for single quotes(‘) and double quotes (“)  respectively at the time of execution of URL.
+Turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Now test your above rule by making Error based sql injection attack on web application “Dhakkan”, therefore open the server IP in web browser and use single quotes (‘) for identify SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-1/?id=1’
+For more detail on Error Based SQL injection read our previous article.
+Now when attacker will execute malicious quotes in browser for testing Error Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our prediction from given image you can observe the snort has gerenated alert for Error Based sql injection when capture malicious quotes.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+Testing Double Quotes Injection
+Now again open the server IP in web browser and use double quotes (“) for identify SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-4/?id=1”
+Now when attacker will execute malicious quotes in browser for testing Double quotes SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+From given image you can observe the snort has gerenated alert for Error Based sql injection when capture malicious quotes.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming from 192.168.1.21 on port 80.
+
+As we know in Boolean based SQL injections the attacker use AND /OR  operators  where attacker will try to confirm if the database is vulnerable to Boolean SQL Injection by evaluating the results of various queries which return either TRUE or FLASE.
+Now add a rule in snort which will analyse Boolean based SQL injection on the server when someone try to execute SQL query in your network for unprivileged access of database. Here I had applied filter for content “and” & “or” to be captured. Here nocase denotes not case sensitive it can be as AND/and, OR/or.
+alert tcp any any -> any 80 (msg: “AND SQL Injection”; content: “and” ; nocase; sid:100000060; )
+alert tcp any any -> any 80 (msg: “OR SQL Injection”; content: “or” ; nocase; sid:100000061; )
+Turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Again open the server IP in web browser and use AND operator for identify Boolean SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-8/?id=1’ AND 1=1 –+
+For more detail on Boolean Based SQL injection read our previous article.
+Now when attacker will execute malicious quotes in browser for testing Boolean Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+Testing OR Operator
+As per our calculation from given image you can observe the snort has gerenated alert for Boolean Based sql injection when captured content AND.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+Again open the server IP in web browser and use OR operator to identify Boolean SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-8/?id=1’ OR 1=1 –+
+Now when attacker will execute malicious quotes in browser for testing Boolean Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our calculation from given image you can observe the snort has gerenated alert for Boolean Based sql injection when captured content OR.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+Encoded AND/OR
+Similarly in given below rule I had applied filter for content “%26%26” and “%7c%7c” are URL encoded format use in browser for && and || respectively at the time of execution of URL. 
+alert tcp any any -> any 80 (msg: “AND SQL Injection”; content: “and” ; nocase; sid:100000008; )
+alert tcp any any -> any 80 (msg: “OR SQL Injection”; content: “or” ; nocase; sid:100000009; )
+Turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Again open the server IP in web browser and use && operator for identify Boolean SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-25/?id=1’ %26%26 1==1 –+
+For more details read our previous article
+Now when attacker will execute malicious quotes in browser for testing Boolean Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our calculation from given image you can observe the snort has gerenated alert for Boolean Based sql injection when captured content %26%26.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+Testing Encoded OR Operator
+Again open the server IP in web browser and use || operator for identify Boolean SQL injection vulnerability as shown below.
+192.168.1.20/sqli/Less-25/?id=1’ %7C%7C 1==1 –+
+Now when attacker will execute malicious quotes in browser for testing Boolean Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our calculation from given image you can observe the snort has gerenated alert for Boolean Based sql injection when captured content %7C %7C.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+The Form Based SQL injection also known as “Post Error based SQL injection” because the attacker executes malicious quotes inside Login form of a web page that contains text field for username and password to login inside web server.
+Therefore now add a rule in snort which will analyst Form based SQL injection on the server when someone try to execute SQL query in your network for unprivileged access of database.
+alert tcp any any -> any 80 (msg: “Form Based SQL Injection”; content: “%27” ; sid:1000003; ) 
+If you read above rule you can notice that I had applied filter for content “%27” to be captured; turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+I had used single quotes (‘) to break the query inside the text field of username then click on submit.
+Username:      ’
+From the given screenshot you can see we have got error message (in blue colour) which means the database is vulnerable to SQL injection.
+For more detail on Form Based SQL injection read our previous article.
+Now when attacker will execute malicious quotes in browser for testing Form Base SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our prediction from given image you can observe the snort has gerenated alert for Form Based sql injection when capture malicious quotes.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicous traffic is coming form 192.168.1.21 on port 80.
+
+In order to identify number of column in database the un-trusted user may use order by clause which will arrange the result set in ascending or descending order of the columns used in the query.
+Now add a rule in snort which will analyst order by SQL injection on the server when someone try to execute SQL query in your network for unprivileged access of database. Here again that I had applied filter for content “order” to be captured.
+alert tcp any any -> any 80 (msg: “Order by SQL Injection”; content: “order” ; sid:1000005; )
+Turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Now again open the server IP in web browser and use string order by for identify column of database as shown below.
+192.168.1.20/sqli/Less-1/?id=1′ order by 1,2,3 –+
+Now when attacker will execute malicious string in browser for testing order by SQL injection then the IDS of the network should also capture this content and will generate the alert
+
+As per our prediction from given image you can observe the snort has gerenated alert for order by sql injection when capture malicious string.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicious traffic is coming form 192.168.1.21 on port 80.
+
+We all know in Error base SQL injection attacker may use the UNION operator to combine the result-set of two or more SELECT statements. Therefore add a rule in snort which will analyst Union select SQL injection on the server when someone try to execute SQL query in your network for unprivileged access of database. Here again that I had applied filter for content “union” to be captured.
+alert tcp any any -> any 80 (msg: “UNION SELECT SQL Injection”; content: “union” ; sid:1000006; )
+Turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Now again open the server IP in web browser and use string order by for identify column of database as shown below.
+192.168.1.20/sqli/Less-1/?id=-1′ union select 1,2,3 –+
+Now when attacker will execute malicious string in browser for testing Union select SQL injection then the IDS of the network should also capture this content and will generate the alert.
+
+As per our prediction from given image you can observe the snort has gerenated alert for union select sql injection when capture malicious string.
+So when the network admin get alert from IDS on the basis of it  he can take action against attacking IP, as shown in given image the malicious traffic is coming form 192.168.1.21 on port 80.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

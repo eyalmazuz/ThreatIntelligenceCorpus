@@ -1,0 +1,58 @@
+
+Analyzing Keychain Contents with iOSKeychain Analyzer
+
+
+By Neelay Shah.
+
+iOS exposes a secure storage "Keychain" which can be used by applications to securely store critical and security sensitive data such as symmetric keys, asymmetric private keys, certificates, username, passwords etc. As part of penetration testing iOS applications it is often necessary to be able to inspect the contents of this keychain to identify what the application is storing in the keychain and how it is potentially using the same. A common example is to use "Keychain" to store the login username and password so that the user is logged in seamlessly when the application is launched. The iOS simulator simulates this "Keychain" as a SQLite database. However, this SQLite database is encrypted and as such opening it does not help much. 
+
+iOSKeychain Analyzer extracts and exports the contents of the keychain (on the iOS simulator) along with the associated attributes/properties. The types of keychain items range from passwords, certificates to keys. The attributes for these keychain items include details such as clear text values, accessibility details, description/comments, creation/modification etc.  Additionally, the tool also analyzes the iOS simulator keychain contents from a security standpoint.
+Download
+You can find the Binary here:
+http://www.mcafee.com/us/downloads/free-tools/ios-keychain-analyzer.aspx
+
+and the Source code here:
+https://github.com/Foundstone/ios-keychain-analyzer
+Installation / Pre-Requisites
+
+The source code should compile successfully on Mac OS X 10.7.4/Xcode 4.4.1/iOS SDK 5.0. Once compiled, you can run it on an iOS 5.0/5.1 simulator. Though not tested, the code should compile and run fine on a more recent platform/environment than this. 
+
+A compiled binary is provided for the iPhone 5.1 Simulator. To use this binary as is - copy the "01EFB1DB-4A47-45A1-B692-F88996FAC4F8" to "/Users//Library/Application Support/iPhone Simulator/5.1/Applications". Then launch iOS Simulator. Set the device to iPhone and version 5.1 and the application should appear installed on the simulator. You can then launch from there.
+
+
+The data export/report files should open fine in Safari 6.0+, Firefox 17.0+ and Chrome 23.0.1271.101+
+Usage
+
+First install and configure the application that you are testing within the iOS simulator. If iOS Keychain Analyzer is not installed within the simulator then install it. See the "Installation / Pre-Requisites" section for instructions on how to install the tool. 
+
+Next Launch the iOS Keychain Analyzer, you'll be presented with the following page:
+
+
+First export the data:
+
+
+Then analyze it:
+
+
+
+It'll create the Library/Caches/DataAndAnalysisReports (e.g. /Users/[Username]/Library/Application Support/iPhone Simulator/5.1/Applications/01EFB1DB-4A47-45A1-B692-F88996FAC4F8/Library/Caches/DataAndAnalysisReports/) folder to store the results. 
+
+Within the folder are two reports: 
+
+iOSKeychainDataViewer.htm - This report displays the entire contents of the keychain in a readable format. The raw keychain contents are stored in JSONP format in the "KeychainDataExport.jsonp" file 
+iOSKeychainAnalysisReportViewer.htm - This report displays the keychain data analysis report in a readable format. The raw analysis report can be found in the "KeychainAnalysisReport.jsonp"
+
+Analyzing Keychain Contents
+
+iOSKeychain Analyzer runs the following checks:
+
+Weak Password Check - All password items that have a length less than 8 characters, or is not alphanumeric or does not contain a special character is flagged
+Weak Authentication Method Check - All password items that are configured to be used with weak authentication methods such as HTTP Basic and HTTP Digest are flagged
+Weak Protocol Check - All passwords that are configured to use insecure protocols such as HTTP, FTP etc. are flagged
+Weak Key Length Check - All symmetric keys with key length less than 128 bits and all asymmetric keys with key length less than 1024 bits are flagged
+Insecure Accessibility Check - All items that can be accessed insecurely (irrespective of whether the device is locked or not) are flagged
+
+Known Issues
+The tool does not export the clear text public key or private key. The reason being the API exposes the opaque public/private key structure but not the actual bytes.
+
+

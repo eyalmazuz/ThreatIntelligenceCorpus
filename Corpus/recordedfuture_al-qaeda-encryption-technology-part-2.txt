@@ -1,0 +1,64 @@
+How Al-Qaeda Uses Encryption Post-Snowden (Part 2) — New Analysis in Collaboration With ReversingLabs
+By Christopher Ahlberg on August 1, 2014
+In May 2014 we published research on how Al-Qaeda had changed their use of encryption after the Snowden leaks. This piece generated tremendous interest in publications like The Wall Street Journal, The Telegraph, Politico, Ars Technica, Threatpost, and commentary from noted experts like Bruce Schneier. Additionally, our friend @th3j35t3r wrote a great encapsulation piece that added a bit of color. Also, we’d like to upfront acknowledge and correct our failure to reference the excellent work by MEMRI on this subject.
+The prior research focused on a single point: Following the June 2013 Edward Snowden leaks we observe an increased pace of innovation, specifically new competing jihadist platforms and three major new encryption tools from three (3) different organizations – GIMF, Al-Fajr Technical Committee, and ISIS – within a three to five-month time frame of the leaks.
+We did not investigate the technical aspects of these software packages and we scoped our analysis to open sources available in Recorded Future. This time we turned to our friends at ReversingLabs to provide additional context.
+
+Al-Fajr, one of Al-Qaeda’s media arms, released a new Android encryption application early June 2014 on their website, referring to how it follows the “latest technological advancements” and provides “4096 bit public key” encryption.
+
+GIMF, another media arm of Al-Qaeda, also launched a new version of their Android software since our last post. Interestingly, between these two new product releases this continues the bet on mobile and Android as the preferred platform for these groups. The large availability and affordability of Android phones, especially in underdeveloped countries, is probably the reason for this.
+This provides us with the following updated timeline of Al-Qaeda encryption product releases since 2007.
+
+Let’s go back to our question from the prior blog entry: Did the Snowden leak lead to a change in communication behavior of terrorists? We can now also update our visual from before.
+
+
+Between (a) these new product releases and (b) GIMF’s own statement on the Tashfeer al-Jawwal download page:
+Take your precautions, especially in the midst of the rapidly developing news about the cooperation of global companies with the international intelligence agencies, in the detection of data exchanged over smartphones.
+It’s pretty clear our earlier point that we’re observing increased pace of innovation in encryption technology by Al-Qaeda post Snowden stands true. And this innovation is based on best practice, off the shelf, algorithms.
+As we dive further into changing nature of Al-Qaeda encryption software there are three questions we’ll ask:
+In pairing up with our friends at ReversingLabs, our main objective was to combine Recorded Future’s open source analytic data with ReversingLabs repository of malware samples (the world’s largest).
+First, let’s review the products in question.
+
+
+For analysis of the toolsets we’ll start with hashes and other indicators.
+
+
+The first question we want to explore is whether these new products are using off-the-shelf crypto or home-brew encryption – as home-brew carries significant risks as outlined by Bruce Schneier.
+Tashfeer al-Jawwal
+Tashfeer al-Jawwal is GIMFs mobile encryption software, released three months after the Snowden leaks.
+GIMF themselves state the Twofish algorithm (developed by Bruce Schneier and colleagues) is used in Tashfeer al-Jawwal.
+The program uses the cryptographic algorithm Twofish with cipher block chaining which has the same strength as the algorithm for the Advanced Encryption Standard (AES). It uses elliptic curve encryption in exchanging keys with the keys encoded to 192-bit length. It was necessary to use elliptic curve encryption instead of the base encryption RSA because it is very long, and it’s not possible to store it in SMS nor use it with the Bouncy Castle libraries which use algorithms and methods of encryption with tested capabilities proven to be effective. This library does permit developers to change the random algorithms to protect against any misuse or abuse.
+This is consistent with the move away from (possibly government influenced) NIST standard algorithms to Twofish also done simultaneously by Silent Circle.
+In analyzing the code in Tashfeer al-Jawwal (done with ReversingLabs) we find three interesting points.
+
+1. The package comes loaded with a whole series of encryption algorithms, including Twofish (consistent with GIMF statement): AES, Blowfish, DES, DESede, GOST28147, IDEA, ISAAC, Noekeon, RC2, RC4, RC532, RC564, RC6, Rijndael, SKIPJACK, Serpent, TEA, Twofish, CCM, EAX, GCM.
+
+2. There’s heavy reliance on off-the-shelf crypto: BouncyCastles and CryptoSMS.
+
+3. They use explicit message headers for crypto messages – consistent with Mujahideen Secrets – probably as a way to seem legitimate.
+Amn al-Mujahid for Mobile
+According to Al-Fajr themselves, “The Amn al-Mujahid program is characterized by a strong encryption, and it is the best aid for the brothers since it follows the technological advancements [in the field].” (Translation from MEMRI.)
+Again, like GIMF, Al-Fajr refers to using/following technological advancements – not inventing their own. From the documentation of the non-mobile Amn al-Mujahid we see the use of Twofish and also AES:
+Select the encryption algorithm (AES or Twofish), which is located at the bottom of the program window.
+And in the manual for Amn al-Mujahid for mobile, the one clue about encryption type is the below – referring to an RSA Key, not a home-brew crypto approach.
+
+There are also references to compatibility in keys and functionality between the mobile and desktop versions:
+The features of the Amn al-Mujahid for the mobile phone match their equivalents in the desktop version, hence the user can now copy the keys that are in the Amn al-Mujahid desktop version and add them to Amn al-Mujahid for the mobile phone and vice versa.
+Asrar Al-Ghurabaa
+ISIS’ Asrar Al-Ghurabaa is the one product that comes with statements about proprietary algorithms, but since this product is seemingly not available anymore it’s hard to conclude whether they really are using a proprietary algorithm.
+Assessment
+Our assessment is that between the statements from these groups, and the reverse engineering of the software packages, they’re not using home-brew encryption.
+Finally, there are (of course) subtleties relating to this statement. A software program can use the most standard, secure, publicly vetted crypto algorithms and libraries, and still trip up on the handling of keys and transfer of information (e.g. the clipboard and the program in itself).
+
+The second question we’ll dive into is whether these products are infected with malware or backdoors. There certainly has been such speculation and rumors – both in the security community as well as among the Jihadist themselves. Such malware or backdoors could be provided by governments obviously but perhaps also other organizations.
+Can we observe this? We will use Mujahideen Secrets (Asrar al-Mujahideen) as our basis for analysis here given that it’s the longest standing product.
+Exploring the timeline of the technical indicators for Mujahideen Secrets as well as the surrounding events we can observe its launch, warnings in Inspire magazine about knock-offs by governments, the refresh (pushed on GIMF RSS feed) at time of launch for Asrar Al-Dardashah, as well as submissions to VirusTotal of Asrar al-Mujahideen – all the way to recent revelation of Morten Storm using Asrar to reach Anwar al-Awlaki.
+
+Observing the RSS feed at GIMF we can see how Asrar al-Mujahideen was republished within minutes of the release of Asrar al-Dardashah – which probably is a good indication of sharing resources, methodologies, perhaps even code based between the two.
+
+One interesting point we observe for Asrar_2.exe is how it’s been submitted to Virus Total in 2012-2014. In particular in the timeline below we can observe how its attribution as malicious has recently fallen over time from 2013 to 2014.
+
+We asked our friends at ReversingLabs, who have the world’s largest repository of malware, to plot the detection of the file as malicious and interestingly it rises from early 2011, peaks in early 2013 and then falls until now. By the time of this publication we observe three AVs detecting and 11% detection rate.
+Obviously Mujahideen Secrets (MS) is not malware in the traditional sense. However, suddenly it gets marked as malware – and this is across a broad set of vendors – by leading American, Chinese, and Russian security companies, as well as smaller vendors. There can be multiple reasons for this.
+
+

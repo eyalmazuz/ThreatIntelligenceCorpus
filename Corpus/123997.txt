@@ -1,0 +1,24 @@
+Slack Fixes Cross-Origin Token Theft Bug
+The cloud-based collaboration tool Slack was quick to fix a bug earlier this month that could have allowed an attacker to steal a user’s private Slack token.
+Frans Rosén, a knowledge advisor at the Swedish web security firm Detectify, uncovered the bug last week while poking around the service. After reporting the bug–an issue with how the tool handled cross-origin communication–the company awarded him a $3,000 bounty.
+
+The bug stemmed, at least partially, from the fact the service wasn’t validating properties such as evt.origin or evt.source. That tipped Rosén off that he could access some of Slack’s internal functions.
+“Not validating them was a clear indication to me that I could start do fun stuff, like accessing the functions using postMessage to this window from another window I controlled,” he wrote in a blog post on Tuesday.
+While digging through code Rosén realized that the service’s call functionality–specifically the /call endpoint–didn’t verify the origin of messages either.
+After combing through a lengthy list of HTML events the service did, Rosén found one event called reconnect_url that could switch which WebSocket-URL was used by the service. After creating his own WebSocket–a rudimentary one that could respond to requests–Rosen realized he could sniff traffic and listen for when Slack sent a token parameter. The token, XOXS, is special to Slack and contains “full and complete access to your Slack account,” Rosén says.
+Assuming an attacker could get a victim to click through to a link on a malicious page, a new window would be opened, and the user would be redirected to his or her own Slack instance. Because /call didn’t verify the origin, Rosén could redirect the user to their current Slack instance. This broadens the attack’s spectrum and makes it so an attacker could carry it out on anyone, even a user outside his or her team.
+The crux of the attack–or at least the part that would’ve tricked Slack into giving up a user’s token–relies on using postMessage, a function that allows for the sending of data messages between two windows or frames across domains. Rosén used postMessage to reset the socket-URL and a goodbye-call to interrupt the socket connection.
+Rosén thought the reconnect method on its own was enough to leak the token to his own WebSocket but quickly realized the call never technically disconnected from Slack’s own socket.
+That’s where the goodbye call came into play.
+“The goodbye-method was perfect since it reconnected automatically, but used my socket-URL instead, sending me the xoxs-token (which is equal to having full access of your Slack account)” Rosén said.
+After that Rosén made it so he could modify a request and get the parameter to dump a user’s token locally after quickly connecting to his WebSocket.
+According to Rosén, who described the bug to Threatpost on Wednesday, Slack’s main problem was that it missed a step when using the postMessage function.
+“To work securely with postMessage you always need to verify the origin of every message,” Rosén told Threatpost, “In their case, it became clear when I started to poke it that the capabilities I had access to when sending messages to the Slack window was not intended to be accessible by any origin.”
+PostMessage was set up to make Slack talk with the call function while on a call. By not validating the origin, his malicious page could also talk with the call popup, Rosén says.
+“That was the case however before they patched it,” he said.
+Slack was speedy applying the patch. Rosén claims he alerted the company through their HackerOne bug bounty platform on Feb. 17. Slack’s security team responded 33 minutes later and had a fix in place five hours later.
+As a formality, Max Feldman, a senior product security engineer at Slack, marked Rosén’s issue as resolved in HackerOne, just several days later on Feb. 21, the Tuesday after the Presidents’ Day holiday.
+Now Slack validates messages, something Rosén calls a “great” fix.
+Slack did not immediately return Threatpost’s request for comment on the bug Wednesday. According to a summary from the company on HackerOne however, Slack’s security team carried out an investigation after the issue was patched and was able to deduce the attack vector, while interesting, had never been exploited.
+Rosén said that Slack, along with Dropbox, Uber, and Zenefits, are among some of the companies doing some of the fastest patches these days.
+“Slack gets bonus points for doing it on a Friday evening,” Rosén said.

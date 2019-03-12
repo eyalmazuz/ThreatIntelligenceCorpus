@@ -1,0 +1,27 @@
+Whiteboard Workflow Series: Uncovering Unknown Adversaries
+By Filip Reesalu on May 4, 2016
+Many SOC (security operation center) teams have too many indicators, and are starving for context. Here’s our video for how threat intelligence from the web can help:
+
+For those of you who’d prefer to read, here’s the transcript:
+There are lots of threat feeds, and very often enterprises are consuming multiple types of feeds from multiple sources.
+Many of these feeds are open source, and some obtain data from sensors deployed across the internet.
+But there is an inherent lag in these feeds. Suspicious behavior must be observed and analyzed to produce threat knowledge.
+What if, instead, attack tactics, techniques, and procedures (TTPs) combined with pre-existing logs could produce insight allowing operational defenders to stay ahead of threats?
+You can examine the behavior of actors classified as malicious by Recorded Future when they access a company’s public website so we are able to identify additional actors behaving in a similar way.
+In this example, we combine WordPress logs with Recorded Future for Splunk in order to quickly find previously unknown, but suspicious, IP addresses interacting with our website.
+Threat feeds are a great way to detect and potentially filter malicious traffic on a network and they should be used to augment defensive capabilities. These feeds are good at staying on top of known threats (though they are never perfect), but we can use these known threat observables and artifacts to uncover previously unknown actors presently attacking our infrastructure.
+Recorded Future generates a risk score for certain indicators of compromise by combining intelligence gathered from our automatic analysis of unstructured text with threat feeds and other technical threat data. These indicators can be used to highlight suspicious traffic on a network, among many use cases. For any indicator, analysts can drill down to see the specific risk rules and evidence from the original sources, to support fast and informed decisions.
+The blog you are reading is powered by WordPress and the logs are piped into a locally hosted Splunk installation. Certain parts of a WordPress site are not intended for public access, such as the wp-admin directory (which is the administration scripts default directory) and /xmlrpc.php (an API endpoint for administrative tasks, something which we don’t use externally). 
+If our initial hunting methodology is to examine the directory and file above (excluding wp-admin/admin-ajax.php since it is used by the webpage for statistics) then we can pivot into Splunk to enumerate which suspicious actors (if any) have been attempting unauthorized access.
+index=* sourcetype=haproxy wordpress-external ((wp-admin NOT admin-ajax.php) OR xmlrpc.php) | localop | lookup rf_threatfeed Name as ext_client_ip OUTPUT Risk, RiskString, EvidenceDetails | fields http_request, Risk, RiskString, EvidenceDetails, http_result, ext_client_ip | where Risk > 0 | table ext_client_ip, EvidenceDetails | dedup ext_client_ip
+
+Based on our query results, quite a few IP addresses classified as suspicious by Recorded Future’s risk scoring are testing access.
+search index=* sourcetype=haproxy wordpress-external ((wp-admin NOT admin-ajax.php) OR xmlrpc.php) | localop | lookup rf_threatfeed Name as ext_client_ip OUTPUT Risk, RiskString, EvidenceDetails | fields http_request, Risk, RiskString, EvidenceDetails, http_result, ext_client_ip | where Risk>0 | stats values(http_request) AS http_request
+
+Next, if we turn our focus to the pages that these actors have been accessing we can see three very clearly malicious access attempts (attempts at downloading configuration files) as well as actors attempting to access the xmlrpc.php API.
+Finally, if we observe all the IP addresses that have been accessing the URLs above and subsequently filter out the ones that we already know are suspicious, then we find 1,047 IPs that have tested access and aren’t yet classified as suspicious by the Recorded Future risk score.
+search index=* [search index=* sourcetype=haproxy wordpress-external ((wp-admin NOT admin-ajax.php) OR xmlrpc.php) | localop | lookup rf_threatfeed Name as ext_client_ip OUTPUT Risk, RiskString, EvidenceDetails | fields http_request, Risk, RiskString, EvidenceDetails, http_result, ext_client_ip | where Risk>0 | stats values(http_request) AS http_request] | localop | lookup rf_threatfeed Name as ext_client_ip OUTPUT Risk, RiskString, EvidenceDetails | fillnull value=0 Risk | where Risk=0| stats dc(http_request) AS url_count by ext_client_ip | where url_count < 2| fields ext_client_ip
+
+If we wanted to use this new information directly for filtering or alerting we can always use the Splunk API to export the IP addresses to a local file (code available here).
+
+In summary, hunting in your own network logs can provide valuable expansions to your currently known threats while at the same time highlighting the real-time attack patterns that your infrastructure is facing.

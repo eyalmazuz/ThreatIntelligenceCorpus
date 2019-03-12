@@ -1,0 +1,41 @@
+
+Morphisec Uncovers New Attack Vector Named CIGslip That Bypasses Microsoft Code Integrity Guard (CIG)
+
+Posted by
+Michael Gorelik on March 7, 2018 at 12:50 PM
+                           
+
+Find me on:
+
+LinkedIn
+Twitter 
+
+
+
+
+
+Morphisec researchers Michael Gorelik and Andrey Diment have discovered CIGslip, a new method which can be exploited by attackers to bypass Microsoft’s Code Integrity Guard (CIG) and load malicious libraries into protected processes such as Microsoft Edge.
+The new attack vector manipulates the way CIG works to circumvent its controls without any in-memory unsigned image codepage injection, a technique with serious destructive potential if becomes popular.
+Morphisec disclosed the vulnerability details and proof of concept code to Microsoft as part of its Responsible Disclosure policy and has been available to assist with fixing the weakness. Microsoft responded that the new found technique that is to be outside the scope of CIG, as “CIG is designed to prevent a process with CIG enabled from being able to directly load an improperly signed image.”
+As part of Morphisec’s mission to protect its customers and partners, and due to the growing popularity of the CIG mechanism, the company has decided to publish this information so customers can be aware of the new vulnerability and take proper measures. The risks inherent in this new technique, which can be used or is possibly in use already, are high as the attack has very low footprint on the system and will go undetected by almost all security mechanisms.
+This means Windows users are vulnerable in multiple ways, and that Windows organizations should understand the potential damage that could be inflicted with this newly exposed attack surface. The attack POC takes advantage of a non-CIG enabled process, which is the most popular form of process on Windows, in order to sneak into a CIG-enabled target process, and uses it as an entry point  to load any kind of DLL, including a malicious one.
+The implications are that attackers can use CIGslip to insert browser malware or adware. Currently, CIG makes it difficult for third-party security vendors to protect Edge as they need to obtain a Microsoft-signed DLL for each CIG protected process. Additionally, its possible through this bypass that  security solutions could inject protective code outside of Microsoft’s signing process.
+This bypass method was discovered as part of Morphisec’s continuous research efforts, around the durability and resilience of its own technology, in order to continually apply innovation to its products.
+Code Integrity Guard was first introduced in the context of driver verification in Windows 10, initially as an unnamed feature, later as part of Device Guard. At the end of 2015, Microsoft revealed it in a blog as part of improved mitigation against exploitation for Microsoft’s latest Edge browser:
+Starting with EdgeHTML 13, Microsoft Edge defends the user’s browsing experience by blocking injection of DLLs into the browser unless they are Windows components or signed device drivers. DLLs that are either Microsoft-signed, or WHQL-signed, will be allowed to load, and all others will be blocked. “Microsoft-signed” allows for Edge components, Windows components, and other Microsoft-supplied features to be loaded. 
+Originally, Code Integrity was implemented only for driver verification, later it was also applied to user mode processes as part of the exploit prevention mechanism. Code integrity for user processes included different validation layers – (1) Allowing only Microsoft signed dlls (2) Allowing Microsoft store signed dlls.
+The real benefit of this mitigation, however, is its blocking unwanted software, like adware or even malware, from injecting code into Edge in order to redirect flow or steal information.
+This DLL code signing mitigation will make it less likely for the browser to be hacked. It also reinforces Microsoft Edge against unwelcome binary “extensions” that slow down and or destabilize the browser. This unwanted software is often unstable and can crash the browser session, in addition to potentially polluting web pages with unwanted content or malicious search results.
+We introduced this change to the Windows Insider Program with build 10547, and we have already seen tremendous results. From a sample of about 65,000 Windows Insider users of 10547, module code integrity protected 2704 users from attempts to load adware and malware.
+While this mechanism has proven to be efficient against malware and adware that has already compromised the computer to partially hijack the Edge browser, the same mechanism makes it harder for 3rd party security vendors to apply runtime protection for any CIG protected processes. They need to go through a lengthy technical and legal process of Microsoft signing and in the latest Windows 10 release, we see more processes protected with CIG , e.g. svchost and dllhost.
+While CIG was not originally planned to prevent binary injection from a compromised computer, CIG’s biggest achievement was to stop and minimize the unauthorized binary loading from adware and malware that already compromised the system.
+In the latest Windows 10, CIG is verified in in the kernel whenever a section correlating to an existing binary on disk is created. One of the obvious methods to compromise a targeted process (including a CIG protected process) is by performing reflective memory based injection. As this is a well-known fact, Microsoft and many other 3rd parties have devoted resources to detecting such events, which usually involve copying code pages that represent a DLL directly into the target process. Since this technique can generally be detected, Microsoft announced that this method is an out of scope bypass for bounty purposes:
+
+One obvious use of this technique is for malicious code that does not reside on disk, and one of the detection approaches is to look for such pages and perform a verification if those corelate to an existing file on disk.
+Morphisec researchers identified a much easier method that breaks the CIG concept without any need for in-memory injection of unsigned image codepages.
+This proposed novel method for binary injection does not involve any injection of unsigned image code pages, and bypasses CIG while mimicking natural Windows dll loading from disk.
+The basic assumption is that we have the ability to execute a non-protected CIG process on disk. This assumption holds since there is no feasible way to protect all processes with CIG (e.g. Outlook would not load). Moreover, a CIG protected process may execute a non-CIG protected process, which will do the backward injection back into the CIG protected process.
+If the assumption holds, and we do have a control on a non-CIG protected process, we are only left with bypassing the CIG verification during the section create in the target process (this is the only time in which the OS verifies the dll signature). In order to detour the code integrity verification, we would need to hijack the control when the section is created within the targeted process.
+Since section handles are global objects managed by Kernel, handles could be duplicated between processes. Therefore, a section that correlated to a non-signed dll could be created within the context of the malicious process and then duplicated into the target process.
+In-order to inject malicious dll (“non-signed”) into a target process, all we need to do is to hook the createsection method within the target process, so that it will not go down to Kernel and will return the duplicated section handle. Following that, the targeted process will map the dll code page into its memory as part of a regular dll loading process, assuming that the section went through the appropriate verification process. Which it did, since createsection now returns an already existing verified section handle!
+ 

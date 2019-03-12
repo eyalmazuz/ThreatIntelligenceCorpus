@@ -1,0 +1,155 @@
+EITest Nabbing Chrome Users with a “Chrome Font” Social Engineering Scheme 
+Overview
+“EITest” is a well-documented infection chain that generally relies on compromised websites to direct users to exploit kit (EK) landing pages. EITest has been involved in the delivery of a variety of ransomware, information stealers, and other malware, with clear evidence of its use dating back to 2014. Elements of EITest may be much older, though, with hints pointing to EITest being an evolution of the “Glazunov” infection chain from 2011 [1]. The first server side documentation of this evolution came from Sucuri in July 2014 [2]  associated with waves of Wordpress exploitation via the MailPoet plugin vulnerability. KahuSecurity recently analyzed the server side script in October 2016 [3].
+In July 2014, researchers observed traffic associated with EITest leading to instances of the Angler exploit kit (Figure 1):
+
+Figure 1: July 14, 2014 - EITest chain to Angler
+The first publicly shared traffic came from Malware-Traffic-Analysis on September 22, 2014 [4], and one month later (October 29, 2014), Malwarebytes wrote a blog [5] describing the Flash redirect in which the name EITest was given to that chain.
+An important step in the evolution of the EITest infection chain was the removal of its victim-facing redirector on October 3, 2016, first documented by BroadAnalysis [6]. This was likely a reaction to several actions by the security community against its victim-facing nodes, necessitating a change in strategy.
+Our research led us to conclude that the “EITest” actors are selling traffic to other groups, although this does not preclude the possibility that they might use a subset of the traffic for their own exploitation. As a result, we observe the EITest chain leading to multiple EKs depending on the time and geography of the event.
+Though they are currently in what looks like extended vacation, one of the primary buyers of EITest traffic appears to be the group operating the Empire Exploit Kit. This group buys traffic from multiple actors and sells loads (i.e., malware installations) to multiple other actors. Replaying this infection chain reveals a wide range of payloads (Figure 2):
+
+Figure 2: September 2016 illustration of the diversity of payloads that can be seen after the EITest redirection; much of the diversity is coming from the Empire EK and its internal TDS.
+The Discovery:
+In December, we were made aware of a compromised website dropping “Chrome_Font.exe” [7]. Upon replay, we figured that the website was EITest-compromised but could not trigger that binary drop even with the mentioned browser. A more recent report led us to look more closely at EITest filtering mechanisms to understand how the attack was triggered.
+
+Figure 3: Diagram illustrating EITest and the connected ecosystem. The reality is in fact more complex and constantly evolving, with more specifically targeted countries and far more customers for RIG, Empire, and Sundown EK. For readability, post-infection command and control (C&C) and reputation services calls are not illustrated here.
+Attack chain and analysis:
+The user view of the attack chain appears in the animation in Figure 4. Details of the chain are presented in the figures that follow.
+
+Figure 4: January 14, 2017 illustration of the “Chrome Font” Social Engineering scheme.
+The infection is straightforward: if the victim meets the criteria - targeted country, correct User-Agent (Chrome on Windows) and proper referer - the script is inserted in the page and rewrites the compromised website on a potential victim's browser to make the page unreadable, creating a fake issue for the user to resolve. Note that IE users who meet other criteria will experience a more classical EK attack (see Figure 3 for alternate infection paths).
+The pages are rendered unreadable by storing all the data between HTML tags in an array and iterating over them to replace them with “&#0”, which is not a proper ISO character; as a result, the replacement character � [9] will be displayed instead.
+
+Figure 5: Conditional inject on the compromised website - The substitution routine and the embedded base64-encoded images are shown here.
+
+Figure 6: First lure example - The “HoeflerText” font wasn’t found. This demonstrates a compromised website with content substituted by the visiting browser
+
+Figure 7:  Second lure example - The “HoeflerText” font wasn’t found. This is nearly identical to the first example but uses different formatting.
+
+Figure 8:  Step 2 of the infection from the second lure example in Figure 7 after users click the Update button (clicking the X to close the dialog box does not work)
+As shown in Figures 6 and 7, the user is presented with a modal window [10], explaining the “issue” and providing a "solution": in this case, the installation of a fake updated font pack that is actually the malware payload.
+
+Figure 9: Conditional inject on the compromised website; this is the code of the modal window (the lure)
+Once the user clicks the Update buttons shown in Figure 6/7 and Figure 8, Chrome downloads the malware with a POST sending what appears to be a one-time key.
+
+Figure 10: January 15, 2017 - POST call sent to retrieve the malware
+We believe this campaign began on December 10, 2016; since that time, the downloaded executable “Chrome_Font.exe” is actually a type of ad fraud malware known as Fleercivet.
+At this stage, users will remain uninfected if they do not execute the downloaded file.
+Post Infection:
+Fleercivet is the name given by Microsoft to an ad fraud malware spread in affiliate mode. The associated affiliate advertised on underground markets as “Simby” until the beginning of 2015 and reappeared later same year under its current name, “Clicool”.
+The Clicool underground advertisement is shown in Appendix A with an English translation.
+
+Figure 11: Clicool affiliate panel as advertised by the affiliate “promotion”
+Upon infection, the computer will start browsing in the background on its own.
+
+Figure 12: January 15, 2017 - Example of post-infection traffic generated by FleerCivet 
+Conclusion:
+This is  not the first time new paths have been added to the EITest compromise chain. For instance, In December 2014 ElTest redirected to an Android “Police” Browser locker (Figure 13):
+
+Figure 13: December 21, 2014 - EITest Android chain distributing a French Police Browlocker
+However, this change is notable for the combination of social engineering and targeting of Chrome users. Because actors are finding it more difficult (and therefore less profitable) to achieve conversions (i.e., malware installations) via exploit kit, they are turning to new strategies. As with other threats, actors are exploiting the human factor and are tricking users into loading the malware themselves, this time via selective injects into websites that create the appearance of problems along with the offer of fake solutions.
+References:
+[1] https://blog.sucuri.net/2011/10/evil-backdoors-part-ii.html
+[2] https://blog.sucuri.net/2014/07/mailpoet-vulnerability-exploited-in-the-wild-breaking-thousands-of-wordpress-sites.html
+[3] http://www.kahusecurity.com/2016/deobfuscating-a-malicious-php-downloader/ 2016-10-15
+[4] http://malware-traffic-analysis.net/2014/09/22/index.html 2014-09-22
+[5] https://blog.malwarebytes.org/exploits-2/2014/10/exposing-the-flash-eitest-malware-campaign/ 2014-10-29
+[6] http://www.broadanalysis.com/2016/10/03/eitest-campaign-drops-flash-gate-for-obfuscated-script-sending-gootkit-banking-malware/
+[7] https://twitter.com/LowsonWebmin/status/809417116776534017 2016-12-15
+[8] http://malware.dontneedcoffee.com/2013/09/cookie-bomb-iframer-way.html
+[9] https://en.wikipedia.org/wiki/Modal_window
+[10] https://en.wikipedia.org/wiki/Specials_(Unicode_block)
+Appendix A - Clicool Fleervicet Advertisement
+Clicool Партнерская программа по кликботу:
+Доброго времени суток, уважаемые читатели форума!
+Разрешите представить вам партнерскую программу по кликботу - Clicool
+Наш софт стабилен и не мешает работать системе, не мешает вашему софту и может длительное время приносить доход с каждой машины.
+Файлы регулярно перекриптовываются и чекаются на АВ.
+Наши рекламодатели дают отличные условия и мы с удовольствием вас обрадуем достойным профитом.
+Мы принимаем us, ca, gb, au, остальные страны обговариваются.
+На выплаты минимальный холд 2 недели, также для проверенных партнеров выплаты по запросу.
+Регистрация через службу поддержки
+jabber: clicool@[REDACTED]
+support_clicool@[REDACTED]
+English Translation
+Clicool Affiliate program for clickbot:
+Good day, dear readers of the forum!
+Allow me to introduce to you an affiliate clickbot program - Clicool
+Our software is stable and does not interfere with the work of your system. It does not interfere with system software and you can generate income for a long time on each machine.
+Files are regularly crypted and checked on AV.
+Our advertisers provide excellent conditions and we will please you with a decent profit.
+We accept us, ca, gb, au, other countries can be discussed.
+There is a minimum of a 2 week hold on payments, and by request payment for proven partners.
+Register with Support
+jabber: clicool @ [REDACTED]
+support_clicool @ [REDACTED]
+Appendix B - Other posts providing additional content and resources about EITest
+● https://blog.sucuri.net/2014/10/wordpress-websites-continue-to-get-hacked-via-mailpoet-plugin-vulnerability.html
+● http://artefact.io/massive-wordpress-hack-seems-underway/
+● https://labsblog.f-secure.com/2015/11/25/the-case-of-a-flash-redirector-from-a-brute-force-password-attack/
+● http://blog.trendmicro.com/trendlabs-security-intelligence/blog-of-news-site-the-independent-hacked-leads-to-teslacrypto-ransomware/
+● http://blog.fox-it.com/2016/03/24/website-of-security-certification-provider-spreading-ransomware/
+● http://www.cyphort.com/radamant-ransomware-distributed-via-rig-ek/
+Indicators of Compromise:
+The number of EITest-compromised websites is quite large, ranging into the thousands; providing a list is outside the scope of this post.
+As in most affiliate cases, samples are being regenerated every few minutes and are also repacked multiple times per day/week. Researchers may find thousand of iterations and hundreds of imphashes for Fleercivet. The hashes provided are only for the purpose of associating specific samples with this scheme.
+Domain | IP
+Comment
+7a444891c642ec17459471be40bcc1ea9eef6aeb478318a679908f94bf1e7e74
+Fiddler capture (index and post)
+198.37.112.248
+Fleercivet C&C
+searchtopresults[.]com|209.126.122.139
+Server initiating Fleercivet Fraud Scheme (potentially legitimate)
+searchtopresults[.]com/search.php?aff=8320
+Initial Call before Fleercivet clickfraud
+searchtopresults[.]com/search.php?aff=8170&saff=1203
+Later Call tied to Fleercivet activity
+vidvi[.]cf|148.251.102.176
+2014-07-14 - Early “flash redirecting” EITest Domain
+54dfa1cb[.]com|31.184.192.163
+EITest node replying to Compromised Server
+e5b57288[.]com|31.184.192.163
+EITest node replying to Compromised Server
+33db9538[.]com|31.184.192.163
+EITest node replying to Compromised Server
+9507c4e8[.]com|31.184.192.163
+EITest node replying to Compromised Server
+7fc9721cc648de138a61ec3452d63a83fc76ef527d41f4a7aba78f52df13338a
+FleerCivet 2017-01-15
+7bb7848270e76aa1fcb9d11acb46c8421b86c7d528c108d8f179ec829ff977fc
+FleerCivet 2017-01-15
+9190c865c214cf2b1c602edcfe4ab8858806298ca4b6de16bfbd0377385ffe63
+FleerCivet 2017-01-16
+ebeaaef3323331e7ea0e47eac6437dcf5548d9fd759943d2e5c1f3d1fb786167
+FleerCivet 2017-01-17
+starrer[.]com|209.126.118.146
+			askcom[.]me|209.126.123.39
+twittertravels[.]com|173.224.124.110
+shareyourfashion[.]net|209.126.103.104
+techgnews[.]com|209.239.115.50
+Some servers (potentially legitimate) receiving Fleercivet generated traffic.
+kyle.dark7[.]org/download.php
+oblubienica.odnowa[.]org/download.php
+sriswamidikshananda[.]org/download.php
+demo.signgo[.]com/help.php
+retail.uvapoint[.]com/help.php
+chovek5.lozenetz[.]org/download.php
+Exemple of EITest compromised Website acting as download server (POST request with MZ as reply)
+Select ET signatures 
+2023742 || EITest SocEng Inject Jan 15 2017 M2
+2023743 || EITest SocEng Inject Jan 15 2017 M1
+2023744 || EITest SocEng Inject Jan 15 2017 M2
+2023745 || EITest SocEng Inject Jan 15 2017 EXE Download
+2023188 || ET CURRENT_EVENTS EITest Inject (compromised site) Sep 12 2016
+2023189 || ET CURRENT_EVENTS EITest Inject (compromised site) M2 Sep 12 2016
+2023249 || ET CURRENT_EVENTS Possible EITest Flash Redirect Sep 19 2016
+2023307 || ET CURRENT_EVENTS EITest Inject (compromised site) Sep 12 2016
+2023312 || ET CURRENT_EVENTS Evil Redirector Leading to EK (EITest Inject) Oct 03 2016
+2023343 || ET CURRENT_EVENTS Evil Redirector Leading to EK EITest Inject Oct 17 2016
+2023482 || ET CURRENT_EVENTS Evil Redirector Leading to EK EITest Inject Oct 17 2016 M2
+2023547 || ET CURRENT_EVENTS Evil Redirector Leading to EK EITest Inject Oct 17 2016 M3
+2810636 || ETPRO TROJAN Fleercivet CnC Beacon 1
+2810637 || ETPRO TROJAN Fleercivet CnC Beacon 2
+2014703 || ET DNS Non-DNS or Non-Compliant DNS traffic on DNS port Reserved Bit Set

@@ -1,0 +1,21 @@
+The Anatomy of a Malvertising Sequence
+Recently, we’ve written a lot about malvertising. Like any threat, part of protecting yourself against it is understanding how the attack happens. Let’s take a typical instance of a malvertising sequence, and break out its components to see how they work together. 
+The ad we’ll be looking at comes from the adult space, where malvertising is particularly prevalent, and serves as an example of the most nefarious types of malvertising. It’s so dangerous because it causes the infection to occur immediately after the ad loads and doesn’t require the victim to click anything. Below, we’ve captured the sequence of the ad delivery chain. The initial pages are obfuscated to protect the publisher.
+The first request off of the publisher page is to “sextick(.)com”:
+Fig-1 The first link in the malvertising delivery chain that takes the user away from legitimate infrastructure
+Once the ad is loaded as a resource, you can see that there is an anchored link leading to “trafficholder(.)com”, and then a short script immediately following that either forces a click on that link or just sets the user’s top location to the same URL:
+Fig-2 A script that forces one of 302 redirections
+From the sequence above, you can see that “trafficholder” returns a series of 302 redirections, eventually landing on “duckporno(.)com”. Once this completes, the user has now been redirected to a different pornographic page. From here, it gets much worse. On “duckporno,” you’ll find this iFrame:
+Fig-3 iFrame leading to a suspicious ad network, even further away from where the user intends to be
+Leading to a suspicious looking ad network on “kodiakads(.)info”:
+Fig-4 DOM in the RiskIQ tool showing “Kodiakads”
+As this new ad is loaded, the page on “kodiakads” indicates that it’s not sourcing an image to “duckporno” or reaching out to one of the common large ad exchanges. Instead, it’s just creating a function with which to make a post request to a second, similar-looking suspicious domain, “dresdenads(.)info”. 
+The response from “dresdenads” is where this starts getting interesting—down near the bottom of the DOM, you should see an interesting behavior: the page is reaching out for resources belonging to common virtualization environments:
+Fig-5 DOM in the RiskIQ tool showing “dresdenads” reaching out for resources of virtualizatoin environments
+This sandbox identification technique has been used with other malicious landing pages (e.g. Angler Exploit Kit). Highlighted here, you can see that this redirector is pointing right to a RIG exploit kit payload:
+Fig-6 RIG exploit kit playload
+This sequence shows the whirlwind trip that an end user gets taken on. This crawl was pulled all the way from the publisher to a legitimate rotator network, to a pornographic session hijack, to a malicious rotator network, to a malicious exploit kit payload, all without requiring a single click from the user. 
+The behavior of this incident highlights the inherent dangers of malvertising. Measures like staying off of sketchy sites and not clicking on suspicious ads used to be tried and true ways to keep safe. But with ads that can be loaded through any network and drop a payload on your computer without a single interaction from the user, simple precautions won’t cut it anymore. 
+Resolving this problem is a tough one. Users are flocking to ad blocking solutions in droves, draining out the lifeblood of the free service internet. The responsibility falls on every link of the ad delivery chain to scan their ad inventory. For publishers, delivering bad ads is a sure fire way to lose the trust of your user base. For DSP’s, being tainted with malvertising will get you shut off from exchanges. Taking part in the solution is not only good for your company but good for the industry as a whole.
+RiskIQ enables advertising and ad technology teams to take immediate action to identify and remove malicious malvertisement hosts and advertisers from  your network or publisher website and minimize the threat to your end users. 
+Our cloud-based service intelligently and continuously scans billions of pages and tens of millions of mobile apps per day to track advertisements as they move through the ad supply chain. 

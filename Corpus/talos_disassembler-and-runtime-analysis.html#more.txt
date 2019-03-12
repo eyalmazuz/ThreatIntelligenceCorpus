@@ -1,0 +1,87 @@
+
+Disassembler and Runtime Analysis
+
+
+This post was authored by Paul Rascagneres.
+
+
+Introduction
+
+In the CCleaner 64bit stage 2 previously described in our blog, we explained that the attacker modified a legitimate executable that is part of "Symantec Endpoint". This file is named EFACli64.dll. The modification is performed in the runtime code included by the compiler, more precisely in the __security_init_cookie() function. The attacker modified the last instruction to jump to the malicious code. The well-known IDA Pro disassembler has trouble displaying the modification as we will show later in this post. Finally, we will present a way to identify this kind of modification and the limitation in this approach.
+
+
+
+IDA Pro VS Modified Runtime
+
+During the analysis of the modified 2nd executable, we identified that IDA Pro had some difficulties when displaying correctly the assembly of the patched runtime whilst using a Graph view:
+
+
+
+
+As we can see the last instruction is "pop rdi". If we switch in Text view, we can immediately see that the last instruction is in fact JMP (Jump to the malicious code):
+
+
+
+
+
+If we checked in the open source disassembler Radare2, we can confirm that the function really finishes with a jmp instruction:
+
+
+
+
+
+This led us to thinking: why IDA Pro does not display the last (and the most important) instruction?
+
+As this software is not open source, we cannot simply check the code. We assume that IDA Pro use the pdata section to retrieve the beginning and the end of the runtime functions. This hypothesis is described in the next section.
+
+The second question is: has the attacker intentionally used this trick to disrupt analysis? We cannot be 100% certain if the attacker used this trick to hide the jump in IDA Pro or whether  it's simply by fluke.
+
+
+Pdata Section
+
+The pdata section is described by Microsoft here. This section contains an array of function table entries that are used for exception handling. In our context, the pdata section contains the following structure:
++0x000:        Begin Address: The RVA of the corresponding function.
++0x004:        End Address: The RVA of the end of the function.
++0x008:        Unwind Information: The RVA of the unwind information.
+
+Here is the data concerning our function for __security_init_cookie():
++0x000:        0000F620  -> RVA of the beginning of __security_init_cookie()
++0x004:        0000F6D3  -> RVA of the end of __security_init_cookie()
++0x008:        00010464
+
+The end address of the function (0xF6D3) is located in the middle of the jump instruction. By patching the address of the end of the function (by replacing the 0xF6D3 by 0xF6D7), IDA Pro perfectly displays the last instruction (JMP). That's why we can assume that IDA Pro really uses the pdata section to retrieve the runtime functions.
+
+
+Python Script to Detect Strange Runtimes
+
+Based on the previous explanation, we published a simple script to detect unusual runtimes based on the pdata section. The concept is to scan the runtimes based on the address provided in the pdata section and look for the last instruction. If the instruction is not an expected one (validInstructions = [ "ret", "retn", "jmp", "int3" ] in our POC) the script notifies the user that the runtime function is suspicious. Here is the output on the CCleaner 2nd stage:
+user@lab:$ ./pdata_check.py sample.exe
+{ 'ASM': [ u'mov qword ptr [rsp + 0x18], rbx',
+u'push rdi',
+u'sub rsp, 0x20',
+[...redacted…]
+u'mov qword ptr [rip + 0x3ac8], r11',
+u'mov rbx, qword ptr [rsp + 0x40]',
+u'add rsp, 0x20',
+u'pop rdi'],
+'StartRaw': '0xea20',
+'StartVA': '0x0000f620',
+'StopRaw': '0xead3',
+'StopVA': '0x0000f6d3',
+'end': 'KO',
+'lastASM': u'pop rdi'}
+
+The script is based on pefile and capstone. The output shows that the runtime at 0x0000f620 (RVA) finished with a "pop" instruction, which is unusual.
+
+
+Limitations
+
+This approach to detecting this particular anti-disassembly technique is not a silver bullet. We tested it on a large set of 64 bit binaries and a lot of legitimate binaries have an inconsistent pdata section. That has generated a lot a false positives. Additionally, attackers can patch the pdata section to include the additional bytes. In this case the script won't see any anomaly but IDA Pro will display correctly the additional opcodes in Graph view. This approach is an additional tool in binary analysis for malware researchers.
+
+
+Conclusion
+
+Analysis of legitimate compromised binaries is a big challenge for malware researchers. With the new trend of supply chain attacks, requests to analyze seemingly legitimate binary code will become more and more frequent. When a legitimate application is compromised, the malicious payload can be hidden in a huge amount of legitimate code. In this specific case, the analyst has an additional challenge: the output of IDA Pro cannot be fully trusted. We don't know if the trick used by the attacker is deliberate or by fluke but the result is the same: the analyst can easily miss the malicious code. We provide a script to help the analysts to identify suspicious runtime function but, as usual, it's not a silver bullet but a new tool to add to our toolkit.
+
+
+

@@ -1,0 +1,31 @@
+
+Beginner Guide to Insecure Direct Object References (IDOR)
+
+Insecure Direct Object References (IDOR) has been placed fourth on the list of OWASP Top 10 Web application security risks since 2013. It allows an authorized user to obtain the information of other users, and could be establish in any type of web applications. Basically it allows requests to be made to specific objects through pages or services without the proper verification of requester’s right to the content.
+OWASP definition: Insecure Direct Object References allow attackers to bypass authorization and access resources directly by modifying the value of a parameter used to directly point to an object. Such resources can be database entries belonging to other users, files in the system, and more. This is caused by the fact that the application takes user supplied input and uses it to retrieve an object without performing sufficient authorization checks.
+The Application uses untested data in a SQL call that is accessing account information.
+Let consider a scenario where a web application allow the login user to change his secret value.
+Here you can see the secret value must be referring to some user account of the database.
+Currently user bee is login into web server for changing his secret value but he is willing to perform some mischievous action that will change the secret value for other user.
+
+Using burp suite we had captured the request of browser where you can see in the given image login user is bee and secret value is hello; now manipulate the user from another user.
+SQLquery = “SELECT * FROM useraccounts WHERE account = ‘bee’;
+
+Now let’s change user name into raj as shown in given image. To perform this attack in an application it requires atleast two user accounts.
+SQLquery = “SELECT * FROM useraccounts WHERE account = ‘raj’;
+
+Great!!!  We have successfully changed the secret value for raj.
+Note: in any official website the attacker will replace user account from admin account.
+
+Let take another scenario that look quite familiar for most of IDOR attack.
+Many times we book different order online through their web application for example bookmyshow.com for movie ticket booking.
+Let consider same scenario in bwapp for movie ticket booking, where I had book 10 tickets of 15 EUR for each.
+Now let’s confirm it and capture the browser request through burp suite.
+
+Now you can see we have intercepted request where highlighted text contains number of tickets and price of one ticket i.e 15 EUR it means it will reduce 150 EUR from my (user) account; now manipulate this price from your desire price.
+
+I had changed it into 1 EUR which means now it will reduce only 10 EUR from account, you can observe it from given image then forward the request.
+
+Awesome!!! We had booked the 10 tickets in 10 EUR only.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

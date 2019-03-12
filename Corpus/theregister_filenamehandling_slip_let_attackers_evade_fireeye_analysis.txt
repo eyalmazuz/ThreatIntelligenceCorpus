@@ -1,0 +1,22 @@
+Filename-handling slip let attackers evade FireEye analysis
+Researchers at Blue Frost Security have disclosed a bug that let them evade FireEye's analysis engine, getting a short-lived but dangerous way to whitelist malware.
+The issue, for which FireEye has issued a patch, is that the analysis engine doesn't properly sanitise filename inputs given to its Windows batch script.
+As Blue Frost Security explains, binaries are analysed in a Virtual Execution Engine (VXE), and the Windows batch script in question copies the binary to a temporary location in that virtual engine.
+The problem is that beyond the copy command – copy malware.exe "%temp%\fire_in_the_eye.exe" for example – there's no further sanitisation of the filename. This “allows an attacker to use Windows environment variables inside the original filename which are resolved inside the batch script. Needless to say this can easily lead to an invalid filename, letting the copy operation fail.”
+For example:
+
+1 copy malware.exe "%temp%\FOOC:\Users\admin\AppData\Local\TempBAR.exe"
+
+2 The filename, directory name, or volume label syntax is incorrect.
+
+3 0 file(s) copied.
+
+“The batch script continues and tries to execute the binary under its new name which of course will fail as well because it does not exist”, the post continues.
+The result is that the analysis engine will analyse an empty virtual machine, so it won't detect any malware.
+That, in turn, can be exploited to plant a binary's MD5 hash into FireEye's internal whitelist. The attacker can then present a malicious binary, and if its MD5 hash matches the whitelisted MD5 hash, it will be okayed for execution.
+The MD5 hashes are wiped daily, but that's easily long enough for an attacker to poke holes in the target system.
+FireEye's Q4 security advisory (PDF) included a patch for the issue. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

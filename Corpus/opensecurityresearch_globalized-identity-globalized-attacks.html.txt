@@ -1,0 +1,62 @@
+
+Globalized Identity, Globalized Attacks
+
+
+Considerations for the Social Web
+
+By Amit Bagree.
+
+
+Introduction
+“I really need to comment on this Vimeo video…”
+“It’s time to look for a new job, let me get on Workstir…”
+“Let me point out the irony in this CNN Money article…”
+“Everyone is raving about Spotify, I need to check it out…”
+
+This is a typical ‘Netizen’ maintaining tens of user accounts on the Internet and refilling the same information every time on account creation. Every new account creation is a task, and brings added responsibility of remembering another set of usernames and passwords. For the site itself, account creation is an impediment to gaining users, on top of the technical and security challenges of maintaining an authentication system and storing sensitive user data.
+
+In past few years, there have been multiple efforts to solve this problem. There is a major shift occurring in the way users authenticate and interact with different properties on the Internet. The concept is straightforward – If a user has an account on another site which is willing to authenticate the user for me, why require him/her to create a new account on my l33tgadgets.com. In addition, if that site stores users’ contacts, likes, associations etc. I can request access to them to provide a more social experience. 
+
+The idea is akin to a Single sign-on (SSO) in some ways, which is very common within an Intranet environment. SSO is an access control technique in which multiple entities delegate their user authentication to an ‘Authentication Server’ thus enabling the users to keep a single identity referred as ‘Federated Identity’. On the Internet, various email and social media sites amongst others are offering to be ‘Authentication Providers’; Facebook, Twitter, Google and Yahoo being the most popular. 
+
+A key difference to note from the standard Intranet SSO concept is that ‘Authentication Providers’ for the Internet have to allow integration of entities that they have no control or oversight over, and no trust relationship with. In addition, the primary standards currently used by the Authentication Providers - OAuth , OpenID (likely to be updated to OpenID Connect),  and ‘Facebook Connect’ , are in their evolution phase. These aspects bring unique security challenges which I’ll be discussing in a series of blog posts. Readers are encouraged to study the references for the three standards mentioned above.
+
+UI Redressing – Write on my wall
+UI Redressing, widely known as Clickjacking, is an instance of a ‘Confused Deputy’  vulnerability where the victim is tricked into performing sensitive actions (mouse clicks, keystrokes) on an authenticated site by hiding it behind another web page which is under attacker’s control – think ‘Click here to win an iPad’ overlaid on a ‘Delete account’ button. 
+
+
+Figure 1: Figure shows UI redressing over the Adobe Flash
+Player Settings Manager
+UI Redressing shot into limelight with the Adobe Flash vulnerability which allowed tricking a user into enabling his webcam in the Flash plug-in settings. The exploit  in Figure 1 although non-functional, helps envisioning the attack. Note the Flash player settings captured inside an IFRAME and a ‘Click’ button overlaid on top.
+
+Any sensitive functionality on an application such as ‘delete all emails’, ‘mark photos public’, ‘add a friend’ is a good candidate for UI Redressing attack. Note that victim actions are not restricted to clicks alone, and as this blog post excellently describes, there are multiple other techniques such as dragging text into the victim application and capturing keystrokes via browser behavior or exploit. Clickjacking thus, is a misnomer, and ‘UI redressing’ attack is a more appropriate term.
+
+
+
+Figure 2: Figure shows Facebook’s ‘like’
+and ‘facepile’ plug-ins
+UI Redressing has been around for a while and with Globalized Identities it gets more potent. Take for example Facebook Connect. Many popular sites around the web, now automatically connect your Facebook profile to their sites . This ‘Connect’ can take many forms ranging from simple ‘likes’ and ‘facepile’ of your friends (who like that site) to more interesting features such as sending messages and making comments.
+
+
+Figure 3: Figure shows the Facebook ‘Send’ plug-in
+
+Figure 4: Figure shows the Facebook ‘Comment’ plug-in along with other exposed features
+In pre-Facebook Connect days if attackers needed to trick a user to perform a function on his/her Facebook page via UI Redressing it meant attacking Facebook directly. And to Facebook’s credit they implemented Anti-Clickjacking measures. However, now with the ubiquity of such Facebook Connect features on the web the attacker needs to capture just one of these sites to perform the attack. These sites are likely to have much weaker if any Clickjacking protection. As per a Stanford study, not a single top 500 website had adequate defense against Clickjacking. Considering the fact that there are over half a million Facebook users and social engineering attacks are fairly successful, it is easy to imagine a rise in UI Redressing attacks ranging from unintentional and potentially damaging comments to a viral video for profit. The attack leaves a lot of room for attacker’s creativity.
+
+The naïve example below shows a news site with Facebook ‘Comment’ plug-in, captured in an IFRAME persuading a user to reveal sensitive information. The frame is kept partially opaque but an attacker would of course keep the opacity = 0. Also note that you can tag Facebook users using the ‘@’ symbol.
+
+
+Figure 5: Figure shows a news site captured in an IFRAME.
+DefenseAs a general principle of Information Security, a diversity of measures should be used for protection.
+Application DevelopersSites implementing ‘Facebook Connect’ and other third-party authentication services with powerful functionality need to do more to protect their visitors. Mozilla Firefox has support for Content Security Policy (CSP) since version 3.7 and currently it is undergoing standardization at the W3C Web Application Security Working Group. The frame-ancestors directive in the policy can be used to define which sites are approved to frame your site. Microsoft came up with a dedicated header, ‘X-FRAME-OPTIONS’, to prevent UI Redressing, taking a similar approach to define sites which are allowed to frame your site (Note that CSP is more encompassing in its goal and implements features to mitigate other web application vulnerabilities such as Cross-site scripting). The X-FRAME-OPTIONS header is supported by current versions of all major browsers. In spite of availability of such simple countermeasures, the adoption of these headers is abysmal. It is time they are put to use.
+Another mitigation technique against UI Redressing is using frame-busting code which was an initial make-shift countermeasure. Currently the best known frame busting code can be used to protect users of older browsers. Keep in mind that numerous older frame-busting solutions can be bypassed in numerous ways.
+
+Authentication ProvidersAuthentication providers such as Facebook ought to provide an opt-in choice to their users. This would require architectural change in the Facebook Connect implementation but to acknowledge the risk and provide a choice to the user would go a long way in keeping them happy. Currently there is no way for a user to avoid authenticating to these sites with their Facebook identity by default when they are logged in to Facebook. The integration of Facebook identity to sites around the web without any user interaction exposes sensitive functionalities such as messaging and commenting to attacks.
+End UsersUnfortunately the users at present are largely at the mercy of the application developers and Facebook. As a workaround ad blocking utilities on Firefox and Chrome such as AdBlock Plus can be used to block requests to Facebook domains from third-party application.
+Firefox plug-in NO-SCRIPT provides UI Redressing protection via its ‘ClearClick’ module. It performs a clever check of comparing screenshots of the actual object the user intends to click and of the page the user sees. A difference in image raises a UI Redressing alert. The module provides protection even if the user chooses ‘Allow scripts globally’.
+It’s a good practice to logout from Facebook after you are done but it’s a cumbersome solution for many and doesn’t prevent the attack while they are logged in. 
+End Users need to develop healthy skepticism. Do not enter any sensitive data and/or click on unknown or suspicious sites no matter how enticing that game might be.
+
+Big thanks to Patrick Bogen for the technical review!
+
+

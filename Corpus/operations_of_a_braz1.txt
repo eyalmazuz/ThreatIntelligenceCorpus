@@ -1,0 +1,135 @@
+Operations of a Brazilian Payment Card Fraud Group
+October 13, 2016 | by Taha Karim, Daniel Regalado | Advanced Malware
+Introduction
+Brazil has been designated a major hub for financially motivated eCrime threat activity. Brazilian threat actors are targeting domestic and foreign entities and individuals, with frequent targeting of U.S. assets. The country routinely places in "Top Five" lists of various global cyber crime rankings, and multiple sources claim that financially motivated threat activity in the country has increased within the past few years.
+
+In this blog we provide insight into the tactics, techniques and procedures (TTPs) of a Brazilian cyber crime group that specializes in payment card fraud operations. The threat actors, observed by FireEye Labs, use a variety of different methods to either compromise or acquire already compromised payment card credentials, including sharing or purchasing dumps online, hacking vulnerable merchant websites and compromising payment card processing devices. Once in their possession, the actors use these compromised payment card credentials to generate further card information. The main methods used by the observed group to launder and monetize illicit funds include online purchases of various goods and services as well as ATM withdrawals.
+
+Based on extensive observation of this group's activity, we are able to characterize their operations lifecycle starting with the initial operational setup; followed by the methods used to compromise credentials or, conversely, purchase already compromised credentials; then the process of generating new cards for subsequent abuse, which includes validation and cloning; and finally the subsequent monetization strategies. Figure 1 depicts this operation workflow.
+
+
+
+Figure 1: Brazilian carding operation workflow
+
+Phase 1: Setting Up the Workplace
+We observed this group taking several preparatory measures to maintain anonymity.
+
+The members of the group use a variety of tools, including CCleaner, on a daily basis to effectively remove any evidence of their operations. This includes browsing history, temporary files, Clipboard, typed URLs, cookies, recently opened documents, and conversations via Skype, Windows Messenger, etc. This almost certainly limits the potential amount of evidence that law enforcement could obtain and use against the suspects in the case of an arrest or property search.
+
+Another common step taken by threat actors is changing their system's MAC Address to avoid being uniquely identified. For this purpose, these actors often use tools such as Technitium MAC Address Changer.
+
+We have observed these actors using Tor or proxy-based tools similar to Tor (e.g., UltraSurf, as seen in Figure 2). We have also observed them using virtual private network services that use IPs based in numerous countries to ensure anonymity and obfuscate criminal operations.
+
+
+
+Figure 2: Ultra Surf 12.10
+
+Additionally, many actors conduct transactions using virtual currencies, most prominently Bitcoin, to anonymize criminal transactions. Due to the comparative anonymity and lack of government oversight often associated with the use of virtual currencies, virtual currency is of significant value for actors involved in illicit operations when they are performing transactions among themselves.
+
+Phase 2: Data Acquisition
+Based on our observations, this group uses a variety of different methods to either compromise or acquire already compromised payment card credentials.
+
+Payment card "dumps" are commonly shared amongst Brazilian threat actors via social media forums such as Facebook, Skype, and web-based WhatsApp messenger. These social media circles are highly prevalent amongst these regional actors and are often the preferred method of communication. This group takes advantage of those communities to obtain stolen data from peers. Similarly, the group takes advantage of freely available consolidations of email credentials, personal information, and other data shared in eCrime forums for fraud purposes.
+
+The group systematically purchases payment card data via different online shops. These shops include "Toy Store," "Joker's Stash," and "Cvv2finder." The venues, called "dump shops," allow customers to use a web-based platform to sort through thousands or millions of individual pieces of card data and purchase as much or as little as they want. The shops provide customers with filters to select the individual pieces of card data they wish to purchase and add to their carts for checkout, similar to legitimate sites. The same types of shops also allow malicious actors to steal credentials stolen from other services such as email providers, online bill payment websites, entertainment services, or travel booking websites.
+
+These actors scan websites for vulnerabilities to exploit to illicitly access databases. They most commonly target Brazilian merchants, though others use the same tactics to exploit entities outside Brazil. One simple method the group uses is Google Dorks, advanced Google searches used to identify security loopholes on Google-indexed websites. An example is shown in Figure 3.
+
+
+
+Figure 3: Example of Portuguese-language Google Dork used in exploitation
+
+The group also uses the SQL injection (SQLi) tools "Havij Advanced SQL Injection Tool" and "SQLi Dumper version 7.0" (Figure 4) to scan for and exploit vulnerabilities in targeted eCommerce sites. Of note, these tools can dump whole databases from targeted victims.
+
+
+
+Figure 4: SQLi Dumper v7.0
+
+This group has also shown interest in modifying point-of-sale (POS) terminals to harvest magnetic stripe and EMV chip data.
+
+"Toy Store"
+
+FireEye Labs identified "Toy Store" as one of the card shops frequently used by the group. It appears that this card shop has operated since November 2015. Despite the fact that the website has been taken down multiple times (most recently in July 2016), it keeps operating, sometimes with newly registered domains.
+
+The store offers a large amount of dumps from multiple sellers. The sold credentials are associated with payment cards of various types, issued by variety of financial institutions from multiple countries. At least eight sellers update the website as frequently as daily, offering newly obtained databases from the U.S.
+
+Examination of dumps uploaded between May 2016 and July 2016 revealed that one vendor uploaded 1,900 credit cards issued by Brazilian banks. Further examination shows sellers uploading dumps regularly from the same locations. In Table 1, seller "X" uploaded the listed data during the first two weeks of August 2016.
+
+
+
+Table 1: Data advertised by one "Toy Store" vendor
+
+This seller uploads dumps exclusively from either Texas or Florida. Some base names they provide even contain the word "POS," with a validity rate of 90 percent. This suggests that ATM skimming devices or malware are probably installed in these locations.
+
+The shop allows users to make bulk purchases for any U.S. state, ranging from packages of 30 to 500 units with prices ranging from $250 to $1,000 per bulk.
+
+Registration is free and the only payment method accepted is Bitcoin. A unique Bitcoin payment address is generated per user.
+
+Finally, the website has checker functionality – charging $0.50 per check – that allows users to quickly check for credit card validity and ask for a refund if a purchased card is not valid (Figure 5).
+
+
+
+Figure 5: Toy Store shop site
+
+Phase 3: Generating Further Card Numbers
+Once in possession of compromised payment card credentials, these actors use tools commonly known as "card generators" to generate new card numbers based on the compromised ones, creating additional opportunities for monetization. These tools require as input a valid 16-digit credit card number, expiration date, and a file name to store the new cards generated. Examples of such tools commonly used by Brazilian carders include "WZP" (Figure 6) and "Gerador CC" (Figure 7).
+
+
+
+Figure 6: "WZP" card generator
+
+
+
+Figure 7: "Gerador CC" card generator
+
+"Gerador CC" generates credit card numbers based on the Bank Identifier Number (BIN), with a fixed expiration date and CVV equal to 000. Typically, 1,000 cards will be generated per round. Then threat actors use public websites set up to check if the credit card number is valid. However, the fact that the card number generated is valid does not necessarily mean the card can be used for real purchases at any website. This method of generating card data cannot determine what validation information (e.g., expiration date) or personal information should be associated with the card numbers. So, to make purchases with the data, actors have to find websites with vulnerable authentication systems.
+Phase 4: Validating New Card Numbers
+After stealing, buying, or generating card data, the group validates it through multiple tools and services available in underground communities.
+
+Vulnerable merchant websites – websites that accept payments with generated or compromised payment cards – are identified and used regularly by carders. For example, in March 2016, we observed an advertisement in an underground community for a list that contained the addresses of 10,000 vulnerable merchant websites. Criminals take advantage of these sites to not only make purchases, but also to bulk-check card data for usability.
+
+One bulk card-checking tool this group uses is "Testador Amazon.com v1.1" (Figure 8). Despite its name, this tool does not use Amazon’s website, but exploits an unauthenticated Cross-Site Request Forgery (CSRF) vulnerability of a merchant website allowing the abuse of PayPal Payflow link functionality (Figure 9).
+
+
+
+Figure 8: Testador Amazon v1.1 GUI
+
+
+
+Figure 9: PayPal Payflow Link page
+
+A Payflow Link is a PayPal-hosted payment solution that allows merchant websites to securely connect their customers to PayPal's secure server and use it to automate order acceptance, authorization, processing, and transaction management, making it useful for carders to check the validity of credit card numbers. Payflow links cannot be accessed directly, but only from trusted and authenticated merchants. "Testador Amazon" abuses legitimate merchant sites to submit unauthenticated valid orders, providing access to a legacy PayPal Payflow Link. At this point, actors can test the generated credit card numbers by filling the input field of the form automatically via the tool. This tool then continues submitting thousands of valid orders, simultaneously checking for the validity of the next credit card number in the list.
+
+The actors use a dedicated IRC channel provided by the eCrime community service "ChkNet" (Figure 10) to validate credit cards. Based on our observations of interactions in this channel, between May 2016 and June 2016, malicious actors validated 2,987 cards from 62 countries, with the most coming from the U.S. (nearly half), Brazil, and France. The actors in the channel share instructions on validation and advice on maintaining anonymity during these operations. The channel is accessible without registration; however, actors interested in using the IRC bot to verify the validity of credit cards are charged 0.003 BTC ($1.88 USD).
+
+
+
+Figure 10: ChkNet IRC service activation
+
+Another validation method involves using online charity donations. ChkNet also provides an API and a software tool named “Checker” that leverages charity websites for this purpose. This type of exploitation of charities is popular in the Brazilian eCrime community. Figure 11 shows a credit card tested by Checker. The Status “Live” means the card was successfully used during an online payment transaction.
+
+
+
+Figure 11: Checker credit card validation result
+
+Phase 5: Laundering and Monetization
+We observed this group using multiple tactics to monetize the card data it steals and generates.
+
+The actors frequently use the stolen data to create cloned physical cards, which they use to attempt to withdraw funds from ATMs. The group has performed these activities at multiple locations across Brazil, possibly using multiple mules. The group primarily uses the MSR 606 Software (Figure 12) and Hardware (Figure 13) to create cloned cards.
+
+
+
+Figure 12: MSR606 software
+
+
+
+Figure 13: MSR606 Magnetic Stripe card reader/writer
+
+Additionally, we observed the group exploiting popular eCommerce sites to perform fraudulent transactions. This monetization tactic requires the group to constantly refine its tactics to deal with measures put in place to validate that card and cardholder data is legitimate and other anti-fraud checks. Carders in the community with whom this group interacts regularly share recommendations based on this experience, such as using virtual private networks, limiting the number of items purchased at a time, and cleaning machines used to make purchases of any profiling information such as cookies.
+
+Whether this group uses any further means to launder the proceeds from these activities is unclear. However, Brazilian actors commonly use several methods to do so, such as reselling cards they have created, paying bills with stolen cards in return for a portion of the bill's value and reselling illicitly obtained goods.
+
+Outlook
+Payment card fraud has been extremely profitable for malicious actors for years. Given its profitability and actors' investment in this type of fraud, we see no indication of actors moving away from this type of activity for the foreseeable future. As security measures continue to evolve to counter this area of fraud, we will likely see actors attempting to devise new schemes to maintain the profits they are obtaining and continue capitalizing on their investments in this area.
+
+This material was originally posted to the FireEye iSIGHT Intelligence MySIGHT Portal on Oct. 7, 2016. The FireEye iSIGHT Intelligence MySIGHT Portal contains additional information based on our investigations of a variety of topics discussed in this post, including Joker’s Stash, ChkNet, virtual currencies, and point-of-sale systems. Click here for more information.

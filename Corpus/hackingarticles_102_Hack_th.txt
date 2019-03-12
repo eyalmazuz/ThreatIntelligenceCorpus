@@ -1,0 +1,76 @@
+
+Hack the Mr. Robot VM (CTF Challenge)
+
+This is our another article of root2boot penetration testing challenge. We will walk through a exploitable framework Mr. Robot. It is based on the TV show, Mr. Robot, it has three keys hidden in different locations. The main goal is to find all three tokens hidden in the system. Each key is progressively difficult to find. Breaking into it isn’t too difficult. There isn’t any advanced exploitation or reverse engineering. The level is considered beginner-intermediate.
+First Download the Mr Robot Lab from here
+Penetrating Methodology:
+First of all we have to find its IP address and for that go to the terminal of your Kali and type :
+netdiscover
+
+Upon the execution of the above command we will know about all the IP addresses in our network. Our target IP is 192.168.1.103, let us scan it.
+To scan our target IP we will use aggressive scan (-A)
+
+The scan’s result shows us the open ports are: 22, 80, and 443. As the 80 port is open we can try and open this IP in our browser.
+
+And yes, it opens which further confirms our target.
+Next we will apply nikto command to it. Nitko command will help us to gather information like its files and all the other major stuff that we ought to know about our target. So, therefore, type:
+
+From the result we can gather that there a text file with the name of robots.txt which might provide us with some further information. Moreover it also tell us that wordpress installation was found.
+So now let us try to open robots.txt in the browser. Yesssssssss!! It gave something to us let open each file one-by-one.
+
+Excellent!!! Inside key-1-of-3.txt we found our 1st key.
+
+Now open fsocity.dic file in browser which is a dictionary file. Let us first try and open this dictionary file the browser. Once we open the said dictionary file in the browser, it asks us to download it. Going ahead we downloaded and opened it. It is a file which may contains username or passwords.
+
+So now we know that we might have username or passwords, we will try and logon into our target. One by one we have tried every username and it has given the error that the username doesn’t exist.  But when we used the name elliot it gave us the error that the password is empty.
+With this we know one thing for sure that elliot is a correct username and now we just have to find a password for it.
+
+Our best guess to find the password the same dictionary file from which we found the username. Thus, moving forward we will use WPScan to find our password from the same file.
+When the execution is completed (which may time much time as in our case it took almost 4 hours) you will have the password for the username elliot which is 
+
+Using the password, logon in to the wordpress and open 404 template to add a new theme.
+
+One you have logged in, make the malicious file that you got to upload in it. Generate code through msfvenom command:
+On other hand run multi/handler inside Metasploit framework.
+
+Copy the code from <?php to die(); and paste it on template(and save it)
+Now you have access to a WordPress admin console is to replace one of the theme templates with some PHP of your own. I decided to try for a reverse shell by editing the 404.php theme and replacing the contents with the msfvenom generated shell.
+Once the php code is saved, then, open the path of the template in the browser as shown:
+Browsing to http://192.168.1.103/wp-content/themes/twentyfifteen/404.php and press enter
+
+Meanwhile, return to the Metasploit terminal and wait for the metepreter session by exploiting multi handler.
+From given below image you can observe Meterpreter session 1. But task is not finished yet, still we need to penetrate more for privilege escalation.
+Now, to know the information about the robot folder/file we will type:
+We now know that there are two important files, one of them is a text file other is password in the form of MD5. If we try to open the text file by typing:
+cat key-2-of-3.txt
+It will not open as we do not have the permission to do so. But now let us try and open the MD5 file and for that type:
+cat password.raw-md5
+Executing the above command will give a MD5 value (hash value) of the password as you can see below:
+
+We will use md5 online decrypting tool for cracking this MD5 value. Enter the MD5 value in to the hash box and obtain the result. The value will translate to abcdefghijklmnopqrstuvwxyz as shown below.
+
+Then to access proper TTY shell we had import python one line script by typing following:
+Now in the terminal try to switch the user to robot by the command:
+su robot
+Following the command it will ask you for the password. Enter the MD5 cracked password here and you will enter the robot user and to gain its information type:
+ls 
+Now, try to open the remaining text file by typing:
+cat key-2-of-3.txt
+Here I will read the second key file
+ 
+
+Now let’s find out all those files having root privilege by using following command.
+It has shown so many binary files but I was interested in nmap from its output result.
+
+Nmap supported an option called “interactive.” With this option, users were able to execute shell commands by using an nmap “shell” (interactive shell). 
+Next type the following:
+With the above commands you will enter nmap then type:
+!sh
+id (to know the users)
+cd /root (lets you to enter root)
+Once you have entered the root, type:
+ls -lsa
+cat key-3-of-3.txt
+And upon the execution of we will obtain 3 of 3 keys, hence entering Mr. Robot. There are many ways to perform the above but this methods is the easiest. We hope you find it effective and interesting and it helps you to improve.
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

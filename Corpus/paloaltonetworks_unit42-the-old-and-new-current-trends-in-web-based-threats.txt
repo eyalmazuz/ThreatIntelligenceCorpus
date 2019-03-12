@@ -1,0 +1,370 @@
+The Old and New: Current Trends in Web-based Threats
+
+Summary
+In this blog, Unit 42 is sharing analysis and statistics from our Email Link Analysis (ELINK) from the first quarter of 2018 and highlighting interesting findings of current web threats. We will first describe statistical information about CVEs, malicious URLs and Exploit Kits (EKs), then discuss the current life cycle of these web-based threats, and wrap up with two case studies about evolving EKs and a cryptocurrency miner.
+ 
+Statistics analysis
+CVEs
+In the first quarter of 2018, we found 1583 malicious URLs across 496 different domains. Attackers used at least 8 old and public vulnerabilities as shown in Figure 1. The Top 3 CVEs used are
+
+CVE-2014-6332: exploited by 774 malicious URLs
+CVE-2016-0189: exploited by 219 malicious URLs
+CVE-2015-5122: exploited by 85 malicious URLs.
+
+The first two are vulnerabilities with Microsoft Internet Explorer’s VBScript, and the last one is an Adobe Flash Player vulnerability discovered by the Hacking Team and part of the July 2015 data leak. The exploit source code of these top 3 can easily be found on the internet.
+
+Figure 1. CVE statistics
+In addition to these top three some additional notable findings in our CVE statistics. We found attackers targeting very old vulnerabilities in Microsoft Internet Explorer, such as CVE-2008-4844 and CVE-2009-0075. According to statistics from netmarketshare[.]com, there are still 6.55% of users using Windows XP and 3.17% using old versions of Internet Explorer (IE6, IE7, IE8, IE9, IE10) as shown in Figure 2 and Figure 3.
+ 
+
+Figure 2. Operating System share by version on March 2018
+
+Figure 3. Browser share by version on Mar 2018
+ 
+Users still using old versions of web browsers, flash players, or unpatched operating systems are very vulnerable to these attacks, particulary because they are unprotected against both old and new vulnerabilities.
+ 
+URL statistics
+We found 496 malicious domains serving these exploits hosted across 27 different countries/regions. The Top 4 are:
+
+United States: 257 domains
+China : 106 domains
+Hong Kong: 41 domains
+Russia: 20 domains
+
+We created a heat map for all the malicious domains as shown in Figure 4 and the exact number of malicious domains for each country are in Table 1.
+
+Figure 4. Malicious domain heat map
+ 
+
+
+
+Countries/Regions
+Number of malicious domains
+
+
+Turkey
+ 2
+
+
+Italy
+3
+
+
+Panama
+1
+
+
+France
+8
+
+
+Georgia
+2
+
+
+Argentina
+1
+
+
+ Israel
+1
+
+
+Australia
+1
+
+
+Singapore
+1
+
+
+Slovenia
+1
+
+
+China
+106
+
+
+Thailand
+2
+
+
+Germany
+12
+
+
+Hong Kong
+41
+
+
+Spain
+1
+
+
+Ukraine
+1
+
+
+Netherlands
+13
+
+
+United States
+257
+
+
+Japan
+3
+
+
+Switzerland
+1
+
+
+Russia
+20
+
+
+Romania
+1
+
+
+India
+2
+
+
+United Kingdom
+3
+
+
+Korea
+9
+
+
+Hungary
+1
+
+
+Taiwan
+2
+
+
+
+ 
+Table 1. Malicious domain countries and numbers
+Exploit Kit Statistics
+Of the 1583 URLs malicious URLs, 1284 malicious URLs are EK-related. We found Sundown and Rig EKs are slowing down not only in the number of vulnerabilities used but also in how often they are upgraded. However, KaiXin EK is still evolving. As we can see in Figure 5, below, KaiXin takes the lead when compared with Sundown and Rig. KaiXin was discovered in 2012 and became more and more active according our observations. The most exploited vulnerabilities in KaiXin are CVE-2016-0189 and CVE-2014-6322. We saw the very old EK Sinowal was also active with one malicious URL.
+ 
+
+Figure 5. Exploit Kit statistics
+ 
+Life Cycle of Web Threats
+All of the malicious URLs were tagged as malicious when we first detected them. On April 11, 2018, we reviewed all 1583 malicious URLs from the first quarter of 2018 and found 54 domains which didn’t bind to a valid IP address which are in Figure 6, below. Among the 496 domains, by April only 145 domains were still alive, and of the 1583 malicious URLs only 375 were still alive.
+It means at least 10% (54 out of 496) domains are registered by attackers to be used to serve exploits specially, among the remaining 442 domains approximately 66% (297 out of 442) domains did not serve exploits. The 54 malicious domains are shown in Figure 6 below.
+ 
+
+Figure 6. Invalid domains
+ 
+It also shows the life cycle of around 23% (375 out of 1583) of malicious URLs are live for over 2 months. We also drew a new malicious domain heat map for these 375 domains, shown in Figure 7, with China and U.S. having the highest numbers. The exact numbers are shown in Table 2.
+ 
+
+Figure 7. Live malicious domain heat map
+ 
+
+
+
+Countries/Regions
+Number of malicious domains
+
+
+France
+4
+
+
+Hungary
+1
+
+
+China
+37
+
+
+Hong Kong
+3
+
+
+Italy
+3
+
+
+Spain
+1
+
+
+Taiwan
+1
+
+
+United States
+68
+
+
+Argentina
+1
+
+
+Germany
+5
+
+
+Russia
+4
+
+
+Romania
+1
+
+
+Korea
+3
+
+
+Singapore
+1
+
+
+Thailand
+1
+
+
+Turkey
+1
+
+
+Netherlands
+5
+
+
+Japan
+3
+
+
+United Kingdom
+2
+
+
+
+
+Table 2. Live malicious domain countries/regions and numbers
+Case studies
+EK evolving
+Although EKs are not as active as previously, we are still seeing EKs evolving. KaiXin EK used the original exploit code of CVE-2016-0189 without any obfuscation when we first detected it in 2016 as showed in Figure 8.
+
+Figure 8. First version of CVE-2016-0189 used in KaiXin EK
+ 
+Several months later, the author(s) of KaiXin EK added 2 layers of obfuscation for CVE-2016-0189. The first layer’s obfuscation is unescape and document.write as showed in Figure 9.
+
+ 
+Figure 9. First layer obfuscation of CVE-2016-0189 used in KaiXin EK
+ 
+In the second layer obfuscation, we can see they used a VB array to store the encoded real triggerBug function and payload in Figure 10. Everytime they only needed to change the offset (here is 599), then the VB array is different, which is used to evade content-based detections like IDS/IPS.
+
+Figure 10. Second layer of obfuscation for CVE-2016-0189 used in KaiXin EK
+ 
+After the de-obfuscation, we can see the real payload and source exploit code in Figure 11.
+
+Figure 11. De-obfuscation of CVE-2016-0189 used in KaiXin EK
+ 
+Later, KaiXin EK also embedded a Flash vulnerability (CVE-2015-5122) as shown in Figure 12, and used UTF-16 encoding to evade detection as showed in Figure 13.
+
+ 
+Figure 12. Combination of CVE-2015-5122 and CVE-2016-0189 in KaiXin EK
+ 
+
+Figure 13. UTF-16 encoding of CVE-2016-0189 in KaiXin EK
+Cryptocurrency Miner
+Usually web-based threats are spread via malicious domains, however we found a malicious link (hxxp://210.21.11[.]205/HDCRMWEBSERVICE/bin/aspshell[.]html) hosting malicious content on the IP address instead of using a domain in the malicious link. The content of this malicious page is quite straight forward as showed in Figure 14.
+ 
+
+Figure 14. Malicious content shows use of CVE-2014-6332
+ 
+There are 2 parts in this malicious page. They used document.write to obfuscate the real exploit code in the first part. We can get the plain exploit code through simple de-obfuscation as shown in Figure 15.
+ 
+
+Figure 15. de-obfuscation of CVE-2014-6332
+ 
+This is CVE-2014-6332 which used an Out of Boundary (OOB) vulnerability in VBArray. If the attack succeeds, the VB code runs custom function runmumaa which generates and executes wmier.vbs that in turn downloads and executes lzdat. as shown in Figure 16 and Figure 17.
+ 
+
+Figure 16. The payload of CVE-2014-6332
+ 
+
+Figure 17. wmier.vbs
+ 
+Another example of EK which used CVE-2016-6332, this time of a cryptocurrency miner hosted on a domain, there is a domain “twlife[.]tlgins[.]com[.]tw” which hosted the cryptocurrency miner payload “wu[.]exe” called by the custom VB function runmumaa. This domain appears to be a legitmate but compromised domain belonging to a Taiwan insurance company and likely compromised by attackers with a Struts vulnerability as shown in Figure 18.
+ 
+
+Figure 18. malicious domain information
+The second part in the exploit code is a cryptocurrency miner. It used a public JavaScript library of cryptocurrency miner named CoinHive and we can see the user is “John-doe”. More and more web Trojans are used to mine cryptocurrencies recently. More information about CoinHive, please see another blog by Unit 42.
+ 
+Summary
+Based our observation from ELINK statistics in first quarter 2018, we found that the most active EK is becoming KaiXin and it is still evolving with more layers obfuscation and adding a cryptocurrency miner. The traditional EKs, Rig and Sundown, are still alive but not too much updating and using some old exploits. Besides, not all of web-based threats are from EK, around 20% of the malicious URLs are not from an EK family and using some public exploits. All of malicious URLs detected from ELINK will be blocked by Palo Alto Firewalls, we have all of these exploits covered with IPS signature and also other Palo Alto Networks products or service like URL filtering and Threat Prevention will protect our customers from these kinds of attacks. At last, to protect yourselves from most of web Trojans, we recommend users to use the latest software and patch your system in time.
+ 
+IOCs
+Malicious domains:
+www.primoprime[.]com
+www.adultcre[.]online
+apple-id[.]vip
+iz-icloud[.]cn
+icloud-appd[.]cn
+www.icloud-mayiphone[.]com
+theshoppingoffers[.]trade
+casino-lemnde[.]online
+tdpaas[.]com
+техталенто[.]рф
+www.icloud-fneiphone[.]com
+iosny[.]cn
+gavkingate[.]info
+icloud[.]iosny[.]cn
+www.appleid-ifane[.]com
+app-id-itunes[.]vip
+bugi1man[.]info
+www.apple-ifngiphone[.]com
+www.adultacream[.]online
+www.applefind-iphone[.]com
+www.icloud-iphoneifed[.]com
+www.appid[.]pxret-ios[.]cn
+www.iphone[.]firds[.]cn
+com-iosvnt[.]cn
+appie-pd[.]top
+prestige-rent[.]eu
+netrsy[.]com
+icloud[.]com-iosrnx[.]cn
+appie-yd[.]top
+www.icloud[.]com-ioseat[.]cn
+casinosmart[.]online
+appleid-iphone[.]com
+www.aducrea[.]online
+apple-icloud-idcos[.]top
+ggga[.]xyz
+www.apple-ifena[.]com
+24vipcpsins[.]online
+www.apple-lnciphone[.]com
+www.icloud[.]com.iosny[.]cn
+www.icloud[.]com-ioslga[.]cn
+apple-icloud-iphone[.]cn
+недостаточно[.]рф
+icloud-mybook[.]com[.]cn
+www.apple[.]com.iosny[.]cn
+lookogo[.]com
+www.app-id-itunes[.]vip
+www.iphone[.]id[.]firds[.]cn
+com-iosrnx[.]cn
+www.apple-ifoniphone[.]com
+www.apple-icloud-ac[.]cn
+appie-td[.]top
+tvbsports[.]nl
+icloud-id[.]co
+pixelko[.]info
+

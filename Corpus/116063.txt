@@ -1,0 +1,14 @@
+OpenSSL Patches Serious Flaws in Library
+The OpenSSL project team today patched two vulnerabilities in the crypto library, one of which is rated high severity.
+The patches are in new releases of OpenSSL, 1.0.1r and 1.0.2f, and were made along with an enhancement to the strength of the cryptography in a previous mitigation for last year’s Logjam downgrade vulnerability in TLS.
+The more urgent of the two patches addresses a flaw introduced in OpenSSL 1.0.2 providing support for generating X9.42 style Diffie-Hellman parameters. Previously, these parameters were generated using only “safe” prime numbers, but OpenSSL said today in its advisory that primes used in X9.42 parameter files may not be safe.
+“Where an application is using DH configured with parameters based on primes that are not “safe” then an attacker could use this fact to find a peer’s private DH exponent,” the advisory said.
+An attacker would need to complete more than one handshake with a peer that is using the same private Diffie Hellman exponent, and could be used to learn a TLS server’s private exponent, OpenSSL said.
+“OpenSSL provides the option SSL_OP_SINGLE_DH_USE for ephemeral DH (DHE) in TLS. It is not on by default. If the option is not set then the server reuses the same private DH exponent for the life of the server process and would be vulnerable to this attack,” OpenSSL said. “It is believed that many popular applications do set this option and would therefore not be at risk.”
+OpenSSL said it has turned on SSL_OP_SINGLE_DH_USE by default and notes that admins should be aware of a possible performance impact. OpenSSL 1.0.1 is not affected because it does not support X9.42 parameters.
+The lesser severity vulnerability addressed today affects versions 1.0.2 and 1.0.1. The vulnerability patched allows an attacker to pull of a client-side hack by negotiating weaker SSLv2 ciphers.
+“A malicious client can negotiate SSLv2 ciphers that have been disabled on the server and complete SSLv2 handshakes even if all SSLv2 ciphers have been disabled, provided that the SSLv2 protocol was not also disabled via SSL_OP_NO_SSLv2,” OpenSSL said.
+The project team also said the upgraded crypto strength for the Logjam mitigation now allows for the rejection of handshakes with Diffie Hellman parameters shorter than 768 bits.
+“This limit has been increased to 1024 bits in this release, to offer stronger cryptographic assurance for all TLS connections using ephemeral Diffie-Hellman key exchange,” OpenSSL said.
+Logjam was disclosed last May; the attack allows an advanced attacker in a man-in-the-middle position to downgrade a vulnerable server to a weak 512-bit connection. By doing so, any encrypted traffic on the network could be broken and read.
+This article was updated Jan. 28 to correct a reporting error about the scope of the vulnerabilities.

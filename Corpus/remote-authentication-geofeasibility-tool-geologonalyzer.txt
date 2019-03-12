@@ -1,0 +1,124 @@
+Remote Authentication GeoFeasibility Tool - GeoLogonalyzer
+May 29, 2018 | by David Pany
+Users have long needed to access important resources such as virtual private networks (VPNs), web applications, and mail servers from anywhere in the world at any time. While the ability to access resources from anywhere is imperative for employees, threat actors often leverage stolen credentials to access systems and data. Due to large volumes of remote access connections, it can be difficult to distinguish between a legitimate and a malicious login.
+
+Today, we are releasing GeoLogonalyzer to help organizations analyze logs to identify malicious logins based on GeoFeasibility; for example, a user connecting to a VPN from New York at 13:00 is unlikely to legitimately connect to the VPN from Australia five minutes later.
+
+Once remote authentication activity is baselined across an environment, analysts can begin to identify authentication activity that deviates from business requirements and normalized patterns, such as:
+
+User accounts that authenticate from two distant locations, and at times between which the user probably could not have physically travelled the route.
+User accounts that usually log on from IP addresses registered to one physical location such as a city, state, or country, but also have logons from locations where the user is not likely to be physically located.
+User accounts that log on from a foreign location at which no employees reside or are expected to travel to, and your organization has no business contacts at that location.
+User accounts that usually log on from one source IP address, subnet, or ASN, but have a small number of logons from a different source IP address, subnet, or ASN.
+User accounts that usually log on from home or work networks, but also have logons from an IP address registered to cloud server hosting providers.
+User accounts that log on from multiple source hostnames or with multiple VPN clients.
+GeoLogonalyzer can help address these and similar situations by processing authentication logs containing timestamps, usernames, and source IP addresses.
+
+GeoLogonalyzer can be downloaded from our FireEye GitHub.
+
+GeoLogonalyzer Features
+IP Address GeoFeasibility Analysis
+For a remote authentication log that records a source IP address, it is possible to estimate the location each logon originated from using data such as MaxMind’s free GeoIP database. With additional information, such as a timestamp and username, analysts can identify a change in source location over time to determine if that user could have possibly traveled between those two physical locations to legitimately perform the logons.
+
+For example, if a user account, Meghan, logged on from New York City, New York on 2017-11-24 at 10:00:00 UTC and then logged on from Los Angeles, California 10 hours later on 2017-11-24 at 20:00:00 UTC, that is roughly a 2,450 mile change over 10 hours. Meghan’s logon source change can be normalized to 245 miles per hour which is reasonable through commercial airline travel.
+
+If a second user account, Harry, logged on from Dallas, Texas on 2017-11-25 at 17:00:00 UTC and then logged on from Sydney, Australia two hours later on 2017-11-25 at 19:00:00 UTC, that is roughly an 8,500 mile change over two hours. Harry’s logon source change can be normalized to 4,250 miles per hour, which is likely infeasible with modern travel technology.
+
+By focusing on the changes in logon sources, analysts do not have to manually review the many times that Harry might have logged in from Dallas before and after logging on from Sydney.
+
+Cloud Data Hosting Provider Analysis
+Attackers understand that organizations may either be blocking or looking for connections from unexpected locations. One solution for attackers is to establish a proxy on either a compromised server in another country, or even through a rented server hosted in another country by companies such as AWS, DigitalOcean, or Choopa.
+
+Fortunately, Github user “client9” tracks many datacenter hosting providers in an easily digestible format. With this information, we can attempt to detect attackers utilizing datacenter proxy to thwart GeoFeasibility analysis.
+
+Using GeoLogonalyzer
+Usable Log Sources
+GeoLogonalyzer is designed to process remote access platform logs that include a timestamp, username, and source IP. Applicable log sources include, but are not limited to:
+
+VPN
+Email client or web applications
+Remote desktop environments such as Citrix
+Internet-facing applications
+Usage
+GeoLogonalyzer’s built-in –csv input type accepts CSV formatted input with the following considerations:
+
+Input must be sorted by timestamp.
+Input timestamps must all be in the same time zone, preferably UTC, to avoid seasonal changes such as daylight savings time.
+Input format must match the following CSV structure – this will likely require manually parsing or reformatting existing log formats:
+YYYY-MM-DD HH:MM:SS, username, source IP, optional source hostname, optional VPN client details
+
+GeoLogonalyzer’s code comments include instructions for adding customized log format support. Due to the various VPN log formats exported from VPN server manufacturers, version 1.0 of GeoLogonalyzer does not include support for raw VPN server logs.
+
+GeoLogonalyzer Usage
+Example Input
+
+Figure 1 represents an example input VPNLogs.csv file that recorded eight authentication events for the two user accounts Meghan and Harry. The input data is commonly derived from logs exported directly from an application administration console or SIEM.  Note that this example dataset was created entirely for demonstration purposes.
+
+
+Figure 1: Example GeoLogonalyzer input
+
+Example Windows Executable Command
+
+GeoLogonalyzer.exe --csv VPNLogs.csv --output GeoLogonalyzedVPNLogs.csv
+
+Example Python Script Execution Command
+
+python GeoLogonalyzer.py --csv VPNLogs.csv --output GeoLogonalyzedVPNLogs.csv
+
+Example Output
+
+Figure 2 represents the example output GeoLogonalyzedVPNLogs.csv file, which shows relevant data from the authentication source changes (highlights have been added for emphasis and some columns have been removed for brevity):
+
+
+Figure 2: Example GeoLogonalyzer output
+
+Analysis
+
+In the example output from Figure 2, GeoLogonalyzer helps identify the following anomalies in the Harry account’s logon patterns:
+
+FAST - For Harry to physically log on from New York and subsequently from Australia in the recorded timeframe, Harry needed to travel at a speed of 4,297 miles per hour.
+DISTANCE – Harry’s 8,990 mile trip from New York to Australia might not be expected travel.
+DCH – Harry’s logon from Australia originated from an IP address associated with a datacenter hosting provider.
+HOSTNAME and CLIENT – Harry logged on from different systems using different VPN client software, which may be against policy.
+ASN – Harry’s source IP addresses did not belong to the same ASN. Using ASN analysis helps cut down on reviewing logons with different source IP addresses that belong to the same provider. Examples include logons from different campus buildings or an updated residential IP address.
+Manual analysis of the data could also reveal anomalies such as:
+
+Countries or regions where no business takes place, or where there are no employees located
+Datacenters that are not expected
+ASN names that are not expected, such as a university
+Usernames that should not log on to the service
+Unapproved VPN client software names
+Hostnames that are not part of the environment, do not match standard naming conventions, or do not belong to the associated user
+While it may be impossible to determine if a logon pattern is malicious based on this data alone, analysts can use GeoLogonalyzer to flag and investigate potentially suspicious logon activity through other investigative methods.
+
+GeoLogonalyzer Limitations
+Reserved Addresses
+Any RFC1918 source IP addresses, such as 192.168.X.X and 10.X.X.X, will not have a physical location registered in the MaxMind database. By default, GeoLogonalyzer will use the coordinates (0, 0) for any reserved IP address, which may alter results. Analysts can manually edit these coordinates, if desired, by modifying the RESERVED_IP_COORDINATES constant in the Python script.
+
+Setting this constant to the coordinates of your office location may provide the most accurate results, although may not be feasible if your organization has multiple locations or other point-to-point connections.
+
+GeoLogonalyzer also accepts the parameter –skip_rfc1918, which will completely ignore any RFC1918 source IP addresses and could result in missed activity.
+
+Failed Logon and Logoff Data
+It may also be useful to include failed logon attempts and logoff records with the log source data to see anomalies related to source information of all VPN activity. At this time, GeoLogonalyzer does not distinguish between successful logons, failed logon attempts, and logoff events. GeoLogonalyzer also does not detect overlapping logon sessions from multiple source IP addresses.
+
+False Positive Factors
+Note that the use of VPN or other tunneling services may create false positives. For example, a user may access an application from their home office in Wyoming at 08:00 UTC, connect to a VPN service hosted in Georgia at 08:30 UTC, and access the application again through the VPN service at 09:00 UTC. GeoLogonalyzer would process this application access log and detect that the user account required a FAST travel rate of roughly 1,250 miles per hour which may appear malicious. Establishing a baseline of legitimate authentication patterns is recommended to understand false positives.
+
+Reliance on Open Source Data
+GeoLogonalyzer relies on open source data to make cloud hosting provider determinations. These lookups are only as accurate as the available open source data.
+
+Preventing Remote Access Abuse
+Understanding that no single analysis method is perfect, the following recommendations can help security teams prevent the abuse of remote access platforms and investigate suspected compromise.
+
+Identify and limit remote access platforms that allow access to sensitive information from the Internet, such as VPN servers, systems with RDP or SSH exposed, third-party applications (e.g., Citrix), intranet sites, and email infrastructure.
+Implement a multi-factor authentication solution that utilizes dynamically generated one-time use tokens for all remote access platforms.
+Ensure that remote access authentication logs for each identified access platform are recorded, forwarded to a log aggregation utility, and retained for at least one year.
+Whitelist IP address ranges that are confirmed as legitimate for remote access users based on baselining or physical location registrations. If whitelisting is not possible, blacklist IP address ranges registered to physical locations or cloud hosting providers that should never legitimately authenticate to your remote access portal.
+Utilize either SIEM capabilities or GeoLogonalyzer.py to perform GeoFeasibility analysis of all remote access on a regular frequency to establish a baseline of accounts that legitimately perform unexpected logon activity and identify new anomalies. Investigating anomalies may require contacting the owner of the user account in question. FireEye Helix analyzes live log data for all techniques utilized by GeoLogonalyzer, and more!
+Download GeoLogonalyzer today.
+
+Acknowledgements
+Christopher Schmitt, Seth Summersett, Jeff Johns, and Alexander Mulfinger.
+
+This entry was posted on Tue May 29 13:00 EDT 2018 and filed under David Pany, analysis, and tools.

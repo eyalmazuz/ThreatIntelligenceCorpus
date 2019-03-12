@@ -1,0 +1,74 @@
+
+Unsafe DLL Loading Vulnerabilities
+
+
+By Muralidharan Vadivel.
+
+A common issue we see in applications is the order in which they import DLLs at runtime. This is referred to as a Load Order Vulnerability that can result in local privilege escalation. It became popular a few years ago after the release of a Microsoft Advisory for a number of Microsoft products. In this blog post we'll dissect the vulnerability, exploitation scenarios, and how to fix it. 
+
+First let us try to understand the two different types of unsafe DLL loading vulnerabilities i.e. DLL hijacking and Component Resolution Failure:
+What is DLL Hijacking?
+A Microsoft article explains it as “When an application dynamically loads a dynamic-link library without specifying a fully qualified path name, Windows attempts to locate the DLL by searching a well-defined set of directories in a particular order, as described in Dynamic-Link Library Search Order. If an attacker gains control of one of the directories on the DLL search path, it can place a malicious copy of the DLL in that directory. This is sometimes called a DLL preloading attack or a binary planting attack. If the system does not find a legitimate copy of the DLL before it searches the compromised directory, it loads the malicious DLL. If the application is running with administrator privileges, the attacker may succeed in local privilege elevation”
+
+In simple terms if an application (e.g. Test.exe) loads a DLL (e,g. foo.dll) by just the name, Windows follows a specific search order depending upon whether “SafeDllSearchMode” is enabled or disabled to locate the legitimate DLL. If an attacker has knowledge of this application, he can place a malicious DLL in its search path with the same name as the legitimate DLL forcing the application to load the malicious DLL, thus leading to remote code execution. SafeDLLSearchMode places the user’s current working directory later in the search order.
+
+Assuming that SafeDllSearchmode is enabled, system searches the directories in the following order:
+
+The directory from which the application loaded.
+System directory (C:\Windows\System32).
+The 16-bit system directory (C:\Windows\System).
+The Windows directory (C:\Windows).
+The Current Directory.
+Directories that are listed in the PATH variables.
+
+
+This issue had not been considered a serious threat because it requires local file system access on the victim’s host for successful exploitation. Following section describes some of the realistic attack scenarios:
+
+Combining carpet bombing  with unsafe DLL loading: When the victim visits a malicious web page, attackers can make the browser automatically download arbitrary files. This is referred to as Carpet bomb attack. This flaw leads to remote code execution if the vulnerable application checks in the desktop directory first for resolving the DLL. For example, Safari Web Browser was vulnerable to carpet bomb attack. Internet explorer 7 loads sqmapi.dll when it runs, suppose this DLL gets downloaded in the victim’s desktop directory by a carpet bomb attack IE7 loads the malicious DLL and executes arbitrary code.
+Sending the victim an archive file containing the shortcut to vulnerable application along with the malicious DLL . Since many vulnerable applications resolve the missing DLL in the startup directory this can be used to load up the malicious DLL upon clicking the shortcut to the vulnerable application. This can also be combined with carpet bombing attack.
+Opening a document can load certain files placed in the same directory as the document. Attacker can send an archive containing the document along with a malicious DLL to exploit this kind of behavior.
+
+Component Resolution Failure
+This occurs when an application fails to resolve a DLL because the DLL does not exist in the specified path or search directories. If this happens, a malicious Dll with the same name can be placed in the specified path directory leading to remote code execution.
+Identifying Load Order Issues
+We can identify these issues with the help of process monitor. To use process monitor to examine unsafe DLL loading issues:
+
+Start process monitor
+Include the following filters
+
+Process Name begins with “Name of the process”
+Operation is CreateFile
+Operation is LoadImage
+Path ends with dll
+Result is Name Not Found
+
+
+Exclude the following filters
+
+Process Name begins with “Name of the process”
+Operation is RegQueryValue
+Operation is RegOpenKey
+
+
+
+Start your application and observe process monitor output, look out for dll’s that are being searched for in the current directory, system directory etc. There is a good chance that these Dll’s could be vulnerable. Also identify DLL’s that are not present in the specified directory, this can lead to component resolution failure issue.
+
+
+
+Download wab32res.dll  from http://www.binaryplanting.com/demo/windows_address_book/
+Rename this DLL to one of the Vulnerable one’s identified in step 4 and place them in the appropriate folder
+Restart the Vulnerable application and observe if wab32res.dll gets loaded by the application
+
+
+
+
+Fixes
+
+Wherever possible, specify a fully qualified path when using the LoadLibrary, LoadLibraryEx, CreateProcess or ShellExecute functions.
+Consider using DLL redirection or manifest to ensure that your application uses the correct DLL
+When using the standard search order, make sure that safe DLL search mode is enabled. This places the user's current directory later in the search order, increasing the chances that Windows will find a legitimate copy of the DLL before a malicious copy
+Consider removing the current directory from the standard search path by calling SetDllDirectory with an empty string (""). This should be done once early in process initialization, not before and after calls to LoadLibrary. Be aware that SetDllDirectory affects the entire process and that multiple threads calling SetDllDirectory with different values can cause undefined behavior. If your application loads third-party DLLs, test carefully to identify any incompatibilities
+Do not use the SearchPath function to retrieve a path to a DLL for a subsequent LoadLibrary call unless safe process search mode is enabled
+
+
+

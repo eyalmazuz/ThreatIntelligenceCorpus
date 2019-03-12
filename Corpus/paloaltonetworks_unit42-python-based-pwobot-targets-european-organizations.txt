@@ -1,0 +1,155 @@
+Python-Based PWOBot Targets European Organizations
+
+We have discovered a malware family named ‘PWOBot’ that is fairly unique because it is written entirely in Python, and compiled via PyInstaller to generate a Microsoft Windows executable. The malware has been witnessed affecting a number of Europe-based organizations, particularly in Poland. Additionally, the malware is delivered via a popular Polish file-sharing web service.
+The malware itself provides a wealth of functionality, including the ability to download and execute files, execute Python code, log keystrokes, spawn a HTTP server, and mine digital currency via the victim’s CPUs and GPUs.
+There are at least 12 variants of PWOBot, and the malware has been observed in attacks dating back to late 2013. More recent attacks have been observed affecting organizations between mid-to-late 2015.
+Targeting
+Over the past year, we have witnessed PWOBot affecting the following organizations:
+
+Polish national research institution
+Polish shipping company
+Large Polish retailer
+Polish information technology organization
+Danish building company
+French optical equipment provider
+
+The majority of the PWOBot samples were downloaded from chomikuj.pl, which is a popular Polish file sharing web service. The following unique URLs have been observed providing copies of PWOBot:
+s6216.chomikuj[.]pl/File.aspx?e=Pdd9AAxFcKmWlkqPtbpUrzfDq5_SUJBOz
+s6102.chomikuj[.]pl/File.aspx?e=Hc4mp1AqJcyitgKbZvYM4th0XwQiVsQDW
+s8512.chomikuj[.]pl/File.aspx?e=h6v10uIP1Z1mX2szQLTMUIoAmU3RcW5tv
+s6429.chomikuj[.]pl/File.aspx?e=LyhX9kLrkmkrrRDIf6vq7Vs8vFNhqHONt
+s5983.chomikuj[.]pl/File.aspx?e=b5Xyy93_GHxrgApU8YJXJlOUXWxjXgW2w
+s6539.chomikuj[.]pl/File.aspx?e=EH9Rj5SLl8fFxGU-I0VZ3FdOGBKSSUQhl
+s6701.chomikuj[.]pl/File.aspx?e=tx0a8KUhx57K8u_LPZDAH18ib-ehvFlZl
+s6539.chomikuj[.]pl/File.aspx?e=EH9Rj5SLl8fFxGU-I0VZ3ISlGKLuMnr9H
+s6539.chomikuj[.]pl/File.aspx?e=EH9Rj5SLl8fFxGU-I0VZ3OFFAuDc0M9m0
+s6179.chomikuj[.]pl/File.aspx?e=Want-FTh0vz6www2xalnT1Nk6O_Wc6huR
+s6424.chomikuj[.]pl/File.aspx?e=o_4Gk0x3F9FWxSDo4JWYuvGXDCsbytZMY
+Additionally, in one instance the malware was downloaded from http://108.61.167.105/favicon[.]png. This IP address is associated with the tracking.huijang[.]com domain, which was also used by a number of PWOBot samples.
+The following filenames were observed being used to deliver PWOBot:
+
+favicon.png
+Quick PDF to Word 3.0.exe
+XoristDecryptor 2.3.19.0 full ver.exe
+Easy Barcode Creator 2.2.6.exe
+Kingston Format Utility 1.0.3.0.exe
+uCertify 1Z0-146 Oracle Database 8.05.05 Premium.exe
+Six Sigma Toolbox 1.0.122.exe
+Fizjologia sportu. Krtkie wykady.exe [Physiology of sports. Short lectures.exe]
+
+As we can see from the filenames used, a number of the PWOBot samples purport to be various software utility programs. In some instances, the Polish language is used for what appears to be a more targeted filename.
+It is unclear how this malware was originally delivered to the end-user. Inferences can be made based on the filenames witnessed, as this malware may have been delivered to end-users who believed they were downloading other software. Alternatively, it’s possible that phishing attacks were used in order to entice victims into downloading these files.
+Malware Analysis
+As originally mentioned, PWOBot is written completely in Python. The attackers leverage PyInstaller to convert this Python code into a Microsoft Windows executable. However, as Python is being used, it can easily be ported to other operating systems, such as Linux or OSX.
+Upon initial execution, PWOBot will first uninstall previous versions of PWOBot should they be found. It will query Run registry keys searching for instances of previous versions. The majority of versions use a format of ‘pwo[VERSION]’ for the Run registry key, where [VERSION] is the version number of PWOBot.
+
+Figure 1 PWOBot uninstalling previous versions
+After the previous versions are uninstalled, PWOBot will install itself and create a copy of its executable in the following location:
+%HOMEPATH%/pwo[VERSION]
+It will then set the following registry key to point to this newly copied executable:
+HKCU/SOFTWARE/Microsoft/Windows/CurrentVersion/Run/pwo[VERSION]
+If this is the first time the malware is run, PWOBot will execute the newly copied file in a new process.
+After installation completes, PWOBot will hook various keyboard and mouse events, which will be used for subsequent keylogging activities. PWOBot is written in a modular fashion, allowing the attacker to include various modules during runtime. Based on the number of samples currently identified, the following services and their accompanying descriptions have been observed being included with PWOBot:
+
+PWOLauncher : Download/execute file, or execute local file
+PWOHTTPD : Spawn a HTTP server on the victim machine
+PWOKeyLogger : Log keystrokes on the victim machine
+PWOMiner : Mine digital currency using the victim CPU/GPU
+PWOPyExec : Execute Python code
+PWOQuery : Query remote URL and return results
+
+PWOBot also is equipped with two configuration files, one of which specifies various settings the malware should use, while another specifies what remote servers PWOBot should connect to during execution.
+
+Figure 2 PWOBot settings configuration
+
+Figure 3 PWOBot remote server configuration
+As is visible in the settings configuration (Figure 2), PWOBot includes various windows executables that are included when the attackers compile the code using PyInstaller. These executables are used to perform mining and to-proxy requests via Tor. In the above version of PWOBot, the ‘MINERD_EXE’ and ‘CGMINER_EXE’ variables are compiled versions of minerd and cgminer. These executables are used for CPU and GPU Bitcoin mining respectively. Later versions of PWOBot switched from mining Bitcoin to mining Ethereum.
+PWOBot also makes use of Tor to tunnel all traffic to the attacker’s remote server(s). While this provides both encryption and anonymity, it also should raise alerts to an organization’s network administrators if viewed, as such traffic likely violates said organization’s policies.
+PWOBot uses a Python dictionary as it’s network protocol. Every specified period of time PWOBot will send a notification message to the remote server. An example of this notification can be seen below:
+
+
+
+
+{
+  1: '16ea15e51a413f38c7e3bdb456585e3c', 
+  3: 6, 
+  4: '[REDACTED-USERNAME]', 
+  5: True, 
+  6: {
+       1: 'Darwin', 
+       2: 'PANHOSTNAME', 
+       3: '14.5.0', 
+       4: 'Darwin Kernel Version 14.5.0: Tue Sep  1 21:23:09 PDT 2015; root:xnu-2782.50.1~1/RELEASE_X86_64', 
+       5: 'x86_64', 
+       6: 'i386', 
+       7: 8
+     }, 
+  7: {
+       1: 'en_US', 
+       2: 'UTF-8', 
+       3: 25200
+     }
+}
+
+
+
+
+1234567891011121314151617181920
+
+{  1: '16ea15e51a413f38c7e3bdb456585e3c',   3: 6,   4: '[REDACTED-USERNAME]',   5: True,   6: {       1: 'Darwin',        2: 'PANHOSTNAME',        3: '14.5.0',        4: 'Darwin Kernel Version 14.5.0: Tue Sep  1 21:23:09 PDT 2015; root:xnu-2782.50.1~1/RELEASE_X86_64',        5: 'x86_64',        6: 'i386',        7: 8     },   7: {       1: 'en_US',        2: 'UTF-8',        3: 25200     }}
+
+
+
+
+
+Enumerations are configured to represent the various number encountered in the previous example. Once replaced with their respective enumeration, we see a more complete picture of what data is being sent.
+
+
+
+
+{
+  BOT_ID: '16ea15e51a413f38c7e3bdb456585e3c', 
+  VERSION: 6, 
+  USER: '[REDACTED-USERNAME]', 
+  IS_ADMIN: True, 
+  PLATFORM: {
+       SYSTEM: 'Darwin', 
+       NODE: 'PANHOSTNAME', 
+       RELEASE: '14.5.0', 
+       VERSION: 'Darwin Kernel Version 14.5.0: Tue Sep  1 21:23:09 PDT 2015; root:xnu-2782.50.1~1/RELEASE_X86_64', 
+       MACHINE: 'x86_64', 
+       PROCESSOR: 'i386', 
+       CORES: 8
+     }, 
+  LOCALE: {
+       LANGUAGE: 'en_US', 
+       ENCODING: 'UTF-8', 
+       TIMEZONE: 25200
+     }
+}
+
+
+
+
+1234567891011121314151617181920
+
+{  BOT_ID: '16ea15e51a413f38c7e3bdb456585e3c',   VERSION: 6,   USER: '[REDACTED-USERNAME]',   IS_ADMIN: True,   PLATFORM: {       SYSTEM: 'Darwin',        NODE: 'PANHOSTNAME',        RELEASE: '14.5.0',        VERSION: 'Darwin Kernel Version 14.5.0: Tue Sep  1 21:23:09 PDT 2015; root:xnu-2782.50.1~1/RELEASE_X86_64',        MACHINE: 'x86_64',        PROCESSOR: 'i386',        CORES: 8     },   LOCALE: {       LANGUAGE: 'en_US',        ENCODING: 'UTF-8',        TIMEZONE: 25200     }}
+
+
+
+
+
+After notifications are sent, the attacker may opt to provide a command instructing PWOBot to perform one of the previously defined services. Results from said actions are then uploaded to the attacker using the same format.
+In total, 12 variants of PWOBot appear to exist, based on the lastest versions identified by Palo Alto Networks Unit 42. Of the 12 versions, we have witnessed versions five, six, seven, nine, 10, and 12 in the wild. The most significant modification in variants occurs in version 12, where the attackers switched from mining Bitcoin to mining Ethereum.
+Conclusion
+PWOBot is interesting as a malware family because it is written entirely in Python. While it has historically been seen affecting Microsoft Windows platforms, since the underlying code is cross-platform, it can easily be ported over to the Linux and OSX operating systems. That fact, coupled with a modular design, makes PWOBot a potentially significant threat.
+This malware family has not previously publicly disclosed. It has currently been witnessed affecting a number of European organizations.
+Palo Alto Networks customers are protected from this threat in the following ways:
+
+All PWOBot samples are properly categorized as malicious by the WildFire service.
+Domains related to the PWOBot threat have been appropriately categorized as malicious.
+AutoFocus customers may use the PWOBot tag to monitor this threat.
+
+For a list of SHA256 hashes of PWOBot, please refer to the following file.
+Update 4/20/16: The blog post was updated to reference the mining of Ethereum after it was brought to our attention on social media.
+

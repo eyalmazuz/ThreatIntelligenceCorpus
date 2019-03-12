@@ -1,0 +1,41 @@
+
+					Did someone hack the Brazilian google.com.br?					
+Two days ago, we followed many news and comments regarding the compromise of the address www.google.com.br. At the beginning, many (me included) discredited the news, however, big online portals quickly started to propagate the event. People close to me also reported being accessing the invalid content and ask me for help.
+G1 Portal (http://g1.globo.com/tecnologia/noticia/google-nega-ter-sido-alvo-de-hackers-no-brasil-entenda.ghtml) brought some up-to-date information about the fact, including the official answer by Google:
+“Some internet users in Brazil faced problems accessing google.com.br due to compromised DNS servers: that means, the malicious change of the routing configuration of those DNS servers, taking the user to a different website than the desired one”, informs Google in its note to G1.
+“Google is not responsible by the affected DNS servers, whence notified the administrators, which fixed the problem in 30 minutes. The affected users may also switch their network DNS server, as the Google system was not affected”, Google assures.
+This notification is split into two parts. At the first part, we analyze the technique used in the incident by digging up public information from DNS servers cache which retained the swapped “google.com.br” domain content while it was compromised. At the second part, based on the technical analysis, we make our deductions and conclusions about the case and provide a few preventive security recommendations.
+For this analysis, we used an environment whose users were still seeing the incorrect content while accessing www.google.com.br. Following, the technical details of the performed procedures.
+1.1. Address Resolution www.google.com.br
+While resolving “www.google.com.br”, we obtained the IP address 91.148.168.111 as a response, as seen in Picture 1.
+Picture 1 – Invalid address returned by www.google.com.br
+Using “whois”, we saw that the address IP 91.148.168.111 does not belong to Google, but to a Bulgarian entity, as can be seen in Picture 2.
+Picture 2 – Entity responsible for the IP address 91.148.168.111
+The same query to the address “www.google.com.br” from an environment which shows the legitimate Google page returns the IP address 216.58.202.3 (Picture 3).
+Picture 3 – Result is the legitimate Google IP address
+As seen in the analysis, it was possible to validate that the invalid content was not hosted on an address from Google, that is, the content of the Google website was not altered. There is yet to explain why the users were being taken to the wrong address. We continue our analysis.
+1.2. DNS Cache Analysis
+We begin now our search of a DNS server whose cache is pointing to the invalid IP address for “www.google.com.br”, alas, 91.148.168.111. The goal is to find out which DNS server is returning the invalid IP. After finding one such server, we fetch its cache with the PowerShell command Show-DnsServerCache.
+Below, the cache address entries for the “*google.com.br” addresses:
+Table 1 – Cache from a DNS server during the incident with the domain google.com.br
+Notice that the SOA (Start of Authority) entry, the registry that identifies the DNS server responsible for “google.com.br” zone points to the address “ns1-leader.vivawebhost.com”. The address resolves to IP 91.148.168.6, whose responsible is the same entity of IP 91.148.168.111.
+Just to be sure, we did a DNS consult using the address www.google.com.br pointing to the DNS server ns1-leader.vivawebhost.com. The first attempt returned a timeout error – likely because the server was being strangled by the number of requests. In our second try, the address 91.148.168.111 was resolved. Exactly the same IP users were being directed, as seen in Picture 4.
+Picture 4 – The consult result to the address www.google.com.br on the DNS server used for the attack
+To be sure of the cache information, we did consult the SOA registry pointing to the address ns1-leader.vivawebhost.com.
+Picture 5 – Result for the SOA query with google.com.br at the DNS server used during the attack
+The results for the same query for a legitimate Google environment should return the following:
+Picture 6 – Result for the legitimate domain
+We did then query the domain “google.com.br” at registro.br, the entity responsible for “.br” domains. The result shows that the moment this report was being written, the DNS servers responsible for the domain are ns1.google.com, ns2.google.com, ns3.google.com e ns4.google.com. As expected, there are no records pointing to the invalid address ns1-leader.vivawebhost.com.
+Picture 7 – Querying the domain “google.com.br” at Jan. 03, 2017 after the incident was resolved
+A identified point of attention is the date of the last domain update at registro.br: Jan. 03, 2017, the day of the incident.
+2. Conclusion
+These analysis results make us believe the attacked managed, some way, to access the “google.com.br” domains configuration at registro.br and change it to point to ns1-leader.vivawebhost.com and ns2-leader.vivawebhost.com. This type of attack is known as “domain kidnapping”.
+While the values of the DNS servers were adulterated, users trying to access www.google.com.br were taken to the incorrect address. As the response to the identified incident, the administrators responsible for the “google.com.br” domain with registro.br quickly reverted the configuration to the original values.
+As the attackers used the TTL (time to live) value of 86400 seconds (24 hours), the DNS servers which refreshed their Google address at the time window will be kept handing over the invalid information for a long period. To speed things up, in case this problem is affecting your organization, I suggest you clean your DNS server cache. An easy way to do this is by resetting your DNS service.
+The problem could have been worse. An attack of this kind has great damage potential for the organization which owns the Internet domain as well as for users that access the address. We list a few example below (none happened this time, though):
+In case you delegate the task of administering your Internet domains to a third party organization, we recommend you to be sure that they follow access management good security practices for Domain Registry entities, like having the second authentication factor enabled.
+For more information regarding domain kidnapping, access the article written by me at the end of the last year, describing a case study through this link.
+About the Author:
+Renato Marinho 
+Edited by Pierluigi Paganini
+(Security Affairs – hacking, google.com.br)

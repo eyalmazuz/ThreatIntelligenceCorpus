@@ -1,0 +1,28 @@
+
+Hack the Billu Box2 VM (Boot to Root)
+
+Hello freinds!! Today we are going to solve latest CTF challenge “Billu Box2” presented by vulnhub for penetration practice and design by Manish Kishan Tanwar. This virtual machine is having intermediate to medium difficulty level. One need to break into VM using web application and from there escalate privileges to gain root access.
+You can download it from this Link: https://www.vulnhub.com/entry/billu-b0x-2,238/
+Penetration Methodologies
+Let’s Begin!!
+You will get target VM machine IP at the time of boot-up as you can observe we have it as 192.168.1.108.
+
+So let’s start with nmap port enumeration and execute following command in our terminal.
+Here I noticed drupal 8 CMS is running through apache and might be you are knowing that metasploit contains a module to compromise the target by exploiting drupalgeddon.
+
+So let’s try to exploit this web application with the help of metasploit module and for that execute following command:
+Yippee!! We have owned meterpreter session 1, now let’s go for privilege escalation. Firstly let access proper tty shell with help of python one-liner and identify kernel version.
+
+I search for any relative kernel exploit but didn’t found any working exploit so I penetrated little bit more and enumerated that the /passwd file has ALL 777 permission as shown in the below image.
+
+With help of cat command we open /etc/passwd file and notice an entry for local user “indishell” inside it. Since this file has ALL permission which mean I can modify it very easily. So I copied the whole /passwd file in an empty text file in our local machine and saved at /root/Desktop/passwd.
+
+As you can observe the entry for user indishell contain encrypted passwd and I don’t know which encryption is used therefore I will try to replace the original salt password. We can use openssl command which will generate an encrypted password with salt.
+Now copy it which is new salt password for password:pass123 and paste at the place of original salt password for user indishell.
+
+As you can observe, we had manipulated old password hash from our new password salt and also modify UID GID as 0:0 to make him member of root user.
+
+Now transfer your modified passwd file into target’s VM machine and follow below steps to access root shell terminal.
+B000M!!!! We hit the Goal and got root access of this VM. This vulnerability can be exploit in multiple way and for detail open this link: http://www.hackingarticles.in/editing-etc-passwd-file-for-privilege-escalation/
+
+Author: Devender Kumar, An IT security Specialist and Post Graduate in Cyber Law & Cyber Forensics. You can Contact him here 

@@ -1,0 +1,141 @@
+
+Research Spotlight: Enabling Evil for Pocket Change
+
+
+This post is authored by Tazz.
+
+
+
+Executive Summary
+At the end of February, one of the researchers on the team received a solicitation email from a domain reseller, which she reviewed the first week of March.  The email was from Namecheap offering deeply discounted domains for .88 cents. The timing of the email couldn’t have been more ironic as it overlapped with some current research into determining if there is a relationship between domain pricing and an aggregation of domains related to malware/phishing/spamming. This article will discuss the relationship between deeply discounting domains and nefarious activities.  For the purpose of discussion in this article, the word malicious will include malware, phishing, and spam activities.
+
+
+Background
+Talos has previously investigated the magnetic relationship between bad guys and cheap/free services.  When it comes to the Internet, undoubtedly you get what you pay for, and when it’s cheap/free it’s bound to be infested with bad guys.  We saw this philosophy ring true with dynamic DNS, and saw bad guys leveraging cheap services when actors migrated to dynamic DNS which you can read more on https://blogs.cisco.com/security/dynamic-detection-of-malicious-ddns.
+
+Any businessman, good or bad, seeks to make money, fast.  To do this, one must maximize return on investment and/or find a market with a low cost of entry.  If it costs $5,000 to get started, that might not be feasible for many, especially a criminal, but if it only costs $50 or even $5, well there’s obviously a greater chance that many people will seek out that market.  These rules are no different when it comes to bad guys doing bad things on the Internet.  So, given this email offering deeply discounted TLDs, the team formed a hypothesis and we began digging.
+
+Hypothesis:  When domain prices are <= $1 there will be an increase in registrations and a corresponding increase in malicious activities associated with the TLDs.
+
+
+The Deal
+The following is a screen shot of the solicitation email from Namecheap.com advertising a low price (88 cents). 
+
+
+
+
+
+Namecheap solicitation email body
+
+
+A quick visit to the site on 21 March, after the “deal” should have expired on 10 March, reveals that not only did the sale not end as advertised in the solicitation email, there were five additional enticing conditions for those plotting evil. 
+
+First, not only can you get the domain for .88 cents, unlike any normal  “too-good-to-pass-up” deal that would limit quantities, in this case you can get as many as you want!
+
+
+
+
+Second, the sale didn’t end on March 10th as the email stated. In fact, it ran for 50 days through 31 March.
+
+
+Namecheap's sale conditions captured March 21, 2016.
+
+
+Third, WhoisGuard which masks registrant details, was also FREE not only for NEW domain purchase but for transfers as well. To sweeten the deal even more someone could get a legitimate SSL certificate for only $1.99.  And fifth and finally, in addition to the eight domains listed in the email, there were an additional  16 to choose from.
+
+
+
+88-cent domain list from Namecheap.com
+
+
+
+
+Original webpage content namecheap.com
+
+
+It should be noted that Namecheap is not alone in this deep discounting of domains.  The situation of low cost of entry as seen above with Namecheap was first seen in our research that began 29 Jan and continued into early February.  It revealed many other providers were also offering TLDs for less than $1 as seen here (prices reflected were captured between 29 Jan & 8 Feb 2016).
+
+
+
+Various discounts available on Jan 29, 2016
+
+
+
+
+Who’s Hiding in Whois Guard?
+Using the Domain Tools Iris product we compared the first 40 days of the Namecheap sale to the 40 day period prior to the deep discounts and found a few interesting outcomes. The data reflects ALL sellers, not just Namecheap because while Namecheap’s advertisement is what spawned this article, they are not the only retailer with deeply discounted prices for the TLDs.  One thing to keep in mind when reviewing the risk score numbers below is that it is the representation of a score calculated through the date of the query (21 Mar).  Therefore we have 40-80 days of activity going back to 1 Jan, affecting the risk scores reflected on 21 March.  When reviewing risk scores for domains registered 11Feb - 21Mar, we are only looking at between 0-40 days of activity.  Taking into account our original hypothesis, within this dataset we would expect to have a reasonably reasonably smaller percentage of domains (~½) with a risk score >= 90.  However, the hypothesis only seems to ring true for domains NOT USING the Whois Guard.
+
+
+
+Data from Domain Tool Iris queries
+
+
+
+The number of domains registered WITH the Whois Guard privacy increased ~58% and the percentage of domains with a risk score (RS) greater than or equal to 90 stayed relatively the same, with 0.52% difference between the two group.  The number of domains registered WITHOUT the Whois Guard privacy increased ~48% however the number of domains with a risk score >= 90 is down by almost half.
+
+
+Blocking Web Traffic
+Taking a look at our data we had for web blocks, we found a 23% increase in blocks 2/11-3/21 over 1/1-2/10 for traffic destined for URLs with one of these discounted TLDs. We also found that from 1/1-2/10 the top 4% of the ASNs accounted for ~85% of the total blocks that had one of the deeply discounted TLDs in the url, and from  2/11-3/21 while the number of blocked ASNs almost triples, the disbursement of blocks stays about the same with ~85% of total blocks shared among the top 3%.  Not surprisingly, the top three ASNs remained consistent OVH SAS, Google, and CloudFlare. In reviewing the web blocks we had associated with the discounted domains, the top two TLDs for the two windows still remained the same with .xyz sweeping the competition taking the gold and .pw taking the bronze.  The TLD .top knocked .site out of third taking the silver in the second round.  If you noticed the .top domain tripled in web blocks, from its activity in the first part of the year.  In other related research we have seen an Angler user leverage .top domains heavily, more details are in the blog at http://blog.talosintel.com/2016/03/angler-slips-hook.html.
+
+
+
+
+
+What is rather interesting is that some of the deeply discounted Namecheap domains, actually had less that 0.9% blocks per TLD in our data sets however they do appear more often in the spam/virus categorized emails.
+
+
+Email
+First we took a 10,000-foot view, capturing the volume of unique spam and virus messages.  With respect to spam emails, we saw a slight decrease (-14.71%) from the first window to the second window, however we saw a staggering increase in virus emails (+357.90%).  While disturbing, it makes sense given the paralleled increase in ransomware in the threat landscape.  The combined net movement between date ranges, of the two malicious categories was +3.76%.
+
+Then we took a closer look at only activity associated with our subset of TLDs. The combined spam & virus emails for our subset of TLDs accounted for 9.47% of the total spam & virus from 1 Jan - 10 Feb, and only 3.75% of total spam/virus email during the first 40 days of the Namecheap sale, 11 Feb - 21 Mar.  Then we decided to drill down even further to see how each of the deeply discounted TLD’s  was “performing”.  First we counted ALL emails where the TLD appeared in each time block, and then we calculated what percentage of those emails were spam/virus.  The table below represents the percentage of each TLD to all the emails for that same TLD in the timeframe specified.  We did notice that the .top TLD almost doubled its appearances in our Spam/Virus email telemetry, however the other leading TLD’s such as .date, .download, .xyz actually appear to have tapered off. 
+
+
+
+Percentages representing the count of emails with the TLD / total email with a discount TLD
+
+
+Malicious Samples
+As we can see from the data above, Alpnames beat Namecheap to the punch with the deep discounts early in the year with domains .top and .win at .40/45 cents respectively.  And taking a look at the samples in our sandbox that met the criteria for automatic conviction, we find that both of these domains had more malware associated with them in first 40 days than the 40 days since Namecheap’s sale started.  However, .pw was not deeply discounted by any of the resellers we researched, and yet it had the highest count of malware associated with it consistently.  While we haven’t polled users who fell victim to any of the malware associated with the .pw TLD, it stands to reason that many users would associate this with a password reset domain where malware was hosted to steal credentials. So why would there be such a total volume of malicious activity associated with .xyz?  After all, when seeing just the extension .xyz, many would say “You’re joking right? That’s not a real website is it?”  Unfortunately not only is it real, it landed a major feather in it’s cap - Google.  One theory behind the increase in malicious activity of .xyz domains is that bad guys were riding on the coattails of Google seeking to phish Google customers.  After all, the announcement that Google itself would become a wholly owned subsidiary of the new parent company flaunting the xyz TLD was nothing to snub your nose at.
+
+
+
+source: https://googleblog.blogspot.co.uk/2015/08/google-alphabet.html on 27 Mar 2016, 16:40GMT
+
+
+
+“Alphabet Inc. will replace Google Inc. as the publicly-traded entity and all shares of Google will automatically convert into the same number of shares of Alphabet, with all of the same rights. Google will become a wholly-owned subsidiary of Alphabet”
+
+
+
+source: https://abc.xyz/ on 27 Mar 2016, 16:40GMT
+
+
+One of the interesting things to note about the observations in malware associated with these TLDs is that not all of the TLDs appeared in our sandbox for these specific time frames having malware associated with them.  This does not mean that they have never or won’t in the future, it simply means that they did not during these specific date windows for the scope of this research. In looking at the 40 days pre-dating Namecheap’s sale we see that of the 24 domains, actually only 13 of them had a statistically significant measurement of being associated with malware and they averaged 164 malicious samples per day. The first 40 days of the sale shows 15 domains averaging 102 malicious samples per day. All in all, for the 80 day duration of the sales from Alpnames and Namecheap (and other resellers not noted here), we see that there were 10,605 unique malware samples that were auto-convicted.
+
+Please note, that this chart only reflects those that met criteria to be auto-convicted, it does not mean that additional samples not meeting default auto-conviction criteria were not later found to be malicious and consequently convicted.
+
+
+
+Unique malware samples having activity associated with discounted TLDs & auto-convicted via Talos sandbox
+
+
+Conclusion
+
+
+
+Don’t Go Where You Don’t NEED to Be
+How each organization chooses to implement this will vary, but the overall recommendation is to block traffic to sites in such a manner that falls within your organization's risk tolerance levels.  Some organizations may choose to block an entire TLD at the enterprise level if they do not have a use case demonstrating a legitimate or large need to access one.  Example: a website on the .xxx TLD is probably not something that child-friendly company’s staff member would need to go to.  Either way, if you choose this method, we strongly recommend having an efficient process to allow exception requests.  Another approach is whitelisting, which has it’s pros and cons as well.  The underlying recommendation is to have a comprehensive discussion with your company security team, key stakeholders and decide which approach is right for your organization.  Remember that ignoring the risk is the same as accepting.
+
+
+Your Good Name is All You’ve Got
+Many organizations consider the reputation of a provider/hosting company when they configure various appliances and filter traffic.  It is not unheard of for an entire ASN to be blocked on a corporate network.  You wouldn’t want to buy a domain because it was cheap and then run the risk of having your legitimate business traffic be blocked because your website is lying in the same bed as the bad guys.  When the criminals flock to reseller/hosting company you can liken it to daily micro-doses of arsenic.  It may not take a while, but it will eventually kill your business.
+
+
+Move into a Good Neighborhood
+The nice thing about choosing your registrar/hosting company is you also choose your neighbors in a way.  It is like house hunting if you knew that the neighborhood was full of criminals you probably wouldn’t knowingly buy there, unless you were desperate or a criminal too.  Instead you would want to purchase a domain where there is a high likelihood that the people to your left and right are upstanding and honest.  The chances of this being true diminish as you enter the “too-cheap-to-pass-up” realm.  For example, when taking a look at one specific TLD (.download) back in February, the malicious domains were spread across 42 different providers, yet 73% of them sat on Alpnames assets. Coincidentally Alpnames also had the cheapest price, 60 cents.  While another provider Black Knight offered .download for € 23.99 (~$26.15) and they had absolutely no bad domains reported.  In fact, we found that, of the 327 TLDs Black Knight offered, the cheapest TLD was .info at €1.99 (approximately $2.17) and at the time they had no domains registered reflecting a risk score >= 90 in domain tools.  Now that’s my kind of neighborhood. Let’s face it, if criminals are to your left and right, sharing the same customer space you do, and they decide to leverage their asset as a pivot point into yours, well you better hope you are ready.  So if you can’t love the neighbors in your neighborhood, you might be in the wrong neighborhood.
+
+After taking all things into consideration, the overarching theme is, there is an undeniable association between deeply discounted (or cheap) services on the Internet and criminal/malicious activity.  The extent and severity of that activity can range from a unwanted spam to full compromise of critical data. Nonetheless when something is cheap or free on the Internet it will undoubtedly be exploited for nefarious activities.  Additionally, when domains go on sale, especially less than $1, there is a significant increase in domain registrations and “bad stuff”.  We encourage our customers and all users to take measured precautions to protect their assets.   Business users especially, should perform an adequate risk assessment and determine whether or not there is a legitimate business need to access ‘non-standard’ TLDs, when there is not, implement configurations in a layered security model filtering emails, web traffic, and implementing host-level protections, and above all else BACK UP YOUR ASSETS!!
+
+
+
+

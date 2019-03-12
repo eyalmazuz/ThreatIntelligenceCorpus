@@ -1,0 +1,58 @@
+Harnessing SSL Certificates Using Infrastructure Chaining
+Infrastructure chaining leverages the relationships between highly-connected datasets to build out an investigation. This process is the core of Threat Infrastructure Analysis and allows organizations to surface new connections, group similar attack activity and substantiate assumptions during incident response. In this blog, we will focus on infrastructure chaining centered around SSL Certificates and how this data set complements traditional sources for infrastructure analysis.
+
+Analysts can use certificate hashes and facets to conduct investigations and discover new infrastructure of interest based on certificate overlap. The graphic above shows a collection of different data sources, and uses proximity to represent a connection point. Colored nodes represent the chain of interest, while the white nodes highlight additional research avenues. Starting with a certificate facet, a chain can be developed linking the certificate to an IP address, the IP address to domain resolution associations, and then those domains back to an IP address with a different certificate.
+In September of last year, Kaspersky published Satellite Turla: APT Command and Control in the Sky, building off this open source intelligence, PassiveTotal was able to identify certificate connections which consistently linked known bad infrastructure based off of shared SSL certificate hash to the IP addresses used by the Turla actors. Additionally, leveraging PassiveTotals historic SSL certificate repository, we were able to expand the timeframe past Kasperskys 2015 report and show connections dating back to 2013.
+Starting with the most recently resolving Turla infrastructure, we were able to identify an SSL certificate associated with 83.229.75.141.
+
+The certificate appears to be self signed, as it is valid for 10 years and contains no certificate verification chain, and only has the very basic common name value of ubuntu. The certificate was first seen associated with the IP address on August 10, 2015 and last seen on January 25, 2016 suggesting this IP address could be a newer node in attacks.
+
+Comparing this certificate timeframe with known Turla command and control infrastructure resolving to the IP address, we see that there is a direct overlap in time of both the dynamic DNS domains that resolved to this IP and the certificate.
+
+Building off this overlap and open source intelligence, we used the certificate SHA-1 hash, f415844680ed9118ea74e0c7712b35044f0cc20d, as a pivot point and were able to chain the above IP address to 26 additional IP addresses..
+Using PassiveTotal’s API, we were able to quickly enrich the 26 IP addresses identified through the certificate overlap to discover a common theme, satellite providers. In total, six unique providers were identified with two of them previously unmentioned in reporting, though it’s not clear if these companies overlap in how they sublease their address space.
+Referring back to the Kaspersky reporting, we were able to determine that 12 of the 16 IP addresses were new and not previously discussed. Using infrastructure chaining techniques, we were also able to surface nine additional dynamic DNS domains making use of two IP addresses, 169.255.100.152 and 217.194.149.111.
+
+The SSL certificate directly overlaps with this infrastructure from a time standpoint.
+
+Its worth noting that while both IP addresses are active, only 169.255.100.152 continues to display the original SSL certificate used to make the connection while 217.194.149.111 appeared to have removed the certificate as of November 16th, 2015. The lack of certificate paired with brand new dynamic DNS domains could suggest that the IP address is no longer actor controlled. Conversely, it could also suggest that actors became wise to the certificate chaining and chose to remove it to avoid future detection.
+
+While simple in nature, the above analysis shows how an analyst can leverage infrastructure chaining and PassiveTotal in order to discover new threat activity. Starting with open source intelligence from Kaspersky, we were able to identify 12 additional IP addresses, 4 satellite providers, expand the potential timeframe of operations to as early as 2013 and uncover a set of dynamic DNS domains that are actively resolving today.
+f415844680ed9118ea74e0c7712b35044f0cc20d
+209[.]239[.]79[.]69
+82[.]146[.]174[.]240
+82[.]146[.]166[.]61
+193[.]220[.]55[.]6
+83[.]229[.]62[.]212
+169[.]255[.]100[.]152
+113[.]208[.]81[.]33
+82[.]146[.]174[.]40
+82[.]146[.]175[.]52
+113[.]208[.]81[.]48
+83[.]229[.]75[.]141
+77[.]246[.]76[.]19
+209[.]239[.]79[.]121
+209[.]239[.]79[.]125
+217[.]194[.]150[.]31
+82[.]146[.]166[.]58
+217[.]194[.]149[.]111
+169[.]255[.]100[.]122
+169[.]255[.]101[.]65
+113[.]208[.]81[.]55
+217[.]8[.]36[.]239
+83[.]229[.]62[.]210
+82[.]146[.]175[.]48
+82[.]146[.]175[.]69
+41[.]203[.]79[.]74
+77[.]73[.]187[.]223
+217[.]194[.]150[.]22
+trytowin[.]ignorelist[.]com
+treesofter[.]mooo[.]com
+sportinfo[.]yourtrap[.]com
+profound[.]zzux[.]com
+badget[.]ignorelist[.]com
+norwaynews[.]mooo[.]com
+dellservice[.]publicvm[.]com
+priceline[.]publicvm[.]com
+forumgeek[.]zzux[.]com
+mouses[.]strangled[.]net

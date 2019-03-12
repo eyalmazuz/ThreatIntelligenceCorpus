@@ -1,0 +1,41 @@
+Remote Authentication GeoFeasibility Tool - GeoLogonalyzer
+Users have long needed to access important resources such as virtual private networks (VPNs), web applications, and mail servers from anywhere in the world at any time. While the ability to access resources from anywhere is imperative for employees, threat actors often leverage stolen credentials to access systems and data. Due to large volumes of remote access connections, it can be difficult to distinguish between a legitimate and a malicious login.
+Today, we are releasing GeoLogonalyzer to help organizations analyze logs to identify malicious logins based on GeoFeasibility; for example, a user connecting to a VPN from New York at 13:00 is unlikely to legitimately connect to the VPN from Australia five minutes later.
+Once remote authentication activity is baselined across an environment, analysts can begin to identify authentication activity that deviates from business requirements and normalized patterns, such as:
+GeoLogonalyzer can help address these and similar situations by processing authentication logs containing timestamps, usernames, and source IP addresses.
+GeoLogonalyzer can be downloaded from our FireEye GitHub.
+For a remote authentication log that records a source IP address, it is possible to estimate the location each logon originated from using data such as MaxMind’s free GeoIP database. With additional information, such as a timestamp and username, analysts can identify a change in source location over time to determine if that user could have possibly traveled between those two physical locations to legitimately perform the logons.
+For example, if a user account, Meghan, logged on from New York City, New York on 2017-11-24 at 10:00:00 UTC and then logged on from Los Angeles, California 10 hours later on 2017-11-24 at 20:00:00 UTC, that is roughly a 2,450 mile change over 10 hours. Meghan’s logon source change can be normalized to 245 miles per hour which is reasonable through commercial airline travel.
+If a second user account, Harry, logged on from Dallas, Texas on 2017-11-25 at 17:00:00 UTC and then logged on from Sydney, Australia two hours later on 2017-11-25 at 19:00:00 UTC, that is roughly an 8,500 mile change over two hours. Harry’s logon source change can be normalized to 4,250 miles per hour, which is likely infeasible with modern travel technology.
+By focusing on the changes in logon sources, analysts do not have to manually review the many times that Harry might have logged in from Dallas before and after logging on from Sydney.
+Attackers understand that organizations may either be blocking or looking for connections from unexpected locations. One solution for attackers is to establish a proxy on either a compromised server in another country, or even through a rented server hosted in another country by companies such as AWS, DigitalOcean, or Choopa.
+Fortunately, Github user “client9” tracks many datacenter hosting providers in an easily digestible format. With this information, we can attempt to detect attackers utilizing datacenter proxy to thwart GeoFeasibility analysis.
+GeoLogonalyzer is designed to process remote access platform logs that include a timestamp, username, and source IP. Applicable log sources include, but are not limited to:
+GeoLogonalyzer’s built-in –csv input type accepts CSV formatted input with the following considerations:
+YYYY-MM-DD HH:MM:SS, username, source IP, optional source hostname, optional VPN client details
+GeoLogonalyzer’s code comments include instructions for adding customized log format support. Due to the various VPN log formats exported from VPN server manufacturers, version 1.0 of GeoLogonalyzer does not include support for raw VPN server logs.
+Example Input
+Figure 1 represents an example input VPNLogs.csv file that recorded eight authentication events for the two user accounts Meghan and Harry. The input data is commonly derived from logs exported directly from an application administration console or SIEM.  Note that this example dataset was created entirely for demonstration purposes.
+
+Figure 1: Example GeoLogonalyzer input
+Example Windows Executable Command
+GeoLogonalyzer.exe --csv VPNLogs.csv --output GeoLogonalyzedVPNLogs.csv
+Example Python Script Execution Command
+python GeoLogonalyzer.py --csv VPNLogs.csv --output GeoLogonalyzedVPNLogs.csv
+Example Output
+Figure 2 represents the example output GeoLogonalyzedVPNLogs.csv file, which shows relevant data from the authentication source changes (highlights have been added for emphasis and some columns have been removed for brevity):
+
+Figure 2: Example GeoLogonalyzer output
+Analysis
+In the example output from Figure 2, GeoLogonalyzer helps identify the following anomalies in the Harry account’s logon patterns:
+Manual analysis of the data could also reveal anomalies such as:
+While it may be impossible to determine if a logon pattern is malicious based on this data alone, analysts can use GeoLogonalyzer to flag and investigate potentially suspicious logon activity through other investigative methods.
+Any RFC1918 source IP addresses, such as 192.168.X.X and 10.X.X.X, will not have a physical location registered in the MaxMind database. By default, GeoLogonalyzer will use the coordinates (0, 0) for any reserved IP address, which may alter results. Analysts can manually edit these coordinates, if desired, by modifying the RESERVED_IP_COORDINATES constant in the Python script.
+Setting this constant to the coordinates of your office location may provide the most accurate results, although may not be feasible if your organization has multiple locations or other point-to-point connections.
+GeoLogonalyzer also accepts the parameter –skip_rfc1918, which will completely ignore any RFC1918 source IP addresses and could result in missed activity.
+It may also be useful to include failed logon attempts and logoff records with the log source data to see anomalies related to source information of all VPN activity. At this time, GeoLogonalyzer does not distinguish between successful logons, failed logon attempts, and logoff events. GeoLogonalyzer also does not detect overlapping logon sessions from multiple source IP addresses.
+Note that the use of VPN or other tunneling services may create false positives. For example, a user may access an application from their home office in Wyoming at 08:00 UTC, connect to a VPN service hosted in Georgia at 08:30 UTC, and access the application again through the VPN service at 09:00 UTC. GeoLogonalyzer would process this application access log and detect that the user account required a FAST travel rate of roughly 1,250 miles per hour which may appear malicious. Establishing a baseline of legitimate authentication patterns is recommended to understand false positives.
+GeoLogonalyzer relies on open source data to make cloud hosting provider determinations. These lookups are only as accurate as the available open source data.
+Understanding that no single analysis method is perfect, the following recommendations can help security teams prevent the abuse of remote access platforms and investigate suspected compromise.
+Download GeoLogonalyzer today.
+Christopher Schmitt, Seth Summersett, Jeff Johns, and Alexander Mulfinger.

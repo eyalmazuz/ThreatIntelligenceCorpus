@@ -1,0 +1,108 @@
+
+Angler Attempts to Slip the Hook
+
+
+
+This post authored by Nick Biasini with contributions from Joel Esler, Erick Galinkin and Melissa Taylor
+
+
+Talos has discussed at length the sophistication of the Angler exploit kit. One thing that always makes Angler stand apart is the speed with which they develop and implement new techniques. Angler is constantly working to maintain its lead in the exploit kit arms race, whether its domain shadowing, 302 cushioning, encrypted payloads, or quick exploit development.
+
+Recently we noticed some changes in Angler.
+
+
+Details
+Landing Page
+
+Let's start by talking about landing page syntax. For the last few months Angler has been using a pretty standard syntax for landing pages. The syntax was using a subfolder hosting one of the following files with a bunch of parameters:
+
+index.php
+viewtopic.php
+search.php
+viewforum.php
+
+There were also some commonalities associated with the parameters. This was one of the first changes we noticed. While the previously listed php files were still being utilized several more were added:
+
+view.php
+viewthread.php
+
+Here are a couple of examples of how the old syntax looks vs the new syntax:
+
+
+Old Landing Page Syntax
+
+
+
+New Landing Page Syntax
+
+Also, note that even though they maintained the use of index.php and search.php there are a couple of subtle changes with the parameters. Previously, they were using "keywords=" in conjunction with search.php. That has now changed to "keyword=". Additionally, they were using "action=" as the second parameter for index.php, which has now changed to "mod=". These subtle differences might not seem like a lot, but any change can cause havoc with detection depending on what values and keys are used.
+
+Gate
+
+The gate is the term commonly used to identify the way in which users are directed to landing pages. It isn't something that is used 100% of the time, but it is always interesting when it is being used. Sometimes it’s overly simple like a page that contains nothing but an iframe redirecting to the Angler landing page. Other times it's something more sophisticated. In conjunction with this change to the larger Angler exploit kit we started seeing a new gate.
+
+
+
+
+
+The basic behavior is much like other gates where a redirection will be found in a malvertising or a compromised website that is redirecting to a landing page directly. This was taking a couple of additional, different steps. First, much like before there is an initial direction into the gate:
+
+
+
+
+
+One thing to note here is the data that is being returned. The GET is returning a flash file directly. This file is executed and if the system is vulnerable, another GET request is initiated.
+
+This is where the actual redirection in to the exploit kit occurs.  As you can see the large string remains constant from the GET request generating the flash file, to the GET request directing to Angler itself. We have seen a large variety of domains hosting this activity including shadowed domains as well as a large amount of .tk domains. The .tk domains in particular are interesting, during our research we found that anyone can get a .tk domain free of charge.  So far, all of these gate domains seem to be hosted on a single IP: 85.93.0.33, we’ll include an attachment linked at the bottom with all the domains we’ve seen registered with this IP.
+
+
+
+
+This is likely to be a TLD that will be abused heavily for nefarious purposes and is a great option for exploit kit gates since it isn't directly malicious activity, just a conduit to the true malicious content. This is similar to the substantial use of dynamic DNS in exploit kits in past. This is another way for an adversary to conduct nefarious activity with no significant cost or risk associated with the behavior.
+
+Coming from the .top
+
+One other aspect that was uncovered in this research was an actor delivering Angler. The activity as usual is a combination of shadowed and non-shadowed domains. However, this activity initiated with a new actor to Angler. This particular actor has been heavily leveraging the .top TLD and has been extremely active since the beginning of February registering dozens of domains daily. To date the actor has registered 737 domains with the first registration occurring on February 11th.
+
+The registrant in question is exclusively using the name "MAYKO EVGENIY" a sample of the registrant information being used can be found below.
+
+
+
+Sample Registrant Info
+
+The actor was seen using several different TLDs including: .top, .space, .site, .accountant, and .pw. However, more than 95% of the domains registered were in the .top TLD and beginning on February 14th it's been almost entirely .top TLD domains. The Angler activity associated with this actors domains were also the first time that we saw the gate campaign outlined above. A complete list of the domains registered to this account will be provided in the IOC section.
+
+IOC
+Angler
+Domains (Last 7 Days)
+
+Angler Actor
+Domains
+Domains_New (Added 03/02/2016)
+
+Gate
+Domains
+IP
+85.93.0.33
+
+Conclusion
+This is yet another example of why Angler is the most sophisticated and prolific exploit kit active today. As detection improves the actors behind Angler are determined to continually provide updates to help evade said detection. I had noticed a real improvement in detection, across the industry, over the last several months and I am not surprised to see the Angler authors react. Angler is an advanced threat and the infrastructure supporting it is significant. The days of a small group maintaining an exploit kit are gone. Today these threats have a large team backing them and a clear software development lifecycle. These organizations are generating millions of dollars monthly and show no signs of slowing down. As ransomware continues to dominate the threat landscape, exploit kits will grow right along with them.  They continue to be an effective conduit to compromising users and dropping ransomware, generating direct revenue for adversaries. We also noticed a marked increase in malvertising directing to exploit kits. This is a problem that is going to get worse before it gets better.
+
+Coverage
+As a result of the recent Angler exploit kit changes we are releasing the following updated rules:
+37871, 37872, 37873
+
+The domains observed are blocked via Cisco’s Domain reputation systems as soon as we see them, as well as the Flash and Silverlight files being used for exploit in the wild.
+
+For the most current rule information, please refer to your Defense Center, FireSIGHT Management Center or Snort.org.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+
+

@@ -1,0 +1,193 @@
+
+Getting Started with WinDBG - Part 2
+
+
+By Brad Antoniewicz.
+
+
+This is a multipart series walking you through using WinDBG - we've gotten you off the ground with our last blog post, and now we'll focus on it's core functionality so that you can start debugging programs!
+
+Part 1 - Installation, Interface, Symbols, Remote/Local Debugging, Help, Modules, and Registers
+Part 2 - Breakpoints
+Part 3 - Inspecting Memory, Stepping Through Programs, and General Tips and Tricks
+
+Breakpoints
+
+Breakpoints are markers associated with a particular memory address that tell the CPU to pause the program.  Because programs can contain millions of assembly instructions, manually stepping through each of those instructions would take an incredibly long time. Breakpoints help speed up debugging time by allowing you to set a marker at a specific function which allows the CPU to automatically execute all the code leading up to that point. Once the breakpoint is reached, the program is paused and the debugging can commence. 
+
+Breakpoints can be set in software and within the CPU (hardware), let's take a look at both:
+Software Breakpoints
+Programs get loaded into memory and executed - which allows us to temporarily modify the memory associated with a program without affecting the actual executable. This is how software breakpoints work. The debugger records the assembly instruction where the breakpoint should be inserted, then silently replaces it with an INT 3 assembly instruction (0xcc) that tells the CPU to pause execution. When the breakpoint is reached, the debugger looks at the current memory address, fetches the recorded instruction, and presents it to the user. To the user it appears that the program paused on that instruction however the CPU actually had no idea it ever existed. 
+
+Software breakpoints are set within WinDBG using the bp, bm, or bu commands. bp (for Break Point) is arguably the most used breakpoint command. In its most basic use, its only argument is the address at which a breakpoint should be set:
+0:001> bp 00e61018 
+
+
+With bp, the address should be a memory location where executable code exists. While bp works on locations where data is stored, it can cause issues since the debugger is overwriting the data at that address. To be safe Microsoft suggests that if you want to break on a memory location where data is stored, you should use a different breakpoint command (ba, discussed below).
+
+Let's take a look at setting a software breakpoint. Here we'll launch notepad.exe with WinDBG. By default, when the program is launched with WinDBG, it will insert a breakpoint before the entry point of the program is executed and pause the program. First we'll get the location in memory where notepad.exe is loaded:
+
+
+Next we'll determine the program's entry point by using !dh with the image load address:
+
+
+Now we'll set a breakpoint at it's entry point (load address + 0x3689): 
+
+
+Finally we'll tell the program to run until it encounters a breakpoint using the g command (more on this later), when the breakpoint is hit, we'll get a notice:
+
+
+
+Most of your debugging will likely use software breakpoints, however there are certain scenarios (read-only memory locations, breaking on data access, etc..) where you need to use hardware breakpoints.
+Hardware Breakpoints
+
+Within most CPUs there are special debug registers that can be used to store the addresses of breakpoints and specific conditions on which the breakpoint should triggered (e.g. read, write, execute). Breakpoints stored here are called hardware (or processor) breakpoints. There is a very finite number of registers (usually 4) which limits the number of total hardware breakpoints that can be set. When the CPU reaches a memory address defined within the debug register and the access conditions are met, the program will pause execution. 
+
+Hardware breakpoints are set within WinDBG using the ba (Break on Access) command. In its most basic usage, it takes 3 attributes:
+0:001> ba e 1 00453689 
+
+
+This command would (we'll see soon why it doesn't) accomplish the same thing as the previous bp example, however now we're setting a hardware breakpoint. The first argument, e, is the type of memory access to break on (execute), while the second is the size (always 1 for execute access). The final is the address. Let's take a look at setting a hardware breakpoint, keep in mind our load addresses are different because of the whole ASLR thing.
+
+Due to the way Windows resets thread contexts and the place where WinDBG breaks after spawning a process, we wont be able to set a breakpoint in the same way we did in our earlier example. Previously we set our breakpoint on the program's entry point, however if we try to do that with WinDBG we get an error:
+0:000> lmf m notepad
+start    end        module name
+00e60000 00e90000   notepad  notepad.exe 
+0:000> ba e 1 00e63689
+        ^ Unable to set breakpoint error
+The system resets thread contexts after the process
+breakpoint so hardware breakpoints cannot be set.
+Go to the executable's entry point and set it then.
+ 'ba e 1 00e63689'
+
+
+
+So in order to get around this, we'll need to use that g command and tell it to run the program until it reaches a specific memory address. This is sort of like setting a software breakpoint in behavior but isn't exactly the same. So we'll tell WinDBG to execute until we enter the program's initial thread context, which will then allow us to set hardware breakpoints.
+0:000> g 00e63689
+ModLoad: 76be0000 76bff000   C:\Windows\system32\IMM32.DLL
+ModLoad: 76c00000 76ccc000   C:\Windows\system32\MSCTF.dll
+eax=77081162 ebx=7ffd7000 ecx=00000000 edx=00e63689 esi=00000000 edi=00000000
+eip=00e63689 esp=0022fbb4 ebp=0022fbbc iopl=0         nv up ei pl zr na pe nc
+cs=001b  ss=0023  ds=0023  es=0023  fs=003b  gs=0000             efl=00000246
+notepad!WinMainCRTStartup:
+00e63689 e8c5f9ffff      call    notepad!__security_init_cookie (00e63053)
+
+
+
+Now we can set our hardware breakpoint:
+
+
+To confirm we actually set the breakpoint in CPU's registers, we can use the r command (discussed later). We'll use the M attribute to apply a register mask of 0x20:
+0:000> rM 20
+
+
+
+
+You'll notice something doesn't look right here, all of the registers contain 0! This is because WinDBG hasn't actually set them yet. You can single step (discussed below) with the p command. Once we do, the dr0 register will have our breakpoint defined:
+
+
+In this specific example, we probably will never hit our breakpoint because it is in the entry point of the program that we've already reached. However if our breakpoint was on a function that was called a variety of times in the life of the program, or on a memory address where an often used variable was stored, we'd get a "Breakpoint Hit" message when the memory was accessed just as we would with a software breakpoint. 
+Common Commands
+
+Now that you have the basics of setting breakpoints, there are a handful of other breakpoint related commands that will be useful. Let's look at a couple:
+Viewing Set Breakpoints
+
+To view each of the breakpoints that have been set, you can use the bl (Breakpoint List) command.
+0:000> bl
+ 0 e 00523689 e 1 0001 (0001)  0:**** notepad!WinMainCRTStartup
+
+
+Here we have one breakpoint defined, the entry is broken into a few columns:
+
+0 - Breakpoint ID
+e - Breakpoint Status - Can be enabled or disabled.
+00523689 - Memory Address
+e 1 - Memory address access flags (execute) and size - For hardware breakpoints only
+0001 (0001) - Number of times the breakpoint is hit until it becomes active with the total passes in parentheses (this is for a special use case)
+0:**** - Thread and process information, this defines it is not a thread-specific breakpoint
+notepad!WinMainCRTStartup - The corresponding module and function offset associated with the memory address
+
+Deleting Breakpoints
+
+To remove a breakpoint, use the bc command:
+0:000> bc 0
+
+
+The only attribute to bc is the Breakpoint ID (learned from bl). Optionally you can provide * to delete all breakpoints.
+Breakpoint Tips
+
+There are a couple simple tips that I commonly use when setting breakpoints. Here are a few of them, please share any you have in the comments below!
+Calculated Addresses
+The simplest breakpoint tip, is just something that you'll learn when dealing with memory addresses within WinDBG. You can have WinDBG evaluate expressions to calculate address. For instance, in the above examples, we knew the module load address of notepad.exe and the entry point was at offset 0x3689. Rather than calculating that address ourselves, we can have WinDBG do it for us:
+0:000> lmf m notepad
+start    end        module name
+00770000 007a0000   notepad  notepad.exe 
+0:000> bp 00770000 + 3689
+0:000> bl
+ 0 e 00773689     0001 (0001)  0:**** notepad!WinMainCRTStartup
+
+
+Name and Offset Addresses 
+
+One of the great things about Symbols (covered in part 1 of this post) is that they give us the locations of known functions. So we can use the offsets to those known functions as addresses in our breakpoints. To figure out the offset, we can use the u (Unassemble) command within WinDBG. u will take a memory address and interpret the data at that memory address as assembly and display the corresponding mnemonics. As part of its output, u will also provide the offset to the nearest symbol:
+0:000> u 00770000 + 3689
+notepad!WinMainCRTStartup:
+00773689 e8c5f9ffff      call    notepad!__security_init_cookie (00773053)
+0077368e 6a58            push    58h
+
+
+
+Now we know that notepad!WinMainCRTStartup is a friendly name for 00770000 + 3689. Since there isn't a numeric offset at the end of this friendly name, we can also infer that Symbols exist for this function. Look what happens when we check out the second instruction in this function:
+0:000> u 0077368e 
+notepad!_initterm_e+0x61:
+0077368e 6a58            push    58h
+
+
+
+This time we got a function name, notepad!_initterm_e, plus an offset (+0x61). I'm not entirely sure why WinDBG gave the offset to notepad!_initterm_e instead of notepad!WinMainCRTStartup, probably a symbol search order thing - nonetheless, we could have used a notepad!WinMainCRTStartup offset to reference the same location:
+0:000> u notepad!WinMainCRTStartup+0x5
+notepad!_initterm_e+0x61:
+0077368e 6a58            push    58h
+
+
+
+The point is that now we can use this offset as a breakpoint and those offsets are always valid even if ASLR is enabled - so we don't have to waste time calculating addresses at every launch.
+0:000> bp notepad!WinMainCRTStartup+0x5
+0:000> bl
+ 0 e 0077368e     0001 (0001)  0:**** notepad!_initterm_e+0x61
+
+
+Breaking On Module Load
+
+There may be some occasions when you'd like to set a breakpoint when a module is being loaded. Unfortunately, there doesn't appear to be an obvious way within the standard breakpoint commands to do this (let know if you know of a way in the comments). Instead a sort of "hacky" way to do this is by defining that an exception be raised when a particular module is loaded using the sxe command:
+0:000> sxe ld IMM32.DLL
+
+
+
+Here we've set up a first chance exception (sxe) when a module is loaded (ld) and defined IMM32.DLL as the specific module which triggers the exception. 
+
+We can use sx (Set Exceptions) to view the configured exceptions. If we look under the Load Module list, we'll see that we have a break on IMM32.DLL. 
+
+
+To clear it we can use the sxi (Set Exception Ignore) command:
+0:000> sxi ld IMM32.DLL
+
+
+Executing Commands
+
+There may be certain commands that we execute every time a breakpoint is reached. For instance, say we're always interested at what values are on the stack. We can automate this with WinDBG by building a list of commands and appending it to our breakpoint. In our example, we'll print out some information, and use the dd command (discussed later) to show the stack. Notice how our command is referenced in the bl output as well:
+0:000> bp notepad!WinMainCRTStartup ".echo \"Here are the values on the stack:\n\"; dd esp;"
+0:000> bl 
+ 0 e 00ae3689     0001 (0001)  0:**** notepad!WinMainCRTStartup ".echo \"Here are the values on the stack:\n\"; dd esp;"
+
+
+
+Let's see what happens when we hit our breakpoint:
+
+
+As expected, the commands were executed, showing the "Here are the values on the stack" message and the stack. Commands are chained together with a semi-colon, and be sure to escape quotes within the outer-most quotes that contain the entire command. You can even append the g command to have the commands be executed and the program to just continue. This allows you to inspect the state of the program as it runs rather than manually interrupting it every time a breakpoint is hit. 
+Stay Tuned
+
+In our next blog post we'll cover inspecting memory and stepping through the program!
+
+

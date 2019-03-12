@@ -1,0 +1,102 @@
+This Bot Is Out for Brains: ElasticZombie Exploiting Elasticsearch Vulnerabilities
+By Levi Gundert on December 8, 2015
+While recently mining our Recorded Future alerts (event, entity, and keyword matches on the Web) for new attacker TTPs (techniques, tactics, and procedures) we came across an interesting and trending text fragment — ElasticZombie Botnet.
+
+Click image for larger view.
+The references led us to the Romanian Security Team forums where Nytro recently posted an illuminating narrative by Markus Manzke about a “scan and exploit” campaign — ElasticZombie Botnet — that identifies vulnerable Elasticsearch instances, exploits affected Linux servers, and subsequently installs a bot that maintains persistence on the system, communicates with a command and control (C2) server, and ultimately participates in denial-of-service (DoS) attacks.
+Mr. Manzke set up honeypots consisting of real Elasticsearch servers. Once Internet crawlers identified the honeypots as available and vulnerable, the attacks began — leaving behind HTTP method calls, and a useful library of ELF (executable and linking format) code.
+Elasticsearch’s increasing popularity as an open source database solution (often paired with LogStash and Kibana — referred to as ELK) makes it an opportunist’s dream when a remote vulnerability is announced. In this case, the Internet miscreants appear to be much more interested in stealing an Internet connected computing resource versus exploiting data in a database.
+Curious about earlier Elasticsearch attack precursors in the Web, we queried Recorded Future. The timeline below reveals chatter around Elasticsearch public vulnerabilities, specifically in Chinese forums. During the spring of 2015 there are multiple references to CVE-2015-1427 (the Groovy scripting engine allows remote access to run arbitrary commands).
+
+Click image for larger view.
+One specific Chinese language forum post from March 2015 details scanning methodologies to locate vulnerable Elasticsearch instances, package the Java exploit code inside of a Python script, launch a Perl back-connect script, and finally acquire a remote Unix Bash shell (command line access) on victim servers.
+
+Phase 1 is identifying vulnerable Elasticsearch instances on the Internet as seen below with ZoomEye and Shodan (port 9200 is a default Elasticsearch port).
+
+
+Phase 2 is executing the below Python script which contains the Java exploit code (in the parameters variable) for the Groovy scripting engine in Elasticsearch.
+
+An attacker executes the Python script above against servers running vulnerable instances of Elasticsearch. Once the Elasticsearch exploit succeeds, the attacker fetches a Perl script from a remote server and runs it. The Perl script “phones home” to the C2 server specified by the attacker, and the attacker receives the incoming request using Netcat. The attacker now has access to a remote Bash shell which is used to download malicious ELF files used for DoS attacks.
+
+In this Chinese language tutorial the author is using a 33-line script modified by Maple-x. The code appears to be a modification on Psyk’s Bash Backdoor — hxxp://hackforums[.]net/archive/index.php/thread-86488.html — published in 2009. The script requires two arguments from the user in the form of a host IP address and corresponding port. The arguments are passed as variables in line 18 with a distinct and ubiquitous connect statement: SERVER,pack “SnA4x8”,2,$port,$target.
+The exact string is found in a basic Perl server/client thread from 2003 — hxxp://www.perlmonks.org/bare/?node_id=234075 — demonstrating how prolific this particular pack function statement is, in addition to the ease of code reuse for legitimate and malicious purposes.
+Perl “back-connect” scripts are almost as old as the Internet, and new variations routinely appear in forums and paste sites. They are a handy attacker tool because almost all Unix web servers have a built in Perl interpreter. Further, Perl is lightweight (though often difficult to read if not properly commented) and fetching a Perl file from a remote server is convenient because the file is small and requires little bandwidth to transfer and few computing resources to process.
+
+Click image for larger view.
+The attacker targets a vulnerable Elasticsearch server with the Python script containing the Java exploit and subsequently fetches the Perl Connect-back script and runs it on the remote server.
+
+The attacker launches Netcat to listen on port 80 for incoming connections from exploited servers.
+
+In addition to providing the Linux ELF files used by various attackers, the ElasticZombie blog also listed the associated C2 servers. Recorded Future enrichment from the Web reveals many of the IP addresses were known attacker infrastructures located in China and publicly announced by security researchers like Malware Must Die beginning a year ago (December 2014).
+
+Click image for larger view.
+A summary of derivative IOCs (indicators of compromise) and the full list of C2 IP address enrichment summaries are located in Appendix A.
+A recent Elasticsearch banner query in Shodan returned over 8,700 results most of which are located in the United States. Zoom Eye returned a little over 5,200 results also centered in the United States. An unknown percentage of those servers are running vulnerable versions of Elasticsearch, and given Mr. Manzke’s honeypot results, the attack surface is obviously large enough to attract significant interest.
+Web shells are an attractive tool for attackers because almost every business uses a web server. New remote vulnerabilities in popular software/services are frequently announced, but a spike in criminal chatter about exploit code around a specific vulnerability — as observed here for CVE-2015-1427 — should escalate business’s response. Elasticsearch can be difficult to completely patch/upgrade, but the potential for victimization can be partially mitigated if all relevant servers are unreachable from the Internet.
+For those looking, the early Web signals were indicative of accelerating malicious activity around the Elasticsearch CVE-2015-1427 vulnerability. The Chinese forum tutorial and Chinese attack infrastructure locus certainly paint an interesting picture regarding those launching “scan and exploit” campaigns for future DoS attacks.
+Attack Vector (1)
+DDOS
+Indicators and Observables (111)
+AS Number (2)
+AS4134
+AS23650
+Domain (30)
+cnzz.com
+x5zs.com
+www.x5zs.com
+x5yue.net
+xinhuamei.net
+linux.xinhuamei.net
+mmstat.com
+s14.cnzz.com
+twitter.com
+3322.org
+pcookie.cnzz.com
+s22.cnzz.com
+x5yin.com
+z2.cnzz.com
+1320.azhi8.net
+3393.com
+3xdk.com
+appledoesnt.com
+azhi8.net
+baidu.com
+egooad.com
+hi.baidu.com
+myzwqwe12.com
+okm918.com
+sinablog66.com
+www.sinablog66.com
+www.x5yin.com
+x5jyzs.blog.sohu.com
+xcy8.com
+zhimingge.in
+Email Address (1)
+664035800@qq.com
+Filename (1)
+gydm.exe
+Hash (10)
+6a97970257fca599b4a103de128de862add331391311a9b8f9161e0e8658bd15
+6f424912df548749b7fd354e9bda4217bb271f518b7f3d02e301275f0b5230d3
+7d73f65d59f8b388f2d107dd236834c867f219529581c67cf034348a4e70aff4
+860095ab2386ad878e8d2829e40f29f0a393436c99f50d1b589ddf914e8e63bf
+9ac7b43fe9ed564db684ec991efa7fc2204c1c1351741284becf47bcefbf7113
+d0839eaa6444cdf02ecf4cfc35de54310034d2bc060acff3f9b619e65e585ab2
+27581f0c58ad800f99ab918b2866756b
+340a0d6d7be8936173c89570154b3cedce23f9d0
+d3fa2fb54914a480feef6a9058fb68cf188ed03b45be2670e66c8bf9794e8d0f
+dccfa1ac574c6a884c24db77b3791ceb1183ecca483a1706527674e333fe1b72
+ElasticZombie C2 IP address results from the Recorded Future API enrichment script:
+https://www.recordedfuture.com/live/sc/entity/ip:103.105.144.172
+https://www.recordedfuture.com/live/sc/entity/ip:61.160.194.62
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.190.233
+https://www.recordedfuture.com/live/sc/entity/ip:23.234.50.12
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.15.92
+https://www.recordedfuture.com/live/sc/entity/ip:113.105.144.172
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.21.106
+https://www.recordedfuture.com/live/sc/entity/ip:108.171.252.20
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.34.177
+https://www.recordedfuture.com/live/sc/entity/ip:183.60.202.75
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.30.247
+https://www.recordedfuture.com/live/sc/entity/ip:61.160.221.139
+https://www.recordedfuture.com/live/sc/entity/ip:222.186.56.15

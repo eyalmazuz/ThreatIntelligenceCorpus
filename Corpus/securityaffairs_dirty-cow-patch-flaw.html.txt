@@ -1,0 +1,21 @@
+
+					Researchers discover a vulnerability in the DIRTY COW original patch					
+The original patch for the Dirty COW vulnerability (CVE-2016-5195) is affected by a security flaw that could be exploited by an attacker to run local code on affected systems and exploit a race condition to perform a privilege escalation attack.
+The vulnerability was rated as “Important” and it received a score 6.1 on the CVSS scale, it was patched in October 2016.
+The name ‘Dirty COW‘ is due to the fact that it’s triggered by a race condition in the way the Linux kernel’s memory subsystem handles copy-on-write (COW) breakage of private read-only memory mappings.
+According to the security advisory published by Red Had, the vulnerability, tracked as CVE-2016-5195, allows local attackers to modify existing setuid files.
+
+Now the flaw in the original patch, tracked as CVE-2017-1000405, was identified by researchers at the security firm Bindecy.
+” In the “Dirty COW” vulnerability patch (CVE-2016-5195), can_follow_write_pmd() was changed to take into account the new FOLL_COW flag (8310d48b125d “mm/huge_memory.c: respect FOLL_FORCE/FOLL_COW for thp“). We noticed a problematic use of pmd_mkdirty() in the touch_pmd() function. touch_pmd() can be reached by get_user_pages().” reads the advisory published by Bindecy.
+“In such case, the pmd will become dirty. This scenario breaks the new can_follow_write_pmd()’s logic – pmd can become dirty without going through a COW cycle – which makes writing on read-only transparent huge pages possible.”
+The new bug is not as severe as the original ‘Dirty cow’ vulnerability that affected many more Linux distributions and the Android operating system.
+The current bug doesn’t affect Android and Red Hat Enterprise Linux, anyway millions of machines are vulnerable.
+According to Red Hat, the vulnerability does not affect the Linux kernel packages shipped with Red Hat Enterprise Linux 5, 6, 7 and Red Hat Enterprise MRG 2.
+The patch released in October 2016 patch addressed the Dirty COW vulnerability for both regular pages and transparent huge pages.
+Eylon Ben Yaakov published a technical report on the flaw in the DIRTY COW patch.
+The researchers reported the flaw to the Linux Kernel Organization on November 22, the patch was committed to the mainline kernel on November 27, the flaw was officially released on December 1.
+Bindecy experts published a PoC code that overwrites the zero-page of the system.
+The advisory published by Red Hat includes a mitigation suggestion that consists in disabling the use of “zero page”.
+“It is possible to prevent the zero page from being mapped as a huge page, by modifying a configuration tunable in the /sys directory… This prevents the flaw from being exercised in this method. # echo 0 > /sys/kernel/mm/transparent_hugepage/use_zero_page Disabling huge pages: It is possible to mitigate this flaw by disabling hugepages on a system,” according to Red Hat. 
+Pierluigi Paganini
+(Security Affairs – Dirty Cow flaw, hacking)

@@ -1,0 +1,124 @@
+
+Pumpkin Spiced Locky
+
+
+This post was authored by Warren Mercer & Edmund Brumaghin
+
+
+
+
+
+
+Summary 
+
+We had .locky, we had .odin and then we had .zepto but today we hit rock bottom and we now have Locky using .shit as their encrypted file extension. In today's latest wave of spam, Talos has observed three distinct spam campaigns distributing the newest version of Locky ransomware. This comes after a seeming vacation for Locky for around two weeks. Using the LockyDump utility that was previously released by Talos, we were able to determine that there are distinct differences in the characteristics of the malware campaigns that seem to correlate with the Affiliate ID associated with the Locky binaries that are delivered by each campaign.
+
+The technical details associated with the Locky ransomware family itself has been extensively documented and reported on, so we won’t spend time providing an in-depth technical analysis of the ransomware family itself. This post highlights some of the distinct characteristics that we have observed for each campaign. We will summarize all Indicators of Compromise (IOCs) at the end of this post.
+
+
+Campaign Details
+
+Campaign 1: “Receipt XXX-XXX” Spam (Affil ID=3) 
+
+
+This campaign was first observed this morning (2016-10-24) and featured emails attempting to leverage malicious .HTA files as malware downloaders. The emails are encouraging the recipient to open the message claiming they contain a receipt. The emails associated with this campaign used the subject “Receipt XXX-XXX” where XXX was a sequence of numbers. These HTA files were encapsulated in .ZIP archives named “Receipt XXX-XXX.zip”. The .HTA file is named “Receipt XXXXX-XXXXXX.hta” and when opened, functions as a malware downloader for the actual Locky ransomware. 
+
+Interestingly enough, the obfuscation employed by the .HTA downloader contained repeated use of variable names that were based on the word “PUMPKIN”. In the samples we analyzed, “PUMPKIN” showed up in 37 separate instances. This is a timely reference with Halloween rapidly approaching.
+
+ Figure A: References to ‘PUMPKIN’ in HTA Downloader
+
+
+
+Running LockyDump against samples from this campaign returns the following information:
+
+ 
+
+Figure B: LockyDump Output For Sample
+
+
+
+In total, Talos has observed 13,384 emails from this spam campaign. This campaign contained 210 unique samples which are included below.
+
+Campaign 2: “saved_letter_XXXXXXXX” Spam (Affil ID=1)
+
+ 
+
+We also observed another spam campaign distributing Locky downloaders, this one leveraging Javascript (.JS) files as the mechanism for downloading the ransomware. This campaign was relatively low volume with emails containing the subject “Complaint letter” as their means of enticing users to execute the attached file. Let’s face it nobody likes complaints so many recipients may move to act quickly on them. Talos observed 3,748 emails over a 3 hour window from this spam campaign. The subject of these emails was ‘“Complaint letter” and the emails contained an attached zip archive named “saved_letter_XXXXXXXXX.zip” where the “X” represents 9 hexadecimal characters. The attached zip archive contained the JS malware downloader which was named “saved letter XXXXXX.js” where the “X” represents 5-8 hexadecimal characters. Within the 3,748 emails we discovered 388 unique samples.  
+
+ Figure C: Sample Complaint Email Message 
+
+Campaign 3 - Various Spam, namely ‘Free’ (Affil ID=3)
+
+ 
+
+In addition to the two campaigns previously described, we also observed various low volume email spam messages using WSF-based malware downloaders. This in and of itself is not new, Locky has frequently used JS and WSF files since its inception in February 2016. Interestingly, of the 154 emails we observed that were associated with this campaign, 133 of them were targeting French language speakers and were crafted to appear to have been sent by the French television & media provider “Free”. Additionally, the emails purported to be a bill from “Free”. We identified 42 unique hashes associated this campaign. The body of the messages state that the recipient’s bill is attached for the amount of XX.XX Euros - this amount varied across all emails we analyzed.
+
+
+
+ 
+
+Figure D: Sample “Free” Email Message
+
+
+
+The remaining small batch of emails we observed were themed to appear as various delivery failure or notification requests such as:
+
+Subject:     We could not deliver your parcel, #000990048Subject:     Unable to deliver your item, #0000248834Subject:     Problem with parcel shipping, ID:00480186
+
+These all followed the normal Locky distribution method of .ZIP attachments which contained .WSF malware downloaders. We believe this third campaign is a small test campaign as the attachments appear to be corrupt in some instances. The messages outside of the “Free” spam campaign all had broken .ZIP attachments which contained files with the double-extension of “.doc.wsf”, none of which are valid. It’s rare for spam campaigns attempting to distribute Locky downloaders to have a high percentage of corrupt attachments.
+
+Changes to Locky
+
+ 
+
+The new version of the Locky ransomware being distributed by these spam campaign contains several notable changes to the way in which it operates. Some notable changes that we observed are:
+
+
+
+URL path used to for C2 has changed to /linuxsucks.php. 
+The file extension used when encrypting files has changed to “.shit” 
+The file containing the ransom note is now named “_WHAT_is.html”
+
+
+ 
+
+Indicators of Compromise
+
+Campaign 1:
+
+ 
+We have included all 210 unique sample hashes for this campaign here
+
+Campaign 2:
+
+ 
+We have included all 388 unique sample hashes for this campaign here
+
+Campaign 3:
+
+ 
+We have included all 42 unique sample hashes for this campaign here
+
+
+C2 Domains:
+
+We have included a list of distribution servers that we have observed here
+
+
+Coverage
+
+ 
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks. 
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors. 
+ESA can block malicious emails sent by threat actors as part of their campaign.
+
+ 
+
+

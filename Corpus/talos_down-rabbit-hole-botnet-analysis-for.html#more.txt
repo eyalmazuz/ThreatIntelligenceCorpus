@@ -1,0 +1,276 @@
+
+Down the Rabbit Hole: Botnet Analysis for Non-Reverse Engineers
+
+
+This post is authored by Earl Carter & Holger Unterbrink.
+
+
+Overview
+Talos is often tasked with mapping the backend network for a specific piece of malware. One approach is to first reverse engineer the sample and determine exactly how it operates. But what if there is no time or resources to take the sample apart? This post is going to show how to examine a botnet from the Fareit family, starting with just an IP address. Then, using sandbox communities like Cisco ThreatGRID and open source products like Gephi and VirusTotal, we will track down and visualize the botnet.
+
+Talos recently discovered some activity from the Fareit trojan. This family of malware has a significant history associated with malware distribution. It is mainly an information stealer and malware downloader network which installs other malware on infected machines. In this campaign, it mainly tries to steal Firefox and other credentials. It is possible that this botnet is sold as a pay-per-infection botnet in the underground markets. Pay-per-infection is an underground business model where criminals are paying other criminals to distribute their malware. The analysis below was mainly done in July 2015. Let’s take a walk on the wild side....
+
+AMPs behaviour based detection found suspicious executables that downloaded files by using the following URLs in one of our customer networks.
+
+http://89.144.2.119/cclub02.exe
+ http://89.144.2.115/cclub02.exe
+
+We began analysing the infrastructure with focus on these two IP addresses and checked what other files they had been distributing. Initial analysis showed that VirusTotal found 25 and 38 files distributed from these two IP addresses. Almost all of the files in VirusTotal had different hashes, but similar or identical filenames. The following list is a sample of some of the files found in VirusTotal.
+
+1197cb2789ef6e29abf83938b8519fd0c56c5f0195fa4cbc7459aa573d9e521b (cclub02.exe)
+ 58f49493aa5d3624dc225ba0a031772805af708b38abd5a620edf79d0d3f7da0 (cclub02.exe)
+ d1b98b7b0061fbbdfc9c2a5a5f3f3bbb0ad3d03125c5a8ab676df031a9900399 (cclub02.exe)
+ c054e80e02c923c4314628b5f9e3cb2cad1aa9323cbcd79d34205ad1e3cad6c3 (cclub12.exe)
+ bd30242996a3689c36008a63d007b982d9de693766d40e43fe13f69d76e61b63 (cclub12.exe)
+ c609ef45f7ff918cbac24755a3a3becc65d1c06e487acd801b76a1f46e654765 (tarhun1.exe)
+
+
+
+Talos leveraged the ThreatGRID sandbox community database and our internal platform for communications to check these two IP addresses. The result was that we found 2,455 samples communicating to 89.144.2.115. Only 23 of these samples shared the same hash, the rest were unique samples. For 89.144.2.119 it was more or less the same. The interesting part is many of those samples tried to download files with filenames similar to the ones previously discussed. This shows that adversaries are attempting to bypass hash and signature based detection methods by ensuring their samples are unique per attack or campaign.
+
+Along with the similarity in filenames, Talos also observed the similarity in using the same URL structure regardless of hash or filename.
+
+Samples using the following URLs to download the mentioned suspicious files (e.g. cclub12.exe):http://<IP>/<filename.exe>
+http://<IP>/loader/<filename.exe>
+
+Below are the filenames and number of occurrences where the files shared a similar name and were still downloadable.
+
+Samples communicating with 89.144.2.119 and which executables they downloaded via HTTP GET:
+42 arisx06.exe
+ 7 b0be001.exe
+ 16 cclub02.exe
+ 20 cclub11.exe
+ 1 cclub12.exe
+ 1 mobile7.exe
+ 36 rain003.exe
+ 16 suba002.exe
+ 51 trahun1.exe
+ 13 x640001.exe
+
+Samples communicating to 89.144.2.115 and which executables they downloaded via HTTP GET:
+69 arisx06.exe
+ 13 b0be001.exe
+ 36 cclub02.exe
+ 37 cclub11.exe
+ 5 cclub12.exe
+ 5 mobile7.exe
+ 47 rain003.exe
+ 19 suba002.exe
+ 72 trahun1.exe
+ 12 x640001.exe
+
+Let’s have a closer look to some of the samples which were downloaded from 89.144.2.119. They are also sharing a lot of Behaviour Indicators(BI) in our sandbox analysis. This could be an indicator for that they all belongs to the same malware family. You can see below, the file names marked in red share very similar characteristics. The columns in bold have hits in almost all samples.
+
+
+
+Click to enlarge
+
+
+While statically analysed, the samples marked in red in the table above and some others show also equal or very similar AntiVirus(AV) Profiles:
+
+
+
+Click to enlarge
+
+
+This means that we can most likely also attribute arisx06.exe and rain003.exe as part of the same malware family. They probably just used better sandbox detection techniques than the others and did not execute their malicious content in the sandbox.
+
+Finally, we analysed the pcap and found that a host of Fareit Trojan Snort rules fired (27775, 28114, 28115, 28116, 28117, 28118, 28119, 28120, 28121, 28122, 28123, 28553, 28554).
+
+At this point we can be pretty sure that all or most of the machines belong to the Fareit botnet. So, let’s proceed with a visual data analysis.
+
+Visual Data Analysis
+
+We took all the IPs, the samples above communicated with and analysed which other samples in our data they are communicating with. Then we took all these samples and searched for other samples with similar imports in their Import Address Table (IAT) , which often points to similar malware samples.
+
+We then built a visual graph network model from the dataset and feeded it into Gephi, an open source graph visualization tool. It shows which malware samples (red nodes) in our dataset communicate with which IP address(es) (green nodes). This graph does not discriminate what type of communication took place(e.g. file download, C2 traffic, etc.). In a later post we might extend this into more details. For now it is enough to see their relationships.
+
+
+
+Click to enlarge
+
+
+
+This shows that there are a lot of IP nodes (green) and malware sample nodes (red) with relationships to our suspicious 89.144.2.119 machine and to each other. The bigger the size of a node the more connections this node has to other nodes. To get a better overview, let’s eliminate all nodes which do not have more than one connection to any other node.
+
+
+
+Click to enlarge
+
+
+Checking the geolocation of these IPs shows that they are distributed all over the world with the top countries being the US, Ukraine, and China. In other words, we can definitely consider this a worldwide campaign.
+
+
+
+Click to enlarge
+
+
+The 188.237.206.58 IP node and the de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa malware sample node are our top talkers. (Of course, except of IP 89.144.2.119 which we used as a starting point for generating the dataset, which obviously have connections to all sample nodes).
+In other words, at least these two are interesting for further investigations. Let’s check our data for what kind of files 188.237.206.58 is distributing:
+
+Samples talking to 188.237.206.58 and what executables they downloaded via HTTP GET:
+(e.g. 78 reports have samples talking to 188.237.206.58 and downloading arisx06.exe)
+
+78 arisx06.exe
+ 74 trahun1.exe
+ 60 rain003.exe
+ 42 cclub11.exe
+ 39 suba002.exe
+ 38 cclub02.exe
+ 25 b0be001.exe
+ 14 cclub12.exe
+ 13 x640001.exe
+ 5 mobile7.exe
+ 1 moon010.exe
+
+The same familiar names we have seen before. We used the captured URLs from the sandbox reports to download some of those files (see table below) and analysed them separately in our sandbox. Again, we see different hashes for several of these files sharing the same filename.
+Most of them were not seen more than once in VirusTotal. They also almost all share a very low AV detection rate (see VT score below, snapshot from July 2015).
+
+Unique files download from extracted URLs which were still active:
+
+
+
+Click to enlarge
+
+
+First column(#) shows the number of files with the same hash.VT score column is the number of AV products on VirusTotal which detected the file as malicious, see below for details.2nd last column(#) is the total number of files submitted to VirusTotal with this hash
+
+
+Besides the low detection rate, if we look to the actual AV signatures it is hard to judge if these are true positives or false positives:
+
+VirusTotal AntiVirus Findings Details (for active samples only): 
+
+034c0c55134a7cc57ebb73e9d6cb8d97b9f3ecf2(3)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!5B8519F416AD
+
+bcaaaa1eb17233f7e8d9895587bcbc6e649b691d(3)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!8CBA1D30B9AB
+
+ce1efc58fdcc4ed9b6912f6fdee713971fdd4cc1(3)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!F8BD7C990CCD
+
+60d4337a1bef093afe249ef91ff6ed382739c6e1(3)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!32A974628608
+
+c4ddf40abddba090c2c1c4ba7ddaf8e8c6192be7(4)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!1BAAC0C39E17, UDS:DangerousObject.Multi.Generic
+
+11ac454d982b6a577ef941e9c743f1ddc0949e0f(4)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!519C65D375BC, UDS:DangerousObject.Multi.Generic
+
+035852883a1c33702380d72606137ea998399380(4)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!B5E20D9ADDD3, UDS:DangerousObject.Multi.Generic
+
+3c28d4d04dbf171504b792851aba542f5034f273(3)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!AE2A282607B3
+
+10cdee2ff8363888b2ef81a7f272daf88124b1b9(7)
+ Trojan/Win32.Injector,Trojan(700001211),Packed-EZ!E8561FEA636F, Gen:Variant.Kazy.666542,BehavesLike.Win32.PWSZbot.tc,Trojan.Kazy.DA2BAE,Generic36.BQWA
+
+2f8eedb7021b69ef7e1d6d252410c2ffc6eee631(0)
+ not submitted to VirusTotal at all so far
+
+2f3da6820b2100df7788b642d24dc4deb442dd28(0)
+ not submitted to VirusTotal at all so far
+
+
+It looks like that the adversaries behind this botnet are quite successful in flying under the radar. The fact that they were only submitted once to VirusTotal means that they are either not detected by security staff or they are very unique e.g. almost every infection uses a binary with a different hash.
+
+So let’s look at the other big node in our graph network,  de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa. It talks to many IPs as you can see below (e.g. the IP from above (188.237.206.58) is one of them):
+
+
+
+Click to enlarge
+
+
+If we have a closer look to the graph, we see that many IPs which are communicating with sample de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa, are also communicating with other malware samples. For example 188.237.206.58:
+
+
+
+Click to enlarge
+
+
+The same applies to other “IP to sample” relationships. For example, 188.237.206.58  communicates to 24cd20f83b6a006d9535f07d5cf80cc523ce472e76a88cc2fd9212cdc550f3df, which has connections to 89.144.2.119, which is again connected to de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa and others. 
+
+
+
+Click to enlarge
+
+
+
+It is pretty obvious that these samples are sharing the same IP command and control infrastructure and that most of these nodes are related to each other. Either directly or over a few hops distance.
+
+As mentioned before, many of the samples in this network have a very low VirusTotal detection score, usually around 4/56 AV detections, especially the later ones. The de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa sample is an exception. It seems to have been around for a while and has a much higher score.
+
+VirusTotal score (40/54) for de8d885859313a61290a13504bcd21f5f9aaa212bb4acc950dd63327800408fa:
+
+
+
+Click to enlarge
+
+
+
+Nevertheless, this sample has only been seen once in VirusTotal (first time in 2015-03-03). And again, the majority of the samples have a different hash. This makes it very difficult to track them. Many detection tools in the security community rely on a hash-based search and correlation algorithms. It is interesting that they are frequently reusing similar filenames, but making such an effort to make sure most samples have an unique hash. One possible reason for this might be, that the mechanism which they use to download additional malware files or modules (e.g. cclub02.exe), need fixed names or paths (like http://<IP>/cclub02.exe) and is not flexible enough to handle on-the-fly generated file names on a per victim/campaign base. This could also indicate a pay-per-infection botnet, but of course, this is speculation until we reverse engineer the local binaries and analyse the server command and control software.
+
+If we go back and compare the sandbox analysis of the malware downloader (0890072649.exe) and the separate "standalone" sandbox analysis of the downloaded sample (e.g. cclub02.exe) it is clear that it is a subset of the BI findings and IP communication:
+
+Downloader Analysis (0890072649.exe):
+
+
+
+Click to enlarge
+
+
+
+
+Click to enlarge
+
+
+
+
+
+Click to enlarge
+
+
+
+
+
+Click to enlarge
+
+
+
+Downloaded sample analysis (artifact cclub02.exe from the report above, submitted to a separate own sandbox analysis):
+
+
+
+
+
+Click to enlarge
+
+
+
+
+Click to enlarge
+
+
+
+Other downloader and downloaded artifact reports look similar. They also look like that there is one polymorphic malware downloader trojan (hash only occurs once in our dataset) which is downloading other malware. The downloaded other malware is more often sharing the same hash than the original downloader, but could still be considered to be polymorphic. It is usually downloading at least one additional sample (e.g. cclub02.exe, arisx06.exe, etc… depending on the sample) which usually executes its own malicious functions, such as password stealing. The downloaded artifact seems to be independent of the downloader and executes its malicious payload even if it is run by itself and not by the downloader. So again, this looks either like a pay per infection campaign or is a module of this particular malware which gets dynamically loaded by the downloader.
+
+IOC Summary
+Due to the large number of indicators associated with this family, we've consolidated them into a text file you can view here (IOC-Data).
+
+
+Summary
+With statistical analysis there is always room for interpretation and within Talos we use our analysis to make informed decisions as to whether an event or incident is malicious or legitimate. It will often pave the way for more in depth investigations if required. In this case, we got a good idea about what is behind our initial finding. We can say that from a content point of view, the main campaign is a credential stealer distributed by the Fareit botnet family. It tries to steal Firefox and other passwords. The structure of this network shows that it is likely to be run by the same group or individuals. It also shows the adversary using polymorphic files to make it difficult to track campaigns based on file hashes. On the other hand, it is surprising that the adversaries are making an effort to generate malware with different hashes, but reusing the same or similar file names. This makes them easily trackable by simple string matches on these filenames and their derivatives. Happy hunting.
+
+
+Protecting Users
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails including phishing and malicious attachments sent by threat actors as part of their campaign
+
+

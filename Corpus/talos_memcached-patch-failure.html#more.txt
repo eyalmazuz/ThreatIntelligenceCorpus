@@ -1,0 +1,193 @@
+
+Memcached - A Story of Failed Patching & Vulnerable Servers
+
+
+This blog authored by Aleksandar Nikolich and David Maynor with contributions from Nick Biasini
+
+
+Memcached - Not secure, Not Patched Fast Enough
+
+ 
+Recently high profile vulnerabilities in systems were used to unleash several global ransomware attacks that greatly impacted organizations. These types of vulnerabilities were previously patched and could have been addressed by organizations before the attacks commenced. This is just the latest example in a long line of threats that are successful in large part because of the inability for patches to be applied in a timely and effective manner.  In late 2016 Talos disclosed a series of vulnerabilities in a software platform called Memcached. After releasing the vulnerabilities Talos has been monitoring the amount of systems that were vulnerable as well as the rate at which they have been patched. This blog will give a quick overview of the vulnerabilities and discuss the unfortunate findings of the Internet wide scans that we have been conducting over the last six months.
+
+
+What is Memcached?
+
+Memcached is a high performance object caching server intended for speeding up dynamic web applications and is used by some of the most popular Internet websites. It has two versions of the protocol for storing and retrieving arbitrary data, an ASCII based one and a binary one. The binary protocol is optimized for size.
+
+It's intended use is to be accessed by the web application servers and should never under any circumstances be exposed to an untrusted environment. Newer versions of the server include basic authentication support based on SASL which, based on our findings, is seldom used.
+
+Audit and Vulnerabilities
+
+In October last year, we performed a source code audit of Memcached server and identified three distinct but similar vulnerabilities. All three are in the implementation of the binary protocol. Two vulnerabilities lie in the part of the code dealing with adding and updating cached objects, while the third is in the aforementioned SASL authentication mechanism. All three vulnerabilities are due to integer overflows leading to controlled heap buffer overflows and due to the nature of the protocol can be abused for sensitive memory disclosure which can lead to straightforward and reliable exploitation.
+
+The vendor was notified and promptly issued a patch that we have verified as sufficient. Public release of the new patched version was on October 31st. The CVE ID assigned to this vulnerability is CVE-2016-8704 and was tracked by us as TALOS-2016-0219. Quickly after the public release, major linux distributions issued updates and advisories of their own. One key thing to note is that major distributions (Ubuntu, Fedora...) backported patches without bumping up the version number of the server. References:
+
+
+
+http://www.talosintelligence.com/reports/TALOS-2016-0219/
+
+http://www.talosintelligence.com/reports/TALOS-2016-0220/
+
+http://www.talosintelligence.com/reports/TALOS-2016-0221/
+
+https://access.redhat.com/security/cve/cve-2016-8704
+
+https://www.ubuntu.com/usn/usn-3120-1/
+
+
+MongoDB attacks of January 2017
+
+A slight detour. Sometime in late December/early January news of a widespread attack on MongoDB servers surfaced.
+
+MongoDB is a memory resident, NoSQL database. Similarly to memcached, it is never supposed to be exposed to untrusted environment, which is often overlooked by developers, and sometimes production servers end up being freely accessible over Internet.
+
+It is a well known fact that many thousands of MongoDB servers are exposed over the Internet, but some criminal groups decided to weaponize this fact, aided by the lack of any form of authentication or access control, for profit. In a matter of days, thousands of these accessible MongoDB hosts were hit with a ransomware attack.
+
+Essentially, the bad guys connected to the server, siphoned all the data off of it and left a note requesting certain amount of bitcoins as ransom for the data. Soon, it became apparent that multiple competing groups were attacking the same servers which leads to the conclusion that there is no hope of actually recovering data, if there ever was in the first place.
+
+These attacks had a widespread media coverage which certainly led to higher awareness of this issue, and hopefully to less servers being exposed.
+
+Could Memcached face a similar fate?
+
+This whole MongoDB kerfuffle made us think about what the impact would be on a similar attack on memcached. Granted, memcached, unlike MongoDB, isn't a database, but can still contain sensitive information and disruption in the service availability would certainly lead to further disruptions on dependent services. Additionally, we could assess the potential attack surface for vulnerabilities that we found as well as see how widely the patch is applied.
+
+So we decided to scan the Internet and see...
+
+Scans
+
+In order to properly get the data we needed, a special scan had to be performed. We wanted a couple of data points:
+
+
+
+how many servers are directly accessible over internet
+
+how many of those are still vulnerable
+
+how many use authentication
+
+how many of servers with authentication enabled are still vulnerable
+
+
+We couldn't rely on the version reported by the server because, as mentioned before, many distributions backport security patches so the version string doesn't always reflect the patch level. Because of that, we devised a special test which would send a single packet to the server and could tell from the reply if the server was vulnerable or not.
+
+First series of scans was conducted in late February. This first dataset lead to another scan for authentication-enabled servers specifically which was done in early March.
+
+Results Of The Scans
+
+Gathering all the data revealed mostly expected results. More than a 100,000 accessible servers, with almost 80% still vulnerable and only about 22% having authentication enabled. Interestingly, almost all servers with authentication enabled were still found to be vulnerable to CVE-2016-8706 which we specifically tested for. The exact numbers are as follows:
+
+
+
+Total servers with valid responses: 107786
+
+Total servers still vulnerable: 85121 (~79%)
+
+Total servers not vulnerable: 22665 (~21%)
+
+Total servers requiring authentication: 23907 (~22%)
+
+Total vulnerable servers requiring authentication: 23707 (~99%)
+
+
+Breakdown of numbers by country is, again, as expected:
+
+
+All servers
+
+
+
+
+36937 - United States
+
+18878 - China 
+
+5452 - United Kingdom
+
+5314 - France
+
+3901 - Russia
+
+3698 - Germany
+
+3607 - Japan
+
+3464 - India
+
+3287 - Netherlands
+
+2443 - Canada
+
+
+
+Vulnerable servers
+
+
+
+
+29660 - United States
+
+16917 - China
+
+4713 - United Kingdom
+
+3209 - France
+
+3047 - Germany
+
+3003 - Japan
+
+2556 - Netherlands
+
+2460 - India
+
+2266 - Russia
+
+1820 - Hong Kong
+
+
+There are a couple of conclusions that can be drawn from this. First, there is a large number of easily accessible memcached servers on the Internet. Second, less than a quarter have authentication enabled, making the rest fully open to abuse even in the absence of exploitable remote code execution vulnerabilities. Third, people are slow to patch their existing servers, which leads to a large number of servers in risk of potential full compromise through vulnerabilities we reported. And fourth, a negligible number of servers with authentication enabled are also patched, leading to the conclusion that system administrators think authentication is enough and patches don't warrant updating. All four of these points are bad.
+
+Notifications
+
+ 
+After the scans were completed and conclusions were drawn, we made queries for all IP addresses to get contact emails for responsible organizations in order to send a notification with a simple explanation and suggestions to remedy this issue. This resulted in about 31 thousand unique emails which are pending notifications.
+
+
+
+
+Redoing scans
+
+After notifications were sent, we repeated the scans six months later to see if the notifications had any significant impact. Overall the results were disappointing, it appears the notifications largely fell on deaf ears. As you can see below only a small percentage, ~10%, of systems were patched. Additionally, there is still a significant amount of servers that are vulnerable and still do not require authentication. Whats even more disturbing is that it appears that 26% of the servers that were originally found are no longer online, but the amount of systems that we found remained largely the same. This implies that either the systems just changed IP addresses or there are still a large amount of new systems being deployed with the vulnerable version of Memcached.
+
+
+Results: 6 Months Later
+
+Total servers with valid responses:  106001
+
+Total servers still vulnerable: 73403 (~69%)
+
+Total servers not vulnerable: 32598 (~30%)
+
+Total servers requiring authentication: 18173 (~17%)
+
+Total vulnerable servers requiring authentication: 18012 (~99%)
+
+
+Results: Original Servers (107,786) Updated Results
+
+Total: 85,121
+
+Still vulnerable: 53,621
+
+No longer vulnerable: 2,958
+
+Not online:  28,542 (~26%)
+
+
+Conclusion
+
+The severity of these types of vulnerabilities cannot be overstated. These vulnerabilities potentially affect a platform that is deployed across the internet by small and large enterprises alike. With the recent spate of worm attacks leveraging vulnerabilities this should be a red flag for administrators around the world. If left unaddressed the vulnerabilities could be leveraged to impact organizations globally and impact business severely. It is highly recommended that these systems be patched immediately to help mitigate the risk to organizations.
+
+
+

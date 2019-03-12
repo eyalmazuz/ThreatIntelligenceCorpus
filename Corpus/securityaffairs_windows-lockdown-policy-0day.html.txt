@@ -1,0 +1,23 @@
+
+					Google Project Zero hacker discloses a Zero-Day in Windows Lockdown Policy					
+Google has publicly disclosed a Windows 10 zero-day vulnerability that could be exploited by attackers to bypass Windows Lockdown Policy on systems with User Mode Code Integrity (UMCI) enabled and execute arbitrary code on the target system.
+Project Zero hacker James Forshaw publicly disclosed the issue because the vulnerability was not fixed in a 90-day period according to the Google disclosure policy.
+The zero-day affects all Windows 10 versions with UMCI enabled, Forshaw successfully exploited it on Windows 10S.
+“The enlightened Windows Lockdown Policy check for COM Class instantiation can be bypassed by using a bug in .NET leading to arbitrary code execution on a system with UMCI enabled (e.g. Device Guard)” states the security advisory published by Google.
+The zero-day flaw ties the way the WLDP COM Class lockdown policy behaves when a .NET COM object is instantiated.
+The WLDP COM Class lockdown policy contains a hardcoded list of 8 to 50 COM objects which enlightened scripting engines can instantiate.
+In order to prevent an attack, while registering an existing DLL a correct implementation of the policy should check the CLSID passed to DllGetObject against the hardcoded list.
+“The WLDP COM Class lockdown policy contains a hardcoded list of 8 to 50 COM objects which enlightened scripting engines can instantiate. Excluding issues related to the looking up of the correct CLSID (such as previously reported abuse of TreatAs case 40189).” continues the analysis. 
+“This shouldn’t be a major issue even if you can write to the registry to register an existing DLL under one of the allowed COM CLSIDs as a well behaved COM implementation should compare the CLSID passed to DllGetObject against its internal list of known objects.”
+Google expert discovered that when a .NET COM object is instantiated, the CLSID passed to mscoree’s DllGetClassObject is only used to look up the registration information in HKCR, the CLSID is thrown away, and the .NET object created.
+This means that an attacker can add registry keys, including to HKCU, that would load an arbitrary COM visible class under one of the trusted CLSIDs.
+“This has a direct impact on the class policy as it allows an attacker to add registry keys (including to HKCU) that would load an arbitrary COM visible class under one of the allowed CLSIDs. As .NET then doesn’t care about whether the .NET Type has that specific GUID you can use this to bootstrap arbitrary code execution,” continues the analysis.
+
+The Google researcher published a Proof of Concept code for the vulnerability that is composed of two files:
+The researcher reported the vulnerability to Microsoft on January 19, but the tech giant hasn’t addressed it in 90 days.
+“This issue was not fixed in April patch Tuesday therefore it’s going over deadline. This issue only affects systems with Device Guard enabled (such as Windows 10S) and only serves as a way of getting persistent code execution on such a machine. It’s not an issue which can be exploited remotely, nor is it a privilege escalation,” added the expert.
+The expert highlighted that attackers need to gain access to the system to exploit the flaw and install registry entries.
+Pierluigi Paganini
+(Security Affairs – Windows Lockdown Policy, 0-day)
+
+

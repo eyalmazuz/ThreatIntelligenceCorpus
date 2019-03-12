@@ -1,0 +1,88 @@
+
+Hack Acid Reloaded VM (CTF Challenge)
+
+The named of the Virtual machine is “Acid-Reloaded”, It is created by Avinash Thappa.  . This Virtual Machine contains both network logics and web logics. You need to extract the rar and run the vmx using VMplayer . The machine has DHCP active list so once automatically assign an IP network, the next step will be to identify the target and discover the / the service / s to start the game.
+GOAL: Escalate the privileges to root user and capture the flag. Once any one able to beat the box then shoot me a mail
+Penerating Methodologies
+Let’s Begin!!
+As always start by finding our target
+
+This tells us that our target is 192.168.1.106. Now is time to scan with nmap.
+
+The result of nmap shows us that only port 22 is open with the service of SSH. Let’s check out this 22 port.
+Wann Knock me out??? Sounds like port knocking hint therefore let’s go for port knocking.
+
+Checking out port 22 hints (3.2.1 let’s Start the Game) we will use netcat Port Knocking technique.
+
+Let’s scan with nmap again.
+Port knocking helped us to open port 33447 on which the service of HTTP was redirected.
+
+Now open the target IP on browser using this port.
+
+A simple webpage opens that tells us to use our brain. Haha! Even the page source did not help. It’s time to use dirb for directory brute-force attack.
+
+It put-up so many web directories but to me /bin/ might be interesting as it might have a shell system. No harm in checking it out in browsing so let’s do that.
+
+And it’s a log in portal. Now let’s check its page source.
+
+In the page source there is a directory called: includes/validation.php. I decided to check it out.
+Unfortunately! I could not find anything on it. So decided to use DirBuster to find out about directories.
+
+In the DirBuster give the URL and for wordlist use medium 1.0 wordlist. And then click on Start button and it will start finding directories. So it found so many PHP files as shown below.
+
+I checked every directory related to bin and only /bin/dashboard.php was useful. When I opened it in the browser, I found nothing useful so I looked in to the page source and even that proved to be non-useful.
+
+When nothing helped I decided to capture its cookies using BurpSuite. To capture the cookies using BurpSuite, set proxy and then turn on the interception and then simply reload the page. When the cookies are captured just add the following below the Host.
+Referer : http://192.168.1.106:33447/bin/includes/validation.php
+
+And now as soon as you will hit the forward button it will automatically log in.
+
+On the page it says to click and when you do that it will redirect to the following page.
+
+There was nothing on the redirected page or its page source. So decided to check for SQl injection, and search for web page with id=1. Luckily we have made right prediction and got following result for id=1.
+
+Using single quote (‘) I check for sql injection and got mysql error message which means the web application is vulnerable to sql injection.
+
+So decided to use SQLMap.
+
+We got database name secure_login, now let’s find out tables.
+
+ 
+It shows us the name of the table i.e. UB3R/strcpy.exe
+
+ 
+When I opened /UB3R/strcpy.exe in the browser, a dialogue box opened and asked to save a file and so I did.
+
+Now use file command to know more it and found PDF document V 1.5, then used foremost tool which is a forensic tool which is used to recover files using their headers and footers.
+file strcpy.exe
+foremost strcpy.exe
+
+As soon as you will run the above command a folder is created with the name of output. Let’s check out this folder.
+There is a text file in the folder with the name of audit, I decided to read it through cat command.
+cat audit.txt
+
+There is a .rar which I decided to unrar.
+unrar x 00000213.rar
+On unzipping there are two files that has been extracted i.e. acid.txt and lol.jpg. I decided to read acid.txt
+cat acid.txt
+This .txt tells us that we are on right path. So ofcourse next I opened lol.jpg
+exiftool lol.jpg
+But found nothing. So I unzipped it.
+unrar e lol.jpg
+
+Unzipping the lol.jpg gave me two files again, one was “hint.txt” and another “Avinash.contact”. So I opened hint.txt which told me to go with Avinash.contact, so I next opened.
+
+There was base64 code given in the file so we decoded the base64 code with help of echo as shown and it turned to be NooB@123.
+Syntax: echo Base64 text | base64 -d
+
+And then applied brute force on SSH using the text file that I just created with random words. With help of following command we try to crack password for SSH and successfully obtained two credential for SSH login.
+
+And it gave us makke:NooB@123 as username and password respectively. And so I logged in with SSH.
+Give the password when asked. And when I logged in I checked kernel’s version and tried to download its exploit but it didn’t happen. All the options for downloading were blocked so started exploring.
+So I directly went for /bin.
+
+In /bin, there was files called overlayfs. This is a famous exploit so I executed it
+And then fortunately there was a flag.txt.
+cat flag.txt
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

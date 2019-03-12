@@ -1,0 +1,19 @@
+Anatomy of a 22-year-old X Window bug: Get root with newly uncovered flaw
+The X Window System, which today underpins Linux desktops the world over, has been around for more than two decades – and so have its bugs.
+Sysadmins have a few days to patch libXfont to remove a newly discovered, 22-year-old privilege-escalation bug in the code before any tiresome users whip out an exploit. The flaw allows someone logged into a vulnerable machine to crash the X server, or possibly execute injected code as a superuser.
+Hard on the heels of a Chaos Communication Congress presentation that found “hundreds” of bugs (discussed at the X.org mailing list here), the newly found bug is a textbook stack buffer overflow that dates back to 1991 – and is present in all versions of X11.
+The bug is very straightforward, and will impact shared computers, but it is ideal to dissect to reveal how this sort of security blunder happens.
+As the X.org advisory states: “A BDF font file containing a longer than expected string could overflow the buffer on the stack. Testing in X servers built with Stack Protector resulted in an immediate crash when reading a user-provided specially crafted font.”
+The guilty party is this block of code in bdfReadCharacters() in libXfont/tree/src/bitmap/bdfread.c:
+If you can't already see the bug then we'll explain. On-screen fonts can be stored in Glyph Bitmap Distribution Format (BDF) [PDF] files, which start with the following line to declare the format version the font is adhering to:
+That's all well and good if the loaded font has a short version number, expressed as a string, which in this case is "2.1". That information is copied into the string variable charName by the sscanf() call in bdfread.c. The problem is, sscanf() is not told to limit the number of bytes read for the version number and will keep copying data from the file until it hits a white-space character.
+The charName variable is declared as having a length of 100 bytes, so feeding it a crafted BDF font with a "STARTCHAR" version number longer than that will punch through the boundary of the variable's allotted space in memory and into other data on the stack. This means an attacker could overwrite the memory that controls the processor's instruction pointer on leaving the bdfReadCharacters() function, effectively hijacking the program.
+And since the X server is usually run with superuser privileges, the normal user can start running code to take control of the machine if the attack is successful. Much more in-depth explanations on how stack buffer overflows can be exploited, despite some of the protections in place on modern systems, can be found here and here.
+The fix for the bug is simple; you simply tell sscanf() to read at most 99 bytes, leaving one for the terminating NULL:
+As the X.org announcement states:
+In the December Chaos Communication Congress presentation, Ilja van Sprundel said he'd able to find 120 bugs in a couple of months, “and I'm not close to done”. Van Sprundel had already triggered a major X.org security update in May 2013, with tens of fixes needed because client libraries trusted servers to send valid data, and not sanity-tested what was sent.
+The latest bug, discovered using the cppcheck static analyzer, is designated CVE-2013-6462; security updates should be available from all good package managers and repositories. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

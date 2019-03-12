@@ -1,0 +1,18 @@
+Google Project Zero reverse-engineers Windows path hacks for better security
+If you're tearing your hair out trying to make sure your Windows 8 / 8.1 /10 application isn't attackable through the filename structure, a Google security engineer has penned a long look at the API to try and help.
+The reason behind the long explanation is simple, from Google's point of view: “path'ological reverse engineer” James Forshaw writes that because documentation for Windows 32 paths is incomplete, there's lots of room for mistakes that lead to security vulnerabilities.
+“How the Win32 APIs process file paths on Windows NT is a tale filled with backwards compatibility hacks, weird behaviour, and beauty. Incorrect handling of Win32 paths can lead to security vulnerabilities,” Forshaw writes here.
+The number of backwards compatibility hacks that must exist is hinted at by the output of the NTDLL pathname export call, which refers to “DOS paths” – RtlDosPathNameToRelativeNtPathName_U.
+There's all sorts of places you can get caught, Forshaw notes. For example, any developer familiar with Microsoft's drive naming probably works on the ancient assumption that drivenames are letters between A and Z.
+No more: “It turns out the RtlGetFullPathName_U API does not enforce this requirement, although the Explorer shell and command prompt almost certainly do”, he notes (the qualifier “almost” shows how hard reverse engineering this stuff can be).
+Even default drive naming isn't always what you expect.
+Newcomers to Windows development probably don't expect that =::=::/
+Image: James Forshaw, Google Project Zero
+Why does all this matter? Because anybody trying to avoid exploits being deployed against mistakes in drive and file handling needs to validate a hugely complex set of inputs.
+“There are so many quirks and weird behaviors it's very difficult to write code that validates all possible outcomes,” Forshaw writes.
+“Converting everything to NT paths helps slightly as they are less prone to misbehaviour, but even then through symbolic link abuse or changing drive letters it's still possible to be confused. If you ever encounter an application trying to validate a Win32 path, be very skeptical”.
+There's also a C# example program he's written to help programmers test his examples – and their own – to look at the results. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

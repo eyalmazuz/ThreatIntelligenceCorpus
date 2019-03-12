@@ -1,0 +1,62 @@
+
+                  ThreatConnect How To: Pivoting & Exporting Data                
+Introduction
+The Diamond Model of Intrusion Analysis is the analytic methodology upon which ThreatConnect is built.  Developed by a number of preeminent security researchers and analysts (including our own Andy Pendergast), the Diamond Model exists both as a cognitive model to organize extensive sets of interrelated logic, as well as a series of mathematical techniques found in set theory, graph theory and cluster analysis to improve analytical workflow and to enable more precise and strategic decision making against the adversary. In the realm of threat intelligence, the Diamond Model empowers analysts to efficiently aggregate and act upon troves of incoming data and, over time, begin to form automated relationships between existing pieces of threat intelligence. Eventually, analysts will be able to discern adversarial intent and targeting tactics with greater clarity, allowing for the proactive mitigation of both advanced and emerging cyber threats.
+The Diamond Model breaks down individual events and categorizes them along four unique vertices: Infrastructure, Capability, Adversary and Victim.
+
+The relationships between these vertices enable analytic pivoting across them. From knowledge of any one of the vertices, related knowledge can be categorized or discovered by pivoting to adjacent vertices in the same event, other events in the same incident, or correlated with other observed events. Let’s take a look at a few use cases to illustrate this point.
+Pivoting: The Diamond Model Approach
+When you build something, it must be constructed upon a solid foundation. From a software development standpoint, the same principal also applies to the construction of Threat Intelligence Platforms. This is why we developed ThreatConnect upon a proven analytic methodology.
+When performing intelligence analysis in ThreatConnect, it is important to remember that there is no right or wrong way to pivot through the data. This is especially true in terms of selecting your beginning and ending pivots. It all depends on what intelligence questions you are trying to answer, or how you want to perform threat discovery and analysis.
+The Diamond Model methodology is fundamental to the design of the ThreatConnect User Interface (UI), and as such, it becomes a guiding force for performing holistic threat analysis. For example, if I begin my search with a known adversary, using the diamond model as my reference means that I will want to traverse each of the remaining vertices in the triangle. The order in which I pivot through each node is irrelevant - what matters is that as frequently as is possible, I complete my path across all vertices. Since there are four vertices in the diamond, there are 24 possible permutations for my pivoting sequence.
+To make it a little clearer, think of it like this: I may start my pivot with a known adversary, and in my next three pivots I will want to identify the adversary’s capabilities, their infrastructure, and their victim(s). Conversely, I may start with a known victim of an attack and pivot my way through the Diamond until I reach the adversary. Using this method yields a more complete picture of a given threat or event. Visually, you can see the 24 permutations of pivot traversal paths through the diamond model in the following table.  Think of it as possible pivot paths that allow you to deduce new intelligence you might otherwise not have been aware you possessed:
+
+Invariably, you will come across situations where traversing through each node of the diamond is not possible due to missing data. This is to be expected. However, it turns out to be a great way to understand your intelligence gaps and where you need better data or intelligence and where you should be focusing your operations. For example, for every victim in my group there should exist an adversary. Should I discover the absence of an adversary in a given pivot, a good question to ask is, “Are there known adversaries for this victim?”  If I discover the answer is yes, I simply add that data point. If, on the other hand, I do not know it may be the case that the adversary is simply unknown, i.e. no intelligence on them yet exists. Knowing the “unknown” can be equally, if not more, important than knowing the “known”. It can be a guiding force in time allocation and resources, as it pertains to improving my operations.
+Tagging in ThreatConnect can also play a huge role in addressing gaps in your intelligence and improving your ability to control, search and analyze incomplete threat data. Look for an upcoming blog on how to effectively use tagging in ThreatConnect.
+Examples of Diamond Model Pivoting
+Pivoting within the ThreatConnect user interface requires the use of two features to navigate effectively: the pivot button (1) and the “relationship type” (2) filter.  Although simply pivoting will indeed display the elements of information that are interrelated, the relationship type filter is a useful way to focus in on the explicit exact nature of a given association for more precise analysis.
+
+To demonstrate the utility of the pivot methodology, we are going to walk through several unique use cases, using each of the four terminal nodes as the genesis of our analytical process.
+Capability-Centered:
+
+MD5: 54C4448B0263062614A9AEA055A80480 >> software.qpoe.com.com >> Crimson Iron >> Group of Twenty (G20)
+
+
+In this example, we begin with “Capability” in context of the Diamond, represented by the MD5: 54C4448B0263062614A9AEA055A80480. Next, we select a relationship type and we can see that the malware calls out to the “Infrastructure” software.qpoe[.]com. This pairing of Capability and Infrastructure (technical axis) and associated attributes, tactics, techniques and procedures has been grouped to an “Adversary” that has been given the internal cover term “Crimson Iron.” This internal name has been associated with a known Chinese APT threat group, and we have established evidence that this group has previously targeted the Group of Twenty (G20) as the “Victim” (geopolitical axis) in this pivot structure.
+Infrastructure-Centered:
+
+184.105.203[.]61 >> software.qpoe[.]com >> MD5: 54C4448B0263062614A9AEA055A80480 >> 20130816D: Yayih Trojan >> Crimson Iron
+
+
+Conversely, our pivots can take different routes depending on where we begin our investigation. In this case, we start with an “Infrastructure” indicator - the IP Address 184.105.203[.]61. This IP has previously resolved to software.qpoe[.]com, which is the same C2 callout that had been previously observed within MD5: 54C4448B0263062614A9AEA055A80480.  This specific hash is associated with the incident 20130816D: Yayih Trojan, which, through pivoting, we find that the “Crimson Iron” adversary is associated with this particular incident.
+Adversary-Centered:
+
+rooterit >> rooterit@outlook.com >> www.rooter[.]tk  >> 20130516A: Voice of Tibet Incident >> Voice of Tibet >> http://vot.org/footer/html
+
+
+In the context of a top down Diamond pivot, we begin with the “Adversary” node. This adversary, known as "rooterit," has been observed using the email address rooterit@outlook[.]com to register malicious domains for some time, one of which is www.rooter[.]tk. ThisC2 node has been previously observed within the Incident grouping 20130516A: Voice of Tibet Incident. This incident was observed in a strategic website compromise (aka watering hole) against the “Victim” Voice of Tibet’s website.
+Victim-Centered:
+
+Afghanistan Ministry of Communications and IT >> [http:]//cdn.afghanistan[.]af/scripts/gop-script.js >> 388E6F41462774268491D1F121F333618C6A2C9A >> China
+
+
+In many cases, the only node threat researches have to begin a case with is the victim, and maybe a hash value or two.  Although such a lack of information is indeed frustrating, the Diamond Model integration into ThreatConnect can overcome the challenge of intelligence gaps by illustrating associations between a rich repository of known indicators, threats, incidents and victims. The victim-centric pivot structure demonstrates this nicely.  For this use case, we will use the example of Operation Poisoned Helmand, which is further documented on the ThreatConnect blog. We start with the Afghan Ministry of Communications and IT, which fell victim to a drive-by attack in December 2014.  Pivoting into this victim, we see that a subdomain ([http:]//cdn.afghanistan[.]af/scripts/gop-script.js) on the legitimate backend CDN infrastructure was serving up a malicious JavaScript file.  Thus, the adversary was leveraging the victim’s own infrastructure against its target(s).  Further investigation of the malicious JavaScript file, SHA1: 388E6F41462774268491D1F121F333618C6A2C9A, demonstrates that in the past, this particular file has been affiliated with our "Adversary": a known China APT threat group.
+In general, two great approaches to pivoting are as follows:
+1.) Pivot for discovery
+This is more of a free form style of analysis where you may not have a specific end goal in mind. Instead, you are using the pivot feature to get ‘acquainted’ with your intelligence data so you can ask smarter questions about it at a later stage.
+2.) Pivot for inquiry
+This is when you have a very specific, tailored intelligence question in mind, and you use pivoting in an attempt to find the answer to your question. For example, “How many file indicators are associated with a given vulnerability?”
+Both of these approaches form the basis of performing more mature tasks using the Diamond Model such as expanding what infrastructure or capabilities can be grouped or attributed to a specific threat group and validated hypothesis on what activity should and should not be grouped together.
+Exporting
+We covered the process of importing data into ThreatConnect in a previous blog post; however, there are times that you might want to export your data as well.  In the next few paragraphs, we will walk you through this very simple process.
+Whilst building up your pivoting breadcrumb trail (1), you may notice that within the ThreatConnect UI, you are now offered the option of exporting your data (2).
+
+When you go to export, a pop-up box will prompt you to select which pieces of information you would like to include.
+
+When following the breadcrumb trail isn’t enough, this extremely useful feature grants the analyst the ability to export the relevant data into a CSV file, which allows for more extensive analysis in other complementary platforms (such as Maltego).  Additionally, a hard CSV file is useful to have on hand for reference purposes in the future.
+ThreatConnect Research TIP: While the export feature is available by default for Individual User Accounts, Organizational User Accounts have additional security protocols for the purposes of keeping your information private. Because Organizational User Accounts have role-based access controls, only Sharing Administrators have the ability to export data out of ThreatConnect. However, if you are having issues with the export feature, contact your organizational administrator to verify that you have the correct permissions.
+Conclusion
+Pivoting and exporting threat intelligence data in ThreatConnect are powerful features that enable you to quickly connect the dots and perform more holistic threat analysis. It’s also a great way to identify gaps in your intelligence so you can make better decisions about how to fill those gaps.
+The openness and flexibility of the ThreatConnect platform allows you to extend your pivot logic programmatically via the API, allowing you to build this into your own operational custom workflow and work with ThreatConnect data in other analysis tools. Additionally, at any point in your pivot you can simply export data that is relative to your interest and use it defensively with confidence and context.
+Register for a free account to get started with ThreatConnect, and make your analysis as strong as a diamond.
+

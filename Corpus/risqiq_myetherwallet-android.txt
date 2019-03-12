@@ -1,0 +1,36 @@
+New Attacks on Mew: Phishing MyEtherWallet Via Native Web Views on Android
+Last week, we published an extensive report on MEWKit, a phishing ATS targeting visitors of MyEtherWallet (MEW) in elaborate ways—including resorting to a BGP hijack. But threats to users of MyEtherWallet aren’t a new thing by any means—phishing pages targeting the cryptocurrency platform, while not as sophisticated as MEWKit, have been going around for a very long time. In this blog, we’ll discuss another technique we’ve seen actors using in attacks against MyEtherWallet users to fool them out of their Ethereum wallet credentials. 
+Cybercriminals are always thinking of new methods by which to perform their attacks. In the case of phishing, they come up with innovative ways of convincing victims that their website or, in this case, mobile app, is legitimate. New attacks leveraging MyEtherWallet are using messages on social media and posts on forums to spread illegitimate clones of the MyEtherWallet site, which is not a new tactic in and of itself, but something that has never been seen targeting MyEtherWallet users. In this attack, an actor sets up a fake Telegram group, supposedly for MyEtherWallet and its support team, to spread false messages. In fact, searching for MyEtherWallet on Telegram would surface a group with over nine thousand subscribers:
+Fig-1 The actor-created Telegram group
+The operator of this group forwarded the tweets sent from the official MyEtherWallet twitter account to the group, with one additional message—that there’s a new MyEtherWallet client for Android. The general messaging in the group looked like this:
+
+Fig-2 Deceptive message
+The last message in the group is always the one below about a new two-factor-authentication security control, and that to use it, users need to install an Android app. The moderators of the group add a new tweet, remove the old message about the app, and then send it again to make sure it’s always the newest message in the group and thus ensuring that new subscribers will see it.
+Fig-3 Message promoting the Android app
+The URL preview in Telegram already showed it in the above screenshot, but the Bitly link forwarded victims to a MEGA download link. At the time of analyzing the latest link had received about 40 clicks:
+Fig-4 40 clicks
+Hitting the MEGA link, we were presented a download of MyEtherWallet.apk:
+Fig-5 MyEtherWallet APK
+The application itself is just an empty shell created using GoNative.io, which is a service that generates Android apps that only serve pre-configured websites. This allows website owners to expose their web application as a native app rather than having visitors open up the website via a browser every time. We can see GoNative in the malicious MyEtherWall app based on the entry point name, the standard function name for the entry point of GoNative.io apps:
+
+Fig-6 GoNative.io “empty shell”
+Additionally, we can find the GoNative.io configuration file in the APK at /assets/appConfig.json:
+Fig-7 GoNative.io configuration file
+If you pay close attention, you can see yet another case of IDN phishing. If we use IDNA encoding on the domain, we get xn--myetherwalet-lcc.net, which, if we check on RiskIQ PassiveTotal, is hosted on 162.213.123.155. This IP shows one other IDN domain impersonating MEW: xn--myethrwalle-3bb60n.com:
+Fig-8 Phishing domains hosted on the same IP address
+The phishing page served on the IDN phishing host, like any other phishing page, perfectly resembles a working version of MyEtherWallet:
+Fig-9 MyEtherWallet phishing page
+The one interesting thing to note is these phishing domains were set up this month, but the version of MyEtherWallet they’re running is 3.10.3.8 which was released on the 21st of September 2017. Most likely, the actor behind this phishing page decided it wasn’t worth the effort to add their phishing scripts to a new version of MyEtherWallet. 
+The actor modified two files on this version of MyEtherWallet and added one additional script. We can spot the added script in our crawler’s analysis view:
+Fig-10 The added script
+The cfg.js file contains, just like with MEWKit, a small set of configuration variables:
+Fig-11 cfg.js file
+These variables are used in etherwallet-master.js, which has been modified by the actor to send out the authentication information used by the victim to access their wallet. The first interesting thing we find in etherwallet-master.js is a comment left by the attacker on line 1230:
+Fig-12 Attacker comment
+Right after the actor’s comment, the original MyEtherWallet code uses the visitor-chosen, authentication method to decrypt the wallet. After the code that decrypts the wallet, the actor added some additional lines of script, which sends out the authentication credentials to a location set in the config file we showed above:
+Fig-13 MyEtherWallet code
+After this, the MyEtherWallet phishing page will work like any other MEW instance where the victim can see his balance, start transactions etc. The attackers stole his authentication information which means they can now access this person’s wallet, we have no insight if the backend uses this information to automate transfers similar to MEWKit.
+Criminals are slowly learning more and more tricks in order to increase profits and reach more victims and this Telegram-based Android app phishing campaign is just another example. While it wasn’t as effective as MEWKit—this phishing page did not incorporate an ATS—it is most likely still profitable for the actor behind it. Additionally, we advise everyone to avoid GoNative.io apps provided by side-channels because, as we’ve shown above, it’s a good way to run phishing campaigns through a victim’s Android device.
+The following IOCs are also available in a PT project for automatic ingestion here: https://community.riskiq.com/projects/173d9eda-7b1d-f705-6797-8f4e9870c8fd
+ 
+ 

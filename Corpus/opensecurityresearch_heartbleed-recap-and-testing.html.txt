@@ -1,0 +1,59 @@
+
+Heartbleed Recap and Testing
+
+
+By Mateo Martinez and Melissa Augustine.
+CVE-2014-0160 also known as the "Heartbleed Bug", is a serious vulnerability in OpenSSL, one of the most widely used cryptographic libraries. This bug has been present in OpenSSL since March 14, 2012 with the release of version 1.0.1 and specifically affects OpenSSL's implementation of the TLS/DTLS protocols.
+
+To summarize, Heartbleed allows anyone to read the memory of a system running services that use OpenSSL for TLS/DTLS.
+Why HeartBleed?
+
+TLS/DTLS leverage “hearbeat”, or “keep alive” messages once a session is established to let hosts know that a connection is still needed and active. Here is an example of a normal heartbeat that occurs after the initial SSL connection has already taken place.
+
+
+
+OpenSSL implemented this heartbeat in a way that allowed the user to TELL the server how much data it wanted to echo back. A client can request up to 64k of memory per heartbeat. Stored within the memory can be anything processed by the service, including usernames, passwords, and private keys. 
+
+
+Affected Versions and Recommendations
+
+OpenSSL versions 1.0.1 through 1.0.1f are vulnerable and the fix was implemented in version 1.0.1g. The blanket recommendation is to apply the patch and change passwords. It is important as a user to ensure whatever application you are using has already implemented the patch before changing your passwords; otherwise your new password may still  be susceptible to attack. 
+Prior Detection
+How do you tell if someone has used the attack against you in the past? Well, that’s the tricky part - this bug was unknown for a long time, so prior to its release no sensors or products would detect it occuring. If you maintain network captures for your network, you may be able to query that data and look for a signature.. but there is nothing left on the server side that would be an indicator it was being exploited.
+
+Now that the attack has been publicly disclosed, there are now a multitude of detection mechanisms in place to alert administrators of a Heartbleed attack (including Snort, Tripwire, and Honeypot scripts) .
+Testing
+
+There are a ton of ways to test for Heartbleed - McAfee has released a Heartbleed Checker tool, there is a metasploit module, and even a nmap nse script. We'll cover the nmap script here. 
+Using NMAP
+Checking HeartBleed with NMAP is a painless process. Firstly you'll need to download the script and place it in the default NSE folder (/usr/share/nmap/scripts)
+
+
+
+Next download the TLS library to the nselib folder:
+
+
+
+Now make sure nmap has updated it script db:
+ root@kali:~# nmap --script-updatedb
+
+
+
+
+And you're ready to roll! To test a specific URL you can run:
+ root@kali:~# nmap -vv -p 443 --script ssl-heartbleed www.somesite.com -oN somesite_outputfile
+
+
+
+To test a range of hosts you can use:
+ root@kali:~# nmap -vv -p 443 --script ssl-heartbleed 192.168.1.0/24 -oN subnet_outputfile
+
+
+
+
+And to test multiple ports, just run:
+ root@kali:~# nmap -sV -p 443,8443,6443 --script=ssl-heartbleed.nse 192.168.1.1
+
+
+
+

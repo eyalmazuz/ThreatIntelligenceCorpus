@@ -1,0 +1,116 @@
+
+Debugging Out a Client Certificate from an Android process
+
+
+By Gursev Singh Kalra.
+
+
+On most of my Mobile Hacking projects I setup my web proxy to intercept Android application’s traffic, test the proxy configuration, and traffic interception usually works like a charm. However from time to time, things aren't so straightforward. On a recent project connections to the applications’ server returned HTTP 403 error code because SSL mutual authentication was enforced and I did not have the client certificate. 
+
+I was in a situation where no meaningful communication could be established with the remote server. The resource files obtained by decompiling the application did not contain containing the client certificate and it was clear that it was stored in the obfuscated code somewhere. 
+
+I had already extracted a RSAPrivateCrtKey and two certificates from the application’s memory as discussed in my previous blog post. As it turned out, those were not sufficient and I still needed the client certificate and the corresponding password to be able to connect to the server and test the server side code. This blog post will detail how they were retrieved by debugging the application. 
+Identifying the Code Using the Client Certificate
+
+The knowledge of how Java clients use SSL certificates to support client authentication proved critical during this assessment and helped me identify the function calls to look for during the debugging process. The typical steps followed to load a client certificate for a HttpsURLConnection are summarized below:
+
+Create instances of following classes:
+
+HttpsURLConnection - to communicate with the remote server
+KeyStore - to hold client certificate
+KeyManagerFactory - to hold KeyStore
+SSLContext - to hold KeyManager/li>
+
+
+Create File instance for the client certificate and wrap it inside an InputStream
+Invoke KeyStore instance’s load method with InputStream from step 2 and certificate password as char[] so it contains the client certificate
+Feed the  KeyManagerFactory instance with KeyStore from step 3 and certificate password by invoking its init method
+Obtain KeyManager[] array from the KeyManagerFactory created above
+Invoke SSLContext intance’s init method and feed it the KeyManager[] from step 5
+Obtain a SSLSocketFactory from the created SSLContext and setup the HttpsURLConnection instance to use it for all SSL communication.
+
+
+The following image depicts the steps discussed:
+
+
+Instantiating a KeyStore and loading an InputStream for a client certificate are central to SSL client authentication support. So I searched the decompiled code for KeyStore class usage, corresponding instance variables and identified classes and methods that were potentially configuring the client side SSL certificate for HttpsURLConnection.
+Identifying the Debug Points
+
+I continued to eliminate KeyStore usages till I identified the class and method I was interested in. The identified class and method did not refer to any resource files to get the client certificate and its password but relied on couple of function calls to get the byte[] representation for client certificate and String representation for the password before feeding them to the load method of the KeyStore instance. Following the code paths led me to the two magic strings that I was looking for. They appeared to be Base64 encoded values of client certificate and the corresponding password. 
+Base64 decoding them returned gibberish which could not be put to any practical use as there was more to the encoded values than plain Base64 encoding. Further analysis revealed that they were subjected to standard crypto algorithms, and those algorithms were fed their Initialization Vectors and Encryption Keys from other Java classes. Additionally, the application also used some custom data manipulation tricks to further obfuscate them.
+
+With limited time at hand I decided to briefly shelve the code analysis and move to application debugging to inspect the exact code points of interest for data extraction. To help with the debugging process, I noted down the class name, method name, and instance variable of interest where the potential client certificate and password were fed to the KeyStore instance. 
+Setting up the Application for Debugging
+
+Reviewing AndroidManifest.xml of the decompiled application indicated that the application was not compiled with the debug flag and hence could not be debugged on a device. So I added the debug flag, recompiled it, signed the application and then installed it on the device. The following steps summarize the process of creating debuggable versions of existing Android applications if you plan to debug the application on an actual device.
+
+Decompile the application with apktool
+Add android:debuggable="true" attribute to the application element in the AndroidManifest.xml
+Recompile the application with apktool
+Sign the application with SignApk
+Install the application
+
+
+The image below shows the debuggable attribute added to the AndroidManifest.xml file of the target application.
+
+
+If you are using an emulator, you can extract the application from the device, install it on the emulator and attach a debugger without decompiling or adding the debuggable attribute to the AndroidManifest.xml file.
+
+Let us now look at some of the important pieces of the debugging setup that was used.
+Java Debug Wire Protocol
+
+The Java Debug Wire Protocol (JDWP) is a protocol used for communication between a JDWP compliant debugger and the Java Virtual machine. The Dalvik Virtual Machine that is responsible for running the applications on Android devices supports JDWP as it debugging protocol. Each application that runs on a Dalvik VM exposes a unique port to which JDWP compliant debuggers can attach and debug the application. 
+
+Once the application was installed on the device in debug mode, the next step was to attach a JDWP compliant debugger, such as jdb, and get going. 
+jdb - The Java Debugger
+jdb is a JDWP compatible command-line debugger that ships with Java JDK and I use jdb for its command line goodness. The typical process of attaching jdb to an Android application is summarized below:
+
+Launch the application that you want to debug
+Obtain its process ID
+Use adb to port forward JDWP connection to the application JDWP port
+Attach jdb to the application
+Set breakpoints and debug the application
+
+
+The following resources can get you started on jdb debugging with Android.
+
+Using various JDB commands - http://droiddebugger.blogspot.com/2012/05/droiddebugger.html#!/2012/05/droiddebugger.html
+JDB Command reference - http://droiddebugger.blogspot.com/2012/05/command-reference-for-jdb.html
+Command line Android debugging - http://codeseekah.com/2012/02/16/command-line-android-development-debugging/
+
+Debugging for the Client Certificate
+
+At this point, I knew the exact locations where breakpoints were needed to obtain client certificate and corresponding password. I setup the breakpoints in the functions that invoked the load method of a KeyStore instance to store the client certificate. So I launched the application and then browsed to the functionalities that would invoke the code paths leading to the breakpoints. 
+
+After hitting the breakpoint, I executed jdb dump to query the instance variable and invoked its different methods to retrieve the important information. The instances variable of interest was of class g. The Java class under analysis retrieved client certificate and its password by the following calls before feeding them to the load method:
+
+It called a method b()on its instance variable “g” to obtain the certificate password and converted it to char[]
+It called a method a() on its instance variable “g” to obtain byte[] representation of client certificate and wrapped it in a ByteArrayInputStream
+
+
+The following screenshot shows the rundown leading up to the client certificate and the password.
+
+
+After obtaining the byte[] dump of the client certificate, I created the pfx file with following Java code and then imported it to my browser store and also inside the web proxy. 
+import java.io.FileOutputStream;
+import java.io.IOException;
+
+public class PfxCreatorFromByteArray {
+ public static void main(String... args) throws IOException {
+  // Contains the byte[]for client certificate 
+  byte[] pfx = {48, -126, }; 
+  FileOutputStream fos = new FileOutputStream("client-cert.pfx");
+  fos.write(pfx);
+  fos.close();
+ }
+}
+
+ 
+
+
+The following image shows successful client certificate import.
+
+
+The imported client certificate then allowed me to successfully engage and assess the server portion of the application. In addition to the client certificate, combining the static and dynamic analysis techniques also allowed me to retrieve other sensitive information like Initialization Vectors, Encryption Keys etc… from the application. 
+
+

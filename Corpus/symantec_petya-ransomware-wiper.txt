@@ -1,0 +1,38 @@
+Petya ransomware outbreak: Here’s what you need to know
+A new strain of the Petya ransomware started propagating on June 27, 2017, infecting many organizations.
+Similar to WannaCry, Petya uses the EternalBlue exploit as one of the means to propagate itself. However, it also uses classic SMB network spreading techniques, meaning that it can spread within organizations, even if they have patched against EternalBlue.
+Symantec has confirmed that MEDoc, a tax and accounting software package, is used for the initial insertion of Petya into corporate networks. MEDoc is widely used in Ukraine, indicating that organizations in that country were the primary target.
+After gaining an initial foothold, Petya then uses a variety of methods to spread across corporate networks.
+Petya is a worm, meaning it has the ability to self-propagate. It does this by building a list of target computers and using two methods to spread to those computers.
+Petya builds a list of IP addresses to spread to, which includes primarily addresses on the local area network (LAN) but also remote IPs. The full list is built as follows:
+Once the list of target computers has been identified, Petya builds out a list of user names and passwords it can use to spread to those targets. The list of user names and passwords is stored in memory. It uses two methods to gather credentials:
+Petya uses two primary methods to spread across networks:
+Petya checks for the presence of the following processes which are used by Norton products and Symantec Endpoint Protection:
+If found, Petya will not use the EternalBlue and EternalRomance exploits to spread.
+Petya is initially executed via rundll32.exe using the following command:
+Once the DLL has been loaded, it will first attempt to remove itself from the infected system. This is done by opening the file and overwriting its contents with null bytes before finally deleting the file from disk. Overwriting the file with null bytes is used as an attempt to thwart recovery of the file using forensic techniques.
+Next, it attempts to create the following file to be used as a flag indicating that the computer has been infected:
+Once installed, Petya proceeds to modify the master boot record (MBR). This allows it to hijack the normal loading process of the infected computer during the next system reboot. The modified MBR is used to encrypt the hard disk while simulating a CHKDSK screen. It then displays a ransom note to the user.
+MBR modification does not succeed if the threat is executed as a normal user but the threat will still attempt to spread across the network
+At this point, a system reboot is scheduled using the following command:
+By scheduling and not forcing a reboot, it provides time to allow Petya to spread to other computers in the network before user-mode encryption occurs.
+Petya performs encryption in two ways:
+Once spreading has occurred, Petya then lists all files on any fixed drive (e.g. C:\) and checks for any of the following file extensions (skipping the %Windir% directory of that drive):
+.3ds .7z .accdb .ai .asp .aspx .avhd .back .bak .c .cfg .conf .cpp .cs .ctl .dbf .disk .djvu .doc .docx .dwg .eml .fdb .gz .h. hdd .kdbx .mail .mdb .msg .nrg .ora .ost .ova .ovf .pdf .php .pmf .ppt .pptx .pst .pvi .py .pyc .rar .rtf .sln .sql .tar .vbox .vbs .vcb .vdi .vfd .vmc .vmdk .vmsd .vmx .vsdx .vsv .work .xls .xlsx .xvd .zip
+If any of the file extensions match that of the file list, encryption occurs.
+As mentioned, encryption performed by Petya is twofold; firstly specific file types are encrypted in user-mode after spreading occurs and the key is encrypted with an embedded public key, Base64 encoded, and appended to the README.TXT file.
+After a system reboot occurs, the infected MBR is loaded, disk encryption begins, and the ransom note is displayed to the user. The "installation key" referenced in the ransom note is a randomly generated string that is displayed to the user. A randomly generated Salsa20 key is then used for disk encryption. As there is no relationship between the “installation key” and Salsa20 key, the disk can never be decrypted. This demonstrates that Petya is more accurately a wiper rather than ransomware.
+Symantec Endpoint Protection (SEP) and Norton products proactively protect customers against attempts to spread Petya using EternalBlue. SONAR behavior detection technology also proactively protects against Petya infections.
+Symantec products using definitions version 20170627.009 also detect Petya components as Ransom.Petya.
+Petya has been in existence since 2016. It differs from typical ransomware as it doesn’t just encrypt files, it also overwrites and encrypts the master boot record (MBR).
+In this latest attack, the following ransom note is displayed on infected computers, demanding that $300 in bitcoins be paid to recover files:
+The MEDoc accounting software is used to drop and install Petya into organizations’ networks. Once in the network it uses two methods to spread.
+One of the ways in which Petya propagates itself is by exploiting the MS17-010 vulnerability, also known as EternalBlue. It also spreads by acquiring user names and passwords and spreading across network shares.
+Petya is primarily impacting organizations in Europe.
+It is unclear at this time, however, the initial infector is software used solely in Ukraine, indicating that organizations there were the initial targets.
+Symantec recommends that users do not pay the ransom, particularly as there is no evidence that files will be restored.
+Symantec has the following IPS protection in place to protect customers against these attacks:
+For further detail see https://email.status.symantec.com/
+Symantec is continuing to analyze this threat and will post further information as soon as it becomes available.
+Symantec's Security Response organization develops and deploys new security content to Symantec customers. Our team of global threat analysts operate 24x7 to track developments on the threat landscape and protect Symantec customers. 
+Symantec's Security Response organization develops and deploys new security content to Symantec customers. Our team of global threat analysts operate 24x7 to track developments on the threat landscape and protect Symantec customers. 

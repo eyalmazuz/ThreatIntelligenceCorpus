@@ -1,0 +1,53 @@
+
+Hack The Gemini Inc (CTF Challenge)
+
+Gemini Inc has contacted you to perform a penetration testing on one of their internal systems. This system has a web application that is meant for employees to export their profile to a PDF. Identify any vulnerabilities possible with the goal of complete system compromise with root privilege. To demonstrate the level of access obtained, please provide the content of flag.txt located in the root directory as proof.
+Download it from here.
+Penetrating Methodologies
+Let’s GO000!!!
+To scan our target IP we will use aggressive scan (-A)
+
+As result, it figures out port 22 and 80 was open. Also found a directory /test2. When explored target IP through the web browser it put up following web page as discussed.
+
+Then we explored /test2 where we read following message for admin and also look after at the URL given here.
+
+Then at login form, we tried the hit-try method for login into the admin console and luckily at 5th attempt we get successful login when we submit following credential.
+Username: admin
+Password: 1234
+
+After login into admin console successfully we check available action that can be performed by the administrator and here it shows following actions.
+
+So we execute export profile to observe what is in actually it is exporting but could not figure out from its output as shown in below image, therefore, we decided to capture its request.
+
+Further, with help of burp suit, we try to capture its browser request and sent the Intercepted request into the repeater and here I saw the export script possibly gave us the user profile page admin in PDF format by a tool named wkhtmltopdf.
+
+Security breaches if the web application does not filter the user’s input, the server is exposed to several loopholes  Because the most common exposures on the web, is the possibility to download an arbitrary file from a server. This state establishes a critical security issue, as it provides an attacker the ability to download delicate information from the server. For example download /etc/passwd file and so on.
+We can abuse the wkhtmltopdf and try to download delicate information. Here we have written the following code for the index.php script that redirects to the any requested file. 
+
+In order to transfer it into victim’s machine, therefore, we launch PHP server for file transfer.
+
+We got a hint for export injection from this source: https://securityonline.info/export-injection-new-server-side-vulnerability/  and its bases we proceed for following steps.
+Now go with Action -> edit profile 
+Then injecting the following HTML code inside the text filed given for the Display name 
+
+Now go with Action -> export profile
+
+TERRIFIC!!!! It stands on our expectation and we have /etc/passwd file in front of us.  here we can clearly observe UID GID 1000 for user: gemini1.  
+
+From nmap scan result we had seen there was a hint for SSH RSA key and we also knew the first username of this VM, therefore let’s try to export RSA file. 
+Now go with Action -> edit profile 
+Then injecting the following HTML code inside the text filed given for the Display name 
+
+Now go with Action -> export profile 
+Feeling Incredible J  After observing the following result, download it quickly.
+
+With help of downloaded RSA file connect to victim’s VM via ssh.
+
+Then without wasting your time search for the file having SUID or 4000 permission with help of Find command for post exploitation.
+Here we can also observe an interesting file/usr/bin/listinfo having suid permissions. And after exploring this file we notice it probably running natstat and date. Hence we can escalate privilege by exploiting environment PATH Variable, you can take help of our article from here to know more about it. 
+
+As you can observe after that we execute id command and accomplished by root id.
+
+As you can observe after that we execute id command and accomplished by root id. Now let’s finished this task by capturing the flag.txt flag from inside root directory.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

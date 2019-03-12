@@ -1,0 +1,20 @@
+Get patching: Xen bug blows hypervisor security to bits – literally
+The Xen Project has issued eight security advisories for its open source hypervisor.
+XSA-195 is considered the most serious of the eight, as it could allow memory modification, resulting in arbitrary code execution, a crash of the host, or information exposure.
+According to the Xen Project, XSA-195 (CVE-2016-9383) is sometimes exploitable by an unprivileged guest user process.
+The vulnerability affects guest user processes running in 64-bit mode on Xen 4.6; on Xen 4.7, it affects guest user processes that have been granted privileges like direct hardware access by the guest administrator.
+On Xen 4.7 systems where the VM has been configured with a non-default CPU vendor string, all guest user processes are affected.
+The vulnerability has been fixed in the Hypervisor 4.8 release, scheduled for December. ARM systems are unaffected.
+The flaw arises from the way Xen handles x86 instructions when those instructions have to be emulated. When not dealing directly with hardware, Xen recalculates the memory address and register operand. But the x86_emulate() function contains a bug that arises from implicit type conversions between 64-bit and 32-bit integers.
+When emulating the x86 BT or BT{C,R,S} instructions, the higher bits of intermediate expressions get cut, resulting in an incorrect memory location and register operand.
+A Qubes security advisory provides a code sample:
+As the Qubes advisory explains, "The '1' immediately above should have been suffixed by 'L', letting the compiler know it should not be clamped to 32-bits, which in turn causes the above expressions to incorrectly allow for huge offsets when emulating the BT* instructions."
+Qubes reports that the Xen Security Team has indicated that exploitation of the flaw isn't easy because the Xen stack absolute address would not be obvious, due to the use of stack-relative addressing in emulated opcodes.
+There's no suggested mitigation but Xen has issued a patch that eliminates the vulnerability.
+Meanwhile, Lars Kurth, of the Xen project, has blogged about how the vulnerabilities were found – internal audits and fuzzing.
+"In order to increase the security of future releases, members of the Xen Project Security Team and key contributors to the Xen Project, actively search and fix security bugs in code areas where vulnerability were found in past releases," Kurth explained.
+"The contributors use techniques such as code inspections, static code analysis, and additional testing using fuzzers such as American Fuzzy Lop. These fixes are then backported to older Xen Project releases with security support and published in bulk to make it easier for downstreams consumers to apply security fixes." ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

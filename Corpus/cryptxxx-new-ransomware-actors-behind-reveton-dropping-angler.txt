@@ -1,0 +1,80 @@
+CryptXXX: New Ransomware From the Actors Behind Reveton, Dropping Via Angler
+Overview
+Proofpoint researchers recently found a previously undocumented ransomware spreading since the end of March through Bedep after infection via the Angler Exploit Kit (EK). Combining our findings with intelligence shared by Frank Ruiz (Fox IT InTELL) lead us to the same conclusion: this project is conducted by the same group that was driving Reveton ransomware operations and is closely tied to Angler/Bedep. Dubbed "CryptXXX", this new ransomware is currently asking a relatively high $500 per computer to unlock encrypted files. Angler is the number one exploit kit by volume, making the potential impact of new ransomware in the hands of experienced actors with access to this vector quite significant.
+Analysis
+On April 15, 2016, we spotted an Angler EK into Bedep pass pushing both a ransomware payload and Dridex 222.
+Figure 1: April 15, 2016 - UK - Redirector to Angler loading Bedep spreading a Ransomware and Dridex 222 among other payloads
+ 
+To alert the victim that they are infected and their files are encrypted, this ransomware creates three types of files, similar to many other types of ransomware (Locky, Teslacrypt, and Cryptowall):
+ 
+​Figure 2: Ransomware user notification page
+ 
+Figure 3: Ransomware black wallpaper
+ 
+Figure 4: Payment site, with multi-language support (Languages available: EN, IT, FR, ES, DE, JP, NL, PL, PT, TR, CN)
+ 
+Figure 5: Payment site - Decrypt soft help
+ 
+Figure 6: Ransomware payment site FAQ
+ 
+Initially we could not connect this ransomware to any that we already know, but searching the Internet we found a forum thread [1] where victims first reported infections on the 31st of March. We decided to take a closer look and ran the full chain in a monitored environment:
+Figure 7: April 16, 2016 - a chain to CryptXXX 
+ 
+The ransomware is being shipped as a DLL dropped by Bedep in folders like those observed below in four separate infections:
+C:\Users\%Username%\AppData\Local\Temp\{C3F31E62-344D-4056-BF01-BF77B94E0254}\api-ms-win-system-softpub-l1-1-0.dll
+C:\Users\%Username%\AppData\Local\Temp\{D075E5D0-4442-4108-850E-3AD2874B270C} \api-ms-win-system-provsvc-l1-1-0.dll
+C:\Users\%Username%\AppData\Local\Temp\{D4A2C643-5399-4F4F-B9BF-ECB1A25644A6}\api-ms-win-system-wer-l1-1-0.dll
+C:\Users\%Username%\AppData\Local\Temp\{FD68402A-8F8F-4B3D-9808-174323767296}\api-ms-win-system-advpack-l1-1-0.dll
+ 
+In real-world conditions, the start of this DLL is randomly delayed (for example, we saw 62 minutes):
+Figure 8: CryptXXX launch delay caught by sandbox analysis
+ 
+The main advantage of this delay from a threat actor’s perspective is that the victim won’t be able to easily connect it to the infection vector (that is, to the compromised or malvertised website).
+We saw the DLL executed in multiple cases with the entry function ‘Working’, but this will likely change in the future:
+Figure 9: CryptXXX start command line
+ 
+The ransomware has anti-VM and anti-analysis functions. In particular, CryptXXX:
+Checks CPU name in the Registry
+Installs a hook procedure to monitor for mouse events
+When the ransomware actually executes, it encrypts files and adds a .crypt extension to the filename.
+Figure 10: Sandbox output showing the most visible action to the victim
+ 
+Figure 11: CryptXXX attempting access to all the possible mounted drives
+ 
+This ransomware is not only encrypting files locally and on all mounted drives; it’s stealing Bitcoins and a large range of other data. We were expecting this because that instance of Bedep has a long history of dropping information stealers in its update stream. Specifically, it dropped Pony from November 2014 until mid-December 2015. It replaced Pony with an undocumented “private stealer” until mid-March 2016. We believe that the information stealing functions in this ransomware are the same as in the “private stealer” distributed by this instance of Bedep.
+ 
+Figure 12: CryptXXX harvesting instant messenger client data
+ 
+Figure 13: CryptXXX harvesting credentials from local FTP client software
+ 
+Figure 14: CryptXXX harvesting information related to installed mail clients
+ 
+Figure 15: CryptXXX collecting browser data
+ 
+Figure 16: CryptXXX stealing cookie data
+ 
+Affiliation
+Based on the infection vector and its history, we suspected this new ransomware was directly connected to the Angler/Bedep team. We based the name of this ransomware on two strings found in the unpacked binary:
+​Z:\CryptProjectXXX\Loader\InstDecode.pas​
+Z:\CryptProjectXXX\Loader\DDetours.pas​ ​
+Note, the real name of Angler EK is also XXX [2]. Additionally, the actor behind Angler EK was also behind Cool EK and Reveton [2][3].
+
+Figure 17: Last known design of the Reveton Ransomware, February 2015 [5]
+ 
+There are many similarities between Reveton and CryptXXX. Most notably,
+Delphi programming language
+Custom C&C protocol on TCP 443
+Delayed start 
+DLL called with a custom entry function
+dat file dropped in %AllUsersProfile% (For CryptXXX, it looks like code reuse as the file only contains the letter x)
+Bitcoin and credential stealing functions
+Figure 18: CryptXXX check-in caught by sandbox
+ 
+Figure 19: CryptXXX is dropping a .dat file containing only the letter x.
+ 
+Conclusion
+Based on threat intelligence shared by Frank Ruiz (Fox IT InTELL) and telltale signs uncovered in our own analysis, we are confident in the connection between CryptXXX and the Reveton Team. Given Reveton's long history of successful and large-scale malware distribution, we expect CryptXXX to become widespread. While we have observed many new ransomware instances in recent months, many have been written and/or distributed by less experienced actors and have not gained significant traction. Those associated with more experienced actors, however, (such as Locky) have become widespread quickly. Based on the large number of translations available for the payment page, it appears that the Reveton team shares those expectations.
+ 
+Acknowledgement
+Thanks to Frank Ruiz from Fox IT InTELL [6] for sharing strong clues confirming the relationship between CryptXXX and Reveton.
+ 

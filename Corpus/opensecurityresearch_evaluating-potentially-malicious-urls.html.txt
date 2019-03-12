@@ -1,0 +1,161 @@
+
+Evaluating Potentially Malicious URLs - Part 3
+
+
+by Tony Lee.
+
+This is the final part of a three part series covering how to handle potentially malicious URLs and IPs. In Part 1, Deobfuscating Potentially Malicious URLs, we laid the groundwork by covering policy, unshortening and deobfuscation.  In Part 2 of the series, Attributing Potentially Malicious URLs we continued with WHOIS, geoIP, and IP to URL.  Finally, in Part 3 of this series (Evaluating Potentially Malicious URLs) we'll will finish up with reputation and evaluating content.
+IMPORTANT:  Do not directly navigate to any sites that are present in this article.  Some of the sites may no longer be available by the time you read this but I wouldn't press your luck.
+
+For most of this article, we are using two sites that appear to be associated with a BlackHole Exploit Toolkit attack.  The first site is believed to be a Traffic Direction Script (TDS).  The second site is believed to be the browser detection server.  The first site is not on the radar of many reputation sites because the infection appears to be relatively new and may be a legitimate site that had malicious javascript injected into it.  The second site has a higher risk rating as you will see below.
+First Get Permission If Needed
+I won't force you to re-read this section but take this seriously and see the section of the same title in the First Article.
+Reputation
+Reputation simply means an opinion or belief about something or someone.  In this case we will be asking security companies and organizations their opinions about an IP address or URL.  These companies and organizations develop their opinions through a variety of means.  Larger organizations like McAfee and Symantec use their vast footprint of product as sensors to discover, track, and trend potentially malicious files, IP addresses, and URLs.  Each endpoint helps the cloud become more intelligent which in turn provides better protection to the end user.  Both McAfee and Symantec explain how their reputation technology works below:
+“McAfee Global Threat Intelligence (GTI) looks out across its broad network of sensors and connects the dots between the website and associated malware, email messages, IP addresses, and other associations, adjusting the reputation of each related entity so McAfee’s security products — from endpoint to network to gateway — can protect users from cyberthreats at every angle.”
+
+Source: http://www.mcafee.com/us/mcafee-labs/technology/global-threat-intelligence-technology.aspx
+“Symantec Insight is a reputation-based security technology that leverages the anonymous software adoption patterns of Symantec’s hundreds of millions of users to automatically discover and classify every single software file, good or bad, on the Internet.”
+
+Source: http://www.symantec.com/business/support/resources/sites/BUSINESS/content/live/DOCUMENTATION/5000/DOC5077/en_US/Insight_v1.pdf
+
+Asking McAfee or Symantec for a reputation means they will query their database of knowledge—thus it is different than asking a company or organization to evaluate a site for content—but the line can become blurred.  For example, other security companies or organizations must first evaluate a site’s content in order to derive an opinion.  Sites such as VirusTotal will let you know if they have already evaluated the site and will give you their immediate opinion or they give you the option to have them evaluate the site again.  This is a perfect example of a site that does both—evaluate a site and provide their opinion of reputation.
+
+There are many sites offering their perceived reputation about another site.  We have listed our favorite picks below:
+McAfee
+
+McAfee has two different pages that can provide IP/URL reputation: http://www.trustedsource.org/ and http://www.siteadvisor.com. First up is Trusted Source which provides a site’s web and mail reputation (if available).  While this does not provide much detail, it is usually fairly accurate. 
+
+
+
+Next is SiteAdvisor which is traditionally known to be a browser plugin that provides the risk ratings of Internet websites, however the site itself allows you to query for a particular site’s reputation.  SiteAdvisor also has a high risk rating for our Blackhole TDS and second stage site.
+
+
+
+In this case both Trusted Source and Site Advisor accurately identified our Blackhole TDS site AND the second stage redirect site as high risk sites.
+Cisco IronPort SenderBase 
+IronPort's SenderBase has email and web reputation however a big downside is that it's a bit skimpy on details or reasoning (even after clicking more details).
+
+
+
+SenderBase missed the TDS with a risk rating of neutral, however it did have a poor reputation for the browser detection site:
+
+
+Web of Trust (WOT)
+Web of Trust operated in similar fashion to Cisco IronPort’s SenderBase, missed identifying the TDS server, however did correctly identify the second stage site as being dangerous.
+
+
+Norton (Symantec) Safe Web
+Norton’s Safe Web reputation system is very similar to McAfee’s SiteAdvisor and worth checking out.  In this particular case, they had no reputation data on our Blackhole TDS site or the second stage server that is the target of the obfuscated iframe redirect.
+
+
+AVG Site Reports
+
+While we would recommend checking AVG Site Reports for their opinion on a site, we do not recommend their button to visit the site.  I know it is marketing for their product, however there is an option to visit the site unsafely which will send the user there.  Unfortunately in this case, AVG missed both the first and second stage attacker servers with a rating of “Currently Safe”.
+
+
+TrendMicro Site Safety
+TrendMicro Site Safety incorrectly classified the TDS site as being safe and did not have any data on the second site.  Interestingly enough their site states that since they did not have data on the second site, they will now go check it out for the first time.  I am not sure how long it takes for them to check it out, but it is not instantaneous.  ;)
+
+
+F-Secure Browsing Protection
+Fsecure’s Browsing Protection results are similar to Trendmicro’s.  Both sites classified the TDS site as safe and then had never heard of the second stage site—but will now go get their opinion.
+
+
+Google Safe Browsing
+
+Google’s SafeBrowsing (http://safebrowsing.clients.google.com/safebrowsing/diagnostic?site=[enter_site_here]) unfortunately, missed both the first and second stage sites as well.
+
+
+Webroot BrightCloud
+Webroot’s BrightCloud missed the first stage TDS site like so many above; however they did state that the second state site had a moderate risk rating (similar to Cisco and mywot).  The only problem with this site is the annoying captcha on the left hand side.  Ugh!
+
+
+Evaluating Content
+
+For sites that do not rely on their previous knowledge, they must evaluate the current state of the site when you ask for it.  We are splitting this category into two sections—services that run multiple scan engines and services that utilize their own evaluation engines.
+Multiple Scan Engines
+
+When most people think about a site that will utilize multiple scan engines to provide results, they usually think of VirusTotal and they are not wrong in doing so.  That site is very good at using multiple scan engines, however VirusNoThanks also has URLVoid and IPVoid services that are quite good as well.  The best thing about using both sites is they don’t have too much overlap in scan engines.
+VirusTotal
+
+One nice feature about VirusTotal is that it stores a history of previous queries.  Because it does this, it can very clearly alert you if it already scanned a site, when it scanned the site, and the detection ratio of its scan engines.  It prompts you with the option to Reanalyse or View last analysis.
+
+
+
+
+NoVirusThanks (URLVoid/IPVoid) 
+
+The makers of NoVirusThanks have created two services for scanning potentially malicious URLs and IP addresses—urlvoid.com and ipvoid.com.  Because URLVoid does not use the exact same scan engines as VirusTotal this makes a great second reference!
+
+It is very subtle, but in the scan results below—notice the report field.  It indicates that the data is 4 months old.  It does provide the option to rescan the site; however it requires the user to enter a captcha.
+
+
+
+Overall these sites are very valuable in providing multiple perspectives on a site’s maliciousness, but for the most part they stay at the surface.  Even though both sites do display a little more detail than just good or bad, it does not go into depth the way the next sites will.  This is great for a first gut check and also for people that may want to stay at a higher level with just a good or bad rating, but others may need to dig deeper and provide more context about why the site is bad and what it is doing.
+Web Analysis Engine
+
+Web analysis engines are all over the charts in terms of usefulness.  Some of them take hours to run (no kidding), some minutes, and some seconds.  Some will provide a detailed analysis with exploit detection, some will provide the raw data with little to no exploit detection, and some just provide high level good or bad results.  If you created a matrix between time and detail, you will get hits all over the place.  We have tried to sift through the plethora of sites online that claim to analyze URLs to bring you our top picks.  Please note that this is based on our experience in using the sites and our current blackhole exploit toolkit example.  Your mileage and opinion may vary—feel free to leave the opinion in the comments section at the bottom of the article.
+
+Jsunpack and urlQuery are our top picks in turns of providing detailed, yet actionable information.  Both have different detection mechanisms, but they are complementary and not redundant.
+urlQuery
+
+According to the urlQuery site: 
+“urlQuery.net is a service for detecting and analyzing web-based malware.  It provides detailed information about the activities a browser does while visiting a site and presents the information for further analysis.”
+
+That is no lie either.  We were very impressed with their thoroughness and exploit detection.  Additionally, the advanced settings allows you to set a User Agent and a referrer and lets you know what version of Adobe reader and Java they are running.
+
+This site does take a little bit of time to run, but it is not unreasonable (45 seconds for our run), but it was worth every bit of that time because it was spot on…
+
+This site provides the IP, ASN, location, screenshot of the site, results of IDS detection from Suricata and Snort.  Both engines were correct in reporting the following:
+
+Suricata /w Emerging Threats Pro - Malware Network Compromised Redirect
+Snort /w Sourcefire VRT - Compromised Website response - leads to Exploit Kit
+
+
+
+
+One of the most useful sections of the site is the HTTP Transactions link which shows the next site that the Traffic Direction Script is sending us to:
+
+
+
+If you were curious what the analysis of the second stage site looked like, we included it below.  That is an insane amount of javascript running on one site.  It is also an insane amount of HTTP transactions to sites that are not recognizable.  We can only imagine what nastiness is beyond this, but it would be a journey down the malware rabbit hole for sure.
+
+
+jsunpack
+jsunpack (“A Generic JavaScript Unpacker”) did exceptionally well against both sites—similarly to urlquery.  This site also allows you to enter a customized referer—which we recommend doing so malware sites don’t pick up on the standard defaults.  Jsunpack is handy in detecting the parameters of a site; however the unique capability that jsunpack provides is the ability to download the files.  This is VERY dangerous and should only be performed on a malware analysis workstation in a malware analysis environment, but it is really handy for pulling the files apart manually.  The output format takes a little getting used to but it is very detailed and useful.
+
+Since the data for these sites are similar to urlquery’s results, I will instead include a screenshot from training that I developed while investigating another incident to showcase jsunpack’s exploit detection (The last time I checked, the site was no longer serving malware—but don’t press your luck):
+
+
+
+
+iseclab (wepawet)
+wepawet by iseclab is also a site worth mentioning.  It is similar to jsunpack in that it can handle javascript and PDFs.  In addition this also handles flash.  This site is very useful for looking at javascript writes, network activitiy, and redirects.
+
+
+Sucuri
+Sucuri’s SiteCheck did exceptionally well in finding the page that served up the malicious javascript as well as finding the target of the iframe redirect.  It provides a few details about the site and blacklist data as well.
+
+
+
+Ironically, Sucuri SiteCheck’s blacklist data shows that McAfee’s SiteAdvisor does not advise visiting this site (as we saw in the previous reputation section)—I would have to agree:
+
+
+
+The second stage site is blacklisted by both McAfee’s site advisor as well as Sucuri Malware Labs.
+
+Other sites worth trying that unfortunately did not perform well on this example:
+
+VURL - http://vurl.mysteryfcm.co.uk
+AVG - http://www.avg.com.au/resources/web-page-scanner/
+Zscaler - http://zulu.zscaler.com/
+
+Conclusion
+In this article we examined a number of free sites that provide reputation information and other sites that will evaluate content of potentially malicious sites.  All of these services can be very useful in eliminating or determining the intention of suspicious URLs and IP addresses.  Many of the sites expose an API for automated queries.  The list that we provided here is not intended to be all encompassing.  However, Googling for these sites does not always provide the best option either.  Thus, if you have a favorite gem that was not included in this article please feel free to share it below—we are interested in your experiences as well. :)
+
+Acknowledgements
+
+Thanks goes out to Vimal Navis of McAfee and Kerry Steele and Drew Thompson of Foundstone for recommending some of these great third party resources.
+
+

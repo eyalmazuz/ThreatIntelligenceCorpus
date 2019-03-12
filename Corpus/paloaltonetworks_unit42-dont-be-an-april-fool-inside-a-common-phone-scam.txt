@@ -1,0 +1,65 @@
+Don’t Be an April Fool: Inside a Common Phone Scam
+
+One of our team members on Unit 42 recently received a phone call from a scammer, and today being April Fool’s Day we decided to write about how we played along with the scammer to learn about his operation.
+Unit 42 analyst Robert received a phone call from a Tech Support scammer who told him his system was compromised and was seen performing illegal activities. The scam relied solely on social engineering, which is a technique to manipulate a victim into doing something or to give up information, but in this case was intended to get Robert to pay the scammer for unneeded system protection services. Social engineering is used in a majority of cyber crime and espionage attacks, albeit in this scam it was conducted over the phone and not via e-mail or social networking.
+This blog, in Robert’s voice, recounts the story of this unsolicited call and provides a glimpse into this scam operation. We intend this story to be light reading for security professionals, but hope that it provides awareness for less technical folks into the social engineering techniques used in these types of scams.
+Note: We have redacted some portions of this blog, specifically the domain involved with this scam while law enforcement investigates.
+The Scam
+On March 30, 2016 at approximately 12:45 PM EST, I received a call on my house phone showing a caller I.D. of “1-161-565-4328”. An individual greeted me and told me that a hacker had infected my Windows system. The individual told me that the hacker used my system to do illegal things, which is the reason they were calling me to help clean up my system. I feigned shock and surprise that someone had used my system to carry out illegal activities and responded that I was very grateful that they brought this to my attention. The individual told me he would transfer me to a technician to clean my computer.
+The technician walked me through the various buttons on my keyboard, specifically focusing on the buttons on the bottom left corner of the keyboard. He asked me to read off the different keys, so I told him it was CTRL, ALT and Windows even though I do not run Windows as my operating system. Once he heard me say the Windows key, he instructed that I press and hold it while pushing the “R” key. The technician then had me type in a command to the Run window, specifically reading off each letter using acrophony (like “R” as in wrench) in the following command:
+eventvwr
+To stall him, I had him read it out several times while I set up my virtual machine and its network interfaces. With the event viewer open, I was instructed to click “Custom Views” and then “Administrative Events” and the operator asked what I saw. I saw the warning and error messages seen in Figure 1, which I was told was confirmation that my computer was compromised, even though all the displayed messages were caused by failed DNS lookups and DHCP requests.
+
+Figure 1 Event viewer application showing DNS and DHCP errors, not a compromise
+I was then instructed to close the event viewer application and press the “Windows” key and “R” again to run another command. The technician told me to run another command that he read off, again using acrophony and again with me wasting his time by having him repeat the command several times:
+iexplore www.support.me
+The technician then asked me what I saw. My virtual machines’ network interfaces were set up correctly but I had to fix my DNS settings, so I told the technician the page was unreachable and that he would have to help me fix my Internet connection before we could continue. The technician said he would transfer me to his supervisor who would be able to assist me in fixing my Internet connection. Meanwhile, I fixed my DNS settings while I was being transferred.
+The individual I was transferred to again had me open the event viewer application. Again, I was told all of the warnings and errors are issues with my computer, which I needed to fix or else I could lose my computer. I responded by asking “Where would my computer go if I lost it and how would I go about finding it?” I chuckled to myself, but the supervisor then asked my age and if my parents or I owned the computer. I told him I was 28 years old and assured him I owned the computer.
+I continued the conversation by telling him my Internet connection was fixed, so the supervisor told me to open my Google application and type in “www.support.me”. I visited the URL and it redirected me to “secure.logmeinrescue.com”, as seen in the following HTTP 301 redirection:
+HTTP/1.1 301 Moved Permanently
+ Content-Type: text/html; charset=UTF-8
+ Location: https://secure.logmeinrescue.com/Customer/Code.aspx
+ Server: Microsoft-IIS/7.5
+ X-Powered-By: ASP.NET
+ Date: Wed, 30 Mar 2016 19:32:13 GMT
+ Content-Length: 174
+The website displayed in the browser, seen in Figure 2, has a form that requires a six digit code to download a LogMeIn application that would allow the technician to interact with my system. The technician provided me a six-digit number of 242137 and instructed me to download the resulting application that had a filename of “Support-LogMeInRescue.exe” (SHA256: 3196ac75120fad5eed97801768d33e74f452194cf7ebd0dbf4775c53a052fe46) and run the application.
+
+Figure 2 Support.me requires a 6-digit access code to download and install the LogMeIn Rescue Application
+After I executed the application, the technician told me to click “Ok” to all of the popups, which was Windows’ UAC telling me that I should be careful about running such an application. The application is LogMeIn Rescue, which is a legitimate application that allows IT support to interact with remote systems. However, in this case, the scammer used the aptly titled HappyToAssist application to gain access to my virtual machine. As you can see in Figure 3, the technician used this application to transfer a file named “AA_v3.exe” (SHA256: 1831806fc27d496f0f9dcfd8402724189deaeb5f8bcf0118f3d6484d0bdee9ed) to my system.
+
+Figure 3 HappyToAssist application used to transfer AA_v3.exe file
+The technician then ran the “AA_v3.exe” executable, which is a variant of the Ammyy Admin tool seen in Figure 4.
+
+Figure 4 Ammyy Admin tool used to transfer additional file
+The technician used this tool to transfer another file, specifically a batch script with a name of “Route Tracer.bat”. The batch script was a further attempt to show me that my computer was compromised, as the technician told me that the application would show me the current activity on my system.
+Figure 5 Batch script printing fake hack attempts to the screen
+According to the output of this batch script, my virtual machine was hacked by China from an IP address currently belonging to a wireless provider in the United States. I asked the technician why China would be hacking my computer and he said to gain access to my banking information.
+At this point, the technician changed hats from security expert to professional salesman, by opening the Notepad application and typing out the services they offer to clean the system. As you can see from Figure 6, the now salesman offered me three service plans to keep my system protected for 3 years, 5 years or a lifetime for prices ranging from $199 to $299.
+
+Figure 6 Notepad document the technician used to show the services available for purchase
+I told the salesman that I never want this to happen again, so I wanted to purchase the lifetime plan, which he was generous enough to open an Internet Explorer window and navigate me to a billing page. The billing page, seen in Figure 7, is hosted at http:// [redacted] /billing_us.php.
+
+Figure 7 Billing page for scam
+At this point, I disconnected the adapters to my virtual system, which effectively removed the technician/salesman’s access to my system. I asked if he recognized any icons on my system, specifically the icons of malware analysis tools. I heard rustling on the other end of the phone and a click when the individual hung up the phone.
+While this call was ongoing, I kept several of my team members amused with the progress in a separate chat window. As I was documenting the scammer’s activity, my colleague Simon took a look at who might be behind the site.
+Attribution
+The domain [redacted] hosting the billing page was created on February 28, 2014. It has resolved to the IP address [redacted], and used the DNS name server (NS) [redacted] consistently from when the domain was created, through to the present time.
+The current WHOIS information for this domain is anonymized using a WHOIS protection service; however, up until July 2014 the WHOIS was not anonymized and gave us the information used during registration. The email address used to register the [redacted] domain is associated with two social networking accounts, both of which we have passed to law enforcement to provide further scrutiny of the individual’s involvement in this scam operation.
+Historic captures of the site at archive.org show fundamentally the same site content throughout the history of this domain. The website currently lists their contact phone number as “[redacted]” (Figure 8), however prior to 2016 it listed a different number “[redacted]” (Figure 9).
+
+Figure 8 Website March 2016
+
+Figure 9 Website September 2014
+Victims
+Searches on the domain [redacted] and on both of these numbers finds multiple reports of support scam calls, referring to the site or referencing these as call-back numbers (Figure 10).
+
+
+
+Figure 10 Examples of complaints linked to this operation
+Although this call instructed the victim to supply a merchant reference code “my computer” during payment, which might be used as an affiliate code, the reports offering a call-back number suggest it’s unlikely that this is using an affiliate model.
+Hanging Up
+It is unlikely that readers of this blog would fall for a tech support scam like the one discussed in this blog. Security minded individuals would likely notice the absurdity in the tricks used by the scammers to confirm that the system is compromised, and even more likely to forbid the installation of a remote administration application on their system. Sadly, these scammers prey on less technically knowledgeable individuals, who are often tricked out of hundreds of dollars if they fall victim to these types of scams.
+While it is unlikely that these scammers would call a business, we suggest that organizations consider putting controls in place to limit only authorized remote administration applications from running on their network. Palo Alto Networks identifies 93 different remote access applications with App-ID, including Ammyy-admin and LogMeIn Rescue that were used in this scam. We suggest that organizations should use the remote access App-ID’s to block these tools from running on their networks to protect their user base in the event they fall victim to such a scam.
+Additionally, for individuals not protected by the Palo Alto Networks platform, the FTC offers consumer guidance that can help detect this type of tech support scam and how to file a complaint with the FTC. We have notified the FTC of this scam and handed over all pertinent information. Who’s the April Fool now, scammer?
+

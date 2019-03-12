@@ -1,0 +1,119 @@
+
+Hack the SkyDog VM (CTF Challenge)
+
+SkyDog is a Capture the Flag VM with six flags. Capturing these flags is quite fun and interesting. Before starting off i am listing the following hints that we know of beforehand:
+Flag #1 Home Sweet Home or (A Picture is worth a Thousand Words)
+Flag #2 When do Androids Learn to Walk?
+Flag #3 Who Can You Trust?
+Flag #4 Who Doesn’t Love a Good Cocktail Party?
+Flag #5 another Day at the Office
+Flag #6 Little Black Box
+Now that we have payed attention to all of the hints, let us start by discovering our target.
+netdiscover
+
+Our target is 192.168.1.114. Scan the target with nmap.
+nmap -A -p- 192.168.1.114
+
+As the result we can see that port 22 and 80 are open. Therefore, open the IP in the browser. And as you can see there is nothing but the image of CTF in the webpage.
+Download the image and read it with exiftool. 
+exittool SkyDogCon_CTF.jpg
+ 
+
+Download the image and read it with exiftool. 
+exittool SkyDogCon_CTF.jpg
+
+Reading the image we will find the flag 1.  The first flag is in MD5 hash value and we will crack the hash value with online MD5 cracker i.e. crackstation.net
+
+The value will make up to the word welcome home. So till now we know that FLag #1 is welcome Home. Now, onto the next flag. But before that let’s explore more through nikto.
+nikto -h 192.168.1.114
+
+With help of nikto we found a robots.txt file. And yes! Opening it in the browser we found our next flag. So crack the MD5 value of the flag with crackstation.net. 
+
+On cracking the value of Flag #2 is Bots
+
+After cracking the flag #2 we explored robots.txt some more and upon opening all the allow directories one by one there was one which opened i.e. /Setec
+
+On opening the page source of /Setec you will find an Astronomy directory.
+
+Now open this directory by typing: 192.168.1.114/Setec/Astronomy
+
+Here, you will find whistler.zip. Download the file and and apply dictionary attack to find its password with the help of rockyou.txt and for that type:
+fcrackzip -vuD -p /usr/share/wordlists/rockyou.txt /root/Desktopwhistler.zip
+
+And you will find the password i.e. yourmother and now of course unzip the file:
+unzip whistler.zip
+Afterunzipping you will find Flag #3 and some other file with a hint. First open flag:
+cat flag.txt
+You will have your flag again in MD5 value. Crack it with similar method.
+
+On cracking the MD5 value you will get flag i.e. yourmother.
+
+Now open the other file:
+cat QuesttoFindCosmo.txt
+This file will give you a hint regarding OSINT. 
+OSINT: Open-source intelligence (OSINT) is intelligence collected from publicly available sources. In the intelligence community (IC), the term “open” refers to overt, publicly available sources (as opposed to covert or clandestine sources); it is not related to open-source software or public intelligence.
+That means we have to find something related to OSINT. If you recall there was a similar thing in the movie Sneakers and so we will use the movie and apply the technique of cewl here. CEWL lets us create a dictionary file using a URL and here we will use the URL of the movie to help us create the dictionary file and therefore type:
+cewl –depth 1 http://www.imdb.com/tittle/tt0105435/trivia?ref_=tt_ql_2 -w /root/Desktop/sneakers.txt.
+
+Now we will use this sneakers.txt file to find a directory.
+dirb http://192.168.1.114 /root/Desktop/sneakers.txt
+
+This command will show us the following directories:
+We have already seen the content of Setec and Astronomy directories and so we will now explore PlayTronics.
+
+And to our luck we found Flag #4 in the PlayTronics directory. Crack the flag with similar method and you will have the Flag #4 vlaue i.e. leroybrown
+
+In PlayTronics we also found a file with .pcap extension. Open that file with wireshark. And upon studying its data carefully you will find an audio file. Download audio file.
+
+Upon playing the file you will find it says only one word i.e. werner brandes. Now this “werner brandes” word can be our user name. So make a text file with possible combinations of username using the word “werner brandes”. Also, make a text file for passwords containing all the flag values that we just found.
+
+Now that you have possible usernames and password then apply dictionary attack on SSH to find the correct username and password. And for open metasploit and type:
+use auxiliary/scanner/ssh/ssh_login
+set rhosts 192.168.1.114
+set rport 22
+set user_file /root/Desktop/user.txt
+set pass_file /root/Desktop/pass/txt
+
+And you have you username: password i.e. wernerbrandes:leroybrown respectively. Now that you have username and password log in with SSH
+ssh wernerbrandes@192.168.1.114 
+(Password = leroybrown)
+
+And fortunately we also found Flag #5 in MD5 value. Crack it with same method and the will turn up to be Dr. Gunter Janek
+
+Now let’s find a writable file and for that type:
+find / -writable -type f
+
+If you observe you will see that /lib/log/sanitizer.py has the most permissions.
+
+So we will open the sanitizer.py file with the following steps:
+cd /lib
+cd log
+nano sanitizer.py
+
+On opening the sanitizer.py, the following file will open and in the file change the path in brackets to:
+(‘chmod u+s /bin/sh’)
+
+By changing this path we are giving maximum permissions to /bin/sh.  So now go to /bin/sh with following steps:
+cd ..
+cd ..
+/bin/sh
+Use the following commands to know you id :
+id
+whoami
+Then go to the /root.
+cd /root
+See the list of files:
+ls
+There is only one folder so let’s see what it has to offer.
+cd BlackBox
+ls -lsa
+Again you will find the blackbox folder. Open it.
+cd Balckbox
+ls -lsa
+And finally you will have you last flag :
+cat flag.txt
+Crack the value of flag with the same method.
+
+HURRAYYY!!! All the six flags have been captures. And this CTF is completed.
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here
+ 

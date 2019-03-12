@@ -1,0 +1,63 @@
+
+Penetration Testing on X11 Server
+
+X is an architecture-independent system for remote graphical user interfaces and input device capabilities. Each person using a networked terminal has the ability to interact with the display with any type of user input device.
+Source: Wikipedia
+In most of the cases the X’s Server’s access control is disabled. But if enabled, it allows anyone to connect to the server. This Vulnerability is called X11 Server Unauthenticated Access Open. You can get more information form here.
+For a proper demonstration, we will have to create up a Lab with this Vulnerability.
+Lab Setup
+We will use Ubuntu 14.04 system for this Vulnerable Lab setup. After the basic installation of the Ubuntu Server, we will focus on locating the “lightdm.conf” file. The Location of this file is: /etc/lightdm/lightdm.conf. But if you can’t seem to find this at that location, you can get it for yourself from here.
+To edit the file, we will use gedit.
+gedit /etc/lightdm/lightdm.conf
+
+To create the vulnerability, we will uncomment the following line:
+xserver-allow-tcp=true
+
+Now that we have made changes in the conf file, to make them come in effect, we will restart the lightdm service
+command: service lightdm restart
+
+Now when the lightdm service restarts, we will disable the access control. This will allow clients on the network to get connected to the server.
+command: xhost +
+And That’s it. We have successfully created the X11 Vulnerable Server.
+
+To begin the Penetration Testing, we will start with the nmap scan.
+nmap -sV 192.168.1.109
+
+As we can see from the screenshot that we have the TCP port 6000 open on the Server (192.168.1.109). Also, it is running the X11 service on that port.
+Nmap have a script, which checks if the attacker is allowed to connect to the X Server. We can check if the X Sever allows us the connection as shown below.
+We can clearly see from the screenshot provided that the X Server allows us the access.
+ 
+This is the built-in utility in Kali, it shows the windows information for X Service. In Penetration Testing, xwininfo can be used to get the information about the windows opened on the target system.
+Command: xwininfo -root -tree -display 192.168.1.109:0
+We can extract much information from the screenshot above like:
+
+It is a X Window System utility that helps in taking screenshots. On our Kali System we will use the xwd to take the screenshot of Xserver. This utility takes the screenshots in xwd format.
+Root = indicates that the root window should be selected for the window dump
+Screen = indicates that the GetImage request used to obtain the image
+Silent = Operate silently, i.e. don’t ring any bells before and after dumping the window.
+Display = specify the server to connect to
+
+After running the aforementioned command, we will successfully capture a screenshot form the victim system.
+
+Here we have the screenshot captured by the xwd, but it is in .xwd format, so to view it we will have to convert it to a viewable format like .png
+convert screenshot.xwd screenshot.png
+
+This command will convert the xwd to a png file. After running this command, we can find out screenshot in png file format as shown below:
+                              
+On opening the png file we can see that the xwd tool have successfully captured the screenshot of the target system.
+
+It is a built-in tool Kali Linux for the X Window Servers. XSPY is a sniffer, it sniffs keystrokes on the remote or local X Server.
+
+As we can see from the given screenshot that we have the got the user password as the victim have unknowingly entered the password. Also see that the password is not as visible on the Server terminal but as the xspy captures the keys typed, hence we have the password typed.
+
+Now we will use the X11 Keyboard Command Injection module of the Metasploit Framework. This module exploits open X11 Server by connecting and registering a virtual keyboard. Then the Virtual Keyboard is used to open an xterm or gnome terminal and then type and execute the payload.
+NOTE: As X Server is a visual service, while the executing of the module will take place, every task occurring on the Target System will be visible to the Victim.
+Now, after opening the Metasploit Framework, we will use the payload as shown:
+
+After running the module, it will first connect to the Server and search for xterm and open it.
+
+Then after waiting for 10 seconds, it will start typing the script command on the xterm.
+
+After executing this command, xterm will get closed, but it will provide a command shell to the Attacker as shown.
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

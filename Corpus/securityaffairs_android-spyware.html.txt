@@ -1,0 +1,78 @@
+
+					An Android Spyware revealed the existence of a new Italian surveillance firm					
+A new strain of Android malware reveals the existence of a new Italian player in the surveillance landscape. The Android spyware was analyzed by researchers from the RedNaga Security team, that is a first time investigated the possibility of a new threat developed by the notorious surveillance firm Hacking Team. The analysis revealed that another Italian company developed the dangerous Android spyware.
+The Researcher Tim Strazzere and his colleagues analyzed a sample of the malware that infected a machine of an anonymous target, likely a government organization.
+The Android implants implements the common functionalities of most spyware:
+The experts noticed that the Android spyware was contacting two IP addresses belonging to the address space used in the past by the HackingTeam. This circumstance, alongside with the use of Italian string in the code suggests the involvement of an Italian threat actor.
+The code was examined by two former Hacking Team employees and Citizen Lab researcher Bill Marczak and both groups excluded the HT authorship.
+“The sample has nothing to do with Hacking Team,” another source told Lorenzo Bicchierai from Motherboard. “It’s structurally different from the ones attributed to Hacking Team and doesn’t share any part of the code.”
+It doesn’t really look like an HT implant.. https://t.co/31ADZ2Qtyg
+— Guido Landi (@k_sOSe) 15 novembre 2016
+
+Who developed the Android Spyware?
+A reference in the SSL certificate used by one of the servers contains a string that might point to the author of the malware, “Raxir”.
+
+ 
+Raxir is the name of an Italian company launched in 2013 and located at the incubator “Citta’ Della Scienza” in Naples, Italy.
+The company develops software for investigations and works with Italian law enforcement providing forensic services.
+Marczak scanned the Internet for evidence of Raxir infections and related traces and found another server that exposes a digital certificate containing the string: “ProcuraNapoliRaxirSrv.”
+“The Procura” is the office of the prosecutor and Napoli is a popular city in the South of Italy. It is likely that this office is one of the customers of the Raxir firm.
+Let me close with the opinion of the cyber security expert Antonio Cocomazzi who reviewed the portion of codes reported in the analysis published by the Rednaga Security Team.
+
+About the section “Android Manifest”
+As the author said, this manifesto has a really suspicious import of the permissions like READ_CONTACTS, CAMERA, SEND_SMS, RECEIVE_SMS, etc. that is common to a malware behavior.
+The most interesting Observable is that the malware author tries to trick also the reverse engineer calling the activity label “Aggiornamento software” that is “Software update” in Italian.
+About the section “String Encryption”
+xor.py
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+def decrypt(encrypted, mod):
+if not encrypted or not mod:
+return ”
+mod = mod – 0x5
+out = ”
+for char in list(encrypted):
+out = ‘%s%s’ % (out, unichr(ord(char) ^ (mod & 0x5F)))
+mod = (mod – 0xB)
+return out.encode(‘ascii’, ‘replace’).encode(‘UTF-32’)
+ 
+To decrypt the strings embedded into the apk they use a classic XOR Cipher with a little variant: a modifier passed as an argument.
+Of course, if the malware contains a function do decrypt the strings, it means that strings were encrypted into the malware to complicate the reverse engineer analysis.
+How is used that modifier?
+This is a function that can decrypt the data with a dynamic XOR key (thanks to modifier passed as an argument).
+That means, most probably, the xor encryption of the string is done with a dynamic XOR key.
+This complicate the reverse engineer analysis because in that way the malware writer doesn’t hardcode the xor key in a statical way and, for example, he can let the malware download from a C2 Server.
+Anyway, this key could be bruteforced, in fact the author of this article wrote a IDA Pro script to automate the key bruteforcing process, it’s called decryptor.py that you can find in the section below.
+Dig deep into the code we can see that function accept 2 arguments: “encrypted”, the encrypted string to decrypt and the “mod”, in order to generate at every run of the malware different XORing encryption.
+After a first check of the arguments (line 2), then it modifies the modifier subtracting a constant value 0x5 (5 in decimal).
+In the line 7, it loops through every character of the encrypted string, in that cycle, it performs the decryption steps of every character.
+This is done in the line 8 appending each new decrypted char to the variable “out” (that will be the final  decrypted string).
+The encryption of the char is represented by the following formula: “unichr(ord(char) ^ (mod & 0x5F))” so the ord() function returns an integer if you pass as argument a Unicode char, the result of that computation will be XORed (^ operator) with the modifier ANDed (& operator) with a constant value 0x5F (95 decimal).
+The result of that computation will be an integer number, so it needs to cast it back to a Unicode char. This is done with the unichr() function.
+Before the loop cycle continue, it changes the modifier subtracting 0xB (11 in decimal) from it.
+In the end (line 10) it sets the right string encoding to the variable “out”.
+About the section “Appendix: Captured C2 Interactions”
+Looking at the appendix captured C2 interactions we can immediately realize that the server answer for some action requested by the client (the infected phone).
+Unfortunately, we don’t have a .pcap file containing all the request done through Internet, but as we can guess, maybe the malware asks for the malicious action to perform (RequestActionsToExecute) in order to exfiltrate data and the server should answer. That answer should be handled by the malware in order to perform all the steps to grap the data.
+Surprisingly, it seems the malware author manages also a way to receive the confirmation if the malware received the action correctly. (AckRequestedActions)
+The request to UploadService page is a concrete data exfiltration action in which the malware compresses the data (with PKZip) and send it to the server.
+We can guess, thanks to the parameter passed through the POST request “encrypted blob” that file will be stored in a database field instead of implementing a module to upload the file physically on the server.
+The NotifyLog request seems to be a way to manage and debug strange behaviors generated by the infected device.
+Conclusion
+Below a few considerations:
+The Italian “Procura” offices investigate crimes and it is strange that the sample of the Raxis Android spyware infected the mobile device of a Government representative.
+Did the malware go out of control?
+It seems very strange.
+Another possibility is that for some reason, the malware was used by a different government entity.
+Special Thanks to Odisseus who supported me in the analysis of the events.
+Odisseus is an Independent Security Researcher involved in Italy and worldwide in topics related to hacking, penetration testing, and development.
+Pierluigi Paganini
+(Security Affairs – Android Spyware,  Raxir)

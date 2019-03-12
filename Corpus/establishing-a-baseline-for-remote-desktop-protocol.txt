@@ -1,0 +1,100 @@
+Establishing a Baseline for Remote Desktop Protocol
+April 26, 2018 | by David Pany, Matthew McWhirt
+For IT staff and Windows power users, Microsoft Terminal Services Remote Desktop Protocol (RDP) is a beneficial tool that allows for the interactive use or administration of a remote Windows system. However, Mandiant consultants have also observed threat actors using RDP, with compromised domain credentials, to move laterally across networks with limited segmentation.
+
+To understand how threat actors take advantage of RDP, consider the following example (and Figure 1):
+
+A staff member from the HR department working on his or her desktop inadvertently installs a malicious backdoor by interacting with a phishing email.
+The backdoor malware runs password stealing functionality from Mimikatz to obtain credentials stored in memory for any user accounts that have accessed the system.
+The backdoor creates a network tunnel to an attacker’s command and control (C2) server.
+The attacker logs on to the HR employee’s system with RDP through the network tunnel by using the compromised credentials.
+In pursuit of compromising financial information, the attacker uses Active Directory enumeration commands to identify domain-based systems used by the finance department.
+The attacker uses RDP and the compromised HR employee account to connect to a system in the finance department.
+The attacker uses Mimikatz to extract credentials on the finance system, resulting in access to  cached passwords for the finance employee who uses the system and an IT administrator who recently logged onto the system for troubleshooting.
+Using RDP, the attacker leverages the HR employee’s account, the finance employee’s account, and the IT administrator employee’s account to log onto additional systems in the environment.
+The attacker stages data onto the HR employee’s system.
+The attacker steals the files via the built-in RDP copy and paste functionality.
+
+Figure 1: Example of a compromise that uses RDP for lateral movement
+
+A best practice used to identify this type of activity is network baselining. To do this, an organization must first understand what is normal behavior for their specific environment, and then begin to configure detections based on unexpected patterns. Sample questions that can help determine practical detection techniques based on the aforementioned scenario include:
+
+Do our HR and/or finance employees typically use RDP?
+Do any of our HR employees RDP to a destination system in finance?
+Do any of our HR and/or finance employees RDP to multiple destination systems?
+Are the systems in our HR and/or finance departments used as source systems for RDP?
+Do our IT administrator accounts RDP from a source system that is not part of an IT network segment?
+Do any of our critical servers have logons from source systems that are not part of an IT network segment?
+Do any of our critical servers have RDP logons sourced from user accounts that are correlated to any of our HR and/or finance personnel?
+Is it expected for a single user account to initiate RDP connections from multiple source systems?
+While it can take time to develop a customized process to baseline the scope of user accounts, source systems – and destination systems that leverage RDP in your organization’s environment – normalizing and reviewing this data will empower your staff with a deeper understanding of user account behavior, and the ability to detect unexpected activity to quickly begin investigating and triaging.
+
+Tracking RDP through Event Logs
+One first step and important resource for identifying your network’s typical behavior is through the use of event logs. RDP logons can generate file, event log, and registry artifacts on both the source and destination systems involved. Page 42 of JPCERT’s reference, “Detecting Lateral Movement through Tracking Event Logs,” details many artifacts that investigators may find on source and destination systems.
+
+For the purpose of scalability, our baselining approach will focus on three high-fidelity logon events recorded on a destination system:
+
+EID 21 and EID 25 within the “TerminalServices-LocalSessionManager” log, commonly located at “%systemroot%\Windows\System32\winevt\Logs\Microsoft-TerminalServices-LocalSessionmanager%3Operational.evtx”
+EID 4624 entries of Type 10 logons within the “Security” log, commonly located at “%systemroot%\Windows\System32\winevt\Logs\Security.evtx”
+The EID 21 entry shown in Figure 2 is created on a destination system when a successful interactive local or remote logon event occurs.
+
+
+Figure 2: EID 21 Example Structure
+
+The EID 25 entry shown in Figure 3 is created on a destination system that has been reconnected from a system that previously established an RDP session that was not terminated through a proper user logout. For example, closing the RDP window (which would generate EID 24), as opposed to logging off through the start menu (which would generate EID 23).
+
+
+Figure 3: EID 25 Example Structure
+
+The EID 4624 entry is created on a destination system when a logon of any type occurs. For evidence of RDP authentication, we will focus on EID 4624 entries with with Logon Type 10 as shown in Figure 4, which correspond to RDP authentications.
+
+
+Figure 4: Type 10 EID 4624 Example Structure
+
+These event log entries provide evidence of a successful RDP authentication from one system to another. For most security teams to collect this event log data, the logs must either be forwarded to an aggregation platform, such as a security information and event management (SIEM) platform, or collected using a forensic acquisition utility such as FireEye’s Endpoint Security (HX) appliance. Once extracted, the data must be processed and stacked for frequency analysis. The scope of this post is to generate metrics based on unique user accounts, source systems, and destination systems.
+
+For both EID 21 and EID 25, the user account and source system are captured in the event log strings, while the destination system is the system that recorded the event. Note that the “Source Network Address” recorded within the log may be either a hostname or an IP address. Your data processor may benefit from mapping IP addresses and hostnames together, while keeping Dynamic Host Configuration Protocol (DHCP) leases in mind. Understanding which systems correlate to specific user accounts or business units will greatly benefit the analysis of the processed results. If your organization does not track this information, you should request for this documentation to be created or captured within an asset management database for automated correlation.
+
+Identifying Inconsistencies
+Once RDP activity is baselined across your environment via the analysis of event logs, security analysts can then begin to identify RDP activity that deviates from business requirements and normalized patterns. Keep in mind that distinguishing between legitimate and anomalous RDP activity may take time.
+
+Not only will DHCP logs prove useful when mapping IP address to hostnames, but documentation that associates systems and user accounts with specific business units can also help with reviewing and correlating observed RDP activity for suspicious or benign behavior. Any RDP activity inconsistent with expected business practices should be investigated. Additionally, RDP logons confirmed as benign should be noted in the baseline for future investigators.
+
+Leveraging Metrics
+By using SIEM correlation techniques, analysts can stack RDP activity by account, source system, and destination system, to pinpoint the number/count of the following metrics-related elements, which will deepen the security staff’s understanding of RDP activity in your network:
+
+source systems per user account
+destination systems per user account
+user accounts per each source system to destination system path
+user accounts per each source systems
+user accounts per each destination system
+source system to destination system paths per user account
+total RDP logons per user account
+total RDP logons per source system
+total RDP logons per destination system
+destination systems for each source system
+source systems for each destination systems
+This list of metrics is not exhaustive and can be expanded by including timestamp metadata if desired.
+
+Recommendations
+While baselining RDP activity may not readily identify threat actors who do not utilize this technique, or who take extra steps to blend in with legitimate user activity, it will continually help analysts better understand what normal behavior looks like in their specific environments – and could ultimately identify anomalies or potential indicators of unauthorized activity.
+
+The following recommendations can help maximize the effectiveness of your RDP baselining exercises, while also reducing the opportunities for RDP to be leveraged for malicious actors within your environment:
+
+Disable the remote desktop service on end-user workstations and laptops, as well as systems where the service is not required for remote connectivity.
+Where connectivity using RDP is required, implement a combination of host and network-based controls to enforce that RDP connectivity must be initiated from specific jump boxes and centralized management servers for remote connection to endpoints.
+Host-based firewall rules that explicitly deny inbound RDP connections provide enhanced protections, especially for remote users that may utilize their system at locations outside of an organization’s managed infrastructure. Use host-based firewall rules to:
+Deny inbound RDP connections by default.
+When required, explicitly permit inbound RDP only from IP addresses correlating to authorized jump boxes.
+Employ the “Deny log on through Remote Desktop Services” security setting to prevent standard users from connecting to endpoints using RDP.
+Ideally, this setting should also deny RDP access for privileged accounts (e.g. domain administrators, service accounts) on endpoints, as these types of accounts are commonly leveraged by attackers for laterally moving to sensitive systems within an environment.
+Prevent the use of RDP using local accounts by:
+Installing KB2871997, and adding the SID “S-1-5-114: NT AUTHORITY\Local account and member of Administrators group” to the “Deny log on through Remote Desktop Services” security setting on endpoints. This can be accomplished by using Group Policy.
+Randomizing passwords for the built-in local administrator account on endpoints with a solution such as Microsoft LAPS.
+Ensure that EID 21, EID 23, EID 24, and EID 25 within the “TerminalServices LocalSessionManager Operational” event log are being captured and forwarded to a SIEM or log aggregator.
+Confirm that EID 4624 within the “Security” event log is being captured and forwarded to a SIEM or log aggregator.
+Increase the maximum size of the “TerminalServices LocalSessionManager Operational” and event log to at least 500 MB. This can be accomplished by using Group Policy Preferences (GPP) to modify the “MaxSize” registry value within the registry key “HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\WINEVT\Channels\Microsoft-Windows-TerminalServices-LocalSessionManager/Operational” on endpoints.
+Increase the maximum size of the “Security” event log to at least 1 GB.
+Monitor for evidence of the “Security” and “TerminalServices LocalSessionManager Operational” event logs being cleared (EID 1102).
+Create and regularly update documentation that maps user accounts and hostnames to business units.
+Ensure DHCP logs are archived and easily accessible to correlate source system IP addresses with their hostname at the time of a logon event.

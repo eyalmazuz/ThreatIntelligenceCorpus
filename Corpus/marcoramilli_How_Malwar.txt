@@ -1,0 +1,149 @@
+
+How Malware survives to Malware detection mechanisms
+
+
+
+
+Today I'd like to share some basic techniques that Malware(s) use to protect themselves from being detected. Some of the most used approaches to detect Maware could be described as follows:
+
+ Virtualize the environment in where Malware(s) run.
+ Attach a debugger to Malware processes and 
+ Sandbox the execution of the analyzed Malware.
+
+
+ It comes straight forward that Malware writers need new techniques to detect the detectors :D. In other words they need tools to figure out if the Malware is being analyzed or not. There are tons of ways to perform these checks, here I just want to sketch same of them for future researches.
+
+
+
+Detecting Virtual Machines. 
+
+Virtual environments have virtual devices such as virtual interfaces, virtual hard dirves and virtual graphics. Malware(s) by using a widly known techniques against "Malware" (ie. the signature checking technique) can detect the environement where they are running. 
+
+For example, a network interface for VMware Workstation has a MAC address starting with 00:50:56: or 00:0C:29. A wise Malware could decide how to behave depending on its environment. For example if it runs on a virtual environment it might decide to not perform malicious actions on the other hand if it runs on a real environment it might decide to perform malicious actions. Another used technique to understand the presence of a VM is to check for GUIDs. For example: 
+
+
+
+
+MD5: 0151c5afde070a7b194f492d26e9b3ef (Trojan.Agent-124243 by ClamAV). 
+
+
+
+The previous picture represents the function checking for  the presence of:  HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\ProductId 76487-644-3177037-23510. The presence of such a key proves the CWSandbox environment is running on the host platform. Or again, the Malware(s) could check for specific Hard Drives, Video Drivers and even Mouse Drivers. Some classical examples  follow:
+
+
+
+ Hard drive driver (VMware):
+
+
+
+HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Enum\IDE\DiskVMware_Virtual_IDE_Hard_Drive___________00000001\3030303030303030303030303030303030303130\FriendlyName VMware Virtual IDE Hard Drive
+
+
+
+Video driver (VMware):
+
+
+
+HKEY_LOCAL_MACHINE\System\CurrentControlSet\Control\Class\{4D36E968-E325-11CE-BFC1-08002BE10318}\0000\DriverDesc VMware SVGA II
+
+
+
+Mouse driver (VMware):
+
+
+
+%WINDIR%\system32\drivers\vmmouse.sys
+
+
+
+Detecting hardware signatures is not the only solution for malware writers, there are many other differences between Virtual Environments and Real Environments. One of the biggest is the inconsistency of "Table Registers". We have only one Interrupt Descriptor Table Register (IDTR), one Global Descriptor Table Register (GDTR) and only one Local Descriptor Table Register (LDTR) for each processor on the platform. But since in a virtual environment we have at least two operation systems running symultaneosly, the virtual machine needs to dynamically adjust each "Table Registers" in order to avoid conflicts. The process creates inconsistency between the native "Table Registers" and the virtual ones. A Malware can detect these inconsistencies by using assembly level instructions to read those values. SIDT, SGDT and SLDT might been used to read the original values of "Table Registers".  The following is an example of such a difference.
+
+
+
+MD5: b27d73bfcbaec49a95f23b45e9cf9310 (W32.Virut-54 by ClamAV)
+
+
+
+The IDT is at:
+
+0x80ffffff in Windows
+
+0xe8XXXXXX in Virtual PC
+
+0xffXXXXXX in VMware
+
+
+
+Again, this is not all the malware writers have. Some Virtual machines, such as VMware use backdoors as a communication media between the hosting machine and virtual machines. For example port 0x5658 (ASCII:"VX") is used in VMware virtual environments. Malware might be able to detect the name of the communication port and behave on consequence.
+
+
+
+Detecting Debuggers.
+
+Debugging is not per-se a virtualization, however this technique is widely used by reverse engineers in order to understand what the process is doing. Virtualizaion is the first and easiest way to perform Malware Analysis since you get the results out of the box by simply running the executable. Debugging is way more complicated but you have a deep understanding of what the process does in the host machine. Detecting debuggers is another important techniques that Malware writers have to consider during the Malware creation. The following code (taken from here) shows a simple function checking for the presence of an attached debugger on Windows machine.
+
+
+
+
+
+The above funciton checks the presence of an atacched debugger by asking to IsDebuggerPresent from kernel32.dll. The next function looks for files such as: SyserDbgMsg, SyserBoot and SICE, NTICE. Those files holds the informations, and the history of a debugged process (taken from here).
+
+
+
+
+
+Another way to detect debuggers is the NtGlobalFlags check:
+
+
+
+mov eax, dword ptr [fs:30h]
+
+add eax, 68h
+
+mov eax, dword ptr [ds:eax]
+
+cmp eax, 70h
+
+
+
+if the value in %eax register is equals to 70h, a debugger is attachecd to the process. If the process is not debugged the value of the flag is null (there is no such a flag). If you are implementing this check, remember null pointer exceptions...
+
+
+
+Another way to detect Debuggers is throught timing out. Debuggers can put break points in the code, and can therefore stop program execution. A program can detect this, by monitoring the system clock. If too much time has elapsed between instructions, it can be determined that the program is being stopped and analyzed.
+
+
+
+These techniques are only some of the numerous techniques that Malware writers might use. If you'd like to check them visit the OpenRCE dedicated page here.
+
+
+Sanbox Environments.
+
+A sandbox is a tightly secured environment where the analyst can run and analyze the behavior of a given application.  It's quite useful since once the execution (of the selectede software) ends everything is automatically restored to the previous state in which the machine was before the run. Being able to restore a "previous state" of an entire OS means to be able to record everything the software does. For such a reason sandbox environemtns are so usefull to analyze M0alware(s).
+
+
+
+So usefull but so predictables as well. Pretty much each sandbox has an unique way to be detected. Anubis for example can be recognized based on its product ID (which happens to be: 76487-337-8429955-22614) located at HKMLSoftwareMicrosoftWindows NTCurrentVersion. Following a code snipped able to detect Anubis sandBox (via aspfree):
+
+private static bool AntiAnubis2() {
+
+RegistryKey regProductID = Registry.LocalMachine.OpenSubKey("SOFTWAREMicrosoftWindows"
+                           +"NTCurrentVersion", false);
+object pid = regProductID.GetValue("ProductId");
+string id = "76487-337-8429955-22614";
+if ((string) pid == id)
+  return true;
+
+return false;
+}
+
+
+
+Using the same code is possible to detect JoeBox and CWSandbox as well (just checking for 55274-640-2673064-23950 and 76487-644-3177037-23510 registry keys). Sandboxie and ThreatExpert  do not use fixed Registry keys as the previous sanbox solutions do, so it is not possible to detect them using the aforementioned code. However they do load specific DLLs in the sandboxed environment in order to control the executed software. So why not just checking for such DLLs ?  sbiedll.dll and dbghelp.dll are respectively the two used DLLs.
+
+
+
+More ways to evade current security solutions are out there, in this post I summed up some of the most used and some of the most implemented techniques. If you are doing reverse engineering please keep in mind that things are becoming complex since malware writers use those techniques quite frequently. Don't stop your analysis on a sandbox, don't run the suspected malware only in virtual environments and keep in mind debugger-traps whle you are using your favorite debugger.
+
+
+

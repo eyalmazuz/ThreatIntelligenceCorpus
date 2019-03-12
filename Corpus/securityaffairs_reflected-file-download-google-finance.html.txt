@@ -1,0 +1,21 @@
+
+					A Reflected File Download flaw affects Google Finance					
+The researchers explained that different from other similar Reflected File Download he discovered in the past, this time, the attackers don’t need to create a page to force the download.
+“Found this vulnerability when auditing other client. With this RFD you don’t need to create a page to force the download. The request for this Google JSON file already do this for us.” he wrote in a blog post.
+The researcher noticed the following request during his tests:
+Which returned the following data:
+
+Sopas manipulated the above request acting on the callback parameters, in the example below he injected “calc” on the request:
+and received the following information in response:
+
+It worked!
+“Got my injected Windows command on this XHR request. Time to check if the URL is permissive” Sopas explained
+Google responses returning a URL that automatically shows the download dialog from Google with a batch file. The trick works with principal browsers, including Firefox latest version, Opera latest version, Internet Explorer 8 and 9.
+Sopas noticed that the unique validation made on the input is the sanitizing of particular characters in the command, this means that it is impossible to submit commands including spaces or arguments.
+Below a possible attack scenario:
+Below a video proof-of-concept:
+
+Google doesn’t consider the issue a serious threat for its users and hasn’t fixed it, but Sopas has a different opinion.
+“In case a malicious user uses logoff the victim is prompted with a download dialog just by visiting/clicking the URL – just like a reflected XSS but here the victim downloads a file from a trusted source [google.com]. In 90% of the cases the victim runs the file. Why? Most people trust their browser URL. Because of the limitation of a simple command without arguments or spaces, the malicious user can only mess around with the victim like running chkdsk, logoff the victim, etc. Also it can be used to C&C any commands to a local malware – using google.com This could be prevented by Google by adding a simple solution – Content-Disposition header.” explained Sopas
+Pierluigi Paganini
+(Security Affairs – Google, Reflected File Download (RFD) vulnerability)

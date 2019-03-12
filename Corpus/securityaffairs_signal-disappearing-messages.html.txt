@@ -1,0 +1,28 @@
+
+					Signal disappearing messages can be recovered by the macOS client					
+Signal is considered the most secure instant messaging app, searching for it on the Internet it is possible to read the Edward Snowden’ testimony:
+“Use anything by Open Whisper Systems” Snowden says.
+The Cryptographer and Professor at Johns Hopkins University Matt Green and the popular security expert Bruce Schneier are other two admirers of the Signal app
+Signal was also approved by the U.S. Senate for official communications among staff members.
+But even most complex and efficient software could be affected by severe bugs.
+The macOS client for the Signal fails to properly delete disappearing messages from the recipient’s system, potentially exposing sensitive messages.
+The disappearing messages in Signal are automatically deleted after a specific interval of time set up by the sender. The peculiarity of the feature is that there is no trace of the destroyed message on the receiver’s device or Signal servers, at least this is the expected behavior.
+The security expert Alec Muffett discovered that the messages once disappeared can still be recovered from the recipient’s device.
+
+Former NSA hacker and security expert Patrick Wardle analyzed the issue and discovered that macOS client makes a copy (partial for long messages) of disappearing messages in a user-readable database of macOS’s Notification Center. This copy could be recovered anytime by researchers and hackers.
+“While the application deletes the messages (once the ‘disappear’ time is hit) from the app’s UI – the message may still remain in macOS’s Notification Center.” wrote Wardle.
+“This apparently occurs because:
+To discover where the disappearing messages are stored Wardle used the macOS’s built-in file monitoring utilty ‘fs_usage.’
+“Looks like the ‘user notification daemon’ (usernoted) is accessing a file related to a database (specifically a SQLite write-ahead log).” added the expert.
+“Running the ‘file’ command on the ‘db2/db’ file reveals (rather unsurprisingly) it’s an SQLite database, that is readable with user (i.e. non-root) permissions”
+Wardle noticed the ‘record’ table that contains the notifications, including their contents.
+
+Data is stored in ‘binary’ format so Wardle converted it from hex to ASCII, obtaining “bplist00”. It is a binary plist that can be easily decoded/parsed using the biplist module.
+The decoded text included the text of all Signal messages, including the disappearing messages.
+“Well Alec, hope this explains exactly why those ‘disappearing’ Signal messages still are hanging around. In short, anything that gets displayed as a notification (yes, including ‘disappearing’ Signal messages) in the macOS Notification Center, is recorded by the OS.” concluded Wardle.
+“If the application wants the item to be removed from the Notification Center, it must ensure that the alert is dismissed by the user or programmatically! However, it is not clear that this also ‘expunges’ the notifications (and the their contents) from the notification database… i’m guessing not! If this is the case, Signal may have to avoid generating notifications (containing the message body) for disappearing messages…”
+The good news is that the Signal’s iOS application is not affected at least the messages are removed from the iOS Notification Center once the user has viewed them.
+Pierluigi Paganini
+(Security Affairs – Signal disappearing messages – privacy)
+
+

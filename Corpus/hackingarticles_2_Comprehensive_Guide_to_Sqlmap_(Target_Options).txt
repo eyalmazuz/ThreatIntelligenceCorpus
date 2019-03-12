@@ -1,0 +1,61 @@
+
+Comprehensive Guide to Sqlmap (Target Options)
+
+Hello everyone. This article will focus on a category of sqlmap commands called the “target commands.” Many might not have tried these commands but they can be proved very useful in corporate world.
+In this article we’ll be shifting our focus back on one of the finest tools for SQL penetration testing available called SQLMAP.
+This tool comes inbuilt in Kali Linux however you can download its python script from here too.
+Since, it is a crime to attack a live website, we are restricting our focus on the websites that are made for this testing purpose only. We have also used a local PC with sql dhakkan installed in it. You can refer to the articles published earlier to get an idea on how to configure dhakkan in your machine too.
+So, without further ado, let’s dive in.
+http://192.168.1.132/sqli
+
+First and foremost, I configured SQL dhakkan in a machine with IP address 192.168.1.132. I go to the lesson 1 tab for error based SQLi.
+
+One of the most basic commands ever. Every database has a webpage and every webpage has a URL. We will attack these URLs to get our hands on the database inside!
+By adding   ‘–u <URL>’ in sqlmap command we can specify the URL we are targeting to check for sql injection. It is the most basic and necessary operation.
+Here, let’s fetch all the databases that IP address 192.168.1.132 might have by suffixing –dbs
+ 
+Now, all the databases available in the given IP have been dumped!
+
+Many tools save a log file to keep a record on the IP addresses communicating back and forth. We can feed one such log file to the sqlmap and it will automatically test all the URLs in that log file.
+Log file can have a record of various targets in reality but here we’ll be capturing the request of a website in burp suite and then saving its log file for simplicity. Let’s turn on the intercept then.
+
+Go to the website “leettime.net/sqlninja.com/tasks/basic_ch1.php?id=1” and capture the request in burp. It has an SQL injection lab installed over public IP for penetration testers.
+
+Captured request will be something like:
+
+ 
+ 
+Now right click->save item and save this request as “logfile” on desktop. No need to provide any extensions here.
+
+ 
+Open the terminal and type in the following command to automate the attack from the log file itself.
+
+Bulkfile is a text file that has the URLs of all the target machines each in a single line with the exact URL of where the attack is applicable.
+So, let’s create a bulkfile on the desktop called bulkfile.txt.
+ 
+This will open up a command line text editor called ‘nano’. Let’s feed in some URLs.
+To save the file: CTRL+O -> ENTER
+To exit nano: CTRL+X
+We are all set to attack both of these URLs together by the command:
+
+ 
+We’ll get the list of databases and we can continue with our other URL.
+
+We can also automate the process of finding SQLi by adding in a Google dork target. What it does is that it will start searching for all the websites with given Google dork and automatically keep applying sqlmap on the websites that matches the dork. Disclaimer: this attack will automatically be applied to any website that matches the dork, be it government or military, which is a serious criminal offence so it is advised that you play with it carefully.
+As we know that error based SQL injections are often found in URLs having ‘.php?id=<num>’ in them, we can apply the inurl Google dork to find all the websites with this in its URL.
+
+As you can see sqlmap has found a website with ‘?id=1’ in it’s URL.
+I’ll be pressing n and cancelling the sqlmap scan since it is a crime to do so.
+We can also specify the specific page number on which we want to apply the Google dork at by the option “- -gpage”
+
+An HTTP client sends an HTTP request to a server in the form of a request message which includes following format:
+The Request-Line begins with a method token, followed by the Request-URI and the protocol version, and ending with CRLF. The elements are separated by space SP characters.                        
+Request-Line = Method SP Request-URI SP HTTP-Version CRLF
+Hence, we can intercept these HTTP requests, save it in a txt file and automate the attack with sqlmap.
+
+I captured the request of the website “master.byethost18.com/Less-1/?id=1” in burp and will save it in a txt file called “httprequest.txt” and run the command:
+ 
+As you can see that sqlmap has detected the target in the txt file. We can further apply – -dbs to fetch all the databases.
+I hope that this article was helpful and the readers have learnt some new options that they might not have heard about before. Many more options will be coming in the next articles. Keep hacking!
+
+Author: Harshit Rajpal is an InfoSec researcher and a left and right brain thinker. contact here

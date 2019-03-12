@@ -1,0 +1,158 @@
+
+When Does Software Start Becoming Malware?
+
+
+This post was authored by Earl Carter, Alex Chiu, Joel Esler, Geoff Serrao, and Brandon Stultz.
+
+Defining what is malware relies on determining when undesirable behavior crosses the line from benign to clearly unwanted. The lack of a single standard regarding what is and what is not acceptable behavior has established a murky gray area and vendors have taken advantage of this to push the limits of acceptable behavior. The "Infinity Popup Toolkit" is a prime example of software that falls into this gray area by bypassing browser pop-up blocking, but otherwise exhibits no other unwanted behavior. After analyzing the toolkit, Talos determined that software exhibiting this type of unwanted behavior should be considered malware and this post will provide our reasoning.
+
+
+Overview
+
+Without a clear standard defining what is and is not acceptable behavior, identifying malware is problematic. In many situations, users are confronted with software that exhibits undesirable behavior such as the Java installer including a default option to install the Ask.com toolbar. Even though many users objected to the inclusion of the Ask.com toolbar, Oracle only recently discontinued including it in Java downloads after Microsoft changed their definition of malware which then classified the Ask.com toolbar as malware.
+
+There is more to unwanted software than just browser toolbars or widgets. Suppose a piece of software exhibits the following characteristics. Would this be considered malware?
+
+The user was not given a choice whether or not to execute this piece of software.
+The software was designed to specifically bypass browser security and privacy controls using clickjacking techniques.
+The software avoids detection by encrypting portions of its payload.
+Extensive fingerprinting (browser, plugins, operating system, and device type) takes place and sent to a third party without user consent.
+
+
+These traits could be confused with an exploit kit and administrators would likely want to blacklist this piece of software.
+
+These characteristics match the behavior of the "Infinity Pop-up Toolkit," a piece of software that is specifically designed to bypass the pop-up blocker in Google Chrome in order to present users with pop-up ads. This toolkit is currently in use by several advertisers on hundreds of sites and is delivered and executed via a Flash file (SWF). These Flash objects use clickjacking to fool the user into clicking on an invisible object in order to execute a privileged JavaScript action.
+
+The SWF acts like a shell by hiding the true behavior of the toolkit in an encrypted binary blob that will not be observed until run from a domain that the authors of the SWF allow. At runtime, the main ActionScript function decompresses and decrypts the binary blob included in the SWF which carries out the actual pop-up display functionality using interaction with JavaScript in the web page.
+
+
+Technical Analysis
+
+When visiting a site that is hosting this type of pop-up "technology", the advertiser will collect a staggering amount of information about your browser environment to determine the best way to deliver advertisements. The JavaScript that helps the Infinity Pop-up Toolkit, or inf_pu_toolkit, is contained inside "infinity.js" and is a popular tool set for delivering ad content to website visitors.
+
+Information collected by infinity.js during the initial stage can include:
+
+Web browser and version
+System architecture (CPU)
+Operating System
+Device type (console and entertainment systems, wearable devices, phones, etc.)
+Plugin support
+Referral history
+Screen size
+User time zone
+
+
+The collection of this sort of information and its transmission to third-parties is common, such as crash reports. However, without user consent the transmission of such data represents a security and privacy risk that provides a strong foundation for targeted attacks. In more secure networks such as the Government or the Military, this information leakage is a serious security violation.
+
+Another troubling feature: if you are using ad blocking technology, your browser will send a special beacon back to the advertiser letting them know along with some data points specific for your machine:
+
+
+
+Click to enhance
+
+
+If you happen to be running Google Chrome, infinity.js will select a means of delivering ad content to your screen whether or not you have Chrome's pop-up blocking turned on. Simply disabling or making Flash "Click-to-run" will not work since infinity.js enumerates navigator.mimeTypes["application/x-shockwave-flash"] in order to check if Flash is available on the machine.
+
+After fingerprinting the browser, the appropriate "payload" will be selected by infinity.js and loaded into the DOM.
+
+
+
+
+
+Detailed information about specific browser behavior is carefully leveraged to increase views.
+
+
+
+
+
+For the Chrome version we tested (v.44), this means that a new Flash object is created that is not visible to the user (z-index:99999)
+
+
+
+
+
+This Flash object is given scripting access to the DOM.
+
+
+
+
+
+This will allow the inf_pu_toolkit Flash object to manipulate the DOM later on.
+
+Once fetched from the advertiser's server, the inf_pu_toolkit file decompresses and decrypts an RC4 binary blob before passing execution to it.
+
+A normal JavaScript onclick event is then registered by infinity.js to the document object so that when the user clicks any child of the document (anywhere on the page) the click event is triggered.
+
+The click event is seen below:
+
+
+
+
+
+Setting the width and height of the Flash object (which is transparent) to 100% means that the object will occupy the entire viewable page, covering all other page elements, without any indication to the user that this is happening. The image below is an example of this behavior.
+
+
+
+
+This full window, transparent Flash object as seen above does not trigger the full screen warning that Adobe has implemented as a security feature since the Flash object only occupies the browsing window (even if it is 100% of the page) and not the full page. This is expected behavior since Flash's full screen warning is meant to protect against malicious websites that try to spoof the user's browser UI components.
+
+The inf_pu_toolkit.swf also has the functionality of running in true fullscreen mode if infinity.js passes it the right parameters:
+
+
+
+
+
+Running in full-screen mode for versions of Flash that do not implement the full screen warning might be an advantage since in the realm of internet advertising more screen coverage tends to equate to more clicks. However, if the Flash version that's running presents a warning to the user if full screen mode is enabled, it is arguably much more stealthy to just take up 100% of the browser canvas and avoid tipping the user off that something is amiss.
+
+The inf_pu_toolkit.swf will then use the ExternalInterface class to access the DOM and register a new click event:
+stage.addEventListener(MouseEvent.MOUSE_UP,this.onclick);
+
+
+The inf_pu_toolkit object will remain transparent in full screen mode waiting for the user's click.
+
+Once clicked, the inf_pu_toolkit flash object will launch a pop under window using ExternalInterface to call the JavaScript window.open() command directly from within the Flash file.
+
+The key to this chain of events is the classification of user and non-user actions on the DOM. Chrome and Adobe Flash both classify the click event on the inf_pu_toolkit object as a user action and user actions allow plugins like Adobe Flash to execute privileged functions, such as opening a pop-up window. This is clearly unwanted behavior as the user's click has been hijacked to open a new window.
+
+A simple "strings" analysis indicates that inf_pu_toolkit.swf may be using "SecureSwfLoader" to protect the AS3 that initiates the pop-up to the user and communicates with the advertisers content and stats tracking servers.
+
+The inf_pu_toolkit.swf file certainly contains many of the features advertised on this vendor's page.
+
+
+More Fun Stuff
+If the toolkit happens to detect an error during execution, a nice error log will be sent back to the advertiser using an AJAX POST request. This isn't new or unique since lots of websites do this, but in the case for the end user an unauthorized third party is the recipient of the error log.
+
+
+
+
+Hashes
+
+The following hashes are associated with the Infinity Pop-up Toolkit:
+
+
+4f40a54a972991f23a9ea95485bf53c1b54671e7643c322f00508cf93db7652c
+b92fc40c7258c77b5c2da2d02f03827a1205aecedafafccc38403020c0fb74a9
+
+
+
+
+
+Conclusion
+The "Infinity Popup Toolkit" exhibits behavior that clearly crosses the line into the undesirable realm. Given the characteristics of this Flash file, its features, and the capabilities, Talos made a decision to classify this piece of software as malware and block it. Protecting our users from this pop-up toolkit, which is intentionally bypassing web browser security controls, is an important step in defining what is not acceptable behavior and helping to define a what is malware.
+
+If you didn't specifically ask for a piece of software to run or be installed on your system, or if it bypasses some type of security/privacy control, then that software is malware.
+
+We drew the line.
+
+
+Protecting the User
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of this unwanted software.
+CWS or WSA web scanning prevents access to malicious websites and detects the unwanted software used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect network activity associated with this software.
+
+ESA is not applicable in this case as the unwanted software is delivered via advertising.
+
+
+

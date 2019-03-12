@@ -1,0 +1,47 @@
+The Anatomy of KTS Malicious Traffic Distribution
+Recently, Forcepoint Security Labs shared information on drive-by download activity impacting a compromised website pushing visitors to an instance of the Rig Exploit Kit. They identified content on the compromised site that resulted in the inclusion of malicious redirection content from an intermediary site, and subsequently pushed visitors to the exploit kit to compromise the host and install Qakbot malware on vulnerable systems.
+At RiskIQ, we love seeing coverage of malicious activity involving traffic redirection, as this is an interesting and relevant piece of the threat landscape. Most often, malicious traffic redirectors are glossed over or only lightly examined as analysts and researchers focus their attention on the weaponized payloads of the exploit kit and distributed malware loads. However, in the online crime ecosystem, traffic represents an important commodity for malicious actors, and the conversion of traffic from compromised sites, ads, and other sources is a key element in monetizing their efforts. We view this as a valuable element in intelligence gathering related to specific actors and their activity. RiskIQ views the Internet from outside the firewall, experiencing the web as end users do and uncovering attackers’ digital footprints to provide insight for our customers and partners into how threats on the Internet affect their customers and employees.
+The referenced post shows an indicator as a URL for the malicious redirector on sc.gandhiprobably.com: http://sc.gandhiprobably.com/jqjkviewforumlpaqt.ph…
+Upon review of the reported event, we recognized that the malicious redirector is a traffic distribution system (TDS) payload we track under the name KTS. This naming reflects URI patterns we’ve observed with past instances of this TDS, going back to at least the beginning of 2014. This blacklist incident report shows a similar drive-by redirection to the TDS from a compromised site in late 2014.
+Because the injected URL on compromised sites is hosted on a domain pointing to a front-end proxy, attackers have the freedom to modify inbound URLs to the TDS in order to bypass detection signatures. Between November and December of 2015, the attackers did do this, shifting from an older style of injected URI path to a newer one:
+
+192.185.21.183 AS20013 | US | arin | 2001-03-14 | CYRUSONE – CyrusOne LLC
+Over the course of monitoring this traffic-distribution activity, we observed several compromised sites, some with extremely persistent code injections (lasting several months at a time without remediation, or longer). The following is a sample of sites observed to have been impacted by this activity:
+www.mydailymoment.com
+www.tech-spectrum.com
+www.pavtube.com
+www.rantsports.com
+www.dissentmagazine.org
+www.musclecarsofamerica.com
+www.coma-online.com
+www.evictorynews.com
+www.worthofweb.com
+www.englishrussia.com
+www.animalwonder.com
+www.stream-recorder.com
+www.cyclocamping.com
+www.officeholidays.com
+www.rantsports.com
+How is the content injected? We’ve observed that, in recent attacks, attackers select and modify a JavaScript library used on the site, often appending their obfuscated redirection stub to the library’s contents. In many cases, attackers choose the popular jQuery library, which is used by a vast number of websites on the Internet and sometimes bundled with CMS installations. At other times, attackers alter JS libraries within installed plugins. As the visitor loads the site, the browser loads the JavaScript library—along with the attacker’s redirection code—which results in hidden redirection to the desired exploit kit. In many cases, evidence of automation is readily evident, with the injected redirection code placed between delimiting comment markers, allowing attackers to to use tools to continually update the injected redirection stub and maintain a functional traffic hijack. Below is an injected script example of a compromised site:
+
+This behavior, the use of automation and the presence of delimiting markers in modified script files, is a technique that we see frequently. It points to the economy of scale that attackers can leverage as they attempt to maximize the reach of these attacks.
+This malicious traffic distribution activity has another feature deserving of mention, thanks to recent attention in the security response community. The actor behind the KTS redirector regularly abuses hijacked DNS domain holder accounts, injecting rogue A records to support their own malicious name resolution, a technique known as Domain Shadowing. We have written about Domain Shadowing recently at RiskIQ, and others have as well. A sampling of past and present hostnames from KTS URLs illustrates this behavior:
+cdn.buyorselltnhomes.com
+img.elementalvetcenter.com
+img.greenwoodhouse.info
+img.kirklandhouse.info
+img.lakeforestparkhome.info
+static.golfcoursesfyi.com
+static.lumleyteam.com
+static.charlottewinner.com
+static.forezach.com
+static.platinumweddingplanner.com
+st.anthonybryanauthor.com
+js.anthonybryanauthor.com
+st.dynamicwords.us
+mt.dynamicwords.us
+st.naughtytimebooks.com
+st.domandvilma.com
+sc.gandhiprobably.com
+This domain abuse has the following characteristics:
+In all uses of Domain Shadowing for malicious host resolution, actors gain several advantages. In a series of future posts, will will further examine the use of Domain Shadowing amid ongoing campaigns in the web threat space, illustrating different techniques utilized by threat actors.

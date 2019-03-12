@@ -1,0 +1,67 @@
+
+Pen Testing for iPhone Part 1
+
+This article focuses specifically on the techniques and tools that will help security professionals understand penetration testing methods for iPhone applications. It attempts to cover the entire application penetration testing methodology on a physical device (running with iOS 5) rather than a simulator.
+Background:
+Since the introduction of the iPhone, Apple has sold more than 110 million iPhones. The smartphone platform has created a new business and companies want to make their services available on mobile devices in order to reach out to users very quickly and easily. The iPhone has enough power and performance to do most of the stuff you can do on a laptop and span a range of categories from education and productivity to games and entertainment.
+The iPhone provides developers with a platform to develop two types of applications. 
+This article mainly covers the pen testing methodology of native iOS applications. However, some of the techniques explained here can also be used with web-based iOS applications.
+Application Distribution model:
+iOS developers use Apple Xcode developer tools and test their applications within the iOS simulator. A simulator simulates an environment but it does not mimic many of the features and functionalities available on real devices. An iOS simulator compiles iOS applications to a local native code which is different from the Android emulator that compiles to ARM instructions. Though simulators allow basic development and testing, it is not sufficient for many applications which require the use of full hardware power, performance and features which are only available on real devices. To test these types of applications on real devices, developers have to subscribe to Apple’s iOS Developer Program because the iPhone is only allowed to run Apple signed applications. Mandatory Code Signing mechanism implemented in iOS requires that all the native code running on the device should be signed by a known or trusted certificate. Upon subscription to the iOS Developers Program, Apple issues a signed provisioning profile that configures the iOS device to permit the execution of code signed by a developer certificate. Developers can apply for this program as an individual, company or university.
+Based on the provisioning profile, application distribution models are categorized as 5 types.
+Single device distribution:
+Development provisioning profiles issued by Apple are tied to a device’s UDID (Unique Device ID). This provisioning profile allows running a developer’s application on the device. As it is tied to a particular device, the provisioning profile does not work on other devices. This model is used during single device testing.
+Ad Hoc distribution:
+Ad Hoc provisioning profiles issued by Apple are tied to the UDID’s of up to 100 other devices, including the iPad, iPhone or iPod touch. The developer has to supply the UDID of 100 devices during the subscription process. This model allows developers to test their application on a wide range of devices.
+In-house distribution:
+Enterprise provisioning profiles issued by Apple permit the installation of applications on devices without configuring their UDIDs. This distribution is generally used by enterprises to distribute applications internally to their employees.
+Over the air (OTA) distribution:
+This model is designed to allow enterprise developers to send applications to individual users in their organization through e-mail or by hosting the application on a web server. The main problem with this kind of distribution is if someone outside the organization gets access to the link then they too can also install the application.
+App Store distribution
+This is a centralized mechanism for distributing Apple signed applications. Upon submitting the application to Apple, Apple verifies it against the App Store review guidelines and approves it if the application follows all the review guidelines. After approval, Apple will re-sign the application with an Apple signing certificate and make it available for download in the App Store.
+Penetration Testing
+In this section we are going to focus on iOS applications rather than the iPhone operating system itself. Actually there is an overlap between the iPhone OS security and the iPhone application security. So understanding the iOS platform and its security technology will help penetration testers properly assess the security of iPhone applications.
+The main areas of focus while assessing the security of iPhone applications are –
+Setup:
+A simulator does not provide the actual device environment, so all the penetration testing techniques explained in this article are specific to a physical device. iPhone 4 with iOS 5 will be used for the following demonstrations.
+To perform pentesting we need to install a few tools on our device. These tools are not approved by Apple. Code signing restrictions in iOS do not allow us to install the required tools on the device. To bypass the code signing restrictions and run our tools we have to JailBreak the iPhone. JailBreaking gives us full access to the device and allows us to run code which is not signed by Apple. After JailBreaking, the required unsigned applications can be downloaded from Cydia.
+Cydia is a parallel App Store for unsigned applications. JailBreaking puts your phone at great risk to some security vulnerabilities because the
+device allows any application to run even if it is not approved by Apple. Though we can assess the security of an application on a non-JailBroken iPhone, it is not possible to give complete coverage. JailBreaking makes the pen tester’s work easier and helps to provide full coverage of an application.
+Tools like Pwnage, readsn0w and greenposi0n can be used to JailBreak the iPhone.
+Tools required for Pentesting:
+From Cydia, download and install the applications listed below.
+iPhone does not give us a terminal to see inside directories. Upon OpenSSH installation on the device, we can connect to the SSH server on the phone from any SSH client (ex:Putty, CyberDuck, WinScp). This gives us flexibility to browse through folders and execute commands on the iPhone. An iPhone has two users by default. One is mobile and the other is a root user. All the applications installed on the phone run with mobile user privileges. But using SSH we can log into the iPhone as a root user, which will give us full access to the device. The default password for both the user accounts (root, mobile) is alpine.
+Note: Best practice is to change the default SSH passwords of your device.
+If your phone and the workstation are connected to Wi-Fi, you can directly SSH to the iPhone by typing in the IP address and username/password.
+SSH to iPhone over Wi-Fi:
+
+If your phone and the workstation are not on Wi-Fi, you can still do SSH via the USB cable with the help of an iPhone tunnel (which can be downloaded from – http://code.google.com/p/iphonetunnel-usbmuxconnectbyport/).
+ SSH to iPhone over USB cable:
+
+Once we have a SSH connection, we can run commands directly on the iPhone. As iOS is a trimmed version of Mac OS , many of the MAC OS commands will work on the iPhone.
+Application traffic analysis
+Pen testing iPhone applications isn’t all that different because client-side applications still interact with the server-side components over a network using some protocols. So it also involves network pentesting and web application pentesting. The primary goal in traffic analysis is to capture and analyze the network traffic to find vulnerabilities.
+iPhone applications may transmit data to the server in any of these communication mechanisms:
+It’s 2012 and applications are still using clear text transmission protocols like http. In general, mobile applications are more prone to MITM attacks because most people access them over WIFI. An attacker who has access to the same Wi-Fi can run tools like FireSheep and hijack user sessions. As plain text transport protocols are vulnerable to MITM attacks, applications which transmit sensitive data must use encrypted communication protocols like https. During pen testing, observe whether the application is transmitting any sensitive data over the encrypted channel or not. Application traffic can be captured by configuring the proxy settings available in iPhone. Upon setting up a proxy, the iPhone routes its traffic through the configured proxy.
+Configuring Proxy
+The screenshots below illustrates the required settings in an iPhone workstation (IP-192.168.1.4) required to capture http application traffic.
+
+Turn on Wi-Fi
+
+Choose a network and click on the blue arrow corresponding to it
+
+Choose ‘Manual’ and setup a proxy IP (ex: 192.168.1.4)
+
+On your workstation,
+ Open Burp Suite and navigate to Proxy->Options,
+ Edit proxy listeners – enter ‘port’ as 8080, disable ‘loopback only’ and select ‘support invisible’
+
+Now browsing any http website or http application in iPhone routes the traffic to your workstation and will display in Burp Suite.
+The same proxy settings also work for https traffic as well. But capturing iPhone application https traffic is little tricky. In SSL communication, browser based applications automatically validate the server-side certificate; whereas in native iOS applications, the developer has to explicitly write the code to validate server certificates. Coding mistakes at this point may lead the application to accept any server certificate. When an application fails to validate the server certificate, attackers can use any fake certificate and perform MITM attacks.
+One common mistake that we see in iPhone application development is the use of allow any https certificat efo rhost (NSURLRequest) or continue Without Credential For Authentication Challenge (NSURLConnection) function call. Applications which implement these functions accept any certificate even if it is not issued by the original server. Also the application users do not even get a certificate warning. While pentesting, check whether the application is validating the certificates properly or not. If the application validates server-side certificates properly, then it will display a certificate error message when it receives an invalid certificate. It also does not allow the user to use that application or proceed further with the invalid certificate.
+To capture the SSL traffic of these applications during pen testing, first we have to add a proxy CA certificate to the iPhone trusted certificates list. Later if the application receives a proxy certificate it will not display any certificate error because we told our iPhone to trust that certificate. This will allow us to capture the https traffic. The same technique is applicable to other protocols which work on certificates.
+Apart from http and https protocols iPhone applications may also use custom protocols or low level socket communication APIs (NSStreams, CFStreams). The MITM techniques explained above would not work to capture the network traffic of these applications. In order to capture the low level traffic of these applications download and install tcpdump from Cydia on iPhone. Upon installation of tcpdump, connect the iPhone over SSH and run the commands below to capture traffic and write it into a .pcap file.
+
+Connect to the phone using a GUI SSH client like Cyberduck. Browse to the folders and copy the recently created .pcap file to your workstation. Next, open the .pcap file using a traffic capture tool like Wireshark. Use your protocol analyzing skills and identify the custom protocol. The same techniques can be used for the applications which do not respect the iPhone proxy settings. In these cases, DNS spoofing techniques can be used to perform MITM and for traffic capture.
+Once you capture the traffic, typical web application pen testing attacks are done on the application server. Now you can look for SQL injection, authentication, authorization, session management, cryptography weaknesses and many more web related vulnerabilities.
+Satish B. is a contributor to InfoSec Institute, a security training and certification company. 

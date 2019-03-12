@@ -1,0 +1,19 @@
+
+					A flaw in ESET Endpoint Antivirus allows to hack Apple Macs, patch it now					
+According to the security advisory published by Google Security Team’s Jason Geffner and Jan Bee on Seclists, it is possible to get remote root execution on Apple Mac systems via Man-In-The-Middle (MiTM) attacks. The attackers can get root-level remote code execution on a Mac by intercepting the ESET antivirus package’s connection to company backend servers. The attack is possible due to the presence of a buffer overflow vulnerability in the XML library tracked as CVE-2016-0718.
+“Vulnerable versions of ESET Endpoint Antivirus 6 are statically linked with an outdated XML parsing library and do not perform proper server authentication, allowing for remote unauthenticated attackers to perform arbitrary code execution as root on vulnerable clients.” reads the advisory.
+According to the experts, the attack is possible because the esets_daemon uses an old version of POCO’s XML parser library that is affected by the buffer overflow vulnerability.
+
+The researchers discovered that the flawed library also handles license activation with a request to the following static address:
+https://edf.eset.com/edf.
+When the ESET Endpoint Antivirus tries to activate the license, the esets_daemon sends a request to the above address, but it doesn’t validate the web server’s certificate opening the door to a man-in-the-middle attack.
+An attacker can intercept the request and send to the ESET Endpoint Antivirus a self-signed HTTPS certificate, then the esets_daemon service
+parses the response as an XML document.
+In this phase, the attacker can pass a specifically XML document that can trigger the CVE-2016-0718 to achieve arbitrary code execution
+as root.
+“When ESET Endpoint Antivirus tries to activate its license, esets_daemon sends a request to https://edf.eset.com/edf. The esets_daemon service does not validate the web server’s certificate, so a man-in-the-middle can intercept the request and respond using a self-signed HTTPS certificate.” reads the security advisory. “The esets_daemon service parses the response as an XML document, thereby allowing the attacker to supply malformed content and exploit CVE-2016-0718 to achieve arbitrary code execution as root.”
+The security duo has also published the Proof of Concept code to exploit the attack.
+ESET has promptly fixed the issue in ESET Endpoint Antivirus version  6.4.168.0.
+Update your system as soon as possible.
+Pierluigi Paganini
+(Security Affairs – CVE-2016-0718, ESET Endpoint Antivirus)

@@ -1,0 +1,30 @@
+ AntiVirus Evasion Reconstructed – Veil 3.0
+The Veil Framework is a collection of tools designed for use during offensive security testing. When the time calls for it, Mandiant’s Red Team will use the Veil-Framework to help achieve their objective.  The most commonly used tool is Veil-Evasion, which can turn an arbitrary script or piece of shellcode into a Windows executable that will evade detections by common antivirus products.
+Veil 2.0 was made publicly available on June 17, 2013, and the core framework has remained largely unchanged since that date. There have been some modifications to the framework itself, but these have generally been minor in nature, with the majority of modifications involving the support of new programming languages and new payload modules.\
+After spending a few years developing in Python, I revisited the Veil codebase and identified parts of the backend framework that could be developed more efficiently. Six months later, after refactoring the codebase and adding a large number of updates, I am happy to present Veil 3.0. The main menu is shown in Figure 1.
+
+Figure 1: Veil 3 main menu
+First and foremost, one of the largest overhauls to Veil was updating the version of Python from Python 2 to Python 3. Python 2 is scheduled to reach end-of-life (EOL) in 2020, so it did not make much sense to spend time performing a large update to Veil in a language that will no longer be supported in three years.
+Updating Veil from Python 2 to Python 3 was easily the most time-consuming part of creating Veil 3. Running the 2to3 tool was not an option; the conversion process required manual review for essentially all changes to Veil.
+One of the major differences when developing Veil in Python 3 vs. Python 2 is how shellcode is handled and modified. To illustrates this issue, Figure 2 shows a Python 2-based stager that includes encrypted shellcode to be decrypted at runtime.
+
+Figure 2: AES decrypting stager from Veil 2 in Python 2
+While the code in Figure 2 works in Python 2, it will not work in Python 3. Specifically, in Python 3, the shellcode no longer needs to be string escaped into a bytearray after decryption. The output of Python 3’s decryption is the original clear text data in a bytearray, which is immediately consumable by the rest of the script. Figure 3 shows the Python 3 version of the same decryption stager.
+
+Figure 3: AES decrypting stager from Veil 3 in Python 3
+Early versions of Veil relied on the Metasploit Framework's msfvenom tool to generate shellcode for Veil payloads. After the initial release of Veil, however, this caused a problem. The output for msfvenom changed and it completely broke Veil's ability to process msfvenom output. After providing a patch to fix the issue, the Veil team decided that a different solution would be required instead of relying on a tool outside of our control.
+Thus, Veil-Ordnance was developed and released in 2015. Veil-Ordnance is a tool that generates shellcode for use in Veil-Evasion stagers. Developing Veil-Ordnance had two main benefits:
+Previously, Veil-Evasion and Veil-Ordnance were two separate tools. With the release of Veil 3.0, that is no longer the case, as shown in Figure 4.
+
+Figure 4: Ordnance included in Veil 3.0
+Veil 3.0 users still have the ability to use msfvenom to generate their shellcode, but they now also have the option to use Ordnance. Ordnance will be able to immediately generate shellcode after users provide the IP and Port that the shellcode should connect to or listen on. Ordnance supports the most popular payload types:
+This gives Veil users multiple options to choose from – they can stick with msfvenom, or use the new built-in tool, Ordnance.
+While Veil itself is written in Python, the processed payloads and output files can be in other programming languages. In Veil 3.0, two additional languages are now supported:
+Lua payloads are only supported in a script format that must be compiled and run using a lua runtime, but Veil 3.0 running on Linux can compile AutoIt3 scripts into Windows executables. Veil 3.0 also supports the seven languages previously supported in version 2.0:
+Another new feature in Veil 3.0 is the ability to check information about the system where the Veil payload is running. This feature is useful for ensuring that shellcode is only executed on target systems and during the engagement timeframe. The stager performs these checks and will only inject and execute the embedded shellcode if the specified conditions are met. Figure 5 shows the options for this feature.
+
+Figure 5: Environmental detection options
+Users can specify one or more of the following checks for Veil stagers:
+If specifying more than one check, all checks must be met; otherwise the stager will cease execution without executing the shellcode.
+This covers the major updates with Veil 3.0's release. If you have any questions, or encounter an issue, please visit Veil's Github repository. I hope that Veil can help further your assessments in the same way that it has helped us.
+ 

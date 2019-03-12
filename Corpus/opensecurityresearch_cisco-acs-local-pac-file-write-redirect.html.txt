@@ -1,0 +1,28 @@
+
+Cisco ACS Local PAC File Write Redirect
+
+
+By Brad Antoniewicz.
+
+A couple months ago I came across a sort of interesting bug in the CSUtil.exe. I'd say the overall severity of the vulnerability is pretty low, but I'm wondering if anyone can think of creative ways to exploit it. In this post I'll describe the vulnerability and if you can think of a cool way to exploit it, let me know in the comments below.
+CSUtil.exe
+CSUtil.exe is a command line utility included within Cisco ACS for Windows. It can preform a variety of functions to parse data from the ACS database and is often used to manually backup the database. It's most commonly invoked by a user with appropriate administrator level rights and output files are stored by default within the directory from which the utility was ran. 
+File Write Redirect
+The vulnerability is introduced when issuing the "-t" option which retrieves a local user's PAC and writes it to a file. During the export process, CSUtil.exe writes a string to a temporary file, tmpUserFileName.txt, then later uses that string as the file name to write the PAC file to. If someone else writes an alternate string to the tmpUserFileName.txt after CSUtil.exe has written the initial string, it's possible to redirect the location in which the PAC file gets written to.
+
+This is demonstrated in the following Video:
+
+
+Some important notes to mention:
+
+tmpUserFileName.txt is written to the same directory where the tool was run from and thus the attacker must have appropriate permissions to write to files within that directory
+This attack appears to be very much timing related since the attacker would need to overwrite the tmpUserFileName.txt file contents after CSUtil.exe is run but before it completes
+It is possible to overwrite existing files at potentially arbitrary locations, but they must end in ".pac".
+
+
+So... In my mind, this is a relatively low risk issue given all of the restrictions. What do you think? Can you make it a high?
+Contacting Cisco
+As always, I contacted Cisco and let them know of my findings - and as always they were really responsive and welcoming. This issue is being tracked under Cisco PSIRT Case PSIRT-0354447345 and Bug ID 
+CSCug61874 if you want more info!
+
+

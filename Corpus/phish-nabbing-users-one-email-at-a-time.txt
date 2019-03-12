@@ -1,0 +1,42 @@
+Anatomy of a Phish - NABbing Users One Email at a Time
+Phishing attacks have come a long way from the Nigerian 419 scams that introduced many of us to the concept of phishing in the 1990s. While early scams were largely focused on tricking recipients into sending a small fee in advance of a large payment that would never appear, modern phishing attacks more frequently go after login credentials for online banking or services like Dropbox and Google Apps. At the same time, the attacks often use social engineering and sophisticated coding to make them harder to detect and more likely to trick recipients into divulging credentials or other personal information.
+Proofpoint researchers recently identified one such attack on customers of the National Australia Bank (NAB). While Proofpoint services were able to detect and block emails in this campaign, to the naked eye, the emails and linked phishing sites were quite difficult to distinguish from legitimate bank communications.
+In this case, customers received emails with the subject "Yοur NAB accοunt requires an additiοnal verificatiοn". The content of the email was designed to trick recipients into opening an HTML attachment to verify the login credentials for an account that might be suspended. Figure 1 shows a sample of the emails in this campaign.
+
+Figure 1: Sample phishing email from the recent NAB campaign
+Even though text of the message looks legitimate, the letter "o" of the text was substituted with the Greek Unicode letter &#959;, which also looks like "o" to avoid detection by anti-spam filters. A hexadecimal view of the first sentence in the email shows the substitution:
+Y&#959;ur NAB acc&#959;unt requires an additi&#959;nal verificati&#959;n.
+Additional investigation showed that the email originated from an IP address located in Spain:
+
+
+Figure 2: Geo-location of the sending IP address
+The HTML attachment is a fake "NAB Defence" message about security measures to fight fraud with an embedded link to "verify" account ownership
+
+Figure 3: Fake "NAB Defence" message in the HTML attachment using stolen NAB branding
+Looking at source code of HTML attachment, clicking on the link as instructed should open the actual NAB page at hxxp[:]//ib[.]nab[.]com[.]au/nabib/update[.]jspx as shown in Figure 4.
+
+Figure 4: Source code of HTML attachment with link to a legitimate NAB page
+However, the anchor tag also includes an onclick attribute which calls the OpenNewTab(1) function. This function would normally be located in a JavaScript external document as there is no JavaScript in the HTML file. The only reference to external JavaScript is located in a <head> tag and points to jquery-2.2.3.min.js. This file should load a jQuery hosted library, but is located on a suspicious and likely compromised website (hxxp://umbrellacosmetics[.]ba).
+
+Figure 5: Reference to external JavaScript in HTML attachment
+The source of jquery-2.2.3.min.js contains the OpenNewTab(id) function which calls thedocument.location method with base64 encoded content:
+
+Figure 6: External JavaScript fragment hosted on a suspicious external website
+In general, a legitimate jQuery library with this function would normally be located at following address: http://code.jquery.com/jquery-1.7.2.min[.]js
+Decoding the base64 content shown in Figure 6 results in following string (you can read more about obfuscation techniques like this in the paper "Hiding in Plain Sight - Obfuscation Techniques in Phishing Attacks"):
+
+Figure 7: Decoded base64 string
+Therefore, clicking the "Click here" link opens the following fake login page in which the recipient can provide account details:
+
+Figure 8: Fake NAB login page
+At a glance, the address appearing in the address bar looks like a legitimate URL for NAB: "data:text/html;hxxp://ib[.]nab[.]com[.]au/nabib/update[.]jsp;base64,PHNjcmlwdC". However, the base64 encoding in the URL is actually hiding suspicious code.
+When we view the source code for fake login page, we can see JavaScript that calls thedocument.write method and unescape function to decode content.
+
+Figure 9: Source code fragment for the fake login page
+Unescaped content will result in HTML with NAB Internet Banking with two <frame> tags that also point to compromised websites hosting phishing forms to collect users data.
+
+Figure 10: Source code of the resulting HTML showing stolen branding and two frame tags with hosted phishing forms
+The phish does not stop with login credentials. Rather, once the user provides a username and password, they will be redirected to an additional fraudulent page to provide additional information:
+
+Figure 11: Fraudulent account information page using stolen bank branding
+Only after the user completes this page and clicks Continue will they be redirected to the legitimate National Australia Bank website. In the meantime, the credentials and account information are passed to cybercriminals.

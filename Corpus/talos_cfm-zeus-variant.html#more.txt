@@ -1,0 +1,159 @@
+
+Not So Crystal Clear - Zeus Variant Spoils Ukrainian Holiday
+
+
+This post was authored by Edmund Brumaghin with contributions from Ben Baker, Dave Maynor and Matthew Molyett.
+
+
+Introduction 
+
+Talos has observed a cyber attack which was launched using the official website of Ukraine-based accounting software developer Crystal Finance Millennium (CFM). This vector is similar to the attack outlined by Talos in the Nyetya and companion MeDoc blog post. Ukrainian authorities and businesses were alerted by local security firm (ISSP) that another accounting software maker had been compromised. However, the attackers did not compromise the firm's update servers and did not have the level of access noted in the Nyetya compromise. CFM's website was being used to distribute malware that was retrieved by malware downloaders attached to messages associated with a concurrent spam campaign. Websites being compromised to serve malicious content is common and it appears that CFM's website was leveraged in the same way. This can be achieved through exploitation of existing vulnerabilities in server-side software or brute-forcing weak credentials, allowing attackers to gain remote administrative access. The fact that it is an accounting software company in Ukraine and the timing of the attack increased visibility. 
+
+This attack occurred in August 2017, during the time frame associated with the observance of the Independence Day holiday in Ukraine. The details of the specific malware infection process itself have been previously documented here. Talos was able to register and sinkhole one of the Command and Control (C2) domains and through this, obtain additional details regarding the scope of this attack and associated victims. This blog provides additional information related to the geographic regions that were targeted by this attack as well as the size and scope of of systems that were successfully compromised.
+
+
+Spam Campaign 
+
+Malicious spam emails were used to spread the malware to various targets. These emails contained a ZIP archive that contained a JavaScript file. The Javascript files function as malware downloaders. When opened using default file associations on Windows, the Javascript executes causing the system to retrieve the malware payload and run it, thus infecting the system. In this particular instance, one of the domains used to host the malware payload happened to be associated with CFM's website. The CFM website has also been observed distributing PSCrypt ransomware.
+
+
+
+Figure 1: Downloader Code Snippet
+
+The Javascript downloader uses an array to define the distribution locations that the downloader should use to retrieve the malware payload. The characters are reverse order, as shown in the above screenshot. Rearranging them, we can see that one of the distribution servers is associated with CFM's website. Reversed, all of the URLs listed are as follows:
+
+     hXXp://cfm[.]com[.]ua/awstats/load.exe
+     hXXp://crystalmind[.]ru/versionmaster/nova/load.exe
+     hXXp://nolovenolivethiiswarinworld[.]com/ico/load.exe
+
+Once executed, victims were infected with a variant of the ZeuS banking trojan. The source code associated with version 2.0.8.9 of ZeuS was leaked in 2011 and has since been taken and incorporated into several other banking trojans. Using the Function Identification and Recovery Signature Tool (FIRST) platform, Talos was able to identify significant code reuse between the malware being distributed by this campaign and the leaked version of the ZeuS source code.
+
+
+
+Figure 2: FIRST Code Comparison
+
+
+Infection Process
+
+Once executed on systems, the malware performs several actions to determine whether it is being executed in a virtualized sandbox environment. Specifically the malware surveys the system and and performs the following anti-VM checks. If any of the checks succeed, this results in an infinite sleep function.
+
+
+Checks to see if Sample is in the ModuleFileName.
+
+Checks to determine if the VolumeSerialNumber equals 0x00CD1A40.
+
+Checks to determine if the VolumeSerialNumber equals 0x70144646.
+
+Checks to see if sbiedll is loaded.
+
+Checks to see if dbghelp is loaded.
+
+Checks System\CurrentControlSet\Services\Disk\Enum for the following values:
+
+005cefc0  "qemu"
+
+004ee9c0  "virtual"
+
+004ee9e0  "vmware"
+
+004eea00  "xen"
+
+004ee628  "ffffcce24"
+
+
+In cases where the malware does not detect it is operating in a sandbox environment, it then takes steps to achieve persistence on infected systems. First, the malware calculates a "SystemId" value which is used to uniquely identify the infected system. This value is calculated based upon ComputerName,  Primary hard drive serial number as well as a pre-shared value. The malware then calculates the folder location and filename used to store a PE32 file that will be run each time the infected system is rebooted. The folder location is based on the first eight bytes of the SystemId (/YYYYYYYY/). The filename is based on the final eight bytes of the SystemId (XXXXXXXX.exe). 
+
+The malware then creates a registry entry that is used to ensure the malware is executed each time the system is restarted. To determine where to create the registry entry, the malware selects a random subkey within HKEY_CURRENT_USER\Software (ZZZZZZZZ). It will then create the registry entry that achieves persistence. An example is below:
+
+
+
+Figure 3: Persistence Mechanism
+
+A malicious executable is then copied to the following folder location, which is referenced in the registry entry previously created.
+
+C:\Users\Administrator\AppData\Roaming\Microsoft\YYYYYYYY\XXXXXXXX.exe
+
+If the malware receives plugin code to run then that is saved to the following location: 
+
+C:\Users\Administrator\AppData\Roaming\Microsoft\YYYYYYYY\YYYYYYYY
+
+
+Command & Control
+
+After infecting the system the malware attempts to reach out to different command and control servers:
+
+     hXXp://contsernmayakinternacional[.]ru/
+     hXXp://soyuzinformaciiimexanikiops[.]com/
+     hXXp://kantslerinborisinafrolova[.]ru/
+
+When Talos began researching the threat we found that one of the domains was already being sinkholed, one was being controlled by the bad actors, and the third was not yet registered. It also appeared that the C2 activities were sequential where it would process through the list of servers waiting for the first one to successfully respond. The server that was already sinkholed was just terminating the connection. The second domain was not registered and that is where Talos was able to take advantage of the sequential aspect of the command and control communications.
+
+
+Talos Interdiction
+
+As mentioned in the previous section, Talos identified that one of the C2 domains was available and quickly registered it, pointing DNS to our sinkhole server which gave significant visibility into the number of machines infected by this malware, as well as geographic scope of infections. Below is a graphic showing which countries were most heavily affected by this threat based on the geographic location of systems beaconing to our sinkhole server.
+
+
+
+Figure 4: Affected Regions
+
+Interestingly, most of the systems which beaconed to our sinkhole server were located in Ukraine with United States being the second most affected region. A graph showing the ISPs that were most heavily affected is below:
+
+
+
+Figure 5: Affected Network Providers
+
+As can be seen in the graph above, PJSC Ukrtelecom was by far the most heavily affected. This ISP is the company governed by the Ministry of Transportation and Communications in Ukraine. In total, our sinkhole logged 11,925,626 beacons from 3,165 unique IP addresses, which demonstrates the size of the spread of this particular malware. 
+
+
+Conclusion 
+
+As we saw repeatedly throughout 2017, attackers are increasingly attempting to abuse the trust relationship between organizations and their trusted software manufacturers as a means of obtaining a foothold within the environments they are targeting. As organizations deploy more effective security controls to protect their network environments attackers are continuing to refine their methodologies. Talos will continue to monitor the threat landscape to identify new attacks and ensure that customers remain protected from these new supply chain based attacks as they become increasingly prevalent and continue to evolve.
+
+
+Coverage
+
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+Open Source Snort Subscriber Rule Set customers can stay up to date by downloading the latest rule pack available for purchase on Snort.org.
+
+
+
+IOC's
+
+
+
+Malware Distribution URLs
+
+
+hXXp://cfm[.]com[.]ua/awstats/load.exe
+hXXp://crystalmind[.]ru/versionmaster/nova/load.exe
+hXXp://nolovenolivethiiswarinworld[.]com/ico/load.exe
+
+Malicious File Hash:
+
+
+8cc7e0bff3f2f6962ebad222240696b1e9cce3e9e26abcf5936fd3146613976f (SHA256)
+
+C2 Domains
+
+
+hXXp://contsernmayakinternacional[.]ru/
+hXXp://soyuzinformaciiimexanikiops[.]com/
+hXXp://kantslerinborisinafrolova[.]ru/
+
+
+

@@ -1,0 +1,109 @@
+
+Your Files Are Encrypted with a "Windows 10 Upgrade"
+
+
+This post was authored by Nick Biasini with contributions from Craig Williams & Alex Chiu
+
+Update 8/1: To see a video of this threat in action click here
+
+Adversaries are always trying to take advantage of current events to lure users into executing their malicious payload. These campaigns are usually focussed around social events and are seen on a constant basis. Today, Talos discovered a spam campaign that was taking advantage of a different type of current event.
+
+Microsoft released Windows 10 earlier this week (July 29) and it will be available as a free upgrade to users who are currently using Windows 7 or Windows 8. This threat actor is impersonating Microsoft in an attempt to exploit their user base for monetary gain. The fact that users have to virtually wait in line to receive this update, makes them even more likely to fall victim to this campaign.
+
+
+
+
+
+
+
+
+
+Email Message
+
+The email message above is a sample of the type of messages that users are being presented with. There are a couple of key indicators in the message worth calling out. First, the from address, the adversaries are spoofing the email to look like it is coming directly from Microsoft (update<at>microsoft.com). This is a simple step that tries to get users to read further.
+
+
+
+However, a quick look at the email header reveals that the message actually originated from IP address space allocated to Thailand.
+
+Second, the attackers are using a similar color scheme to the one used by Microsoft.
+
+Third, there are a couple of red flags associated with the text of the email. As you can see below, there are several characters that don’t parse properly. This could be due to the targeted audience, a demographic using a non-standard character set, or the character set the adversaries were using to craft the email.
+
+
+
+
+
+Lastly, there are a couple other interesting techniques used by attackers to make the message appear authentic. One is the inclusion of a disclaimer message that looks similar to the one a user would receive from an email directly from Microsoft.
+
+
+
+
+
+The other is a key piece of information added by adversaries that users are becoming more accustomed to seeing: an indication that the message attachment has been scanned by antivirus and appears to be a legitimate file.
+
+
+
+
+
+This message links to a legitimate open source email filter and will trick some users into thinking the attachment is not malware.
+
+Payload
+
+Once a user moves past the email, downloads the zip file, extracts it, and runs the executable, they are greeted with a message similar to the following:
+
+
+
+
+
+The payload is CTB-Locker, a ransomware variant. Currently, Talos is detecting the ransomware being delivered to users at a high rate. Whether it is via spam messages or exploit kits, adversaries are dropping a huge amount of different variants of ransomware. The functionality is standard however, using asymmetric encryption that allows the adversaries to encrypt the user's files without having the decryption key reside on the infected system. Also, by utilizing Tor and Bitcoin they are able to remain anonymous and quickly profit from their malware campaigns with minimal risk.
+
+
+
+
+
+CTB-Locker has some interesting features that are different from large scale variants Talos has seen. First is the type of encryption used, most variants use RSA asymmetric encryption.  CTB-Locker actually makes use of elliptical curve encryption which still provides the same public/private key encryption but it's a different type of algorithm, with lower overhead and the same level of security utilizing smaller key space. Second, there is the issue of the time window. CTB-Locker is only giving users 96 hours to pay for decryption, which is a shorter window than is standard for most ransomware.
+
+Another key difference is related to Command and Control (C2) communication. Recent versions of ransomware are leveraging compromised wordpress sites to serve as a drop point for information related to the compromised host. CTB-Locker appears to be using hard coded IP addresses on non-standard ports to establish communication. There is also a significant amount of data being exchanged between systems, which is largely uncharacteristic for ransomware. An analysis of network traffic reveals that there were ~100 network streams to various IP addresses. The most common ports being utilized are 9001, 443, 1443, and 666. There are some other interesting aspects to the network communication. Talos was able to find domains being handled inside the communication as shown below:
+
+
+
+
+
+The domains that Talos was able to identify are currently not registered and the samples do not leverage DNS resolution to try to connect to this domains. The majority of the traffic is using ports commonly associated with Tor traffic, which is heavily used for C2 communications.
+
+One final interesting piece is the use of port 21 for communication. This is the port associated with FTP command traffic and therefore likely to be allowed outbound from a network. A quick analysis of the communication shows that it is not actually FTP communication but instead C2 activity.
+
+IOC
+
+Email
+Subject: Windows 10 Free Upgrade
+Attachment: Win10Installer.zip (Win10Installer.exe)
+SHA256: ec33460954b211f3e65e0d8439b0401c33e104b44f09cae8d7127a2586e33df4 (zip)
+aa763c87773c51b75a1e31b16b81dd0de4ff3b742cec79e63e924541ce6327dd (executable)
+
+Network
+Domain
+rmxlqabmvfnw4wp4.onion.gq
+
+IP
+This malware relies on Tor for Command and Control and therefore does not possess valuable IP information.
+
+
+Conclusion
+
+The threat of ransomware will continue to grow until adversaries find a more effective method of monetizing the machines they compromise. As a defense, users are encouraged to backup their data in accordance with best practices. These backups should be stored offline to prevent them from being targeted by attackers.  Adversaries are always looking to leverage current events to get users to install their malicious payloads. This is another example, which highlights the fact that technology upgrades can also be used for malicious purposes. Talos is diligently working to detect and block these types of attacks as they occur and before users are potentially impacted.
+
+
+Coverage
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails including phishing and malicious attachments sent by threat actors as part of their campaign
+
+

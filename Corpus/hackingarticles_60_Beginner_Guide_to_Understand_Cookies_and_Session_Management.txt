@@ -1,0 +1,82 @@
+
+Beginner Guide to Understand Cookies and Session Management
+
+From Wikipedia and w3schools
+Cookie is a small piece of data sent by a server to a browser and stored on the user’s computer while the user is browsing. Cookies are produced and shared between the browser and the server using the HTTP Header.
+It Allows server store and retrieve data from the client, It Stored in a file on the client side and maximum size of cookie that can stored is limited upto 4K in any web browser. Cookies have short time period because they have expiry date and time as soon as browser closed.
+Example- when you visit YouTube and search for Bollywood songs, this gets noted in your browsing history, the next time you open YouTube on your browser, the cookies reads your browsing history and you will be shown Bollywood songs on your YouTube homepage
+Creating cookie 
+The setcookie() function is used for the cookie to be sent along with the rest of the HTTP headers.
+When developer creates a cookie, with the function setcookie, he must specify atleast three arguments. These arguments are setcookie(name, value, expiration);
+
+Image Source Goolge
+Cookie Attributes
+Cookies can be used for various purposes –
+Type of cookies
+Session Cookie
+This type of cookies dies when the browser is closed because they are stored in browser’s memory. They’re used for e-commerce websites so user can continue browsing without losing what he put in his cart. If the user visits the website again after closing the browser these cookies will not be available. It is safer, because no developer other than the browser can access them.
+Persistent Cookie
+These cookies do not depend on the browser session because they are stored in a file of browser computer. If the user closes the browser and then access the website again then these cookies will still be available. The lifetime of these cookies are specified in cookies itself (as expiration time). They are less secure.
+Third Party Cookie
+A cookie set by a domain name that is not the domain name that appears in the browser address bar these cookies are mainly used for tracking user browsing patterns and/or finding the Advertisement recommendations for the user.
+Secure Cookie
+A secure cookie can only be transmitted over an encrypted connection.  A cookie is made secure by adding the secure flag to the cookie. Browsers which support the secure flag will only send cookies with the secure flag when the request is going to a HTTPS page.
+HTTP Only Cookie
+It informs the browser that this particular cookie should only be accessed by the server. Any attempt to access the cookie from client script is strictly prohibited. This is an important security protection for session cookies.
+Zombies Cookie
+A zombie cookie is an HTTP cookie that is recreated after deletion. Cookies are recreated from backups stored outside the web browser’s dedicated cookie storage.
+PHP session: when any user made any changes in web application like sign in or out, the server does not know who that person on the system is. To shoot this problem PHP session introduce which store user information to be used across several web pages.
+Session variables hold information about one single user, and are exist to all pages in one application.
+Example: login ID user name and password.
+PHP code generates a unique identification in the form of hash for that specific session which is a random string of 32 hexadecimal numbers such as 5f7dok65iif989fwrmn88er47gk834 is known as PHPsessionID.
+A session ID or token is a unique number which is used to identify a user that has logged into a website. Session ID is stored inside server, it is assigns to a specific user for the duration of that user’s visit (session). The session ID can be stored as a cookie, form field, or URL.
+Explanation: 
+Now let’s have a look over this picture and see what this picture says:
+In given picture we can clearly see there are three components inside it: HTTP Client, HTTP server and Database (holding session ID).
+Step1: client send request to server via POST or GET.
+Step2: session Id created on web server. Server save session ID into database and using set-cookie function send session ID to the client browser as response.
+Step3: cookie with session ID stored on client browser is send back to server where server matches it from database and sends response as HTTP 200 OK.
+
+Image Source: Google Images
+As we know different users have unique session ID when an attacker sniff the session via man-in-middle attack or via XSS and steal session ID or session token this is called session hijacking. When attacker sends the stealing session ID to web server, server match that ID from database stored session ID. If they both matched to each other then the server reply with HTTP 200 OK and attacker get successfully access without submitting proper Identification.
+Example 1: Using the session cookies issued to the user by the server.
+For example, on any website an official user logged-in, and the server has generate a session cookie SESSION-TOKEN for that user. If the SESSION-TOKEN is the cookie which recognized the session of that user, the attacker can steal the SESSION-TOKEN cookie value to login as the legitimate user. The attacker can perform a cross-site scripting or other technique to steal the cookie from the victim’s browser.
+Let’s suppose the attacker steals the cookie PHPSESSID=user-raj-logged-in-2341785645. Now, he can use the cookie with the following request to post a status (HACKED!!!!!!) in the victim’s home page:
+ POST /home/post_status.php HTTP/1.1
+Host: www.Facebook.com 
+Cookie: PHPSESSID=user-raj-logged-in-2341785645
+Content-Length:38
+Content-Type:application/x-www-form-urlencoded
+ Status= HACKED!!!!!&Submit=submit
+The attacker uses the cookie subjected to the authorized user, and gains control on the user’s session.
+Example 2: Guessing the cookie values of users if a complicated algorithm is not used for the cookie generation.
+For example, consider a website uses an algorithm to generate cookies for the users. If the user name is “raj”, then the cookie generated for the user could be “LOGINID=-772017- qszbik”. In this case, the algorithm used to generate the cookie can be as follows:
+First part of the cookie is the date i.e. 7/7/2017 and second part is the arrangement of the previous and next alphabet letter for each letter of the username “John” (i.e., the previous letter for r is “q” and the following letter is “s”). If the attacker is able to break the algorithm, he might estimate the cookie of users and hack their session.
+  r=qs
+  a=zb
+  j=ik
+If the attacker decide to hack the session of admin, he can make a cookie as LOGINID =772017- zbcelnhjmo, login to raj’s session and post a status on his account.
+Host: www.facebook.com
+Cookie:LOGINID =772017- zbcelnhjmo
+Content-Length:45
+Content-Type:application/x-www-form-urlencoded
+ Todays_status=I am hacked!!!!!!&Submit=submit
+Session hijacking tutorial
+For this tutorial I have targeted DVWA, here cookie name is dvwa Session.
+Note: session ID for this page will change every time when we will close the browser.
+Now capture the browser request using burp suite.
+
+From given image we can see the cookie holds PHPSESSID P38kq30vi6arr0b321p2uv86k0; now send this intercepted data into repeater to observe its response.
+
+In response you can see the highlighted data show set –cookie: dvwaSession =1 more over HTTP 200 OK response from server side.
+According to developer each time a new sessionID will generate by server each time, but attacker sniff this session ID P38kq30vi6arr0b321p2uv86k0 for unauthorized login.
+
+Next time we receive another session id when data is intercepted through burp suite i.e. PHPSESSID= gutnu601knp4qsrgfdb4ad0te3, again send this intercepted data into repeater to observe its response.
+
+But before we perceive its response, replace new PHPSESSID from old PHPSESSID.
+
+From given image you can observe we have replaced the SESSION ID and then generate its response in which set –cookie: dvwaSession =6 and HTTP 200 OK response from server side.  
+
+Now change the value inside intercepted data and then forward this request to the server.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

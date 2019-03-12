@@ -1,0 +1,23 @@
+
+					Attackers can siphon data from Splunk Enterprise if an authenticated user visits a malicious webpage					
+Splunk has fixed the security issue in the JavaScript implementation, tracked as CVE-2017-5607, that leaks user information. Splunk provides the leading platform for Operational Intelligence that is used to search, monitor, analyze and visualize machine data. Splunk Enterprise, collects and analyzes high volumes of machine-generated data.
+
+The security issue could be exploited by an attacker tricking an authenticated user into visiting a malicious Web page. The bug leaks the username, and whether that user has enabled remote access, allowing an attacker to target the user with a spear phishing attack to steal the user’s credentials.
+“Attackers can siphon information from Splunk Enterprise if an authenticated Splunk user visits a malicious webpage. Some useful data gained is the currently logged in username and if remote user setting is enabled.” reads the advisory published at Full Disclosure. “After, the username can be use to Phish or Brute Force Splunk Enterprise login. Additional information stolen may aid in furthering attacks.
+Root cause is the global Window JS variable assignment of config?autoload=1 ‘$C’.”
+The problem resides in the way Splunk uses Object prototypes in JavaScript. The Object prototype is an Object that every other object inherits from in JavaScript.
+“To steal information we simply can define a function to be called when the ‘$C’ JS property is “set” on webpage, for example. Object.defineProperty( Object.prototype, “$C”, { set:function(val){…” continues the advisory,
+Below the proof-of-concept JavaScript code published in the advisory:
+<script>
+Object.defineProperty( Object.prototype, “$C”, { set:function(val){
+//prompt(“Splunk Timed out:\nPlease Login to Splunk\nUsername:
+“+val.USERNAME, “Password”)
+for(var i in val){
+alert(“”+i+” “+val[i]);
+}
+}
+});
+</script>
+Affected Splunk Enterprise versions are:
+Pierluigi Paganini
+(Security Affairs – hacking, CVE-2017-5607)

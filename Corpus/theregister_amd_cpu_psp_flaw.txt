@@ -1,0 +1,18 @@
+Security hole in AMD CPUs' hidden secure processor code revealed ahead of patches
+Cfir Cohen, a security researcher from Google's cloud security team, on Wednesday disclosed a vulnerability in the fTMP of AMD's Platform Security Processor (PSP), which resides on its 64-bit x86 processors and provides administrative functions similar to the Management Engine in Intel chipsets.
+This sounds bad. It's not as bad as you think.
+The fTMP is a firmware implementation of the Trusted Platform Module, a security-oriented microcontroller specification. Cohen said he reported the flaw to AMD in late September last year, and the biz apparently had a fix ready by December 7. Now that the 90-day disclosure window has passed seemingly without any action by AMD, details about the flaw have been made public.
+A firmware update emerged for some AMD chips in mid-December, with an option to at least partially disable the PSP. However, a spokesperson for the tech giant said on Friday this week that the above fTMP issue will be addressed in an update due out this month, January 2018.
+As AMD explains it, the PSP – referred to as AMD Secure Technology – monitors the security environment for the processor, managing the boot process, initializing security mechanisms, and checking for suspect activity. It is described in detail from page 156 of this official developer manual.
+It includes an embedded ARM microcontroller, cryptographic coprocessor, local memory, registers, and interfaces, not to mention the Environment Management Control block that oversees processor security checking. It runs the Trustonic TEE (Trusted Execution Environment) as its security kernel. It can also access system RAM and IO.
+The flaw, identified through manual static analysis, involves a stack-based overflow in a function called EkCheckCurrentCert, which is called from another function TPM2_CreatePrimary with an endorsement key (EK) certificate stored in non-volatile storage.
+"A TLV (type-length-value) structure is parsed and copied onto the parent stack frame," Cohen explained in his mailing list post. "Unfortunately, there are missing bounds checks, and a specially crafted certificate can lead to a stack overflow."
+Unlike some CPUs, the PSP doesn't implement common exploit mitigation techniques such as stack cookies, No-eXecute (NX) flags, or address space layout randomization (ASLR), making exploitation trivial.
+Cohen's post described the vulnerability as remote code execution flaw. However, physical access is a prerequisite.
+In an email to The Register, Dino Dai Zovi, cofounder and CTO of security biz Capsule8, said the vulnerability isn't quite subject to remote execution "since the crafted certificate that exploits the vulnerability needs to be written to NVRAM, the attacker must already have privileged access to the host or physical access. It would let an attacker bypass secure/trusted boot, which is performed by the TPM."
+An AMD spokesperson told The Register that an attacker would first have to gain access to the motherboard and then modify SPI-Flash before the issue could be exploited. But given those conditions, the attacker would have access to the information protected by the TPM, such as cryptographic keys.
+AMD's spokesperson said the chipmaker plans to address the vulnerability for a limited number of firmware versions. BIOS updates from OEMs are supposed to be made available later this month. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

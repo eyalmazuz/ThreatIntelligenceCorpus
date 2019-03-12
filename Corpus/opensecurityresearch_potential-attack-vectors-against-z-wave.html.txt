@@ -1,0 +1,78 @@
+
+Potential attack vectors against Z-Wave®
+
+
+By Robert Portvliet.
+
+A couple years ago I was doing some research on Z-Wave, and after sifting through what was publicly available regarding the protocol I came up with some ideas as to how it might be attacked. My colleague Neelay Shah and I even worked on some code for it. However, at the time I concluded that I needed a USRP to make forward progress into writing a tool that could sniff Z-WAVE traffic, which was/is pretty important for a number of attacks. Not wanting to drop the $ at the time, I just shelved what I had for the moment, and figured I’d get back to it later. Well, you know how that goes, so here we are two years later and I’m likely not going to get around to it. Plus there seems to be a Blackhat talk on it this year, so I’m just going to dump what I have in this blog post, and if anyone finds it useful, so be it :)
+
+
+For those not familiar with it, Z-Wave is a short range wireless protocol, which operates in the 900MHz ISM band (in the US), and is most commonly used for home automation. It is also supported by a number of alarm system and lock manufacturers. What follows is more or less a summary of what I was able to find publicly available regarding Z-WAVE, and what attacks might be possible against the protocol. 
+Background
+
+When I began searching the internet for information on the protocol, I discovered that it seemed very little public security research had been done regarding Z-Wave. Even since then, the only research released is what Dave Kennedy and Rob Simon included in their Defcon 19 presentation. 
+
+There does however, exist a fairly active community of home automation hobbyists who have reversed engineered portions of the protocol, primarily using serial sniffers. These enthusiasts have compiled a fairly large amount of data on the protocol through this reversing, and also from documents published by various vendors that detail parts of the protocol as it pertains to their specific products. There is also some Zensys documentation available on these sites such as the Z-Wave module selection guide, the Z-Wave protocol overview, and the Z-Wave node type overview and network installation guide.  These hobbyists also publish a rather steady stream of blog posts and tutorials on how to write code that will allow one to interact with Z-Wave controllers and devices. Some of the best are available here:
+
+http://www.digiwave.dk/en/programming/an-introduction-to-z-wave-programming-in-c/
+
+
+ One of the most useful things developed by the home automation community is an open source C++ library called OpenZ-Wave. Its associated Google Group is very active, and a good place to do research & ask questions. There was also another project which began to develop a Python wrapper known as Py-OpenZ-Wave with the goal of even further simplifying developing Z-Wave projects. Unfortunately, it seems that the Py-OpenZwave project hasn’t gotten very far since that time, but it’s a good idea nonetheless. 
+ 
+ 
+Utilizing this information it is possible to quickly gain a fairly decent understanding of the protocol and how its various components interoperate. A detailed description of the protocol is outside the scope of this post, but one of the best descriptions of the protocol publicly available can be found in the paper Catching the Z-Wave, by Mikhail Galeev. Also, as previously mentioned, the Z-Wave protocol docs are easily found on the internet. However, it should be noted that all of this documentation is from v4 (400) of the protocol and as such is slightly dated, but is still exceptionally useful. 
+Hardware
+
+There are a couple hardware items worth having to start off with. I was using a AEON Labs Z-Stick 2, which is ~ $40. There is also the AEON Labs Z-Stick Lite, but it’s not flash able and appears to be the same price as the regular Z-Stick now.  
+
+The other interesting piece of hardware is the Razberry Pi, which is a Z-Wave® ZM3102 Module for the Raspberry Pi.  However, the downside is the Z-Way software it comes with is closed source, so you are limited what you can do with the API provided to you.(Unless you reverse their binaries of course… ) There is some doc available here. You can grab the Z-Way bundle here
+
+ A USRP would be a huge help if you don’t mind spending the coin. In truth the bus series would probably do the job at ~ $600 + cost of the daughter board. I’m waiting for the HackRF (frequency range 30 MHz to 6 GHz) to be publicly available. It will likely be a big help for stuff that like this. The BladeRF (300MHz - 3.8GHz RF frequency range) doesn’t look bad either. It appears that some folks have been playing around with Z-Wave with the RTL-SDR, which is great for RX only, but has no ability to transmit. 
+Potential Attack Vectors
+Ok, so enough of that. Here is what I came up with in terms of potential attack vectors. 
+Sniffing Z-Wave traffic 
+The first and obvious vector that came to mind was to sniff the Z-Wave network traffic in order to discover the HomeID, NodeID’s and other information about the network. This would be the easiest way to attack a network and could be done from a distance with a high gain 900mhz antenna. Unfortunately, no open source sniffers have yet been developed by the community.
+
+ Sigma sells a sniffer called the ‘Zniffer’ as part of their Z-Wave® Home Control Development Kit for about $3000 or so. However, you have to sign an NDA if you buy their devkit. Copies of their SDK, which include the firmware for the sniffer module, have made it into the wild, but you will still need the hardware to flash it to (and most likely a programmer). Still, it would be easier to design a sniffer by reversing the current firmware I suppose.. 
+ 
+ I was also able to locate a Lagotech HIP-22 sniffer for sale on EBay, and you can actually purchase it from a few places for ~ $150 but it also requires the Lagotek ‘HIT’ software to function.
+ 
+ As stated previously, a USRP and GNU-Radio could be used to develop a sniffer as well. This would require figuring out the protocol from the ground up, and there’s something of a learning curve to GNU-Radio, but if you’re already a software radio guy you’re ahead of the game in that area. The RTL-SDR is another possibility, but its RX only so you won’t be able to inject any packets. Again, I’m hoping to get my paws on a HackRF in the not too distant future, which I’m hoping will bridge the gap here. 
+Unpairing nodes from the network
+An attack vector that I was investigating was the ability to unpair nodes from the network from a distance as a denial of service attack. However, the problem with unpairing a node from the network is it requires the action to be initiated from both ends. This is commonly accomplished by pressing a button on the node in question and on the remote or the primary controller. An attacker would also need to utilize a high gain 900mhz antenna as pairing is done using very low power, requiring the devices being paired to be within a proximity of 3' to one other. There is also full power inclusion which works with devices that support it, but that only has a range of 20' (unobstructed) so the attacker would still require a high gain antenna. It may be possible to spoof the unpairing frames to the node, making them appear to come from the Z-Wave controller, but this still would not solve the problem of placing the node in the proper ‘listening’ state necessary to unpair it from the network. As stated previously, this has to be initiated on the node itself, making this attack largely impractical. 
+Attacking and unlocking door locks: 
+A rather desirable attack would to find a way to cause a Z-Wave enabled door lock to open by sending it unauthorized traffic containing a command to unlock. What makes this a difficult attack is that door locks, like those made by Schlage, utilize the encryption command class in Z-Wave which employs AES128, and are also supposedly using a onetime value for each frame sent to/from the door lock. However, they do have a weakness that an attacker may be able to exploit, but it requires a sniffer and for the attacker to be present when the locks are being added to the Z-Wave network. The locks perform a key exchange with the controller when they join the network and if an attacker were to be there with a sniffer when this takes place they may be able to intercept this key and use it to encrypt\decrypt traffic. This window is obviously very narrow, but might be able to be abused by a home automation installer with malicious intent.  
+Denial of service attacks
+An attack that is almost always possible when dealing with wireless communications of any sort is denial of service via jamming. Jamming is accomplished by transmitting a steady stream of ‘noise’ on the same frequency as the intended victim. Z-Wave operates in the 900mhz spectrum and a quick Google search reveals several 900mhz jammers commercially available for only a few hundred dollars, or you could build your own. The manufacturers claim about 30 meters effective range, but this could be increased dramatically using an amplifier. This attack would not require any knowledge of the target Z-Wave network other than its general location and could be sustained indefinitely. 
+Brute-forcing the HomeID
+After reviewing all the possible attack vectors and taking into account the feasibility of each, as well as the time necessary to implement them, I decided the most practical plan of attack would be to write a tool that would brute force the HomeID. The 32bit HomeID value is required to send and receive traffic to a specific Z-Wave network. The idea would be to write a bit of code that  that would iterate through this value and for each iteration send a single frame to a NodeID on the network likely to exist, such as NodeID 0x02, and then listen a few milliseconds for an acknowledgment frame (ACK). 
+
+My colleague Neelay Shah offered to write the code, and we utilized information regarding how to craft and send Z-Wave frames from http://www.digiwave.dk/en/programming/the-z-wave-protocol-in-csharp/, as well as sample code provided by same, to help craft the tool which would perform the attack. This sample code was modified and then integrated with our code that would iterate through the 32bit HomeID which comprises the first four bytes of the Z-Wave frame. This code was tested and found to be functional, but unfortunately had one oversight that proved difficult to address. The oversight was that the HomeID cannot be changed in the Z-Wave frame to be a value different from the value of the HomeID set in the EEPROM on the Z-Wave dongle. If this occurs, the driver does not know how to handle it and will not send the frame.  At first glance this seems like a fairly easy challenge to surmount, simply update the value in the EEPROM as well. The problem with this approach is that there are 4.3 billion possible values in the 32bit HomeID and an EEPROM will only take about one million writes (or less, depending upon quality), before it wears out, long before the correct value for the HomeID would be discovered. A possible solution to this problem would be to investigate if the HomeID value could be modified in memory instead, but it also seems to not be possible to modify the HomeID in memory when using a Z-Wave dongle. So, the most practical way to approach this attack appears to once again be to use SDR to create the tools that provide the functionality necessary to perform the attack. 
+
+
+If one were to implement this attack utilizing SDR, there still remains the issue of brute forcing 4.3 billion possible values, which could potentially take hundreds of hours. However, there exists the possibility of enhancing this attack by narrowing down the number of values an attacker would need to iterate through. Manufacturers such as Motorola are allocated unique blocks of HomeIDs by Sigma. If these HomeIDs are allocated in sequential order and one was able to collect the HomeIDs from several devices made by that particular manufacturer, it may be possible to narrow the values needing to be brute forced to a few million, which would take far less time to attack. 
+
+I am including the code that Neelay wrote for the HomeID brute forcing. As I said, it’s not really effective unfortunately, but I’m including it in case it is useful to anyone. 
+https://github.com/OpenSecurityResearch/ZWave
+Additional Resources
+
+Description of Z-Wave device initialization process can be found at http://buzzdavidson.com/?p=68. 
+AZW is a Z-Wave controller written in Python.  Good reference  for working with Z-Wave & Python. 
+Digiwave.dk has a series of tutorials on C# and Z-Wave. 
+There is a nice collection of Z-Wave information here as well - https://github.com/yepher/RaZBerry
+www.digiwave.dk
+http://wiki.linuxmce.org/index.php/Z-Wave
+http://wiki.linuxmce.org/index.php/Z-Wave_API
+http://groups.google.com/group/openZ-Wave/topics  (OpenZWave Google Group)
+http://drdobbs.com/embedded-systems/193104353
+http://www.maartendamen.com/  (Blog of one of the Py-OpenZWave creators) 
+http://buzzdavidson.com/?p=68    (Blog of the other of the Py-OpenZWave creators)
+http://Z-Waveworld.com/forum/index.php
+http://wiki.micasaverde.com/index.php/Special:AllPages
+http://code.google.com/p/open-Z-Wave/  (OpenZWave)
+https://github.com/maartendamen/py-openZ-Wave  (PyOpenZWave)
+http://www.bigsister.ch/Z-Wave/Z-Wave.html
+http://www.denninger.net/homedaemon.htm
+
+
+

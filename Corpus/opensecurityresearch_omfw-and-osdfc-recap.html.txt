@@ -1,0 +1,229 @@
+
+OMFW and OSDFC Recap
+
+
+
+
+By Glenn P. Edwards Jr.
+
+
+
+Recently I had the pleasure to attend both the Open Memory Forensics Workshop (OMFW) and Open Source Digital Forensics Conference (OSDFC). While some of you reading this may have also attended, seen some tweets about what was going on, or read about some of its details elsewhere, I wanted to write up a quick post with my notes and observations.  I really liked having both conferences back to back and on the East Coast - hopefully in the future it can continue to be held as such (fingers crossed!).  The first key takeaway from both of them was that quick 30-40 minute talks are key.  They help ensure the speaker doesn’t go on a rant or off-topic from audience questions but more importantly it helps keep the audience engaged… so… to the other cons: please take that into consideration.  I was trying to hold off to see if all of the slides would be posted online, which I heard they will be, but not all were, so feel free to drop a comment or send me a tweet if you want them linked to.  I didn’t get a chance to take notes on everything so if I didn’t touch on your talk or if I am light in the content… sorry.
+
+
+
+OMFW
+
+The OMFW was well… mind blowing for the most part.  The amount of knowledge the Volatility guys (and girl) have is insane.  If you’ve been in a cave, I suggest you start out by reading their posts for their Month of Volatility Plugins leading up to OMFW.  I liked that while there was some overlap for some of those posts with what was being discussed they also made a point to add more in-depth information and examples during their presentations.
+
+
+
+During the conference they officially dropped Volatility v2.2 so if you don’t already have it you should be issuing a pull for it right about now.  This latest version, to say the least, has a ton of new plugins and full support for Windows x64.  One of the long awaited things that officially announced during this conference was that the Volatility crew is going to be offering their own training!  This means you’ll be learning first hand from the same people who are developing it which doesn’t get any better.  They’re supposed to be offering a regular class which is a week-long and at the end of which you will have strong Volatility kung-fu while the other training mentioned would leave you with more knowledge of reversing things to create plugins and be more comfortable with the development side of things.  Be on the lookout for further information but some details can be found on their site.
+
+
+
+Andrew "attrc" Case 
+
+Slides: Not posted
+
+
+
+Andrew has been doing some great work in the Mac and Linux side of things but his presentation was primarily focused on some of the new Linux plugins he’s been working on.  Here’s a quick rundown on some of the notes regarding them:
+
+linux_bash - shows timestamp in ePoch time
+linux_arp  - can be used to help detect lateral movements
+linux_dentry_cache - helps detect communication w/ external sources
+linux_tmpfs - grab tmp filesystems (in-memory FS's)
+
+
+Jamie “Gleeda” Levy - Reconstructing The MBR and MFT From Memory
+
+Slides: https://docs.google.com/file/d/0B7mg0ZBnpGuOcVh0MG9ZLW81aHM/edit?pli=1
+
+
+
+Jamie's talk touched on two new plugins regarding more of the forensics side of things.  The first one was ‘mbr-parser’ (can help detect bootkits) and the other one was ‘mft-parser’ (can help detect time stomping).  
+
+
+
+One of the key take a ways from her presentation was that Windows XP loads only the bootcode into memory while Vista+ loads the entire MBR into memory.  I tried coming up with a reason why Windows would need to load the entire MBR into memory if it’s already booted up and doesn’t need it anymore but all I could come up with at the time was possible a power setting (i.e. – hibernation/sleep mode) but that doesn’t seem right after further thinking… so if you know why please send me over a tweet.
+
+
+
+In an enterprise environment one of the cool things she touched on was the idea of hashing the first 440 bytes and then scanning your network to see if other systems match what you’re considering an MBR rootkit.  As a side note, this has the potential for false positives since the message strings might change.
+
+
+
+We all had the pleasure to be in the attendance of George M. Garner Jr. … the man, the legend.  He gave a talk about PFN DB’s which is where the Memory Manager keeps track of each page of memory and also contains metadata about every physical page in the physical memory map.  He had a great quote during his speech which is something you should really think about:
+
+
+
+"If I think of an exploit, someone else has already been doing it for 6+ months"
+
+
+
+AAron Walters - Cache Rules Everything Around Me(mory)
+
+Blog Post: http://volatility-labs.blogspot.com/2012/10/movp-44-cache-rules-everything-around.html
+
+
+
+Aaron gave a great talk.  He had a wealth of information throughout his presentation but he also talked really really fast so it was better to just sit back and listen than try and miss things by writing down – so I suggest reading the link above.
+
+
+
+Michael Hale "MHL" Ligh
+
+Slides: Not posted
+
+The last segment was MHL himself where he, as Andrew said, was “melting people’s brains”.  He went into some reversing he’s been doing but the key take away was it all lead to some great subsystem plugins.
+
+
+
+Misc. Plugins
+
+Here are some misc. notes regarding some of the plugins they touched on:
+
+
+
+Wintree - shows process windows from front to back (stacked; Z-order)
+PtiList - column w/in psxview that shows list w/in Desktops.  Shows threads that use “setthreaddesktop”
+Atoms – uses the ‘GlobalAddAtom’ API call which is another way similar to mutexes
+Windows - plugin that can be used to detect USB insertions (WM_Device_Change - message if new device is connected) 
+Messagehooks - useful for keylogger detection
+
+
+OSDFC
+
+OMFW publically said that the official Twitter hashtag for the conference would be “#omfw2012” so it was easy to see what other people were attending so you could follow new people but more importantly it helped the rest of the world if they wanted to follow what was going on there.  I didn’t come across anywhere where it stated what to use for OSDFC so I personally took the OMFW route with my hashtag but soon found out others were using all sorts of variations.  For the future and ease of everyone else, this is something simple that the community can address in the years to come (unless I just missed it).  Even for my failure here, some of my Twitter followers still found the tweets and one in particular, Corey, wrote up some information regarding some of the topics I tweeted about.  You should check out his write up too but even though there will be some overlap, there’s still going to be some new additions below.
+
+
+
+Autopsy 3.0 - Brian Carrier
+
+Brian Carrier started off the conference by stating The Sleuth Kit (TSK) v4 was officially released and shortly Autopsy 3.0 would be as well.  While some people might oppose GUI’s, I personally like them from time to time as it helps me visualize things better than a blob of text in a terminal.  The older versions of Autoposy were written back in the day and its web UI was coded in straight HTML.  If you’re looking for a free alternative to FTK/EnCase then I suggest taking a look at this latest version.  Here are some of the highlights I captured about it:
+
+
+
+Ingest modules run in parallel which will help speed up processing/analysis
+The Yellow triangle symbol is the inbox for notifications (de-duplicates)
+If you only want to look at specific things or get a quick idea if something’s there you can uncheck specific ingest modules for triage
+This version will have an auto-update feature (can be turned off)
+There will be an API available to others can  write their own modules; there will also be a wiki page for 3rd party modules
+
+
+
+Analyzing Volume Shadow Snapshots (VSS) without Using Windows - Joachim Metz
+
+Joachim from Google is responsible for some amazing work. During the conference it was actually stated that he had to prove he wasn’t a bot because he had so many Google Code sites.  As a result of his library creating, you no longer need Windows to analyze VSS!  His paper can be found here [PDF] and his slides here [PDF].
+
+
+
+Advanced Registry Forensics with Registry Decoder - Dr. Lodovico Marziale
+
+There’s a good amount of registry tools out there these days and some are good for scripting while others are good for visualizing or performing additional tasks GUI tools like the native RegEdit or Access Data’s Registry Viewer can’t do.  The later of the two examples is where Registry Decoder shines.    Here are some of the notes I took:
+
+
+
+The live version stepped away from creating a restore point in order to get a pristine copy of the registry and now uses TSK.
+It has an API for plugins
+The search path can be used to see if malware or specific software is installed on systems
+There’s a differencing ability (2 at a time):
+
+Click “perform diff” and the color codes indicate what the differences are across what’s selected
+You can also diff the same system over time to see changes (i.e. – what services were added).  Helps show when infection occurred or what exists on system A but not B
+
+
+
+
+
+
+Forensic Scanner - Harlan Carvey
+
+Harlan’s talked a bit in the past about his forensic scanner but until now there was never any code released related to it… until now.  The premise behind it is that not every investigation is going to be about something bleeding edge and you just need to see if something exists, or other times when we see ourselves doing repetitive tasks when we can automate it.  Adding to the latter, if you don’t spend time doing one particular task for a while and then have to do it again … will you remember everything you need to in order to successfully complete it?  There’s too much to remember these days.  Another key thing brought up is when a team member spends time figuring something out or goes to training and then they leave – that knowledge leaves with them.  If you have a system where they can plug that knowledge into (whether it be a module, plugin, wiki etc.) then that saves your team/company time and money and preserves that knowledge that otherwise would have been lost.
+
+
+
+The tool is pretty simple to operate, point it to a drive and let it rip.  There’s more that can be done or configured obviously but Harlan provided a PDF within the forensic scanner which gives basic overview of what the tool is and how to use it so read that if you want to know.
+
+
+
+Cross-Drive Analysis with Bulk_Extractor and CDA Tool - Simson Garfinkel
+
+I’m sure most of you have used or at least heard of bulk_extractor by now so I’m not going to waste time writing a novel about all of the things it can do.  After the conference Jesse stated something about this tool that hits it right on point “… the best thing about bulk_extractor is it’s highly configurable.  The worst thing about bulk_extractor is it’s highly configurable”.  Bulk_extractor v1.3 was released and there’s a ton of new scanners with it so I suggest taking a look at it (did you know it has a prefetch scanner? I didn’t).  An audience member asked a good question “Is bulk_extractor vulnerable to a zip bomb?” … and a smart answer (of course) was replied “The default iteration is to go down 5 levels (can be changed) & it computes a hash of what was previously extracted so it doesn’t extract it again; therefore isn’t subject to a zip bomb”… good to know.
+
+
+
+The cda_tool.py is a tool that takes the output from bulk_extractor and performs correlation based on bulk_extractor reports.  As a note, it’s written in Python 3.x because “there’s more money to be made in the future, not the past”.  This tools produces a few reports but one note is the histograms which will show a summary of the top things found.
+
+
+
+Cross-drive analysis [PDF] is useful to see if something is normal or not.  The thought process is you may have single drive and not know if what you’re seeing is normal or abnormal in its own context so you can correlate it with other drives to get a better understanding.  Simson also touched on some interesting facts:
+
+
+
+The average *nix install has ~24k email addresses because developers include them in their tools. If you’re searching for email addresses you may want to suppress these since they probably won’t be relevant to your investigation, however, you probably only want to suppress them based on the context of them being included in those tools.  Meaning – john.doe(at)gmail.com may not be important to you if you see that email address in some source code but if you see it in the context of fraud of related to child pornography you would want to know about it.  To address this problem you can use ‘stop_list.txt’.
+BEViewer – a GUI for browsing features that have been extracted via the bulk_extractor feature extraction tool. 
+
+
+
+
+
+
+GRR Rapid Response - Darren Bilby
+
+I first heard about GRR a little while back but up until this conference I hadn’t seen or messed around with it.  If you want a real understanding of it, check out the DFWRS paper on it here [PDF].  If you don’t have the time to set it up but want to get a feel for it’s UI you can check out the EC2 instance of it here (note that there’s obvious limitations that you can’t do with it such as memory dumping etc.).  The UI is slick as it has the Google AJAX look to it (sorry Brian, no straight HTML here), it is cross platform (Mac, *nix, Windows) and scales – which is obviously a big concern for large organizations. 
+
+
+
+Their thought process was that if they needed to do something to one computer, they should be able to do it to 100k+ computers.  It’s a server/client architecture where a client is simplistically installed on the endpoint and can then be managed/worked on.  It allows the analyst to do some of the traditional forensic tasks but adds the ability to remotely analyze the endpoints memory with Volatility (they wrote their own drivers which get pushed to the endpoint in order for this to happen).  For collaboration purposes, GRR allows multiple analysts to be working on the same case at the same time.  Last note – the default option is to run TSK on the client locally because it’s faster, however, they did make it configurable in case you want the tools to run from the server instead. 
+
+
+
+In RAM We Trust: A Modern Approach to Forensic Processing - Vassil Roussev
+
+This talk kind of went in the opposite direction from the one before it (about Hadoop) in that this one said it’s faster to do everything in RAM.  It’s a back and forth approach … we used to do everything in RAM then switched back from it but now has gone back to it in a sense.  The speaker touched on a tool, pigz, which I had previously been informed about but hadn’t had the chance to take a look at.  In short, it’s a much faster alternative to using gzip so it’s worth a mention again.
+
+
+
+Sleuthing Beyond the ‘Kit: The Best of the Rest - Cory Altheide
+
+Cory gave a talk at a previous OSDFC and has also written a great book around the topic of DFIR with open source tools.  This talk was geared around being an update to his previous talk and to mention some of the new hotness on the block.  I’m a tool junkie so this talk was right up my alley so I’ll just get to my notes:
+
+
+
+iOS devices are HFSX which TSK can parse
+
+Origami’s pdfcop allows you to make your own rules/sigs to flag based on characteristics you state.  This is useful if you want to flag known spear phishing attempts or want to flag based on ceratin characteristics of malicious PDFs (i.e. - 1 page with an OpenAction, JS and an invalid XREF) 
+Malpdfobj - can output its results to a DB
+Pev – a “multiplatform PE analysis toolkit that includes tools to retrieve and parsing information about Windows PE files.” 
+Verify-sigs - “Provides a python fingerprinter class to compute all manner of hashes on files (for now, 'generic' hashes on all files, and Authenticode compliant hashes on PE/COFF files). Also provides a validator class to check Authenticode signatures”
+Pyelftools – A library for analyzing ELF files and DWARF debugging information 
+Macholib/macho_dump – a Mach-O analyzer
+GCluster - A tool based on Pyew to help clustering sets of executables; Can be used to compare EXE files based on call graphs
+Bokken -  A GUI for the Pyew and Radare projects 
+
+The Callgraph tab will show a visual representation of all the elements found in the HTML of the website and all those links with parameters will be shown parsed and grouped
+
+
+
+
+Hachoir-metadata – This tool will parse corrupt files as long as the header is there
+Hachoir-subfile – This tool will by default show you anything it thinks is embedded within the file that you supply it.  However, I pointed out to Cory that it will also extract whatever it finds if you supply it with an output destination which will make things a lot easier.
+usboblivion - “… utility designed to erase all traces of USB-connected drives and CD-ROMs from the registry in Windows 2000, Windows XP, Windows 2003, Windows Vista, Windows 7 32/64-bit versions”
+
+
+
+
+At the end of his presentation he gave a big shout-out to Willi B for all of the great work he’s been doing – and it’s well deserved.
+
+
+
+Other News
+
+TAPEWORM - A linux VM with a GUI and some script to automate some of the common forensic tasks (Log2timeline, EXIF, A/V scans, Volatility etc.) – download here.
+Log2Timeline - Be on the lookout for a python version!
+
+
+
+

@@ -1,0 +1,58 @@
+
+					New APT Campaign based on Poison Ivy RAT with C&C in China has been reversed by MalwareMustDie					
+Our travel along the great analysis of a fresh, new insidious APT China campaign.
+At the beginning, it seemed always the same story: a Word document probably infected, an ordinary story of phishing and nothing more.
+If we check at the top of the long analysis of MalwareMustDie we can see the pictures of an ordinary mail, with the boring, ordinary infected Office Word attachment, nothing new under the sun.
+The strange fact was that the suspect document was on a common blog web site like Geocities delivering a multi-layered base64 encoded VBScript script which manually decoded at the first layer have given the resulted below:
+
+Figure 1. The VBScript encoded with “powershell.exe” command.
+The classical vbscript “createbject” instruction is followed by a Powershell command: “powershell.exe –w hdden –ep bypass –Enc with a long encoded string”
+Poweshell? Encoded command? “Bypass” option used for what?
+Something not so “ordinary nor boring” rises from the underground of the investigation and here the analysis of MalwarareMustDie starts to become interesting and surprising step after step.
+Digging into the details of the functions decoded in the other layers of VBScript in a looping process revealed a complex source code fully executable by Powershell: and we have to admit that following MalwareMustDie in his analysis it’s like riding the roller coaster, the same enjoyment.
+Here it is an example of the base 64 manually decoded code that revealed another nested base 64 encoded code. The functions represented in the picture are self-explaining as said in the analysis and it is clear that something dangerous is going on the victim computer.
+
+Figure 2. The VBScript base 64 decoded code.
+After different loops decoding base 64 layers the result is clear: beyond the Word attachment document, hidden in the VBScript file, there is a long and dangerous script ready to be executed by Powershell: but “where I have already seen this source code”?
+The code in the VBScript running the Powershell command is a “copy pasta” of an infamous malware based on Powershell PowerSploit/CodeExecution PoC code which is publicly available on GitHub, same file, extension .ps1.
+Here it is the main web page of the exploit with the documentation:
+
+Figure 3. The PowerSploit / CodeExecution web page on GitHub.
+The documentation of the exploit states: “Inject shellcode into the process ID of your choosing or within the context of the running PowerShell process”. Easy: this is hacking pret-a-porter.
+And here we have the first Lesson Learnt of this investigation: how big is the damage to the community of the users keeping the malware code publicly available on GitHub: we will not stress enough repeating how would be important not to have this source code ready to use.
+But let give a look to the Shellcode, because the most important task now is reverse it and understand what is the main purpose of its use, why is injected on the computer victims, which technics and mechanisms adopted for doing what, connecting where. The story is getting exciting!
+But again the Shellcode is encoded using base 64: when decoded it appears as reported in the picture below:
+
+Figure 4. The Shellcode.
+The reverse activity seems to be a long task and again – surprisingly – we discover a great trick from MalwareMustDie in order to compile the shellcode and have an executable file to run safely:
+“Saving the shellcode data in the .textsection  of the assembly file and the entry point(EP) will be “adjusted” by the compiler during compilation process therefore you can execute this shellcode as a binary PE file. This method is very useful when analysing shellcodes. And by using a Unix environment you can create this PE without risking an infection.”
+We report the figure of the adopted process here:
+
+Figure 5. How handle the shellcode to build up a useful .exe file
+The result of this process is to have a “beautiful” stupid-shellcode.exe file ready to run in order to understand the behaviour for further investigations.
+Running the malware discovered the behavior can be discovered: it extracts the information from the victim’s computer calling back its C2 server with the target to perform all the malicious actions. The analysis of the payload behavior has always fascinated and the security researchers can spend days “following the money”.
+At the end it is sure we are fronting the famous – or infamous – Poison Ivy.
+Running the Shellcode it is possible to observe that it uses a lot of system calls involving DLLs mostly related to the kernel of the system: and at the first stage of trace-assemby of the Shellcode provides a fake process named userint.exe used to inject the malicious code, that is executed in this way.
+Here an image from the MalwareMustDie analysis reported above:
+
+Figure 6. The fake process userinit.exe created and injected.
+The great knowledge in malware by MalwareMustDie rise up in all his strength: he is able to find many elements that can be traced back to Poison Ivy.
+The combination of the usage of certain DLL, he says, “is showing a typical pattern of the threat too. Moreover, the date stamped in the MUTEX name is mostly used by Poison Ivy“.
+Then other operations are performed by the malware:
+Yes, no doubts that is Poison Ivy.
+The last answer to close the loop is: where is the Command and Control server located?
+If we give a look closer to the WS2_32.DLL we see that there are some interesting calls like:
+These revealed hostname and IP address for the callback to the Command and Control server, which is based in Seul, Korea.
+
+Figure 7. C&C server based in Korea.
+Network/BGP Information→「61.97.243.15||4766 | 61.97.243.0/24 | KIXS-AS | KR | kisa.or.kr | KRNIC」
+But looking to the hostname we see that is web.outlooksysm.net on which is possible to invoke a WHOIS command that gives back, among other info, who is the Registrar: is a company based in Shanghai.
+
+Figure 8. Whois of the C&C server of the Poison Ivy malware.
+The conclusion is that this APT campaign, which utilized multiple accounts on Geocities Japan, leading to the possibility that there is a larger APT campaign being conducted targeting Mongolian victim is
+The information provided here is referred to the MalwareMustDie research and analysis linked above.
+This kind of campaign has been renamed “Free Hosting (pivoted) APT PowerSploit Poison Ivy” (FHAPPI) by the gentleman who provided us the translation from the Japanese language, Mr. El Kentaro, making up very F-Happy to learn new methods and techniques.
+About the Author
+Odisseus is an Independent Security Researcher involved in Italy and worldwide in topics related to hacking, penetration testing, and development.
+Pierluigi Paganini
+(Security Affairs – APT, Poison Ivy RAT)

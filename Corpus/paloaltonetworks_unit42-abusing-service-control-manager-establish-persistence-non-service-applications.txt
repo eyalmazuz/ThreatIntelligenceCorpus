@@ -1,0 +1,36 @@
+Abusing the Service Control Manager to Establish Persistence for Non-Service Applications
+
+Summary
+Unit 42 recently analysed a sample of the Emotet malware family, which is a modular bot primarily used for sending spam emails to infect victims. During the analysis, I found it uses an uncommon technique to establish persistence on a compromised system. For this technique to work, either User Account Control (UAC) has to be disabled or the file opened by a user who has an administrator account, because the malware creates a Windows service, a process which needs administrator privileges.
+It abuses the Windows Service Control Manager (SCM) to create and start a Windows service without the executable being a valid service application. According to the official Microsoft documentation, for executables you have to call StartServiceCtrlDispatcher() immediately in the main thread. This malware doesn’t call this function, but is started by the Service Control Manager (SCM) anyway. In this blog we analyse how this is accomplished.
+
+Detailed analysis
+We used the below sample for this analysis:
+
+
+
+SHA256
+fa88c77657a173c99c6cd7e78cafa6709760178d767867c42b7db3cecf83208e
+
+
+
+ 
+According to the Microsoft documentation about services, a service application must either export the ServiceMain function, when designed as a DLL, or call StartServiceCtrlDispatcher() when designed as a EXE. The control dispatcher function always has to be called immediately in the main thread or the SCM (which is called services.exe) returns an error.
+As the malware is a EXE file and does not call this function in the main thread, we get an error after it has created its service via CreateService() and calls StartService().
+ 
+
+Figure 1. CreateService() function parameters of Emotet
+The function call to StartService() returns 0 (fail) and gives the ERROR_SERVICE_REQUEST_TIMEOUT error code back. The explanation of this error is as follows:
+“The process for the service was started, but it did not call StartServiceCtrlDispatcher, or the thread that called StartServiceCtrlDispatcher may be blocked in a control handler function.”
+The trick is that the SCM executes the application for a short period of time and expects the program to call StartServiceCtrlDispatcher(). If it doesn’t call the function, the executable is terminated and nothing happens. Internally, this is accomplished by remote procedure calls. The malware uses this short time of execution to create a child process which is then detached from the parent when the SCM terminates the parent process. When we take a look at the API Monitor output of services.exe we can see this behaviour:
+ 
+
+Figure 2. API Monitor call trace of Service Control Manager (services.exe)
+We can see that services.exe creates the malware process with the following creation flags:
+CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT | DETACHED_PROCESS | EXTENDED_STARTUPINFO_PRESENT
+The process is first created in suspended mode by the SCM and then run via ResumeThread(). The malware creates a child process of itself before the parent process gets terminated and the child process ends up parentless.
+ 
+Conclusion
+This method is a kind of a race condition trick to abuse the SCM to run a normal executable in a way which doesn’t follow the Microsoft guidelines for service applications. At the end, the executable is not run as a service application, but rather just started by the SCM. Because this happens every time the system is rebooted, it can be used as a persistency method as this malware does.
+I have tested this behaviour successfully in Windows 7, 8.1, and 10. This malware is flagged appropriately as such in WildFire, and detected by Traps. AutoFocus customers can investigate this activity with the Emotet malware family tag.
+

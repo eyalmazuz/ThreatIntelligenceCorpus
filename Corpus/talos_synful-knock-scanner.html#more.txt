@@ -1,0 +1,63 @@
+
+SYNful Knock Scanner
+
+
+This post was authored by William McVey.
+
+Update 2015-09-23: We updated the tool to version 1.0.1
+
+Talos is constantly researching the ways in which threat actors are evolving to exploit systems. Recently, a piece of persistent malware coined as “SYNful Knock” was discovered on Cisco routers. While this malware attack is not a vulnerability, as it had to be installed by someone using valid credentials or who had physical access to the device, Cisco has published an Event Response Page for customers to provide the information needed to detect and remediate these types of attacks. We are also working with partners to identify compromised systems.
+
+The most recent addition to the toolkit Cisco is providing customers comes after the Cisco PSIRT worked with internal teams and customers to acquire copies of the malware. Talos has now developed a tool for customers to scan their own network to identify routers that may have been compromised by this specific malware. The tool works by scanning devices and networks, looking for routers answering the SYNful Knock malware.
+
+Note: This tool can only detect hosts responding to the malware "knock" as it is known at a particular point in time. This tool can be used to help detect and triage known compromises of infrastructure, but it cannot establish that a network does not have malware that might have evolved to use a different set of signatures.
+
+The tool was developed in Python and requires Python version 2.7 along with the scapy v2.3.1 packet manipulation library. During its operation, the tool injects custom crafted packets at the Ethernet layer (layer 2) and monitors and parses the responses. This functionality requires that the tool be run with root privileges.
+
+The following represents the usage documentation for the synknockscan tool provided when you supply the “-h” command line switch:
+
+
+
+Click for Larger Image
+
+When using the tool, you can choose either to specify the IPs or networks by listing them on the command line or by specifying the “--scan-file” option and providing a file with the targets to be scanned. Individual IP addresses are accepted, as are CIDR style network blocks (e.g. 10.20.30.0/24). With no targets specified on the command line and no --scan-file option provided, targets are read from standard input.
+
+
+
+Click for Larger Image
+
+
+
+Tool Caveats
+
+Running the tool through NAT can adversely impact the accuracy of the tool and cause the tool to not detect routers that have been impacted. Therefore, it is recommended that you run the tool from a network location which does not have NAT between the source system and the destinations being scanned. Additionally, if you scan from a multi-homed device, you may wish to specify which network interface to use for scanning with the ‘--iface’ option. By default, the first network interface associated with a default route is chosen.
+
+Specifying the ‘-v’ option will enable verbose output (emitted on the UNIX standard error stream) as the listener is processing replies for the packets that are processed by the scanner. Sometimes, the listener will see packets unrelated to the scan traffic. This is normal and is handled by the tool. The standard output of the tool will only reflect actual responses that appear to be signs of compromise.
+
+
+Downloading the Tool
+
+The tool can be downloaded here:
+
+Checksums for the tool:
+
+$ md5sum synknockscan-1.0.1.tgz
+2c53f7c56f727ffb6dd8d16ddb3a9b02  synknockscan-1.0.1.tgz
+$ shasum synknockscan-1.0.1.tgz
+7e52a89f395ee6a81948c711039eee8f2cb9b60d  synknockscan-1.0.1.tgz
+$ sha256sum synknockscan-1.0.1.tgz
+25651d9235e99ba94dec693972c51ee96b2bef3e2f9e3fa6fa304a44bd48bd7e  synknockscan-1.0.1.tgz
+
+
+Conclusion
+
+Networking devices and their credentials continue to be high-value targets for attackers. It remains important to protect them accordingly, as any device can be compromised once an attacker gains physical access to a device or the credentials for privileged accounts. Network hardening best practices should also be implemented, and the Event Response Page mentioned earlier includes several resources to help customers determine what options they should consider. 
+
+If you believe you have been affected by adversaries please contact Cisco Product Security Incident Response Team (PSIRT). PSIRT is a dedicated, global team that manages the receipt, investigation, and public reporting of security vulnerability information related to Cisco products and networks. Cisco PSIRT provides security advisories, security responses, and security notices. The PSIRT team is available around the clock to identify possible security issues in Cisco products and networks. 
+
+For immediate emergency assistance, contact the 24 hour a day PSIRT dedicated hotline at +1 877 228-7302 or +1 408 525-6532. For emergency assistance on this issue via e-mail, contact psirt@cisco.com and reference SYNful Knock in the Subject line.
+
+To receive non-emergency assistance or report suspected security-related issues with Cisco products, contact psirt@cisco.com.
+
+
+

@@ -1,0 +1,25 @@
+
+					A Kernel backdoor affects gadgets shipped by a popular Chinese ARM maker					
+In the security community is circulating the news about the presence of a backdoor in the gadgets shipped by the popular Chinese ARM maker Allwinner.  Processors manufactured by the company are present is several models of low-cost devices, including Android tablets, set-top boxes, and ARM-based PCs.
+Experts have spotted a version of the Linux Kernel (Linux 3.4-sunxi kernel) shipped by the Allwinner affected by a built-in backdoor that is easy to exploit.
+
+In order to gain root access of an affected Android device, the attacker needs to send the text “rootmydevice” to any undocumented debugging process.
+The code related to the kernel backdoor was published on PasteBin it is available, once it receives that “rootmydevice” text it triggers a local privileges escalation for debugging ARM-powered devices.
+The experts suspect that the presence of the kernel backdoor is the result of a mistake made by the authors of the firmware that haven’t removed the debugging code routines.
+The original BSP kernel is designed for Android devices and authors introduced the backdoor to speed up the testing activities by easily getting root privileges triggering it.
+“Original BSP kernel is designed for Android, where getting root privileges in “one click” would be very useful for testing and debugging purposes… … if only there was a simple way (even kernel config symbol!) to disable this for production / public images.” states the user Zador from Allwinner.
+Exploiting this issue, it is possible to run any process with root privileges:
+echo “rootmydevice” > /proc/sunxi_debug/sunxi_debug
+The Linux 3.4-sunxi kernel was designed to support Android OS on Allwinner ARM for tablets, allows to port Linux to many Allwinner processors on boards like Banana Pi micro-PCs, Orange Pi, and other devices.
+At the forum of the Armbian operating system,
+A moderator (Tkaiser) at a forum where it is possible to find discussions about the Armbian operating system confirmed that the kernel backdoor code could be exploitable remotely.
+“Combined with networked services that might allow access to /proc this means that this is also a network enabled root exploit. As usual we fixed such an issue within a few hours, on May 1st new Armbian 5.10 images were rolled out and in the meantime the fix is also in Armbian’s apt repo so please upgrade now (apt-get update/upgrade or start with a fresh OS image) if you’re affected! If you’re already running Armbian 5.10 then this vulnerability is already fixed.” states Tkaiser.
+“This security flaw is currently present in every OS image for H3, A83T or H8 devices that rely on Kernel 3.4: this applies to all OS images available for Orange Pis (except Armbian 5.10 available since May 1st), any for FriendlyARM’s NanoPi M1, SinoVoip’s M2+ and M3, Cuebietech’s Cubietruck + and Linksprite’s pcDuino8 Uno”
+The kernel backdoor affects every operating system image for A83T, H3 or H8 devices that rely on the Linux 3.4-sunxi kernel.
+The discussion closes with the following announcement from the company
+“Allwinner Technology committed to resolving Linux Kernel software issue
+Zhuhai, China – Allwinner Technology.Co.Ltd (SHE: CN:300458) is working with its device manufacturers to fix a current software issue. We are aware that code, which was supplied to device manufacturers for the purpose of developing products, should have been removed prior to shipping. We recommend that anyone who is concerned about this issue should contact the relevant device manufacturer.
+In relation to the source code on Github, it is released for the open source community only and not for shipping certain devices. Since a debugging function is not needed it has subsequently been removed.
+Allwinner is committed to producing quality SoC’s with security a key priority. We are currently working hard to address this issue and revising our current processes so we can continue to evolve our range of SoC’s in the future.”
+Pierluigi Paganini
+(Security Affairs – Allwinner, kernel backdoor)

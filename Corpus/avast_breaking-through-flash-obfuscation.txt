@@ -1,0 +1,54 @@
+Breaking through flash obfuscation
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 9 September 2011
+
+Breaking through flash obfuscationWhen analyzing flash malware, you can be sure that sooner or later a sample shows up that tries very hard to hide its purpose from anyone who wants to look under the hood. This is one of the things that make them suspicious and interesting to analyze. Today, I will show you a sample which is like an onion - every time you get rid of one layer of protection, you will find another one.
+
+In my previous post on the avast! blog, I wrote about flash obfuscation tricks that are used to hide the purpose of ActionScript2 code. This time we will have a look at a sample that is heavily obfuscated but uses ActionScript3. If you aren't familiar with the structure of a flash file, I highly recommend you to read my previous blog post for a quick format overview. With ActionScript3, the situation is completely different than with AS2 and also it's a bit more complicated. The code and all the metadata (like constants, classes, etc.) is stored in tags called "DoABC". These tags have a structure very similar to java class files: there is a constant pool, method list, their code and so on. The format of the DoABC tags is quite precise so you cannot hide things so easily as you can in the case of DoAction tags (used in ActionScript2). But, that does not mean it isn't possible. There are many obfuscation techniques that can be used to defeat the vast number of disassemblers out there and in this article we will look at some of them.
+Let's have a look at our sample. A quick analysis shows us that it is quite small, at least when it comes to the number of tags it contains:
+
+Since the only thing really interesting for us right now is the AS3 code, let's look at the DoABC tag and not waste time:
+
+We can see that this does not help us much. As shown above in Methods [13] their name is either empty or some crazy garbage. This is the first indicator that the file is obfuscated. A quick look at the strings in the constant pool reveals that it actually uses the "doswf" obfuscator. I have seen many files using it, especially flash games, so at this point I am a bit disappointed because this looks like just another game. However a quick test run in a virtual environment proves this is not the case so I continue my investigation. The question is now: If it's not a flash game, what does it actually do? To answer this question, I needed to disassemble the code. However, when I used the usual tools, my best response is this:
+
+That's not good! So what is the reason for this? Let's look at the list of instructions below for one of those methods:
+
+The error above tells us that the instruction "newobject" causes stack underflow (so it tries to get something from the stack, but there is not enough data on it). In the code above, we see the instruction in question. It has a parameter value 0xB2EB9 which looks strange. Looking into the manual, we learn that the parameter specifies the number of properties the newly created object should have and that these properties are read from the stack. It is now clear that this instruction is a trap and won't ever execute correctly. But why does that flash file work fine? That's because the flash player will never get to this instruction! There is a jump instruction right before the bad one which makes the flash player skip the bad instruction and resume execution right after it. Looking at the code of all methods, we see tons of such traps, so we need to remove them. By simply "nop-ing" the relevant parts of the byte code, we remove them and now the disassembly works great! One layer of protection is removed, but we still have no idea what the sample does. There are still quite a few methods doing something with a byte array though. At some point, the byte array is loaded and executed as a flash file - this is a strong indication of something fishy going on. But where does this byte array come from?
+Looking back at the tag list, we see a tag called DefineBinaryData. Together with the SymbolClass tag it is possible to save any byte array in the flash file and then use it in the DoABC code. Of course we are still far from the end - the data in the DefineBits tag certainly do not look like a flash file:
+
+In order to see what is stored in the tag we first need to decrypt it. Of course the DoABC code needs to do that too. Since we already have unscrambled the DoABC code, it's just a matter of seconds to find the decryption method. Aha, here it is!
+
+After looking at the code, it is clear that it first reads some metadata from the beginning of the byte array and then uses "xor" to encrypt the data. Fine, let's do that too! The first few bytes of the resulting data block are here:
+
+I am sure most of you recognized the above data: it is compressed with zlib. After decompressing it, I expect to see a flash file, but I get a surprise instead. Instead of one flash file, I get yet another special byte array. This time, its purpose is clear. Apart from some metadata, three working flash files are embedded in it!
+
+The most interesting of the three files is the second one, since it is the heart of the malware. Again, it's a small flash file with just a few tags and one of these is a DoABC tag. But this time, the purpose of the flash file is much easier to see. If we take a look at the strings in the constant pool, our tool immediately recognizes suspicious content:
+
+The first highlighted string is a well-known exploit trigger and the last one is the actual shellcode that runs when the exploit is triggered. Of course it's not quite that simple, both of these strings are broken into parts and need to be first chained together and converted into a byte array, but you get the point.
+Avast detects this malicious flash file as SWF:Dropper and the payload as SWF:Agent-L so you have nothing to worry about. But this case shows that flash obfuscators are getting popular on the malware scene and we need to be prepared for that. As you have just seen, hiding something in flash under several layers of encryption is really not that hard.
+For those interested, here is the VirusTotal link showing detection rates at the time of this writing:
+http://www.virustotal.com/file-scan/report.html?id=8199461e5e9e32bb7b7c8d31f31b7ccb5c53a3c96091266a16086d41f404bfb3-1315476957
+ 
+
+
+
+Check 4 comments or write your comment
+
+
+
+
+
+
+
+
+

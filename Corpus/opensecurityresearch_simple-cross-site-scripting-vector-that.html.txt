@@ -1,0 +1,50 @@
+
+Simple Cross Site Scripting Vector That Webkit XSS Auditor Ignores
+
+
+By Tushar Dalvi. 
+
+Google Chrome has a lesser known feature named “XSSAuditor” that was added to help mitigate reflective XSS. Its contained as a part of the Webkit and works very similarly to NoScript and XSS filter in Internet Explorer 8 and above.
+
+The Chromium Blog’s security features page describes the behavior of XSSAuditor as:
+“The XSS filter is similar to those found in Internet Explorer 8 and NoScript. Instead of being layered on top of the browser like those filters, our XSS filter is integrated into WebKit, which Google Chrome uses to render webpages. Integrating the XSS filter into the rendering engine has two benefits: (1) the filter can catch scripts right before they are executed, making it easier to detect some tricky attack variations, and (2) the filter can be used by every WebKit-based browser, including Safari and Epiphany”
+How it works
+
+XSSAuditor works by taking note of the user-provided input when a web page is requested and then evaluating it before the page is rendered. The user-provided input is first inspected to identify if it contains malicious input, and if it does, XSSAuditor blocks it. 
+
+XSSAuditor also tracks where the user input is reflected in the rendered page. Every HTML page contains elements that fall into one of the 5 output contexts: HTML entity, HTML attribute, JavaScript, CSS, and URL. Since output contexts have different structures and formatting, XSSAuditor evaluates the context the user input falls within and then sanitizes it appropriately for that context. 
+
+Sounds good right? Well, maybe - now that we have an idea what XSSAuditor does and how it works. Let's look at where it fails!
+Bypassing XSSAuditor
+
+The problem is that XSSAuditor only checks for the escape sequences that apply to the HTML entity and HTML attribute output contexts, but not the others! This means if a XSS vulnerability is present within the JavaScript context (a very common occurrence), then XSSAuditor only checks it for known malicious input and as long as it doesn't match, the XSS gets executed.
+
+Lets look a simple case where this might happen. Consider the following code:
+ <html><head><title>Test Page</title></head>
+<body>
+<script>
+var foo = "<%= request.getParameter("foo") %>";
+document.write("<text>Welcome "+ foo + "</text>");
+</script>
+</body>
+</html>
+
+
+
+This is a classic XSS example. If we direct our browser to http://www.domain.com/test.jsp?foo=2"; alert(document.cookie); var a="1 our JavaScript is executed:
+
+
+
+
+Wait - that shouldn't happen - and this is with Google Chrome version 22.0.1229.12
+Browser Results
+The same URL was tested against different browsers which implement similar filters to block XSS attacks. The following observations were made:
+
+Internet Explorer 8.0 with XSS filter enabled, detected and blocked the attack.
+Mozilla Firefox 14.0.1 with Noscript 2.4.8, detected and blocked the attack.
+Safari 5.1.7, failed to detect the attack and executed the script. (This is because Safari and Google Chrome contain the same implementation of XSS Auditor)
+
+
+This bug affects all versions of Google Chrome (4 and above), Safari (5.1.7, lower versions not tested yet) on all platforms and was reported to Webkit Bugzilla (https://bugs.webkit.org/show_bug.cgi?id=92692) on 07/30/2012.
+
+

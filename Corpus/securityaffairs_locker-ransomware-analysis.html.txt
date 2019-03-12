@@ -1,0 +1,111 @@
+
+					Locker Ransomware Utilizes a Unique Delivery Mechanism					
+On May 25th, 2015, a wave of reports came flooding in from users around the globe, claiming that their computers have become compromised.  Messages from users looking for help began appearing on forums such as Bleeping Computer, where screenshots and further information regarding the incident came to light.
+It became clear that these users had become infected with a new variant of ransomware whose name, derived from the window that opens on the infected device, has been dubbed the “Locker” ransomware by Lawrence Abrams of Bleeping Computer.
+The delivery mechanism of this new ransomware variant is quite interesting.  Not only did this variant utilize a chain of various services and executables to reach its final stage, but it appears that the Trojan Downloader that retrieve the ransomware payload did so in a fashion that can be described as quite similar to a “logic bomb”.  At midnight on the 25 ransomware variant is quite interesting.
+Where did this Trojan Downloader come from?  This question has been answered to some extent, but speculation remains as to whether additional infection vectors exist, or if the downloader is being spread by additional malicious software.  However, one infection vector has become known: a cracked copy of Minecraft; specifically, the cracked “Team Extreme” version of Minecraft.downloader is being spread by additional malicious software.
+The Locker Ransomware
+Like the various other ransomware variants that we have observed in-the-wild, Locker will enumerate the targeted device’s local file system, searching for specific file extensions of files to encrypt.  After enumerating the file system and performing its encryption activities, leveraging AES encryption, Locker opened a window containing a ransom note and information regarding the infection.
+This window explains what occurred to the file system and provides payment information and demands an initial ransom of .1 bitcoins.
+The ransomware variants that we have observed in-the-wild, Locker will enumerate the targeted device’s local file system, searching for specific file extensions of files to encrypt.
+Locker affects all versions of Windows; this includes Windows XP, Windows 7, and Windows 8.  The Trojan Downloader that delivers Locker is installed as a Windows service with a random file name; the executable file that installs the downloader resides in the downloader resides in the downloader resides in the downloader resides in the C:\Windows\SysWOW64 directory of the affected file system.
+Additionally, another service was installed in the following directory: C:\ProgramData\Steg\ with a file name of Steg.exe.  When executed, this service creates a folder under C:\ProgramData\ named Tor.  Furthermore, after the creation of the Tor folder, yet another service was installed, titled “LDR”.  Its associated executable resides within C:\ProgramData\rkcl\ as ldr.exe.
+This service, whose name can be interpreted as “LOADER”, then installed and launched an executable within the same directory (C:\ProgramData\rkcl), saved as rkcl.ee.  This program is the primary executable responsible for Locker’s ransomware activities.
+Affected Files
+Locker will enumerate the local file system, search all drives mounted with a letter, to discover supported data files that it will compromise.  Targeted files are discovered via Locker searching the local file system for all files with supported extensions.  However, this search is performed using a case-sensitive search; lower-case file extensions (i.e. .doc) would be affected, however, upper-case file extensions (i.e. DOC) would not be affected.
+Recovery
+Locker’s detrimental activities do not cease upon completion of file system enumeration and encryption.  Upon completion of the encryption activities, Locker will attempt to delete all Volume Shadow Copies (VSCs) found within the targeted file system.
+This prevents the victim from using System Restore or the “Previous Versions” tab found within the properties menu of a file to restore the affected file to its previous state.  The command issued by Locker to delete all Volume Shadow Copies is:
+vssadmin.exe delete shadows /for=C: /all /quiet
+Evasion Techniques
+Locker performs several techniques to evade analysis.  Like many of the new, sophisticated ransomware variants found in-the-wild today, Locker will search for and terminate itself if it is found to be running within a virtual machine (i.e. VMware, Virtual Box).
+Additionally, it will terminate itself if it detects and of the following processes running, many of which are used by malware analysts:
+wireshark, fiddler, netmon, procexp, processhacker, anvir, cain, nwinvestigatorpe, uninstalltool, regshot, installwatch, inctrl5, installspy, systracer, whatchanged, trackwinstall
+Ransom
+Locker initially demands a ransom of .1 bitcoins to an assigned bitcoin address.  After 72 hours of non-payment, this ransom amount increases to 1 bitcoin.  While running, Locker will make requests to blockchain.info to verify whether or not the victim has submitted a payment.
+When queried, if blockchain.info returns data indicative that a full payment has been made, Locker will perform a second check against its C2 (command-and-control) server.
+Locker’s command-and-control server is located at jmslfo4unv4qqdk3.onion.
+If both requests return that a proper payment has been submitted, Locker will automatically download a file named priv.key, which it stores within the C:\ProgramData\rkcl folder on the targeted device.  This file, as can be inferred by its name, contains the private key that Locker will then use to decrypt all affected files.
+The automated process of decryption rather than requiring the user to download an additional decryption utility is unique to this ransomware variant.
+Additional Dropped Files
+Additionally, a series of data files can be found dropped within the local file system of the affected device.  The following files are dropped during the installation process of the Locker ransomware:ransomware:
+More Unique Characteristics
+While Locker’s delivery and decryption mechanisms are unique in themselves, activity and files that were found in affected file systems reveal more information.  If an affected victim finds the following directory on their local file system reveal more information.  If an affected victim finds the following directory on their local file system:
+If an affected victim finds the following directory on their local file system reveal more information.  If an affected victim finds the following directory on their local file system:
+C:\ProgramData\Digger
+This indicates that the victim’s device was being used as a bitcoin miner by the attacker prior to the Locker ransomware becoming active.  The affected devices have potentially been affected and involved in nefarious activity for an unknown period of time, often for months prior to the ransomware becoming active.
+Associated Locker Files, Trojan Downloader File Hashes
+At the time, as previously stated, Locker is only known to have been spread via a cracked version of Minecraft; reportedly the “Team Extreme” version of the cracked software.  There are two (2) known Trojan Downloader executable files that have been analyzed and confirmed as malicious at this time.  They are:
+However, it is believed that this is not the sole infection vector; no further methods of infection can be confirmed at this time.
+Associated Locker Ransomware Files
+HKLM\SYSTEM\CurrentControlSet\services\<random>\Description
+Experience (qWave) is a networking platform for Audio Video (AV) streaming applications on IP home networks. qWave enhances AV streaming performance and reliability by ensuring network quality-of-service (QoS) for AV applications.
+It provides mechanisms for admission control, run time monitoring and enforcement, application feedback, and traffic prioritization.KLM\SYSTEM\CurrentControlSet\services\\DelayedAutostart
+Locker Screenshots
+Locker GUI Informational Tab / Initially Presented Ransom Information
+
+Locker GUI Payment Information Tab
+
+ 
+Locker Sample Timeline
+Below details a timeline of the associated services and the overall progression of the Locker ransomware and its Trojan Downloader’s activities.
+This timeline was constructed after analysis of a device that was newly-purchased and configured on the 19 May of this year, 2015, but unfortunately was also a victim of the Locker ransomware.  The affected user also installed the cracked version of the “Team Extreme” Minecraft.
+Trojan Downloader Installed as a service on 05/20/2015 11:04:27 AM
+fastcreekrags.exe began running on 05/20/2015 11:04:30 AM
+fastcreekrags.exe terminated unexpectedly on 05/20/2015 11:09:06 AM
+fastcreekrags.exe began running on 05/20/2015 11:09:10 AM
+Steg.exe installed as a service on 05/20/2015 11:09:52 AM
+Service Name: stegsteg
+Service File Name: C:\ProgramData\steg\steg.exe
+Service Start Type: auto start
+Service Account: LocalSystem
+Steg service running / stopped on 05/20/2015
+Started at 11:09:55 AM
+Stopped at 16:28:33 PM
+fastcreekrags.exe stopped running on 05/20/2015 16:28:33 PM
+Steg service running / stopped on 05/21/2015
+Started at 07:13:17 AM
+fastcreekrags.exe began running at 07:13:20 AM
+Stopped at 09:07:43 AM
+fastcreekrags.exe stopped running at 09:07:43 AM
+Started at 11:10:46 AM
+fastcreekrags.exe began running at 11:10:49 AM
+Stopped at 16:23:23 AM
+fastcreekrags.exe stopped running at 16:23:23 PM
+Steg service running / stopped on 05/22/2015
+ 
+Started at 07:12:21 AM
+fastcreekrags.exe began running at 07:12:23 AM
+Stopped at 07:13:29 AM
+fastcreekrags.exe stopped running at 07:13:29 AM
+Started at 07:14:17 AM
+fastcreekrags.exe began running at 07:14:19 AM
+fastcreekrags.exe terminated unexpectedly at 17:14:59 PM
+Stopped at 17:37:55 PM
+Started at 18:39:27 PM
+Started again at 19:51:20 PM
+Steg service running / stopped on 05/23/2015
+Stopped at 18:59:01 PM
+Steg service running / stopped on 05/24/2015
+Started at 03:36:22 AM
+Stopped at 12:39:15 PM
+Steg service running / stopped on 05/25/2015
+Started at 05:47:42 AM
+Stopped at 05:57:10 AM
+ldr.exe installed as a service on 05/25/2015 05:48:08 AM
+Service Name: ldr
+Service File Name: C:\ProgramData\rkcl\ldr.exe
+Service Type: user mode service
+Service Start Type: auto start
+Service Account: LocalSystem
+ldr.exe enters the “stopped state” on 05/25/2015 at 05:48:10 AM, 05:57:42 AM, and 08:54:11 AM
+Special Thanks
+Special thanks to the team at BleepingComputer.com for the fast analysis and contribution of information regarding this infection; specifically, Lawrence Abrams and Nathan Scott.  Additionally, granular analysis and detailed information were largely contributed by: Fabian Wosar of Emsisoft and Mark and Erik Loman of SurfRight.
+Prevention Methods
+Host-Based Intrusion Prevention Software (HIPS) such as McAfee HIPS, HitmanPro: Alert, and other anti-exploit software.  Additionally, the configuration and creation of Windows’ native Software Restriction Policies can aid in the prevention of future infections carried out in a similar manner.
+Tools such as CryptoPrevent by FoolishIT LLC (free and enterprise versions are both available) have also been created for the specific purpose of preventing ransomware from successfully infecting your device.
+Sources
+Bleeping Computer: http://www.bleepingcomputer.com/
+About the Author Michael Fratello
+Edited by Pierluigi Paganini
+(Security Affairs –  Locker, malware)

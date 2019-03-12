@@ -1,0 +1,31 @@
+
+					VPN leaks affect 3 Major VPN vendors, only Hotspot Shield promptly fixed it					
+The website VPNMentor decided to hire a group of hackers to test popular virtual private networks (VPN) for vulnerabilities that can pose risk for the users.
+The results of the tests revealed that the solutions evaluated by the white hat hackers suffer severe privacy-leak issues, any of the tested solutions don’t totally protect users’ IP from prying eyes.
+Don’t forget that such kind of flaws in VPNs software could be exploited by governments and hostile organizations to spy track individuals online.
+Paulos Yibelo, a researcher at Cure53 aka Filedescriptor, and an anonymous colleague were tasked by VPNMentor to test the Pure VPN, Zenmate, and Hotspot Shield VPN solutions.
+“We tested 3 popular VPNs: Hotspot Shield, PureVPN, and Zenmate with accredited researchers to find if the VPNs could leak data. While we hoped to find zero leaks, we regretfully found that all of them leak sensitive data.” reads a blog post published by VPNMentor.
+The good news is that once reported the issued to the development teams behind the three VPN solutions, one of them, Hotspot Shield, promptly released a fix to address the issues.  The other vendors still haven’t replied to VPNMentor, for this reason, the website decided the publicly disclose the results of the tests only for Hotspot Shield waiting other for fixing the flaws.
+The vulnerabilities in Hotspot Shield affect the Chrome extension for the solution, meanwhile, the desktop and mobile applications are secure.
+The first vulnerability tracked as CVE-2018-7879, allowed an attacker to hijack a user’s traffic when he is tricked into visiting a malicious site.
+“We observed the following PAC script used in Hotspot Shield Chome extension:
+```
+function FindProxyForURL(url, host) {
+if(url.indexOf('act=afProxyServerPing') != -1) {
+let parsed = url.match(/act=afProxyServerPing&server=([^&]+)/);
+if(parsed && parsed[1]) return 'https '+parsed[1]+':443; DIRECT;';
+}
+```
+It detects if the current URL has the query parameter act=afProxyServerPing, and if it does, it routes all traffic to the proxy hostname provided by the server parameter.”
+
+That issue seems to be related to internal test code that was not removed, it fails to validate what host is making this “call”.
+An attacker could craft a link with those parameters in an effort to redirect the traffic to a proxy server controlled by the attackers.
+The IP leak is caused by whitelist used by the extension for “direct connection”.
+The tests revealed that any domain that includes localhost in the URL bypasses the proxy (for example, localhost.foo.bar.com), such as any URL with type=a1fproxyspeedtest.
+To prove the IP leak the hackers visited the site with the unpatched version of Hotspot Shield.
+
+For now, the details about bugs in Zenmate and VPN Shield are being kept under wraps because those vendors haven’t responded to VPN Mentor. Both leaked user IPs.
+Experts confirmed that both PureVPN’s and ZenMate’s vulnerabilities could be currently exploited to unmask VPN users.
+“If you are a user of Zenmate or PureVPN, contact the support team and ask for the vulnerabilities to be fixed ASAP”, the post said.
+Pierluigi Paganini
+(Security Affairs – VPN, hacking)

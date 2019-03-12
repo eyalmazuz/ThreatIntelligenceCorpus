@@ -1,0 +1,52 @@
+
+					CryptoWall 3.0 Still Actively Being Spread as a New Campaign is Discovered in-the-wild					
+Just a reminder to all — CryptoWall 3.0 is still very much active, with phish tactics that I think are less effective, but who knows; maybe they’re seeing great success with this method.  Personally, if successful compromise requires additional steps/execution of more than one file that’s distributed as an e-mail attachment, I would imagine that the success rate would decline.  But who knows; perhaps the opening of the attached, compressed HTML file resulting in no nefarious activity initially is being used as a method of gaining trust of the targeted user…
+The New Campaign Relies on Phishing
+A new campaign spreading CryptoWall 3.0 has been observed in-the-wild, and reported to the administrator of http://malware-traffic-analysis.net who shared several screenshots as well as network traffic logs captured upon execution of the malicious binary.
+This campaign is a bit different than others, as it involves two (2) stages of user intervention; the user must execute the initial file attached to the e-mail within a ZIP archive, but then must execute the additional file–a binary file masked as a SCR to appear to be a legitimate Adobe Reader PDF document–which contains the CryptoWall 3.0 payload.
+The phishing e-mails are being sent claiming  to contain resumes.  An example phish shared on malware-traffic-analysis is below:
+
+The e-mails appear to be sourced from Yahoo e-mail addresses; a large quantity of these phishing e-mails were logged by the reporting user as being sourced from different Yahoo addresses.  Headers observed within one of the e-mails reveal a sender e-mail address of:
+With a source IP address (X-Originating-IP) of 98.1136.216.211.  The attachment, in this case, was named:
+Containing a single HTML file named resume3606.html.  The HTML file is quite small, as its sole intention can be described best by the below screenshot of its source code:
+
+The HTML file contains an iframe that calls to what appears to be a compromised domain, now used as a C2 (command-and-control) server by the malware author.  The below URL called by the iframe has been filtered for user safety; this was still distributing the SCR file a few hours ago.
+Upon opening the HTML document, this iframe opens the above URL which then prompts the download of a SCR file containing the CryptoWall 3.0 payload, masked to appear to the victim as a legitimate Adobe PDF document.
+The attacker has modified the PE header of the file so that the SCR file’s icon is that of an Adobe Reader PDF document.
+The sample SCR file examined from the above URL was named my_resume_pdf_id_6721-3921-5311.scr
+Upon execution, this file launches the CryptoWall 3.0 payload that we all know and despise.
+We have already seen CryptoWall 3.0 and analyzed it plenty of times, but this was one of the few times I actually got the sample to run cleanly in a sandbox, so I added some analysis results below, primarily to share new(er) C2 servers, new gateways (if any) utilized, etc.
+Brief Analysis
+Static Analysis
+Dynamic Analysis
+DNS Requests
+ip-addr.es -> 188.165.164.184 // To get victim’s external IP
+pinoyjokes.org -> 174.37.160.8 // compromised site, C2 server
+gdsprint.com -> 194.28.86.134 // compromised site, C2 server
+HTTP Requests
+Performs various POST requests; one to ip-addr.es to obtain the victim’s external, public-facing IP address, and others to various C2 servers.  The structure of these POST requests are the same or very similar (i.e. different one-letter variable in request), but to different C2 servers:
+Etcetera…
+C2 Servers
+coppolarestaurant.com -> 64.136.20.51
+Payment Gateways
+Associated Registry Entries
+Creates Start Menu Entry (Example)
+Creates Files Inside User Directory (Example)
+Mutexes
+Associated Domains Used for Obtaining External, Public-Facing IP Address
+Spawned Processes; Process Tree
+C:\sample.exe
+C:\sample.exe
+C:\Windows\explorer.exe
+C:\Windows\System32\svchost.exe -k netsvcs
+C:\Windows\System32\vssadmin.exe vssadmin.exe Delete Shadows /All /Quiet
+C:\Windows\System32\bcdedit.exe bcdedit /set {default} recoveryenabled No
+C:\Windows\System32\bcdedit.exe bcdedit /set {default} bootstatuspolicy ignoreallfailures
+Virtual Machine / Analysis Evasion
+Searches for the following files within the local file system (assumed; these strings were found in memory):
+Treat this as a CryptoWall 3.0 refresher, and remember; keep your system updated, and don’t open e-mails, especially not e-mail attachments, from unknown senders.  Even if the e-mail appears to be from someone you know–even if the e-mail address displayed as the sender is that of someone you know–if something looks suspicious, it’s always best to trust your intuition.  Better safe than sorry.  Stay safe!
+VirusTotal: https://www.virustotal.com/en/file/0bc6001307c430587b469b819e5d82828eb0396c028a82dfa9debafe66311c62/analysis/1433456705/
+Malware Traffic Analysis: http://malware-traffic-analysis.net/2015/06/04/index.html
+About the Author Michael Fratello
+Edited by Pierluigi Paganini
+(Security Affairs – CryptoWall , malware)

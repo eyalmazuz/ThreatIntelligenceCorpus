@@ -1,0 +1,46 @@
+
+Saving Fiddler Sessions on Exit
+
+
+By Neelay Shah.
+
+If you are like me and love to use Fiddler frequently, it can be incredibly frustrating at times when you close Fiddler by mistake or in a hurry and all your work is lost since Fiddler does not prompt (or autosave) you to save the sessions before closing. Now the great thing about Fiddler is that it is extremely extensible and so I customized the existing Fiddler rules so that the user is prompted to save the session when Fiddler is closed.
+
+Before we get into the details of the customized rule let’s spend a few minutes understanding how Fiddler’s “Load Archive” and “Save” features work – 
+
+Fiddler does not have an “auto save” feature and as such if you do not explicitly save the session(s) then your session(s) are lost as soon as Fiddler is closed.
+The “Save” functionality saves the captured sessions as a snapshot in time. So, if you explicitly save a Fiddler session, continue browsing the web application (being proxy'ed through Fiddler) and then exit Fiddler (without saving) all the new sessions that were captured after the previous “Save” operation are lost.
+The “Load Archive” functionality loads and appends the user selected session archive to the already open and existing capture.  Now if the “Save” operation is invoked then the current capture plus the existing session archive (that was loaded) is saved as a new session archive.
+
+
+Now let’s look at the rule modifications that will cause Fiddler to allow the user to save sessions when Fiddler is closed. I have tested this with Fiddler v2.3.9.3. I recommend installing the Syntax Highlighting extension - http://fiddler2.com/redir/?id=SYNTAXVIEWINSTALL before attempting to modify the FiddlerScript Rules. Once you install the Syntax Highlighting extension, launch Fiddler and you should see a new tab “FiddlerScript” (between the Composer and the Filters tab). Click the “FiddlerScript” tab and that should open the Rules file. Then you can add the following code appropriately and click “Save Script”. 
+
+You will most likely already have an OnShutdown() function in which case simply add the following code to the beginning of the OnShutdown() function
+   
+ static function OnShutdown() {  
+      // MessageBox.Show("Fiddler has shutdown");  
+      var exitPromptResult: DialogResult;  
+             
+      exitPromptResult = MessageBox.Show("Do you want to save this session before Fiddler exits?", "Save on Exit", MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button1);  
+             
+      if (DialogResult.Yes != exitPromptResult)  
+      {  
+           //The user does not want to save the capture so proceed to exit  
+           return;  
+      }  
+             
+      //The user selected Yes - Allow the user to save the capture  
+      FiddlerApplication.UI.actSelectAll();  
+      FiddlerApplication.UI.actSaveSessionsToZip();  
+ }  
+   
+
+
+Once you add this code and save the Script Rules, the rule will be in effect and Fiddler will start using the same. Now when you close Fiddler, it should prompt you to save the capture. The behavior of this “Save on Exit” prompt is as follows -
+
+If you select “No” then the capture will not be saved and Fiddler will exit
+If you select “Yes” however select “Cancel” on the ensuing “Save Session Archive to…” dialog then the capture will not be saved and Fiddler will exit
+If you select “Yes” and enter an appropriate archive name and select “Save” on the ensuing “Save Session Archive to…” dialog then the capture will be saved to the appropriate archive.
+
+
+

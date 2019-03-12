@@ -1,0 +1,34 @@
+Writing a libemu/Unicorn Compatability Layer
+In this post we are going to take a quick look at what it takes to write a libemu compatibility layer for the Unicorn engine. In the course of this work, we will also import the libemu Win32 environment to run under Unicorn.
+For a bit of background, libemu is a lightweight x86 emulator written in C by Paul Baecher and Markus Koetter. It was released in 2007 and includes a built-in Win32 environment that allows shellcodes to resolve API at runtime. The library also provides end users with a convenient way to receive callbacks when API functions are hit. The original project supported 5 Windows dlls, 51 hooks and 234 opcodes all wrapped in a tight 1mb package. Unfortunately it is no longer being updated.
+In late 2015, we saw the Unicorn engine project released by Nguyen Anh Quynh and Dang Hoang Vu. This project takes the processor emulators from QEMU and wraps them into an easy to use library. Unicorn, however, does not provide a Win32 layer.
+As an experiment, we were curious to see what it would take to bring the libemu Win32 environment into Unicorn. This task actually turned out to be quite simple since it was nicely self contained. In the process of exploring this it also made sense to write a basic shim layer to support the libemu API and translate its inner workings over to Unicorn.
+Lets start with the common libemu API:
+
+The API is actually very similar to Unicorn:
+
+The major differences are that Unicorn does everything through an opaque uc_engine* handle, while libemu uses a series of structs such as emu, emu_cpu, and emu_memory:
+
+In general, the emu and emu_memory structures are passed directly as arguments to API wrappers such as emu_cpu_get, emu_memory_get and the emu_memory_read/write functions. There is one common case of direct member access to the emu_cpu structure that requires some special attention. This structure gives the user direct read/write access to the emulator’s virtual processor and is commonly utilized by user code. Examples to support include:
+
+The next task was to see if we could mimic the direct access to the emu_cpu elements as if they were static struct fields. Here we enter the world of C++ operator overloading.
+
+
+
+With these tasks complete, porting existing code from libemu over to Unicorn should be a pretty straightforward task.
+In Figure 1 we see an initial test, we put together that includes the Win32 environment, shim layer, several API hooks and a hard coded payload.
+
+Figure 1: Initial test of the libemu Win32 environment and hooks running under Unicorn
+With this working, the next stage was to try it out against a larger code base. Here we imported the userhooks.cpp from scdbg, an extension of the libemu sctest that includes some 250 API hooks. As it turns out, very few changes were required to get it working.
+In Figure 2, we can see the results of testing it against a fairly complex shellcode that:
+Note that while this shellcode would normally do process injection, scdbg handles it all inline for simplified analysis.
+
+Figure 2: Complex shellcode running with hooks imported from scdbg
+Another large feature to test was the scdbg debug shell. When testing software in an emulated environment, having interactive debug tools available is extremely handy.
+Figure 3 shows an example of setting a breakpoint, single stepping, and examining memory of code running in the emulator.
+
+Figure 3: Imported scdbg debug shell running with Unicorn Engine and libemu shim layer
+In this article we took a quick look at the differences between the libemu and Unicorn emulators API. This allowed us to create a shim layer to import legacy libemu code and use it with Unicorn largely unchanged.
+Once the shim layer was in place, we next imported the libemu Win32 Environment so we could run it under Unicorn.
+As a final test we ported several large portions of the scdbg project, which was originally written to run under libemu. Here our previous work allowed for the importation of scdbg's 250+ API hooks and debug shell to run under Unicorn with only minimal changes.
+Overall the entire process went quite smoothly and should provide benefits for developers of libemu and/or Unicorn. If you would like to experiment for yourself you can download a copy of our test project here.

@@ -1,0 +1,142 @@
+
+Writing Slack Space on Windows
+
+
+By Diego Urquiza.
+
+
+I’m a Foundstone intern in NYC office and for a project I decided to write a tool to remove file slack space. In this post I’ll introduce the methods I took in writing the tool then provide the tool itself. Hope you enjoy it!
+About
+
+File Slack Space is the amount of unused space at the end of a file’s last cluster. File systems organize file data through an allocation unit called clusters. Clusters are composed in sequence sectors on a disk that contains a set amount of bytes. A disk that has 512 byte sectors and 8 sectors per cluster would have a total of 4 kilobytes (4096 bytes). Since the file system organizes files into clusters, there ends up being unused space at the end of clusters. From a security standpoint, unused space can contain previous data from a deleted file that can contain valuable information.
+
+When a user chooses to delete a file, the file system will delete the pointer to the location of the file data on disk. This enables the operating system to read the data space as available space so when a new file is created, the file system will write over the old data that the user thought he or she deleted. My tool aims to write over the file slack space multiple times with meaningless data so that any prior data cannot be retrieved. 
+Download
+
+Download my tool here:
+https://github.com/OpenSecurityResearch/slacker
+Approaching The Problem
+
+When I began this project I saw two possible approaches: 
+
+Find the location of every file’s last cluster, move the pointer to the end of the file data, and write zero's until the end of the cluster
+Resize the file, read/write the data, then trim it back down
+
+Moving the File Pointer
+
+This seemed like a feasible approach since the unused files were inconsequential. However, after tackling it for about a week, I found out everything can and will go wrong. Depending on what type of file system was in use, each disk’s data would be organized differently. Moreover, if the file data was too small it would go into the master file table (in the case of NTFS file system) and if the data was larger than a cluster, it would be organized non-contiguously on the logical disk. Using the Windows API functions can become frustrating to use since you need to map the file virtual cluster to the logical cluster while finding the volume offset. Therefore, writing meaningless data to the disc can become tragic if the byte offset from the beginning of disc is wrong ( the next cluster over can be a system file ).
+
+Here’s a code snip for this approach:
+ /**********Find the last Cluster ***********************************/
+DWORD error = ERROR_MORE_DATA;
+
+returns = DeviceIoControl(hfile.hanFile,
+                                                  FSCTL_GET_RETRIEVAL_POINTERS,
+                                                  &startVcn,
+                                                  sizeof(startVcn),
+                                                  &output,
+                                                  sizeof(output),
+                                                  &bytesReturned,
+                                                  NULL);                
+                
+DWORD lastExtentN = retrievalBuffer->ExtentCount - 1;
+LONGLONG lastExtent = retrievalBuffer->Extents[lastExtentN].Lcn.QuadPart;
+LONGLONG lengthOfExtent = retrievalBuffer->Extents[lastExtentN].NextVcn.QuadPart - retrievalBuffer->Extents[lastExtentN - 1].NextVcn.QuadPart;
+
+
+while (error == ERROR_MORE_DATA){
+
+                error = GetLastError();
+                                
+                switch (error){
+
+                case ERROR_HANDLE_EOF:
+                                //file sizes 0-1kb will return EOF error 
+                                cout << "ERROR_HANDLE_EOF" << endl;
+                                returns = true;
+                                break;
+
+                case ERROR_MORE_DATA:
+                                cout << "ERROR_MORE_DATA" << endl;
+                                startVcn.StartingVcn = retrievalBuffer->Extents[0].NextVcn;
+
+                case NO_ERROR:
+                                cout << "NO_ERROR, here is some info: " << endl;
+                                cout << "This is the lcnextent : " << retrievalBuffer->Extents[lastExtentN].Lcn.QuadPart << endl;
+                                cout << "This is the nextvnc: " << retrievalBuffer->Extents[lastExtentN].NextVcn.QuadPart << endl;
+                                cout << "This is the Extent count: " << retrievalBuffer->ExtentCount << endl;
+                                cout << "This is the Starting Vnc: " << retrievalBuffer->StartingVcn.QuadPart << endl;
+                                cout << "The length of the cluster is: " << lengthOfExtent << endl;
+                                cout << "The last cluster is: " << lastExtent + lengthOfExtent - 1 << endl << endl << endl;
+
+                                returns = true;
+                                break;
+
+                default:
+                                cout << "Error in the code or input error" << endl;
+                                break;
+                }
+}
+
+
+
+
+
+Resizing Tricks
+
+The second approach was to resize the file and trim it back down. Resizing the file was the right (safe) direction to go. You can easily iterate through all the files on a volume and set file handlers for each one. Then, with each file handle you can calculate the file slack space based on the system information (bytes per sector and sectors per cluster). Finally, move the file pointer to the beginning of the slack space, save the pointer location, write zero’s to the end of the cluster, trim the file back down to the saved pointer location, and do it again. It is important to write meaningless data multiple times because even after one write over, the old data can still be retrieved. This method unfortunately cannot be used on files in use.
+
+
+Here’s a code snip from this approach:
+ /******************* Loop to write random 0s and 1s to the end of the file(4 times) **********/
+for( int a = 2; a<6;a++){
+
+                //Alternate 0s and 1s
+                int b,c;
+                b = 2;
+                c = a%b;
+
+                char * wfileBuff = new char[info.slackSpace];
+                memset (wfileBuff,c,info.slackSpace);
+                                
+
+                returnz = SetFilePointer(info.hanFile, info.fileSize.QuadPart,NULL,FILE_BEGIN);
+                if(returnz ==0){
+                                cout<<"Error with SetFilePointer"<<endl;
+                                return 0;
+                }
+                
+                /**** Lock file, Write data, Unlock file *******/
+                if(LockFile(info.hanFile, returnz, 0, info.slackSpace, 0) != 0)
+
+                returnz =WriteFile(info.hanFile, wfileBuff, info.slackSpace, &dwBytesWritten, NULL);
+                if(returnz ==0){
+                                cout<<"There is an error with WriteFile"<<endl;
+                                cout<<"Error: "<<GetLastError()<<endl;
+                                return 0;
+                }
+                if(UnlockFile(info.hanFile, returnz, 0, info.slackSpace, 0) != 0);
+
+                /***********************************************/
+
+                //cout<<dwBytesWritten<<endl<<endl;
+                system("pause"); 
+
+
+                //Cut out the extra data written from the file
+                if(!SetEndOfFile(info.tempHan)){
+                                cout<<"Error seting the end of the file"<<endl;
+                                return 0;
+                }
+                
+
+
+
+
+
+
+
+Even though the second approach has its drawbacks, it is safer and can work on different file systems. The focus for the next sequence will be optimization of speed and the addition of extra features. Some of the features would include finding the file offset of a file from the disc(can be useful for finding bad sectors), displaying volume information and file information such as size available. Working on this project was an interesting experience that has helped me grow from a computer forensic perspective and I can’t wait to see what I can do next.
+
+
+

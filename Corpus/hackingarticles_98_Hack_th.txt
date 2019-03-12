@@ -1,0 +1,48 @@
+
+Hack the NullByte VM (CTF Challenge)
+
+This is our article on root2boot penetration testing challenge. We will walk through an exploitable framework of NullByte VM. Breaking into it isn’t too difficult. There isn’t any advanced exploitation or reverse engineering. The level is considered beginner-intermediate. We have to find “Proof.txt” and follow the further steps. You can download it from here.
+Penetrating Methodology:
+Let’s Begin the Game!!!
+ Start off by finding your target by running netdiscover on the terminal of attacking machine.
+
+Our target is 192.168.1.142. And now that we know our target, we will scan it using nmap.
+
+Scanning the IP, we will know that the port number 80, 111, 777, 44607 are open. Please observe here that the service of SSH is forwarded from 22 to 777 port. This port may come in handy in the future to gain access.
+Now we will try and open the targeted IP in the browser.
+
+ 
+There is an image and a quote on the page. You will find nothing on the page source or otherwise. But there might be something hidden in the image and so, we will read the image using EXIF tool, therefore, download this image.
+
+There you will find a comment kzMb5nVYJw. Now this might be a directory and there is no harm in opening it the browser so let’s do that
+
+Our assumption was right as it opened in the browser. But it is asking for a key. And we have no idea what the key is so, therefore, we will use the dictionary attack to find the key using BurpSuite and rockyou.txt. Through the dictionary attack, you will find the key i.e. elite.
+
+Through the dictionary attack, you will find the key i.e. elite. Enter the key where it was asking and the new web page will get opened which will be asking for username, BUT this time also we do not know the username. So, we will find it in its Database using sqlmap. And for this type:
+
+It will give you the name of the database i.e. seth.  
+
+Now further we will find columns and tables and for that type:
+Once command executes, it will show you the table name along with column and password as shown:
+ 
+As a result, we have username and password but the password is in MD5 so we need to crack it and there are many online tools to do so. Therefore to crack it go to md5coder.org and give the md5 value there and click on ok and it will show you the original word i.e. omega
+
+Now we will SSH to log in and for that type:
+And then give omega as the password. And you are logged in. As you are now logged in type the following command to see the list of directories:
+Then by using the following command, you can enumerate all binaries having SUID permission.
+We found that SUID bit enabled for /var/www/backup/prowatch which was quite attention-grabbing. So we decide to explore it for further steps.
+
+So when I run the above command, it looks like the procwatch file is trying to run ps and this is a genuine file inside /bin for Process status. The most important things which could be considered here that the author has set SUID bit ON for procwatch and might be it could be any small program file which is calling system function such as ps.
+Taking its advantage, we can escalate the root privilege and hit the goal of this VM. To achieve this we will have to manipulate the environment PATH variable. If we can get procwatch to run sh instead of ps, it should give us root shell. Following techniques is called Linux Privilege escalation using environment $PATH variable and their so many methods to manipulate environment variable.
+
+Due to ‘.’ in $PATH means that the user is able to execute binaries/scripts from the current directory. With us execution of above commands we will enter root and then further type ;
+
+
+With us execution of above commands we will enter root and then further type ;
+
+vi ps
+Once vi editors get open type /bin/sh and save the file.
+
+With us execution of above commands we will enter root and then further type ;
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

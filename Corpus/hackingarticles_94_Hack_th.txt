@@ -1,0 +1,47 @@
+
+Hack the Kioptrix 5 (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Kioptrix: 2014 (#5) and it is another boot2root challenge provided for practice and its security level is for the beginners. So let’s try to break through it. But before please note that you can download it from here https://www.vulnhub.com/entry/kioptrix-2014-5,62/
+Penetrating Methodologies
+Note from Author: Before we power on the VM , it is suggested to remove the network card and re-add it. For some oddball reason it doesn’t get its IP . So just add the VM to your virtualization software, remove and then add a network card.
+Lets Breach !
+Start off with finding the target using :
+netdiscover
+
+Our target is 192.168.1.159 Now scan the target with nmap:
+
+With the nmap scan result, you can see that HTTP services are running on two ports i.e. ports 80, 8080
+As we have HTTP service running we opened it in our browser with the IP http://192.168.1.159 . There is nothing significant on the webpage , except it says “it works!”. I tried searching inside the source code, hoping to find something useful, however got nothing informative.
+
+Then I remembered that HTTP service is listening on 8080 port too. So I opened the IP on the port 8080.
+
+But the access was forbidden; however the message didn’t seem to me as an error message. It seems more to be a message with the deliberate and intentional made-up response. I tried every method to bypass this forbidden access but nothing worked . Hence I decided to use User Agent switcher to check this page in other popular browsers like Internet Explorer.
+Download the User Agent Switcher plugin in the Mozilla and perform the following
+Navigate to Tools menu from the menu bar. A drop down menu will appear. From this menu select Default User Agent. Another menu will open and from this select Internet Explorer, from this another menu will open and from it select Internet Explorer 6.
+
+And fortunately we have the access to the page. And found file called phptax/
+
+Now open this link and you will have the following page:
+
+The page was of phptax. Phptax is a kind of CMS for linux OS. Its aim is to develop a tax program which uses database-less methodology that fits in one line text files. Using the phptax does not requires SQL databases that are generally used in this program. And to our luck, there exists an exploit of phptax in metsapsloit, for that simply type search phptax in metasploit MSF Console.
+To use this exploit simply type the following in metasploit:
+ Great!! We got command shell session1 of the victim’s machine.
+
+There is an exploit for this version of kernel in exploit-db.com. Alternatively, we can also search with the help of searchsploit FreeBSD 9.0 command in the Kali Linux as shown below.
+
+Copy the exploit from its default location to the Desktop:
+
+Here, we used fetch command because wget command wasn’t working. So, using fetch is a substitute for wget command and so we are directly using it from the browser. We compile the file, save it as kernel and provide executable permissions.
+Then type the following command to execute the exploit :
+./kernel
+ As the exploit executes you will reach the root. And to confirm this type :
+id 
+ 
+ Then moving forward go to the root folder by typing :
+cd /root
+Let’s see what directories it has and for that type :
+ls 
+Here we have a congrats.txt named text file and I am hoping this will be our flag so to read it type :
+cat congrats.txt
+
+Author: Ankur is Information Security consultant and researcher in the field of Network & WebApp Penetration Testing

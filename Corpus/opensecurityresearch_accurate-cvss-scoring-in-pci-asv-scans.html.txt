@@ -1,0 +1,285 @@
+
+Accurate CVSS Scoring in PCI ASV Scans
+
+
+By Vijay Agarwal.
+
+Payment Card Industry (PCI) vulnerability scanning involves having an Approved Scanning Vendor (ASV) perform a vulnerability scan as per PCI DSS requirement 11.2  on all IP addresses/devices etc. which store, process or transmit credit card data. The scan aims to identify both network and web application vulnerabilities. The PCI guidelines detail the process in which these scans should be conducted so we won’t go into detail of that. Instead, we’ll discuss how risk is analyzed and rated once the vulnerability is identified.
+Risk Ratings
+In PCI ASV reports, risks are calculated based on the Common Vulnerability Scoring System (CVSS2) which is the de-facto scoring standard adopted and well accepted throughout the security industry for calculating the security risk.
+
+The basic rule of thumb for calculating the risk is If CVSS2 score is > = 4.0 then that particular vulnerability will result in non-compliance to PCI and the affected device/IP will be marked as FAILED. CVSS2 scores <=3.9 will result in vulnerability as compliant to PCI.
+
+We have mapped the various risk levels and the CVSS2 scores to help you understand how vulnerabilities are rated.
+
+
+
+CVSS2 Score
+Risk
+Compliance Status
+
+
+<4.0
+LOW
+PASS
+
+
+>=4.0 and <=6.9
+MEDIUM
+FAIL
+
+
+>=7.0 and <=10
+HIGH
+FAIL
+
+
+
+References: 
+
+http://www.first.org/cvss/cvss-guide
+http://nvd.nist.gov/cvss.cfm?calculator&version=2 
+https://www.pcisecuritystandards.org/documents/ASV_Program_Guide_v2.pdf 
+
+
+Now it should be clear from the above table how the vulnerabilities are classified based on CVSS2 score as per PCI ASV Council, but there is lot of calculation, analysis and verification needed to be done, there are various scenarios/cases where we efficiently need to calculate the CVSS2 score based on the scenario. 
+
+In the next few sections let’s analyze few scenarios I have come across when conducting the PCI ASV scans.
+
+Case 1 - Self-Signed Certificate
+Let’s calculate the CVSS2 score for a vulnerability where scanner has flagged an application using Self-Signed Certificate as medium risk issue, Following are the valid CVSS2 parameter to be used and reflect the score for it and based on which risk will be calculated and PCI compliance status will be analyzed.
+Exploitability Metrics
+
+
+Metric
+Value
+Justification
+
+
+Access Vector
+Adjacent Network
+The system can be accessed from any remote network by any system
+
+
+Access Complexity
+Medium
+Requires little skill or additional information gathering
+
+
+Authentication
+None
+No authentication is required to exploit this flaw or get access to the authentication environment
+
+
+Impact Metrics
+
+
+Metric
+Value
+Justification
+
+
+Confidentiality Impact
+Partial
+There is considerable informational disclosure but attacker has no control
+
+
+Integrity Impact
+Partial
+User can alter the traffic or once exploited
+
+
+Availability Impact
+None
+No impact to the availability of the system
+
+
+
+
+
+
+Risk will be rated as Medium and this vulnerability will result in PCI Compliance status as FAIL
+Case 2 - Special Case Self-Signed Certificate
+Now let’s assume if there is slight change in the environment of the above same vulnerability and following information was provided by the PCI Scan client. The Affected system has restricted access and not available publicly, access is controlled using IPS/IDS and user IPs is whitelisted. Following will be the change in input parameter while calculating the CVSS2 score under above specified condition.
+Exploitability Metrics
+
+
+Metric
+Value
+Justification
+
+
+Access Vector
+Adjacent Network
+Requires local network access - which accounts for the white-listed IP address
+
+
+Access Complexity
+High
+Specialized access conditions exist
+
+
+Authentication
+None
+No authentication is required to exploit this flaw or get access to the authentication environment
+
+
+Impact Metrics
+
+
+Metric
+Value
+Justification
+
+
+Confidentiality Impact
+Partial
+There is considerable informational disclosure but attacker has no control
+
+
+Integrity Impact
+Partial
+User can alter the traffic or once exploited
+
+
+Availability Impact
+None
+No impact to the availability of the system
+
+
+
+
+
+
+Risk will be rated as Low and this vulnerability will result in PCI Compliance status as PASS. So a slight change in the environment and accessibility has changed the risk for the issue.
+Case 3 - Multiple Server Vulnerabilities
+
+Let’s calculate the CVSS2 score for a vulnerability where scanner has flagged a server affected by multiple vulnerabilities which is a High risk issue, Following are the valid CVSS2 parameter to be used and reflect the score for it   and based on which risk will be calculated and PCI compliance status will be analyzed.
+
+Exploitability Metrics
+
+
+Metric
+Value
+Justification
+
+
+Access Vector
+Network
+The system can be accessed from any remote network
+
+
+Access Complexity
+Medium
+Requires little skill and information gathering
+
+
+Authentication
+None
+No authentication is required to exploit this flaw or get access to the authentication environment
+
+
+Impact Metrics
+
+
+Metric
+Value
+Justification
+
+
+Confidentiality Impact
+Partial
+There is considerable informational disclosure but the attacker has no control
+
+
+Integrity Impact
+Partial
+User can alter the traffic or once exploited
+
+
+Availability Impact
+Partial
+Reduced performance or interruptions in resource availability
+
+
+
+
+
+
+Risk will be rated as High and this vulnerability will result in PCI Compliance status as FAIL
+Case 4 - Special Case Multiple Server Vulnerabilities
+Now let’s assume if there is slight change in the environment of the above same vulnerability and following information was provided by the PCI Scan client. The Affected system has restricted access and not available publicly, access is controlled using IPS/IDS and user IPs is whitelisted. We'll change the following while calculating the CVSS2 score under above specified condition.
+Exploitability Metrics
+
+
+Metric
+Value
+Justification
+
+
+Access Vector
+Network
+Requires network access - which accounts for the white-listed IP address 
+
+
+Access Complexity
+High
+Specialized access conditions exist
+
+
+Authentication
+None
+Authentication may not be required.
+
+
+Impact Metrics
+
+
+Metric
+Value
+Justification
+
+
+Confidentiality Impact
+Partial
+There is considerable informational disclosure but attacker has no control
+
+
+Integrity Impact
+Partial
+Modification of some system files or information is possible
+
+
+Availability Impact
+Partial
+Reduced performance or interruptions in resource availability
+
+
+
+
+
+
+Risk will be rated as a Medium based on the new CVSS2 score but this vulnerability will still result in PCI Compliant status as FAIL.
+Case 5 - Multiple Server Vulnerabilities in Unused Functionality
+Now let’s assume if there is more information about the above same vulnerability provided to us by the client saying:
+The affected server modules on which the vulnerabilities have been reported are not being used by the application or the server and the system is not publicly accessible
+
+This is a special case where client confirms that affected server module are not being used, this indicates that the vulnerability cannot be exploited since the modules have not been used, so the vulnerability risk  can be moved to low from medium  with below specified note with default CVSS2 score.
+Note: This issue is moved to low since the affected vulnerable modules of the server are not being used and it is advised that reported  un-used module should be removed from the server as incase if they are  implemented or used  in future and result in high risk vulnerability.
+
+Risk can now be rated as Low based on the note and information provided by client and this vulnerability will result in PCI Compliant status as PASS.
+Additional Tips and Suggestions
+
+Most of the vulnerability scanning tools provide CVSS2 score with vulnerabilities. Sometimes these scores may be wrong, so it’s best to review and validate them before finalizing the risk.
+The CVSS2 score, if not present for vulnerability, should be calculated manually using the CVSS2 calculator and appropriate risk should be finalized.
+The right parameters should be used while calculating the risk, wrong parameters may result in wrong score and wrong compliance status.
+To reduce the risk if the vendor has a compensatory control for vulnerability, a new CVSS2 score should be calculated considering the compensatory control.
+As per PCI ASV, DoS vulnerabilities will be rated as per below rule:
+In case of denial-of-service vulnerabilities, where the vulnerability has both a CVSS2 Confidentiality Impact=none and a CVSS2 Integrity Impact=none, the vulnerability must be marked as pass and must be rated as low risk.
+
+
+
+
+Hope this helps!
+
+

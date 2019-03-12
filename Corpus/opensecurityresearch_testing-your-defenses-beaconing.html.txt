@@ -1,0 +1,248 @@
+
+Testing Your Defenses - Beaconing
+
+
+By Tony Lee.
+
+You have invested time, effort, and money in defenses.  But, how do you know they are working?  Unless you are willing to intentionally get owned or you want to introduce a piece of malware into your environment, you need safe and effective ways to test your visibility.  This article will discuss beaconing — what it is, how it works, and how you might be able to detect it.  As a bonus, at the end of the article, we will provide some benign sample source code and programs that you can use to test your beacon detection capabilities.
+What is a beacon?
+A beacon is traffic leaving the inside of a network at regular intervals—it is also called a heartbeat.  Beacons can be used for a variety of purposes such as obtaining new orders from a command and control (C&C) server as well as to download updates or other tools.  Functionality depends on the goal of the attacker and the stage in the attack.  In the example traffic image below, the beacons are in red and normal traffic is in blue.  Notice that the beacons occur every two hours all day and are harder to find when traffic volume is higher (between the hours of 5AM and 8PM).
+
+
+How does a beacon work?
+
+A beacon can use any protocol; however, the most prevalent would probably be HTTP or HTTPS.  This is most common because egress rules typically allow these protocols out of the network.  After all, every employee needs to be able to access their Facebook page and YouTube from their work PC.  :)  Increasingly, we are seeing attackers using encryption for their C&C and data transfers—thus the use of HTTPS is on the rise.
+
+Beacons can attempt to communicate with a single URL or multiple URLs.  For more complex stagers, multiple URLs are used which makes it more difficult to detect this behavior.  Parameters can be used to trigger different downloads or send different command and control signals.  We have even seen a bot beacon out to a C&C server using emoticons to communicate its status.
+How might we detect a beacon?
+
+There is a good saying, that “In order to detect abnormal, you must first know what normal looks like.”  This is very true in the case of beaconing.  If you know that your business hours are from 5am-8pm and you have something calling out of the network during off-hours (as seen in image above)—this could indicate an issue worth investigating.  To obtain this baseline of normal though you will probably utilize a security product of some sort…  but what are your options?
+
+There are multiple products that may help detect a beacon.  While it can be detected at the host level, you probably have a better chance detecting it at the network level.  Attackers can easily hide maliciousness on the host via rootkits, but it is much harder to hide from all of the network-based security devices.  Additionally, if you have a couple of choke points in your network—it provides a prime opportunity to gain some insight into your network traffic.
+
+These devices include, but are not limited to:
+
+
+Firewalls
+Web Proxies
+IDS
+Malware/anomalous traffic detection appliances
+Security Information and Event Management (SIEM) solutions
+
+Firewalls
+Firewalls can contain vital information in the logs such as the presence of network traffic and the action taken upon that traffic.  If the beacon is trying to callout using a port/protocol that is disallowed, it may be easy to detect this constant callout by looking for repeat blocked traffic.  Keep in mind that all blocked traffic is not necessarily a beacon and it most often needs to be investigated in order to determine legitimacy.  Unfortunately, the larger the network, the more difficult it can be to track down a host and determine the functionality of the host.  Knowing the functionality can be instrumental in determining if the traffic is normal or suspicious.
+Web Proxies
+Web proxies are useful if the beacon is occurring over a supported web protocol.  If the beacon is using HTTPS and the traffic is properly intercepted and decrypted by the web proxy, it can provide even more insight as to what is happening.  Additionally, the web proxy may be able to provide the user’s name/token that the beacon is utilizing in order to get out of the network.  This information can be used to aid in the investigation by providing an opportunity to interview the potential victim.
+Intrusion Detection Systems
+An intrusion detection system (IDS) can potentially detect this activity if a rule is triggered.  This is useful as a layered defense, but the traffic will usually have to be something that is previously known and understood in order for a rule to hit.  If the IDS has additional intelligence such as traffic thresholds or trending, then there is a chance it could be detected from this capability.
+Malware/Anomalous Traffic Detection
+Malware detection appliances go a step beyond traditional IDS by integrating multiple detection mechanisms into one device.  McAfee’s Network Threat Response (NTR), for example, uses the following detection mechanisms:
+
+Antivirus definitions
+Network signatures
+File Reputation (McAfee’s Artemis)
+IP reputation (McAfee’s Trusted Source)
+Static file analysis
+
+Disclaimer:  I work for Foundstone, who is owned by McAfee which sells NTR.   However, I am using NTR as an example because I have more experience and familiarity with NTR than I do other tools.
+SIEM
+Security Information and Event Management solutions can also help detect the presence of a beacon, but it is usually using logs from one or more of the devices mentioned above.  The advantage here is greater visibility by using multiple different types of logs—from hosts to network gear.  Additionally, some advanced SIEMs can do trending to detect and understand what is normal and then set thresholds to alert on unusual traffic.
+Sample Beacon Code
+
+We have scratched out some sample code for you below.  Our example code could use a variety of sites and behavior in order to simulate an attacker; however, we will keep things relatively simple and flexible to allow the tester to define two properties:
+
+URL
+Frequency
+
+
+A more comprehensive test would potentially involve changing the URL and/or the parameters—but we will leave that as an exercise for the reader.  Feel free to use the examples below as a code base though.
+
+We have the code up on the Open Security Research GitHub (its also provided below for completeness) and can be cloned by:
+ root@bt:~# git clone https://github.com/OpenSecurityResearch/beacon_simulator.git
+
+
+
+Our example code below uses the registration site for ccTLD Tokelau dot.tk domains (this site does not host malware).  Tokelau is a territory of New Zealand that is 5 sq. miles of atolls in the South Pacific with a population of roughly 1,400 people, but they are the fastest growing ccTLD because domain registration is free and does not require a credit card.  Even with their anti-abuse efforts, it is still a popular landing or redirector for malware.
+
+Because of that, the domain also happens to trigger in the emerging threats snort rule:
+ alert tcp $HOME_NET any -> $EXTERNAL_NET $HTTP_PORTS (msg:"ET CURRENT_EVENTS HTTP Request to a *.tk domain"; flow:to_server,established; content:"|0d 0a|Host|3a| "; content:".tk|0D 0A|"; within:50; content:!".tcl.tk|0d 0a|"; classtype:bad-unknown; sid:2012810; rev:6;)
+
+
+
+We are explaining this because if you are running the emerging threats rule, you may see an alert—but feel free to use any site for your beacons.
+One-Liner Beacon
+So, any *nix hacker out there is saying, we can do this with one line.  Yes you can.  The line below begins an infinite loop with while true.  It then uses wget to call out and grab content from a site (redirecting the output to /dev/null).  We then sleep for 10 seconds and do it again.  This will continue to repeat until the user kills the infinite loop with CTRL+C.  
+ root@bt:~/beacon_simulator# while true; do wget -O /dev/null http://www.dot.tk/en/index.html?lang=en; sleep 10; done;
+
+--2012-11-09 11:32:44--  http://www.dot.tk/en/index.html?lang=en
+Resolving www.dot.tk... 91.215.158.51
+Connecting to www.dot.tk|91.215.158.51|:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 11393 (11K) [text/html]
+Saving to: `/dev/null'
+
+100%[=============================================================================================================================>] 11,393      --.-K/s   in 0.02s   
+
+2012-11-09 11:32:45 (573 KB/s) - `/dev/null' saved [11393/11393]
+
+--2012-11-09 11:32:55--  http://www.dot.tk/en/index.html?lang=en
+Resolving www.dot.tk... 91.215.158.51
+Connecting to www.dot.tk|91.215.158.51|:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 11393 (11K) [text/html]
+Saving to: `/dev/null'
+
+100%[=============================================================================================================================>] 11,393      --.-K/s   in 0.008s  
+
+2012-11-09 11:32:56 (1.36 MB/s) - `/dev/null' saved [11393/11393]
+
+[ CTRL + C ]
+
+
+
+
+This is handy because it does not require us to download a beaconing app and it can be remotely pushed to several boxes to generate even more traffic.  How about something more re-usable that we can pull off the shelf when needed?
+Bash script beacon
+If you are seeking reusability and want to extend functionality and complexity you can use the bash script provided below.  It does some error checking and provides the same functionality as the one-liner above.  It can also be extended to provide additional features such as altering the URL and parameters.
+Usage
+The script takes the URL and the frequency (how often to fetch the URL) in seconds, you can see some example usage by running it without any parameters:
+ root@bt:~/beacon_simulator# ./beacon.sh 
+This program will beacon out to a website on a user-defined schedule to simulate malware.  (Use ctrl+c to stop the beaconing)
+Email Tony.Lee-at-Foundstone.com for questions.
+
+Usage: ./beacon.sh <URL> <Frequency in seconds>
+Example: ./beacon.sh http://www.dot.tk/en/index.html?lang=en 60
+
+
+Example
+Simply launch the script and define the URL and the frequency:
+ root@bt:~/beacon_simulator# ./beacon.sh http://www.dot.tk/en/index.html?lang=en 10
+Getting the site http://www.dot.tk/en/index.html?lang=en
+
+--2012-11-09 12:34:50--  http://www.dot.tk/en/index.html?lang=en
+Resolving www.dot.tk... 91.215.158.51
+Connecting to www.dot.tk|91.215.158.51|:80... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 11393 (11K) [text/html]
+Saving to: `/dev/null'
+
+100%[=============================================================================================================================>] 11,393      --.-K/s   in 0s      
+
+2012-11-09 12:34:57 (324 MB/s) - `/dev/null' saved [11393/11393]
+
+
+
+Sleeping for 10 seconds
+--snip--
+
+
+
+Bash Beacon Source
+ #!/bin/bash
+# Beacon simulator
+# Tony.Lee-at-Foundstone.com
+# Input: URL and frequency to beacon (in seconds)
+# Output: Beaconing web requests to a URL at a user-defined interval
+# Requirements - curl or wget
+
+##### Function Usage #####
+# Prints usage statement
+##########################
+Usage()
+{
+echo "This program will beacon out to a website on a user-defined schedule to simulate malware.  (Use ctrl+c to stop the beaconing)
+Email Tony.Lee-at-Foundstone.com for questions.
+
+Usage: $0 <URL> <Frequency in seconds>
+Example: $0 http://www.dot.tk/en/index.html?lang=en 60"
+}
+
+###### Core Program ######
+# Parameter Detection
+# Beaconing
+##########################
+
+# Detect the absence of command line parameters. If the user did not specify two, print usage statement
+[[ $# -ne 2 ]] && { Usage; exit 0; }
+
+while true
+do
+        echo -e "Getting the site $1\n";                # user notification output
+        wget -O /dev/null $1;                           # wget the URL (to avoid files from building up output to /dev/null)
+echo -e "\n\nSleeping for $2 seconds\n\n";      # user notification output
+        sleep $2;                                       # Sleep
+done
+
+
+
+The previous two examples are useful for generating the beacon from within your network, however what if you want to track the attack back to the point of download?  For example, maybe an unsuspecting user downloaded a malicious binary that is beaconing out for instructions.
+C++ Beacon
+The following program was written in C++ on Linux and compiled with g++.  It does some simple error checking and then uses a string to generate the wget command and converts it to a char* to pass into system().  We realize that the program passes a command line parameter into wget.  Since this is designed to be run on the command line there is no additional risk due to a shell escape as long as the application is not run as root and does not have the SUID bit set.
+ // Simple Beacon Simulator
+// Input: URL and frequency to beacon (in seconds)
+// Output: Beaconing web requests to a URL at a user-defined interval
+// Requirements - curl or wget
+// For questions ask Tony.Lee-at-Foundstone.com
+
+#include <stdio.h>
+#include <unistd.h>
+#include <string>
+#include <iostream>
+#include <stdlib.h>
+
+using namespace std;
+
+
+int main(int argc, char *argv[])
+{
+        printf("This program will beacon out to a website on a user-defined schedule to simulate malware.  (Use ctrl+c to stop the beaconing)\n");
+        printf("Email Tony.Lee-at-Foundstone.com for questions.\n\n");
+
+        if ( argc != 3 )        // Detect command line arguments - 2 are needed for correct execution
+        {
+                printf( "Usage: %s <URL> <Frequency in seconds>\n", argv[0] );
+                printf( "Example: %s http://www.dot.tk/en/index.html?lang=en 60\n", argv[0] );
+                return 1;
+        }
+
+        unsigned int seconds = strtoul(argv[2],NULL,0); // sleep takes an unsigned int, must convert string input to unsigned long
+
+        std::string command;                    // initialize command
+        command = "wget -O /dev/null ";         // build the first part of the string
+        command += argv[1];                     // add the URL
+
+        const char * charcommand = command.c_str();     // convert string to char*
+
+        while(1)
+        {
+                printf("\nGetting the site %s\n", argv[1]);             // user notification output
+                system( charcommand );                                  // execute wget 
+                printf("\n\nSleeping for %u seconds\n\n", seconds);     // user notification output
+                sleep(seconds);                                         // sleep
+        }
+
+        return 0;
+}
+
+
+
+Compiling
+You can compile the binary statically or dynamically, depending on your needs. Here are the g++ commands for both. 
+Dynamically Compiled:
+ root@bt:~/beacon_simulator# g++ -o beacon beacon.cpp
+  root@bt:~/beacon_simulator# file beacon
+beacon: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, dynamically linked (uses shared libs), not stripped
+
+
+Statically Compiled:
+ root@bt:~/beacon_simulator# g++ -static -o beacon beacon.cpp 
+  root@bt:~/beacon_simulator# file beacon
+beacon: ELF 32-bit LSB executable, Intel 80386, version 1 (SYSV), for GNU/Linux 2.6.9, statically linked, not stripped
+
+
+Conclusion
+
+In order to know that your defenses are effective you need to test them.  If you don’t want to introduce evil to the network, it can be helpful to have a few benign files at your disposal.  We have hopefully provided a few useful example programs that can help you investigate the visibility that you have in detecting a beaconing application.  
+Do you have any tests that you use to ensure your defenses are effective? Let me know in the comments below!
+
+

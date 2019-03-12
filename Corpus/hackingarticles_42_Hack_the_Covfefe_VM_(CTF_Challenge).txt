@@ -1,0 +1,47 @@
+
+Hack the Covfefe VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as covfefe. The credit for making this vm machine goes to “Tim Kent” and it is another capture the flag challenge in which our goal is to find 3 flags to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.120 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap -sV 192.168.1.120
+
+Nmap scan shows us port port 31337 is running http, so we open the ip address on port 31337 in our browser.
+
+ 
+We don’t find anything on the web page. So we use dirb to find the directories for more information.
+dirb http://192.168.1.120:31337
+
+We open robots.txt and find a directory called /taxes.
+
+When we open /taxes directory we find our 1st flag.
+
+Now our dirb scan showed us a few directories. Inside the /.ssh directory we find ssh keys and authorized_keys.
+
+We download the private key and authorized_keys in our system for further enumeration.
+
+Now we open authorized keys to check the username for the private key. We find it to be Simon.
+
+Now we use the private key to connect to the VM through ssh.
+chmod 600 id_rsa
+ssh -i id_rsa simon@192.168.1.120
+
+When we try to enter it ask for passphrase of rsa key. So we use john the ripper to crack the password we use rockyou.txt to as our dictionary.
+ssh2john id_rsa > rsacrack
+zcat /usr/share/wordlists/rockyou.txt.gz | john –pipe –rules rsacrack
+
+We find that passphrase of the key is starwars. Now we use this passphrase along with the key to connect through ssh.
+
+Now going through the files, we search for the binaries with root permission.
+find / -perm -4000 2>/dev/null
+When we run the read_message it is a program that takes the user input and displays a message.
+
+Now when we enter the /root/ folder we find the source code of the read_message program. Inside the source code we find the second flag. 
+
+Reading through the source code we find that, when we enter a string it checks the first 5 char of the string with Simon. If it matches it runs a program /usr/local/sbin/message. Now the input it is allocated the size 20 bytes. So we overflow the stack entering more than 20 bytes of data. We use the first 5 char to be ‘Simon’ followed by 15 ‘A’ and then ‘/bin/sh’ at the 21st byte.
+As soon as we enter the string we spawn a shell as root now we can access flag.txt. when we open flag.txt we find our 3rd flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

@@ -1,0 +1,27 @@
+
+					Windows 8 and newer versions fail to properly implement ASLR					
+The researcher Will Dormann from the Carnegie-Mellon CERT has discovered the Address Space Layout Randomisation (ASLR) isn’t properly implemented in versions of Microsoft Windows 8 and newer.
+
+The Address Space Layout Randomization (ASLR Protection) is a security mechanism used by operating systems to randomize the memory addresses used by key areas of processes, it makes hard for attackers to find the memory location where to inject their malicious code.
+The Address Space Layout Randomisation is particularly effective against stack and heap overflows and is able to prevent arbitrary code execution triggered by any other buffer overflow vulnerability. The security measures are present in almost any modern operating system, including Windows, Linux, macOS, and Android.
+Applications running on Windows 8 and newer versions were allocated addresses with zero entropy, this means that it was possible to predict where the code is allocated in memory due to the failure of the randomisation. Windows 10 has the problem, too.
+The CERT/CC published a security advisory late last, Dormann found the ASLR issue while he was analyzing a recently fixed bug in Microsoft’s equation editor, tracked as CVE-2017-11882, that could be exploited by remote attackers to install a malware without user interaction.
+“Microsoft Windows 8 introduced a change in how system-wide mandatory ASLR is implemented. This change requires system-wide bottom-up ASLR to be enabled for mandatory ASLR to receive entropy. Tools that enable system-wide ASLR without also setting bottom-up ASLR will fail to properly randomise executables that do not opt in to ASLR.” states the security advisory.
+According to the CERT, the bug only affects applications using mandatory ASLR, while applications that used opt-in Address Space Layout Randomisation and that never used ASLR aren’t affected.
+According to the CERT/CC the problem was introduced with Windows 8 with a change in the mandatory Address Space Layout Randomisation implementation.
+“Starting with Windows 8, system-wide mandatory ASLR is implemented differently than with prior versions of Windows. With Windows 8 and newer, system-wide mandatory ASLR is implemented via the 
+binary registry value. The other change introduced with Windows 8 is that system-wide ASLR must have system -wide bottom-up ASLR enabled to supply entropy to mandatory ASLR.” continues the advisory.
+ 
+The CERT explained that both EMET and Windows Defender Exploit Guard can enable mandatory Address Space Layout Randomisation for code that isn’t linked with the /DYNAMICBASE flag.
+“Both EMET and Windows Defender Exploit Guard enable system-wide ASLR without also enabling system-wide bottom-up ASLR. Although Windows Defender Exploit guard does have a system-wide option for system-wide bottom-up-ASLR, the default GUI value of “On by default” does not reflect the underlying registry value (unset).” states the advisory.
+“This causes programs without /DYNAMICBASE to get relocated, but without any entropy. The result of this is that such programs will be relocated, but to the same address every time across reboots and even across different systems.”
+
+
+Dormann explained that sysadmins can set a registry value to force bottom-up Address Space Layout Randomisation.
+“The CERT/CC is currently unaware of a practical solution to this problem. Please consider the following workaround:
+ Enable system-wide bottom-up ASLR on systems that have system-wide mandatory ASLR
+To enable both bottom-up ASLR and mandatory ASLR on a system-wide basis on a Windows 8 or newer system, the following registry value should be imported:
+ Windows Registry Editor Version 5.00
+ 
+Pierluigi Paganini
+(Security Affairs – Microsoft, ASLR Protection)

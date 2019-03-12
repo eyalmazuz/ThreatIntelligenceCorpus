@@ -1,0 +1,83 @@
+
+Vulnerability Spotlight: Multiple Vulnerabilities in Foscam C1 Indoor HD Cameras
+
+
+These vulnerabilities were discovered by Claudio Bozzato of Cisco Talos.
+
+
+Executive Summary
+
+The Foscam C1 Indoor HD Camera is a network-based camera that is marketed for use in a variety of applications, including use as a home security monitoring device. Talos recently identified several vulnerabilities present in these devices, and worked with Foscam to develop fixes for them, which we published the details for in a blog post here. In continuing our security assessment of these devices, Talos has discovered additional vulnerabilities. In accordance with our responsible disclosure policy, Talos has worked with Foscam to ensure that these issues are resolved and that a firmware update is made available for affected customers. These vulnerabilities could be leveraged by an attacker to achieve remote code execution on affected devices, as well as upload rogue firmware images to the devices, which could result in an attacker being able to completely take control of the devices.
+
+Foscam IP Video Camera webService DDNS Client Code Execution Vulnerabilities
+
+Foscam C1 Indoor HD Cameras are vulnerable to several buffer overflow vulnerabilities on devices with Dynamic DNS (DDNS) enabled. On devices with DDNS enabled, an attacker could leverage a rogue HTTP server to exploit these vulnerabilities. When the device boots, a thread is spawned that routinely checks the configured DDNS server for updates or changes to the IP address associated with the DDNS server. In cases where the device is configured to use the DDNS, the device will send requests to the DDNS server and write the associated responses to the buffer, without performing proper bounds checking. This could be exploited by an attacker controlled server returning a specially crafted response larger than the allocated buffer, resulting in an overflow that could be leveraged to obtain remote code execution on affected devices. The following advisories and CVEs are associated with this vulnerability.
+
+
+
+Foscam IP Video Camera webService oray.com DDNS Client Code Execution Vulnerability (TALOS-2017-0357 / CVE-2017-2854)
+
+Foscam IP Video Camera webService 3322.net DDNS Client Code Execution Vulnerability (TALOS-2017-0358 / CVE-2017-2855)
+
+Foscam IP Video Camera webService dyndns.com DDNS Client Code Execution Vulnerability (TALOS-2017-0359 / CVE-2017-2856)
+
+Foscam IP Video Camera webService 9299.org DDNS Client Code Execution Vulnerability (TALOS-2017-0360 / CVE-2017-2857)
+
+
+Foscam IP Video Camera CGIProxy.fcgi Firmware Upgrade Unsigned Image Vulnerability (TALOS-2017-0379 / CVE-2017-2872)
+
+Foscam C1 HD Indoor cameras allow for firmware upgrades to be performed via the web management interface present on the devices. These devices lack sufficient security verification of firmware images provided by users. This functionality and lack of verification could be leveraged by an attacker to upload and execute custom firmware images on affected devices. In order to perform the firmware upgrade process, an attacker would require access to an account with administrative privileges on the device. TALOS-2017-0379 has been assigned CVE-2017-2872. For additional information, please see the advisory here.
+
+Foscam IP Video Camera CGIProxy.fcgi SoftAP Configuration Command Injection Vulnerability (TALOS-2017-0380 / CVE-2017-2873)
+
+ 
+Foscam C1 HD Indoor cameras provide the ability to configure a SoftAP using the web management interface. The SoftAP configuration facilitates connecting to the device over wireless to perform initial device setup and configuration. These devices are vulnerable to a command injection vulnerability present in the 'devMng' binary that is reachable via the 'setSoftApConfig' command. This vulnerability could be leveraged to execute arbitrary operating system commands. Exploitation of this vulnerability would require access to an account with administrative privileges on the affected device. TALOS-2017-0380 has been assigned CVE-2017-2873. For additional information, please see the advisory here.
+
+Foscam IP Video Camera devMng Multi-Camera Port 10000 Command 0x0000 Information Disclosure Vulnerability (TALOS-2017-0381 / CVE-2017-2874)
+
+Foscam C1 HD Indoor cameras allow device-to-device communications over UDP/10000 and UDP/10001. These communications are designed to allow users to display video streams from multiple devices within a centralized web management interface. These devices are vulnerable to an information disclosure vulnerability. An unauthenticated remote attacker could leverage this vulnerability to obtain sensitive device information such as MAC address, camera name, and firmware version. TALOS-2017-0381 has been assigned CVE-2017-2874. For additional information, please see the advisory here.
+
+Foscam IP Video Camera devMng Multi-Camera Port 10000 Command 0x0002 Username Field Code Execution Vulnerability (TALOS-2017-0382 / CVE-2017-2875)
+
+Foscam C1 HD Indoor cameras allow device-to-device communications over UDP/10000 and UDP/10001. These communications are designed to allow users to display video streams from multiple devices within a centralized web management interface. These devices are vulnerable to a buffer overflow condition that can be leveraged by an unauthenticated remote attacker to obtain remote code execution on affected devices. This vulnerability is due to a lack of proper bounds checking on the contents of the username parameter that is submitted during authentication requests. TALOS-2017-0382 has been assigned CVE-2017-2875. For additional information, please see the advisory here.
+
+Foscam IP Video Camera devMng Multi-Camera Port 10000 Command 0x0002 Password Field Code Execution Vulnerability (TALOS-2017-0383 / CVE-2017-2876)
+
+Foscam C1 HD Indoor cameras allow device-to-device communications over UDP/10000 and UDP/10001. These communications are designed to allow users to display video streams from multiple devices within a centralized web management interface. These devices are vulnerable to a buffer overflow condition that can be leveraged by an unauthenticated remote attacker to obtain remote code execution on affected devices. This vulnerability is due to a lack of proper bounds checking on the contents of the password parameter that is submitted during authentication requests. TALOS-2017-0383 has been assigned CVE-2017-2876. For additional information, please see the advisory here.
+
+Foscam IP Video Camera devMng Multi-Camera Port 10001 Command 0x0064 Empty AuthResetKey Vulnerability (TALOS-2017-0384 / CVE-2017-2877)
+
+Foscam C1 HD Indoor cameras allow device-to-device communications over UDP/10000 and UDP/10001. These communications are designed to allow users to display video streams from multiple devices within a centralized web management interface. These devices are vulnerable to a condition in which an unauthenticated attacker could reset user accounts configured on the devices to factory defaults by sending a specially crafted network packet over UDP/10001 to affected devices. Due to a lack of error checking, it is possible to reset these user accounts without ever having to specify a valid 'authResetKey' value within the request to reset the accounts. TALOS-2017-0384 has been assigned CVE-2017-2877. For additional information, please see the advisory here.
+
+Foscam IP Video Camera CGIProxy.fcgi logOut Code Execution Vulnerability (TALOS-2017-0385 / CVE-2017-2878)
+
+Foscam C1 HD Indoor cameras are vulnerable to a buffer overflow condition that is reachable via the 'logOut' command present within the web management interface. This vulnerability could be leveraged by an attacker to obtain remote code execution on affected devices. Exploitation of this vulnerability would require an attacker to authenticate to the device, even with a limited "Visitor" account. TALOS-2017-0385 has been assigned CVE-2017-2878. For additional information, please see the advisory here.
+
+Foscam IP Video Camera UPnP Discovery Code Execution Vulnerability (TALOS-2017-0386 / CVE-2017-2879)
+
+Foscam C1 HD Indoor cameras utilize a UPnP implementation that is designed to enable the devices to communicate with the network gateway to facilitate remote access for the web management interface of the device. The UPnP implementation used by the Foscam C1 is vulnerable to a buffer overflow condition that could be leveraged by an attacker to obtain remote code execution on affected devices. By sending a specially crafted UPnP Discovery response to affected devices, a remote attacker could trigger this vulnerability. TALOS-2017-0386 has been assigned CVE-2017-2879. For additional information, please see the advisory here.
+
+
+Versions Tested
+
+Talos has tested and confirmed that the following Foscam firmware versions are affected:
+
+Foscam Indoor IP Camera C1 Series
+System Firmware Version: 1.9.3.18
+Application Firmware Version: 2.52.2.43
+Plug-In Version: 3.3.0.26
+
+
+Conclusion
+
+One of the most commonly deployed IP cameras is the Foscam C1. In many cases these devices may be deployed in sensitive locations. They are marketed for use in security monitoring and many use these devices to monitor their homes, children, and pets remotely. As such, it is highly recommended that the firmware running on these devices be kept up-to-date to ensure the integrity of the devices, as well as the confidentiality of the information and environments that they are monitoring. Foscam has released a firmware update, available here to resolve these issues. Users of the affected devices should update to this new version as quickly as is operationally feasible to ensure that their devices are not vulnerable. 
+
+
+Coverage
+
+The following Snort Rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+Snort Rules: 42432 - 42434, 43080 - 43082, 43555 - 43558, 43713, 43717. 
+
+
+

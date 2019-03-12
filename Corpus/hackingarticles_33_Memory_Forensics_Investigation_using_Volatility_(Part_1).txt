@@ -1,0 +1,56 @@
+
+Memory Forensics Investigation using Volatility (Part 1)
+
+Our focus today is on the Volatility framework, on its capability of analyzing process activity.
+The Volatility framework is an open source tool that is used to analyze volatile memory for a host of things. This framework comes with various plugins that can be used by the investigators to get an idea of what was going on in the machine when it was being used. Volatile memory is the primary storage of most computers, by primary storage I’m referring to the RAM.
+If live acquisition is done for a piece of evidence, an image of the volatile memory can hold various clues that can help an investigation, for instance: passwords, services, network activity, processes, etc. All these can be acquired from live memory.
+In another instance, after an incident, volatility can be used to uncover the cause. It has plugins that let you sift through the primary storage and pinpoint suspicious processes that might have been running at the time of the incident or might have led up to it.
+This framework is available for both Windows and Linus, for this demonstration we will be using Volatility in Kali Linux, it comes preinstalled and can be found under the Forensics menu.
+We have used Dump it to create the .raw file for 2 GB of RAM from a machine running Windows 10.
+All you need to do it download the program, run it and press “y” and it does the rest.
+
+Navigate to the address given in front of the Destination, as it is shown in the image above and you will find the .raw file that contains the information copied from the RAM, this can now be subjected to the Volatility framework.
+
+For ease of usage, create a folder by the name of “volatility” on the Kali desktop and place the .raw file we crated in it. Right click anywhere in the folder and choose open in Terminal.
+Let’s fire up Volatility in Kali, navigate to the Forensics menu or, in the terminal type volatility -h.
+
+This command will show you a host of plugins that are available in Volatility and the usage pattern. We will be using a different .raw file that we acquired earlier, so don’t be thrown off by the change in file name.
+As an investigator, one is working under the pretense that this is a file we have no prior knowledge about so, we must start from scratch.
+The first thing to ascertain is the profile, that is, the operating system that that this was most probably derived from.
+Type “volatility -f name of file. Raw imageinfo”. A breakdown of the command for further reference:
+-f is to tell declare the target file.
+Imageinfo is used to get the basic details about the file, including the profile. The plugin uses the kernel debugger data block to guess the profile.
+
+In the image above we can see that Volatility is telling us that this image is most probably belongs to the Win10*64_10586 profile. The guessing aspect of the plugin bases it’s functionality on another plugin called kdbgscan. The kdbgscan analyses the data structures present in the NT kernel module, there are numeric values that denote the minor and major build numbers and service pack level.
+To illustrate, lets run the kdbgscan.
+Type “volatility -f name of file.raw kdbgscan”.
+
+The result for the profile that we will be using is this one.
+The data given below tells us that the file belongs to a 64-Bit version of Windows 10, has no installed service pack, and has a total of 177 loaded modules and 82 active processes.
+
+Volatility gives us the option to manually override the profile (–profile) while using plugins as the automatic OS detection can be misled due to accidental or intended tampering of the kernel by malware; this gives us a higher rate of accuracy in the operations we perform. We will be using this override function throughout combined with the plugins.
+The machine might have been running certain processes; the plugin we will be using is pslist.
+Type “volatility -f name of file.raw –profile Win10*64_10586 pslist”
+
+The scan will show us the following results. We can see OneDrive and Skype being run on the machine so we can infer that it is most probably a client or workstation rather than a server. All the system processes are running on session 0 and 1, which infers that only 1 user was logged on
+
+The psscan plugin is uses the _EPROCESS objects, it can be used to determine hidden and terminated processes.
+ Type the following “volatility –f name of file.raw –profile Win10*64_10586 psscan”
+
+The scan shows us the one of the processes by the name of TabTip.exe started and stopped within a second, it’s a process that is used by windows touch screen devices for touch keyboard and handwriting, by this we can infer the device did not have touch screen capabilities. Not the most potent of discoveries but it helps build a profile for further investigation.
+
+The last plugin we will be utilizing will be psxview. This plugin is useful for uncovering malicious processes, the way it assists in this is by locating processes that are using alternative listings. The list can then be cross-referenced with different sources of information to pinpoint discrepancies.
+ Type the following “volatility –f name of file.raw –profile Win10*64_10586 psxview”
+
+The psxview enumerates every single process by Process Object scanning, thread scanning, CSRSS handle table, PspCid table, Sessions processes, Desktop threads and Active Processes Linked list. That’s 7 ways of enumeration.
+ This plugin is very useful and efficient at finding rootkits. One of the things that it focuses on it that, being able to successfully weaponize a process that is not hidden is far more practical and efficient than to hide a process 7 different ways.
+
+Volatility is a very robust framework, it gives us the ability to further apply various filters to our scan results and generate reports. To make it more comprehensive in its usage and approach, its capabilities have been designed based on reverse engineering. It has capabilities far surpass even that of Microsoft’s own kernel debugger.
+ The tools provides a wealth of insights into the working of a machine, helping the investigator make accurate and coherent profiles, every bit of information gets the forensic process one step closer to uncovering the truth.
+The pstree plugin is used to see the parent child relationship between processes, it takes the output from the pslist and depicts it in a tree view format.
+Type “volatility –f name of file.raw –profile Win10*64_10586 pstree”
+
+The Pstree scan shows the process tree like process id, PPid, threads and the time it starts.
+
+About The Author
+ Abhimanyu Dev is a Certified Ethical Hacker, penetration tester, information security analyst and researcher. Connect with him here

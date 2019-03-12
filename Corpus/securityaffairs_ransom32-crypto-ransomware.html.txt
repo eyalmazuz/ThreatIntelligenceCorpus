@@ -1,0 +1,52 @@
+
+					Analyzing Ransom32, the first JavaScript ransomware variant					
+Ransom32 is a new crypto-ransomware variant that was first reported on December 29th, 2015, by an infected user on the Bleeping Computer forums. It is the first ransomware variant that has been developed in the JavaScript scripting language.
+Additionally, Ransom32 joins a group of Ransomware-as-a-Service (RaaS) offerings that have become more and more common throughout 2015.
+Prospective malware distributors can sign-up to become a Ransom32 affiliate via accessing a hidden server on the Tor network. Only one piece of information is required to sign-up; a Bitcoin address. Upon signing up to distribute Ransom32, the prospective criminal is granted access to a Web Control Panel that serves as a centralized location allowing for the configuration and generation of unique Ransom32 payload files.
+Furthermore, this control panel allows the distributor to observe and review statistics for their Ransom32 distribution campaign(s). Statistics that are displayed include, but are not limited to:
+The Ransom32 Control Panel also allows the distributor to configure several different parameters, such as:
+After the desired configuration changes are made, a simple click of a button is all that is required for the newly-customized Ransom32 payload file to be generated and downloaded.
+The malware payload is quite large, totaling of 22 MB in size.
+Breaking Down the Ransom32 Binary
+A closer look at the newly-generated, freshly-downloaded Ransom32 malware payload reveals that the downloaded payload file is actually a WinRAR self-extracting archive. Built-in scripts within the WinRAR application instruct the device to unpack the archive and execute a file within the archive that carries out the malware’s core functions, “chrome.exe”.
+The Files Packed Within the Archive
+Several files have been packed within the WinRAR self-extracting archive that is downloaded upon the payload’s generation. These files are listed and described below.
+“chrome”
+This file contains a copy of the GPL licensing agreement
+“chrome.exe”
+A packaged NW.js application; this binary file contains the actual core functions carried out and executed by Ransom32. This application also contains the framework required for the malware to be successfully executed.
+“ffmpegsumo.dll”, “nw.pak”, “icudtd.dat”, “locales”
+These files contain data that is required by the NW.js framework to properly function.
+“rundll32.exe”
+This file is a renamed copy of the Tor client, which is utilized for key retrieval, Bitcoin address retrieval, and communication with Ransom32’s command-and-control (C2) server.
+“s.exe”
+This file is actually a renamed copy of Optimum X Shortcut, a utility that is used to create and manipulate Desktop and Start Menu shortcuts.
+“g”
+This file contains the malware’s configuration information as it was configured by the distributor in the Ransom32 Control Panel, during the initial payload generation phase. The contents of this file is formatted as JSON.
+“msgbox.vbs”
+This file is a simple script that displays a message box on the infected device; this script will only be executed had the distributor enabled and configured message boxes to be displayed during the Ransom32 installation process.
+“u.vbs”
+This file is actually a small script that performs destructive tasks; this script enumerates and deletes all files and folders within a given directory.
+Of all the files compressed within the archive, the most interesting file is the “chrome.exe” binary, that appears to be nearly-identical to the actual, legitimate “chrome.exe” binary. However, the lack of a proper digital signature and invalid or non-existent version information indicates that this file is not the actual, legitimate “chrome.exe” binary. In fact, it is a packaged NW.js application.
+How Ransomware Leverages Web-Based Technologies
+The NW.js framework allows for the development of normal desktop applications utilizing JavaScript. These applications are vendor-neutral, therefore, a single script written in JavaScript when utilizing NW.js can be executed on Windows, Linux and Mac OS X. While JavaScript is essentially a browser-based language that is limited by your browser’s sandbox, whose interaction with the underlying host OS is limited at best, NW.js breaks these boundaries, allowing for more interaction with the underlying host OS.
+This means that NW.js allows for scripts written in JavaScript to basically contain the functionality and gain the ability of scripts written in programming languages such as C++.
+Mechanism of Action
+
+Ransom32 encrypts files with the following extensions:
+*.jpg, *.jpeg, *.raw, *.tif, *.gif, *.png, *.bmp, *.3dm, *.max, *.accdb, *.db, *.dbf, *.mdb, *.pdb, *.sql, *.*sav*, *.*spv*, *.*grle*, *.*mlx*, *.*sv5*, *.*game*, *.*slot*, *.dwg, *.dxf, *.c, *.cpp, *.cs, *.h, *.php, *.asp, *.rb, *.java, *.jar, *.class, *.aaf, *.aep, *.aepx, *.plb, *.prel, *.prproj, *.aet, *.ppj, *.psd, *.indd, *.indl, *.indt, *.indb, *.inx, *.idml, *.pmd, *.xqx, *.xqx, *.ai, *.eps, *.ps, *.svg, *.swf, *.fla, *.as3, *.as, *.txt, *.doc, *.dot, *.docx, *.docm, *.dotx, *.dotm, *.docb, *.rtf, *.wpd, *.wps, *.msg, *.pdf, *.xls, *.xlt, *.xlm, *.xlsx, *.xlsm, *.xltx, *.xltm, *.xlsb, *.xla, *.xlam, *.xll, *.xlw, *.ppt, *.pot, *.pps, *.pptx, *.pptm, *.potx, *.potm, *.ppam, *.ppsx, *.ppsm, *.sldx, *.sldm, *.wav, *.mp3, *.aif, *.iff, *.m3u, *.m4u, *.mid, *.mpa, *.wma, *.ra, *.avi, *.mov, *.mp4, *.3gp, *.mpeg, *.3g2, *.asf, *.asx, *.flv, *.mpg, *.wmv, *.vob, *.m3u8, *.csv, *.efx, *.sdf, *.vcf, *.xml, *.ses, *.dat
+Additionally, Ransom32 takes preventive measures to ensure that the malware executes successfully, without causing damage to the underlying OS. Ransom32 will not encrypt any files, regardless of their extension, if they are located in a directory whose name contains any of the following strings:
+Ransom32 utilizes AES encryption with a 128-bit key using a CTR block mode to encrypt all supported files that it enumerates.
+A new key is generated for every supported file that is enumerated; these keys are then encrypted using the RSA algorithm with a public key that was obtained from its Command-and-Control (C2) Server during the initial communications between the C2 server and the infected host.
+Affected files now contain both an encrypted version of affected file’s data along with the now-encrypted AES key that was used to compromise the original file data.
+As seen with many other malware authors, the Ransom32 authors offer a decryption utility that is provided after the successful payment, clearing, and verification of the ransom payment.
+The malware authors offer to decrypt a single affected file for free, to prove that they are capable of doing so.
+Ransom32’s Ransom Note
+
+Sources
+Special thanks to Fabian Wosar of Emsisoft.
+Meet Ransom32: The first JavaScript ransomware
+Bleeping Computer
+About the Author Michael Fratello
+Edited by Pierluigi Paganini
+(Security Affairs –  Ransom32 ransomware, malware)

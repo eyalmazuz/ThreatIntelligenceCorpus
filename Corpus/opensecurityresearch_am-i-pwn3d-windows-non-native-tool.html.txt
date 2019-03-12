@@ -1,0 +1,516 @@
+
+Am I pwn3d? Windows *Non-Native* Tool Triage
+
+
+By Tony Lee, Jerry Pierce, and Vijay Agarwal.
+
+This is a continuation of our previous article on performing a Windows triage--however this time we will try to avoid using native Windows tools.  Note that there are lots of GUI tools that can help perform basic forensics, however we use mostly command line  tools or options as it does not trample on evidence as much as the GUI tools and it makes writing the data to a file easier for offline analysis.  We will continue with the same premise as before:
+
+So, you are surfing the web, checking your email, and performing other daily tasks… $#@!, you just realized you clicked a link, opened an attachment, or visited a site that you probably should not have.  So what do you do?  Cry a little or take action?
+
+Perhaps a friend, family member or neighbor approaches you and asks you to help them “fix their computer” or they say, “I think I have been hacked!”
+
+Whatever the scenario, we have outlined some steps--using mostly Non-native Windows binaries--that you can follow in order to do a little preliminary analysis to detect potential compromise and triage the system
+Indicators of Compromise Covered
+
+Processes
+Network Connections
+Common File Locations
+
+System32
+Home Directory
+
+Persistence Mechanisms
+
+Services
+Registry
+Tasks
+Startup Directory
+
+
+
+If your relative/friend or family member is remote, you will most likely have to send the output to a file or have them read it to you (good luck with that if they aren’t technical), but it is a start.
+Note:  If you cannot coach family members to get to the cmd prompt--all hope may already be lost ;)
+Examine Processes
+
+The following tool, pslist, is from Mark Russinovich (of sysinternals--now Microsoft).  Pslist can be downloaded from http://technet.microsoft.com/en-us/sysinternals/bb896682.  It will list the process name, process ID (PID), CPU Time and other information.
+pslist >> output.txt
+
+Sample Output
+C:\>pslist
+
+pslist v1.29 - Sysinternals PsList
+Copyright (C) 2000-2009 Mark Russinovich
+Sysinternals
+
+Process information for PC122:
+
+Name                Pid Pri Thd  Hnd   Priv        CPU Time    Elapsed Time
+Idle                  0   0   1    0      0     3:57:34.937     0:00:00.000
+System                4   8  48  340      0     0:01:01.421     0:00:00.000
+smss                604  11   3   19    168     0:00:00.031     4:05:30.375
+csrss               652  13  12  375   1772     0:00:15.000     4:05:29.265
+winlogon            676  13  17  547   7400     0:00:01.171     4:05:29.109
+services            720   9  15  261   1664     0:00:03.859     4:05:28.609
+lsass               732   9  22  357   3764     0:00:03.968     4:05:28.562
+svchost             892   8  14  190   2888     0:00:01.156     4:05:27.890
+svchost             960   8   7  235   1640     0:00:02.656     4:05:27.609
+svchost            1072   8  67 1251  14668     0:00:20.593     4:05:27.406
+svchost            1132   8   6   80   1272     0:00:02.156     4:05:26.875
+svchost            1272   8   5   90   1196     0:00:02.781     4:05:26.625
+explorer           1408   8   9  330  10304     0:00:15.421     4:05:25.578
+VMwareUser         1648   8   1   26    888     0:00:01.000     4:05:23.937
+ctfmon             1660   8   1   69    840     0:00:01.546     4:05:23.843
+wracing            1680   8   1   19    324     0:00:41.609     4:05:23.687
+sqlmangr           1692   8   2   76   1252     0:01:35.203     4:05:23.609
+svchost            1808   8   5  107   1272     0:00:03.968     4:05:18.156
+inetinfo           1864   8  18  269   3992     0:00:14.140     4:05:17.953
+sqlservr           1880   8  21  214  13068     0:00:01.640     4:05:17.859
+VMwareService       128  13   3   47    696     0:01:25.015     4:05:14.359
+alg                1168   8   6  105   1132     0:00:01.656     4:05:11.046
+cmd                1928   8   1   31   2264     0:00:07.937     3:58:41.046
+firefox             380   8  12  343  19320     0:00:04.187     2:55:04.140
+notepad            1344   8   1   45   1268     0:00:01.531     2:51:28.015
+autoruns           1564   8   5  287  12564     0:00:41.437     2:34:45.015
+pslist              696  13   2  115   1040     0:00:00.156     0:00:00.250
+
+
+Pay attention for oddly named processes, and also look at the “Elapsed Time” column – if the oddly named process appears to have the same elapsed time as the bulk of your Windows processes, it’s a clue that it may be starting either at system boot or when you log into the system.
+
+Another option to “pslist” will display the output in a tree format to easily show the parent process and the rest of the process chain.
+pslist -t >> output.txt
+
+Sample Output
+C:\>pslist -t
+
+pslist v1.29 - Sysinternals PsList
+Copyright (C) 2000-2009 Mark Russinovich
+Sysinternals
+
+Process information for PC122:
+
+Name                             Pid Pri Thd  Hnd      VM      WS    Priv
+Idle                               0   0   1    0       0      16       0
+  System                           4   8  48  340    1884     212       0
+    smss                         604  11   3   19    3808     404     168
+      csrss                      652  13  12  375   25740    2144    1772
+      winlogon                   676  13  17  547   51648    4188    7400
+        services                 720   9  15  261   20220    3400    1664
+          VMwareService          128  13   3   47   17764    2256     696
+          svchost                892   8  14  190   59652    4728    2888
+          svchost                960   8   7  235   33644    4148    1640
+          svchost               1072   8  67 1251  138856   24388   14668
+          svchost               1132   8   6   80   29572    3496    1272
+          alg                   1168   8   6  105   32288    3536    1132
+          svchost               1272   8   5   90   30980    3248    1196
+          svchost               1808   8   5  107   35608    3700    1272
+          inetinfo              1864   8  18  269   43944    7904    3992
+          sqlservr              1880   8  21  214  559284    7768   13068
+        lsass                    732   9  22  357   41392    6004    3764
+explorer                        1408   8   9  330   81936   15356   10304
+  firefox                        380   8  12  343   85196   29884   19320
+  VMwareUser                    1648   8   1   26   27996    2888     888
+  ctfmon                        1660   8   1   69   29208    3008     840
+  sqlmangr                      1692   8   2   76   35200    4804    1252
+  cmd                           1928   8   1   31   30848     980    2264
+    pslist                       152  13   2  115   29292    2628    1040
+    notepad                     1344   8   1   45   30304    3768    1268
+    autoruns                    1564   8   5  287   96192   16500   12564
+wracing                         1680   8   1   19    7480    1220     324
+
+
+
+The next tool--cmdline--will list the PID, processes, command line arguments, and show the full path to the binary (how helpful!).  The tool used to be available from www.diamondcs.com.au, however the site seems to be a squatted site that no longer hosts the tool.  You may be able to find this from a reputable friend in the business (feel free to look us up at Foundstone and we can send you a copy--malware free!).
+cmdline >> output.txt
+
+Sample Output
+C:\>cmdline
+CmdLine - DiamondCS Freeware Console Tools (www.diamondcs.com.au)
+---
+Found 30 processes.
+
+-snip-
+
+C:\WINDOWS\system32\services.exe [720]
+  C:\WINDOWS\system32\services.exe
+
+C:\WINDOWS\system32\ctfmon.exe [1660]
+  "C:\WINDOWS\system32\ctfmon.exe"
+
+C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe [1680]
+  "C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe"
+
+C:\WINDOWS\system32\notepad.exe [1908]
+  notepad test.txt
+
+
+Once the command has been executed a well trained eye can usually spot something that is odd.  If something is unfamiliar, there are many sites that can be used to investigate a binary name such as http://www.processlibrary.com/.
+
+No results from processlibrary.com can be as concerning as a positive bad hit:
+
+Example:
+
+Search results for: wracing.exe
+Your search "wracing.exe" did not match any documents.
+Make sure the search term was spelled correctly.
+Examine Network Connections
+The following tool, CurrPorts, is from Nirsoft and is available from http://www.nirsoft.net/utils/cports.html.  Please see the full manual at the download site for the many options available.  We are just listing our favorite options below:
+cports /stext cportsoutput.txt
+
+Sample Output
+C:\>cports /stext cportsoutput.txt
+
+-snip-
+==================================================
+Process Name      : wracing.exe
+Process ID        : 1680
+Protocol          : TCP
+Local Port        : 1750
+Local Port Name   : 
+Local Address     : 192.168.200.53
+Remote Port       : 443
+Remote Port Name  : https
+Remote Address    : 63.232.79.43
+Remote Host Name  : 
+State             : Established
+Process Path      : C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe
+Product Name      : 
+-snip-
+
+Examine Common File Locations
+
+In terms of examining file locations, there may not be very many tools better than good old native “dir” command.  The following command has been natively present in Windows since before the dawn of time, however the options may not be well known to you or your family members.  Running the “dir” command with the following syntax will produce a listing that is sorted by the file creation time.
+System32
+
+Many files are located here and thus this is a common place for malware to hide among the weeds
+dir /o:d /t:c c:\windows\system32 >> output.txt
+
+Sample Output
+C:\>dir /o:d /t:c c:\windows\system32
+-snip-
+01/07/2010  05:48 PM           689,152 xpsp3res.dll
+01/07/2010  06:02 PM    <dir>          en
+01/07/2010  06:02 PM    <dir>          scripting
+01/07/2010  06:02 PM    <dir>          en-us
+01/07/2010  06:19 PM         1,676,288 xpssvcs.dll
+01/07/2010  06:19 PM           575,488 xpsshhdr.dll
+01/07/2010  06:19 PM           117,760 prntvpt.dll
+01/07/2010  06:20 PM    <dir>          XPSViewer
+01/07/2010  06:34 PM             2,560 xpsp4res.dll
+01/07/2010  07:39 PM        25,966,024 MRT.exe
+01/07/2010  07:50 PM             3,706 TZLog.log
+            2009 File(s)    408,261,849 bytes
+              52 Dir(s)   2,505,060,352 bytes free
+
+User’s home directory
+This is a popular spot for malware to hide because the attacker has permission to write to these locations under the context of the user
+dir /a /s /o:d /t:c “%USERPROFILE%” >> output.txt
+
+Sample Output
+dir /a /s /o:d /t:c "%USERPROFILE%"
+
+-SNIP-
+ Directory of C:\Documents and Settings\Administrator\Local Settings\Temp
+01/07/2010  07:00 PM            54,272 Set29F.tmp
+01/07/2010  07:42 PM    <dir>          NDP1.1sp1-KB953297-X86
+01/07/2010  07:47 PM            14,010 ASPNETSetup_00002.log
+09/13/2010  09:24 PM             8,141 lick_me.jpg
+09/13/2010  09:24 PM            37,376 wracing.exe
+09/13/2010  09:24 PM            28,160 wracing.dll
+09/13/2010  09:28 PM    <dir>          plugtmp
+03/23/2012  01:43 PM    <dir>          VMwareDnD
+03/23/2012  02:54 PM               104 pdracing.tmp
+-SNIP-
+
+Note:  The filenames above are from real malware--we did not make those up. 
+Investigating Persistence
+
+Malware wants to survive a reboot, and the way this is accomplished is called a “Persistence Mechanism”.  Sometimes the persistence mechanism can give away the presence of malicious software on a system.  The following persistence mechanisms will be examined:
+
+Services
+Registry
+Scheduled Tasks
+Startup Directory
+
+Examine Services
+
+Examining services will leverage both native and non-native tools for analysis.  The following command has been natively present in Windows for ages.  This command is popular to list the started services.
+net start >> output.txt
+
+Sample Output
+C:\>net start
+These Windows services are started:
+
+   Application Layer Gateway Service
+   Automatic Updates
+   COM+ Event System
+   Computer Browser
+   Cryptographic Services
+   DCOM Server Process Launcher
+   DHCP Client
+   Distributed Link Tracking Client
+   DNS Client
+   Event Log
+   FTP Publishing
+   Help and Support
+   IIS Admin
+   IPSEC Services
+   Logical Disk Manager
+   MSSQLSERVER
+   Network Connections
+   Network Location Awareness (NLA)
+   Plug and Play
+   Protected Storage
+   Remote Access Connection Manager
+   Remote Procedure Call (RPC)
+   Remote Registry
+   Secondary Logon
+   Security Accounts Manager
+   Security Center
+   Server
+   Shell Hardware Detection
+   System Event Notification
+   Task Scheduler
+   TCP/IP NetBIOS Helper
+   Telephony
+   Terminal Services
+   VMware Tools Service
+   WebClient
+   Windows Firewall/Internet Connection Sharing (ICS)
+   Windows Management Instrumentation
+   Windows Time
+   Workstation
+   World Wide Web Publishing
+
+The command completed successfully.
+
+
+The command below using psservice (will discuss soon) could also be used, however it is not as concise as “net start”:
+psservice query -s start
+
+
+You will see sample output from this very useful tool in a bit.
+
+The following command has been natively present in Windows since XP and 2003.  It will list the process name, process ID (PID), and the keyname for the service.
+tasklist /svc >> output.txt
+
+Sample Output
+C:\>tasklist /svc
+
+Image Name                   PID Services
+========================= ====== ============================================
+System Idle Process            0 N/A
+System                         4 N/A
+smss.exe                     604 N/A
+csrss.exe                    652 N/A
+winlogon.exe                 676 N/A
+services.exe                 720 Eventlog, PlugPlay
+lsass.exe                    732 PolicyAgent, ProtectedStorage, SamSs
+svchost.exe                  892 DcomLaunch, TermService
+svchost.exe                  960 RpcSs
+svchost.exe                 1072 Browser, CryptSvc, Dhcp, dmserver,
+                                 EventSystem, helpsvc, lanmanserver,
+                                 lanmanworkstation, Netman, Nla, RasMan,
+                                 Schedule, seclogon, SENS, SharedAccess,
+                                 ShellHWDetection, TapiSrv, TrkWks, W32Time,
+                                 winmgmt, wscsvc, wuauserv
+svchost.exe                 1132 Dnscache
+svchost.exe                 1272 LmHosts, RemoteRegistry
+explorer.exe                1408 N/A
+VMwareUser.exe              1648 N/A
+ctfmon.exe                  1660 N/A
+wracing.exe                 1680 N/A
+sqlmangr.exe                1692 N/A
+svchost.exe                 1808 WebClient
+inetinfo.exe                1864 IISADMIN, MSFtpsvc, W3SVC
+sqlservr.exe                1880 MSSQLSERVER
+VMwareService.exe            128 VMTools
+alg.exe                     1168 ALG
+cmd.exe                     1928 N/A
+firefox.exe                  380 N/A
+notepad.exe                 1344 N/A
+tasklist.exe                1820 N/A
+wmiprvse.exe                1892 N/A
+
+
+The non-native tool, psservice.exe, is another tool from Mark Russinovich (of sysinternals--now Microsoft) and can be found at http://technet.microsoft.com/en-us/sysinternals/bb897542.  This can be used to function as the “sc” command--however, the advantage of this tool compared to sc is that it can be run remotely using credentials other than the current user.  Additionally, it easily provides the binary path and description with one query shown below:
+psservice config [service name] >> output.txt
+
+Sample Output
+C:\>psservice config webclient
+
+PsService v2.24 - Service information and configuration utility
+Copyright (C) 2001-2010 Mark Russinovich
+Sysinternals - www.sysinternals.com
+
+SERVICE_NAME: WebClient
+DISPLAY_NAME: WebClient
+Enables Windows-based programs to create, access, and modify Internet-based files. If this service is stopped, these fun
+ctions will not be available. If this service is disabled, any services that explicitly depend on it will fail to start.
+
+        TYPE              : 10 WIN32_OWN_PROCESS
+        START_TYPE        : 2  AUTO_START
+        ERROR_CONTROL     : 1  NORMAL
+        BINARY_PATH_NAME  : C:\WINDOWS\System32\svchost.exe -k LocalService
+        LOAD_ORDER_GROUP  : NetworkProvider
+        TAG               : 0
+        DEPENDENCIES      : MRxDAV
+        SERVICE_START_NAME: NT AUTHORITY\LocalService
+
+
+If you would like to get all of the services, descriptions, and full paths to the binaries, omit the service name at the end. For example:
+
+psservice config
+Examine Registry Entries and the Startup Directory
+
+In the prior article we used two native Windows binaries to investigate this data, the reg command and dir command.  In this article everything can be achieved with one tool--autorunsc.  This is another tool from Mark Russinovich (of sysinternals--now Microsoft).  It can be downloaded at http://technet.microsoft.com/en-us/sysinternals/bb963902. 
+autorunsc -l >> output.txt
+
+Sample Output
+C:\>autorunsc -l
+
+Sysinternals Autoruns v10.06 - Autostart program viewer
+Copyright (C) 2002-2010 Mark Russinovich and Bryce Cogswell
+Sysinternals - www.sysinternals.com
+
+-snip-
+
+C:\Documents and Settings\Administrator\Start Menu\Programs\Startup
+   putbginfo.bat.lnk
+     C:\Documents and Settings\Administrator\Start Menu\Programs\Startup\putbginfo.bat.lnk
+     File not found: C:\TOOLS\bginfo\putbginfo.bat
+
+
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+   ctfmon.exe
+     C:\WINDOWS\system32\ctfmon.exe
+     CTF Loader
+     Microsoft Corporation
+     5.1.2600.5512
+     c:\windows\system32\ctfmon.exe
+     5f1d5f88303d4a4dbc8e5f97ba967cc3 (MD5)
+     99cb7370f16773c8e2d0c86fe805ec638ab126e9 (SHA-1)
+     5fb24fc7916a6e6b3be7d84cb1684215b266cd1495575c2e5672b8447932e5b1 (SHA-256)
+   wracing
+     C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe -installkys
+     c:\documents and settings\administrator\local settings\temp\wracing.exe
+     862cac1ffae3ca515f1c8588e3c3c394 (MD5)
+     fb38ac1459da93f36be0af0999618a2f643e2fc8 (SHA-1)
+     ede018f2be5f4655d71c0b02db394b4ff332aacc508915de47bcaf2c1db0cc78 (SHA-256)
+-snip-
+
+
+
+With this sample output, we see that “wracing.exe” is in the “C:\Documents and Settings\Administrator\Local Settings\Temp” directory.  We suggest you review the file listing of this directory, sorted by file creation time as well to see what other artifacts may be present from the same timeframe.
+
+Malware will often modify the system security settings contained within the Registry to make removal and remediation more difficult such as disabling the firewall or antivirus and other critical system security alerting mechanisms.
+
+The Windows Security Center settings are common targets for malware infections.  They are set to allow you to be notified if something happens to your antivirus, firewall, windows updates, etc.  Set with a value of “0” the “disable” is turned off – thus the feature is still active and you will be warned if your antivirus or firewall is disabled, etc.  If set with a “1” then the “disable” is turned on, and the affected item will no longer report in the Windows Security Center as an item of concern if disabled.
+
+To review the Registry run:
+
+regedit
+
+
+Common items which are disabled by malware include entries similar to those found below:
+HKEY_LOCAL_MACHINE\Software\Microsoft\Security Center
+    FirstRunDisabled            REG_DWORD       0x1
+    AntiVirusDisableNotify      REG_DWORD       0x0
+    FirewallDisableNotify       REG_DWORD       0x0
+    UpdatesDisableNotify        REG_DWORD       0x0
+    AntiVirusOverride           REG_DWORD       0x0
+    FirewallOverride            REG_DWORD       0x0
+
+If these registries are loaded with a “1” then the item is disabled.
+Examine Scheduled Tasks
+
+In the prior article we used two native Windows binaries to investigate this data, the at command and schtasks command.  In this article everything can be achieved with one tool--autorunsc.  This is the same tool used above to check the registry entries and startup directory.  It can be downloaded at http://technet.microsoft.com/en-us/sysinternals/bb963902.
+
+autorunsc -t >> output.txt
+
+Sample Output
+C:\Documents and Settings\Administrator>autorunsc -t
+
+Sysinternals Autoruns v11.21 - Autostart program viewer
+Copyright (C) 2002-2012 Mark Russinovich and Bryce Cogswell
+Sysinternals - www.sysinternals.com
+
+Task Scheduler
+   ezyme.job
+   C:\WINDOWS\system32\csript.exe //E:javascript C:\WINDOWS\TEMP\ezmye.zbz
+   C:\Windows\temp\ezmye.zbz
+   aa186d30801500ca22b83c17d42ea743 (MD5)
+   304b5e0352b846cce0b5403392a7c49e55f60ad1 (SHA-1)
+   -snip-
+
+
+This output is far superior to that of at or schtasks because it provides the full bath to the binary, arguments, as well as MD5 and SHA-1 hashes!  Wow.
+Initial Analysis of the Results
+
+Analysis often takes far longer than the time required to run the commands.  However, according to the sample information above, it appears that we have at least two infections on this host.  The data below ties everything together.
+
+Malicious software is present in the process list here:
+Name                Pid Pri Thd  Hnd   Priv        CPU Time    Elapsed Time
+wracing            1680   8   1   19    324     0:00:41.609     4:05:23.687
+
+
+and here:
+
+C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe [1680]
+  "C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe"
+
+
+It also has a connection out to a known bad site:
+Process Name      : wracing.exe
+Process ID        : 1680
+Remote Port       : 443
+Remote Port Name  : https
+Remote Address    : 63.232.79.43
+Process Path      : C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe
+
+
+Malicious files are present in the following directory:
+C:\Documents and Settings\Administrator\Local Settings\Temp
+
+09/13/2010  09:24 PM             8,141 lick_me.jpg
+09/13/2010  09:24 PM            37,376 wracing.exe
+09/13/2010  09:24 PM            28,160 wracing.dll
+
+
+The persistence mechanism is via the registry:
+HKCU\Software\Microsoft\Windows\CurrentVersion\Run
+wracing
+     C:\Documents and Settings\Administrator\Local Settings\Temp\wracing.exe -installkys
+     c:\documents and settings\administrator\local settings\temp\wracing.exe
+     862cac1ffae3ca515f1c8588e3c3c394 (MD5)
+     fb38ac1459da93f36be0af0999618a2f643e2fc8 (SHA-1)
+     ede018f2be5f4655d71c0b02db394b4ff332aacc508915de47bcaf2c1db0cc78 (SHA-256)
+-snip-
+
+
+There is also a second (most likely unrelated) suspicious task that runs via the scheduler:
+Task Scheduler
+   ezyme.job
+   C:\WINDOWS\system32\csript.exe //E:javascript C:\WINDOWS\TEMP\ezmye.zbz
+   C:\Windows\temp\ezmye.zbz
+   aa186d30801500ca22b83c17d42ea743 (MD5)
+   304b5e0352b846cce0b5403392a7c49e55f60ad1 (SHA-1)
+   -snip-16:33:00, 3/23/2012
+
+Recovery
+Fortunately antivirus programs protect us from most of the threats that are out there, however the bad guys are constantly finding new ways to infect our systems with new malware.  Once your system is infected, the only way to be 1000% certain you have found all of the components of the malware is to re-image your system.  (Don’t just re-format the hard disk, as some malware such as TDSS is now infecting the disk boot records)
+
+If you decide to go the route of manual cleanup, here are some helpful thoughts to speed you on your journey:
+
+If you find your system is infected by the malware, first thing you want to do is to disconnect your system from the internet as quickly as possible to prevent additional malware from being placed on your system and to limit the potential data loss.
+Make a backup.  Note that some malware will also infect any USB device which is plugged in.  This means that inserting a USB hard drive to perform a backup may actually infect it with an active infection component. 
+Turn off the system restore.  If the malware infected any of the critical operating system areas, the system restore points may contain copies of the infection which you can inadvertently restore to operation if you recover your OS from an infected copyMy Computer-> Properties->click the System Restore tab-> Click to select the Turn off System Restore check box
+Using a known clean system, change all your passwords.   A common target for malware are credentials, which can then be used by the bad guys to access your accounts, perform fraudulent activities, etc.
+Install and Scan your system with latest updated antivirus and anti-spyware software to clean the malware or spyware, be sure to configure the software to prompt you prior to taking action on any suspicious files found.
+Reboot your system and update all the antivirus signatures and again rescan your system your system with antivirus and spyware.
+If your system is still affected by the malware, then a running process may be infected.  To solve this issue you need to live boot to a software CD such as BART PE (http://www.nu2.nu/pebuilder/ ) to prevent the process from running.  Tools such as HIJACK THIS can be used to clean the system while the process is not running in order to remove the infection.
+
+Food for Thought
+If the infection is using rootkit technology, there is a better chance that either the native or non-native Windows tools will reveal that something is amiss--especially if the non-native tool uses non-Windows API calls to gather the information.  If nothing shows up as indicators of compromise, but relatives are still convinced they are owned--they may have a healthy dose of paranoia.  Either way, they may have to take it in to a shop or wait until the next holiday gathering when you have your fingers on the keyboard for a more in-depth analysis.  As always, happy hunting!
+
+

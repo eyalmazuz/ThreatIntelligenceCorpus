@@ -1,0 +1,111 @@
+
+Gmail Worm Requiring You To Give It A Push And Apparently You All Are Really Helpful
+
+
+This post authored by Sean Baird and Nick Biasini
+
+Attackers are always looking for creative ways to send large amount of spam to victims. A short-lived, but widespread Google Drive themed phishing campaign has affected a large number of users across a variety of verticals. This campaign would be bcc'd to a target while being sent to hhhhhhhhhhhhhhhh@mailinator[.]com, to make this email appear legitimate the sender would be someone who had the target in their address book. 
+
+Mailinator is a "free, public, email system where you can use any inbox you want," often used for throwaway accounts.  In this instance, the Mailinator inbox in question could have been used by the spammer to monitor whether or not the email was successfully sent.  The use of Mailinator, however, is not what made this campaign unique.
+
+
+
+Campaign Details
+
+
+The malicious email
+
+As you can see, the email is pretty standard for a phishing attempt. In this case, they were targeting Google specifically and have done so via Google Docs. Typically, what you would see is a link to a "cloned" site that is used to harvest the username and password for the targeted service, in this case Google. However, this campaign took a completely different approach.
+
+The "Open in Docs" link contained in the email directed the recipient to a legitimate Google site which required log-in with Google credentials.  Upon entering the site, a service called "Google Docs" requested permission to "Read, send, delete, and manage" email and contacts. This is a legitimate request and is part of a lot of applications that make use of google as an authentication mechanism.  The portion that is not normal are the permissions that are being requested.
+
+
+The OAuth service named "Google Docs" requesting permissions
+
+After clicking allow (and waiting a significant amount of time), We were directed to h[xx]ps://googledocs[.]g-cloud[.]win/.  In this attack, we identified several other malicious hosts, including:
+
+docscloud[.]download
+docscloud[.]info
+docscloud[.]win
+gdocs[.]download
+docscloud[.]info
+g-docs[.]pro
+gdocs[.]pro
+gdocs[.]win
+docscloud[.]download
+g-cloud[.]win
+g-cloud[.]pro
+
+Currently these requests result in an HTTP 502 response. This would happen due to too many users trying to access the site at once, or because Cloudflare took down the impacted sites.
+
+
+The 502 Error on the destination page.
+
+Talos was able to identify other instances of users interacting with the page and receiving data. A brief analysis of this data did not return anything inherently malicious including a true malicious payload or POST requests indicating additional credential theft.
+
+This attack was notable due the sheer volume and velocity at which it was executed. What started as a trickle of emails quickly became a deluge resulting in a prime area of focus on Twitter and in the security community. Due to its relentless nature it got everyone's attention.
+
+
+
+The volume being reported to us over roughly two hours of the attack (Eastern).
+
+
+
+Purpose
+
+The goal of this attack is likely two-fold. This instance acted as potential proof-of-concept for a convincing Google phish via OAuth. Second, and more concerning, this attack allowed the OAuth owner access to all of the email content and contact information for every compromised victim of the attack.  This means that the attacker potentially has access to all of the information within your account and the ability to read, send, delete and manage the email and contacts of the associated account.  Additionally, since OAuth was used, the typical protections like changing passwords has no immediate impact on the adversaries access.
+
+Mitigation and Protections
+Because of the success of this attack, we are likely going to see phishing attacks of this nature for the foreseeable future.  Users must be very careful what they click on, particularly when it involves passwords or granting permissions or access of some kind. If in doubt, reach out to the sender of the attachment or link using a means other than email to verify the integrity of their email.
+
+If you have fallen for this attack you should go into your Google account settings and revoke permissions from the rogue fake Google Docs service. You should then change your password immediately. 
+
+In addition, as the attacker had access to all of your email content, you should take measures to prevent secondary attacks, such as identity theft and blackmail.
+
+IOC
+
+Domains:
+
+
+docscloud[.]download
+docscloud[.]info
+docscloud[.]win
+gdocs[.]download
+docscloud[.]info
+g-docs[.]pro
+gdocs[.]pro
+gdocs[.]win
+docscloud[.]download
+g-cloud[.]win
+g-cloud[.]pro
+
+
+
+Conclusion
+Adversaries will remain vigilant in figuring out creative ways to deliver spam or malware to end users. This is just the latest example of a clever way to achieve this goal. Like all other creative, novel approaches it will likely be heavily copied almost immediately. Google is just one example, but there are likely other services that are used to as alternative authentication mechanisms.  Two likely candidates are Facebook and LinkedIn. It's highly likely that similar attacks leveraging those types of credentials could follow in addition to a continued Google attack vector. 
+
+Cisco Cloudlock has identified more than 275,000 OAuth applications connected to core cloud services such as Microsoft Office 365.  This compares to just 5,500 such applications just 3 years ago.  It’s likely that similar attacks leveraging these types of credentials will follow and that the Google attack vector will be continue to be utilized. For more information on Cloudlock and to see their perspective on this threat please visit their blog here.
+
+Another thing to keep in mind is this adversary likely did not anticipate the velocity with which this attack would follow. This was a loud and noisy version and subtle, low volume attacks are likely to follow. This again points to some basic security principles. Namely, don't trust email, no matter how legitimate looking, do not allow 3rd parties have access to any of your accounts. In the instance where the option exists to either login with an existing 3rd party account or create a new account, create the new account. It may take a little additional time, but it can prevent a catastrophic compromise of your email and contacts.
+
+Coverage
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+Cloudlock, our CASB solution specifically identifies, classifies and mitigates risks related to OAuth connected applications.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network
+
+
+

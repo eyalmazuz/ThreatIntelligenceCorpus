@@ -1,0 +1,92 @@
+
+Cerber Spam: Tor All the Things!
+
+
+This post authored by Nick Biasini and Edmund Brumaghin with contributions from Sean Baird and Andrew Windsor.
+
+Executive Summary
+Talos is continuously analyzing email based malware always looking at how adversaries change and the new techniques that are being added on an almost constant basis. Recently we noticed some novel ways that adversaries are leveraging Google and Tor2Web proxies to spread a ransomware variant, Cerber 5.0.1.
+
+This particular campaign looks to have started on November 24th and has been ongoing for the past several days. This campaign did not use advanced techniques that we sometimes see used by adversaries that include well written, professional looking emails, with legitimate signature blocks or other identifying characteristics. In this campaign, the emails were anything but professional. However, they did vary significantly with what we typically see from a ransomware distribution perspective.
+
+Today, spam based ransomware infections are heavily skewed toward Locky. The majority of spam messages we see today are affiliates producing large amounts of spam that leverage various types of script-based file extensions to download the Locky executable and infect systems. This campaign looked different in that the messages didn't contain an attachment and were extremely short and basic. What we found was a potential next evolution for ransomware distribution that relies more heavily on Tor to obfuscate their activity and hinder the ability to shut down servers that are hosting the malicious content.
+
+Campaign Details
+The spam campaign Talos saw distributing the newest version of Cerber is using a different approach from what we commonly see. The approach taken by this spam campaign combines the use of redirections via Google, and the use of a Tor2Web proxy service in an attempt to evade detection and make mitigation more difficult. 
+
+The email messages associated with this spam campaign purport to contain hyperlinks to various files that may be of interest to the recipient such as pictures, order details, transaction logs, loan acceptance letters, etc. In all of the messages Talos analyzed, the subject lines of the emails contained the name of the recipient of the email messages which may make them seem more legitimate to unsuspecting victims.
+
+
+Sample Email
+
+Interestingly, the URL contained within the body of the email messages utilizes Google redirection,  redirecting the victim to the malicious payload which is actually hosted on the Tor network. The use of the "onion.to" domain in the initial redirect enables the attacker to make use of the Tor2Web proxy service, which enables the access of resources located on Tor from the internet by proxying web requests through an intermediary proxy server. Using proxy services like Tor2Web enables access to the Tor network without requiring a Tor client to be installed locally on the victim system. This is also not the first time we have seen Google be leveraged for an initial redirection. We have seen exploit kits such as Nuclear make use of it in the past.
+
+
+Additionally, as the actual malicious file is hosted on a server within the Tor network, it is significantly less likely that the malicious file will be removed or taken down like it would be if hosted traditionally on the internet via malicious or compromised web servers. It also allows the attackers to modify the redirection chain quickly and easily to attempt to evade reputation based blacklisting technologies.
+
+Once the initial redirection and Tor2Web proxying occurs, the victim's system will download a malicious MS Word document, which functions as a malware downloader for the Cerber ransomware itself. Below is an example of a malicious MS Word document associated with this campaign.
+
+
+Sample Word Document
+
+If the victim opens the malicious MS Word document and enables macros, the downloader will use the Windows Command Processor to invoke Powershell which will then download and execute the actual Cerber PE32 executable. While analyzing the macro execution, it was discovered that the attacker included junk code and other evasion techniques to make detection more difficult.
+
+The use of a folder path containing greater than the maximum number of characters allowed for a folder name, causes the code execution to simply skip these commands and continue along the code execution path. The highlighted portion of the image below shows some of this code. Everything before the '&' will result in an error, but execution continues.
+
+
+
+CMD.exe Command Calling Powershell
+
+Also the use of the "^" character during the Powershell invocation is ignored by the Windows Command Processor, and is a technique that is commonly used by attackers to attempt to evade host and network based intrusion detection and prevention systems. Below is the command line output showing this functionality:
+
+
+The script executes the Powershell command that is responsible for downloading and executing the malicious binary, which is also hosted on the Tor network and uses the same Tor2Web proxy service that was used for hosting and retrieval of the initial downloader. The PE32 executable is saved to the %TEMP% directory. Execution of this executable results in the installation of Cerber 5.0.1 and the encryption of the victim's files. Below is the ransom note that is displayed upon successful infection. Note the version listed is Cerber 5.0.1.
+
+
+When victims access the payment portal associated with this Cerber campaign they are greeted with the following message:
+
+
+This particular Cerber campaign is currently demanding 1.3649 in Bitcoin (BTC) which converts to approximately $1,000 in USD. If the ransom demand is not met within five days, the ransomware threatens to increase the payment requirement to 2.7298 BTC.
+
+A video demonstrating the entire infection process is included below:
+
+
+
+
+Indicators of Compromise
+Email Subjects (Some Customization to Individual Usernames was found):
+Hi
+How are you
+Howdy
+Hello
+Hey
+Whats up
+
+Domains:
+pvjk6aukijrdwwqs[.]onion[.]to
+efi66ap2ffu2ossu[.]onion[.]to
+
+Hashes:
+eb421e0e413f49d678830fdbc53600ea14b0b4a03ee1d169651d4843bb54b388 (SHA256)
+25de266140cee7ac48192ddf80d7477cc8081685933491eb0fff32198fb4b07e     (SHA256)
+
+Conclusion
+The Cerber ransomware family has continued to evolve very rapidly over the past several months. This latest distribution campaign highlights how ransomware based threats are continuing to evolve and mature over time, and shows an increasingly sophisticated infection process as attackers continue to implement new methods to attempt to evade detection and make analysis more difficult. Cerber continues to release new versions very quickly and will likely continue to do so in the future. This campaign demonstrates the importance of ensuring that organizations use defense-in-depth defensive architectures to protect their environments as well as the importance of ensuring that employees are properly trained on the email-based threats and proper hygiene.
+
+Tor is a useful way to browse the web anonymously. However, adversaries are leveraging it heavily to distribute and host malicious content. In this particular instance if all Tor2Web and Tor traffic were blocked the threat would be largely mitigated. Organizations need to decide if the business case for allowing Tor and Tor2Web on the network outweighs the potential risks to its users.
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+
+

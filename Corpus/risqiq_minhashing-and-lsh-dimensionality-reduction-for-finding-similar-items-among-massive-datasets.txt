@@ -1,0 +1,272 @@
+MinHashing and LSH — Dimensionality Reduction for Finding Similar Items Among Massive Datasets
+This article gives an overview of dimensionality reduction and finding similar elements in large datasets using shingling, feature hashing, MinHashing, and Locality Sensitive Hashing (LSH) from an engineering perspective. Many of the documents we’ve come across either go into depth on the theory or describe an application in detail; however, few tie together the theory and the implementation details. In this article, we lean towards a practical implementation and parameter tuning perspective while referencing the papers and publications which lay the theoretical foundation.
+
+The collection of algorithms described in this article can be used to find similar documents among a corpus of documents in O(n) time. Documents, in this case, are broadly defined — the documents could be email, source code, tweets, images, html — the possibilities are limitless. In fact, there are a multitude of applications of these algorithms and they can be tuned to produce specific results. For instance, the parameters to this process can be calibrated to provide near exact matching of documents for singling out near duplicates in large datasets (with a similarity threshold = 0.9, 0.95, 0.99). Furthermore, while a lower similarity (threshold = 0.5, 0.6, 0.7) can be used to detect document containment (a large portion of a document appears within another document), source code version differences and plagiarism. These applications are meant to give the reader a foundation for their applicability but the potential usages are vast.
+
+The document is organized in the following manner:
+
+The implementation chosen is purely function Scala. As a result, all of the code is side effect free and uses immutable data structures. A few notes on the code:
+
+This section gives an overview of the components required to calculate document similarity. Each section in this article is designed to explain the components required to implement the algorithm and to highlight how we can move from comparing huge sets of words and their word ordering (shingling) to comparing small, finite signatures to determine candidate similar documents.
+
+Each section is designed to be concise and easy to read while favoring ease of understanding as opposed to performance. We discuss how the implementation maps to the theory and highlight when the theory diverges from the implementation. Below we show a general workflow for creating signatures using Shingling, MinHash and Locality Sensitive Hashing.
+
+An overview of the workflow for document similarity.
+
+The definitions below are covered in detail throughout the article but we provide a quick overview of the most important terms.
+
+Jaccard Similarity — the magnitude of the set intersection divided by the set union. Measures similarity between two sets.
+
+Shingling — the process of picking a window size and sliding the chosen window over the document such that it produces contiguous subsequences of the text under consideration. Shingle sets can be compared using Jaccard Similarity.
+
+MinHash — compute the hashes of the text shingles N number of times, and for all sequence of hash values, choose the minimum value for each sequence offset. This effectively samples the set of hashes and reduces the amount of data required for a signature. The set of computed minimum hash values can then be used to estimate Jaccard Similarity. However, doing a pairwise comparison to determine each document similar to each other document requires order O(n2) operations.
+
+Locality Sensitive Hashing — compute the hash of groups of MinHash values. The grouping of MinHash values hashed together is known as a band. The collection of hashed bands computed during LSH samples the MinHash values and reduces the amount of data required to determine similar documents even further. Documents can be compared by determining if a subset of their LSH buckets match. Because we hash all the values into buckets, we can obtain candidate pairs for matching similarity by determining if they share the same bucket. This can be done in order O(n) time.
+
+This section will build a simple document comparison using a Shingler, MinHash, LSH and Jaccard similarity in the Scala programming language. To kick things off, the entire flow of a sample run of the algorithms used in this document are shown. We use two very simple documents which contain the strings “this is really rude” and “this is really crude”. Below we will confirm in code what our intuition suggests: the documents are indeed similar.
+
+As far as parameters are concerned, we humbly ask the reader to bear with us, as each parameter will be explained in detail in later sections of the article. The main goal of this section is to give a complete program that executes all of the algorithmic components. The features we choose will be: character shingles of length three (k = 3), the MinHash signature will contain 100 hashes (numHashes = 100), and the similarity threshold used to pick the number of bands is 50% (threshold = 0.50). We choose an value to seed the random number generator (seed = 1337), this value is used throughout the document to ensure repeatable random number generation.
+
+1
+			
+2
+			
+3
+			
+4
+			
+5
+			
+6
+			
+7
+			
+8
+			
+9
+			
+10
+			
+11
+			
+12
+			
+13
+			
+14
+			
+15
+			
+16
+			
+17
+			
+18
+			
+19
+			
+20
+			
+21
+			
+22
+			
+23
+			
+24
+			
+25
+			
+26
+			
+27
+			
+28
+			
+29
+			
+30
+			
+31
+			
+32
+			
+33
+			
+34
+			
+35
+			
+36
+			
+37
+			
+38
+			
+39
+			
+40
+			
+41
+			
+42
+			
+43
+			
+44
+			
+45
+			
+46
+			
+47
+			
+48
+			
+49
+			
+50
+			
+51
+			
+52
+			
+53
+			
+54
+			
+55
+			
+56
+			
+57
+			
+58
+			
+object LoadFile {
+			
+def apply(filename: String) = {
+			
+val source = scala.io.Source.fromFile(filename)
+			
+val fileContents = normalize(source.getLines mkString “”)
+			
+source.close()
+			
+fileContents
+			
+}
+			
+def normalize(filecontents: String) = {
+			
+filecontents.replaceAll(“[nt]+”, “”).replaceAll(“[ ]+”, ” “)
+			
+}
+			
+}
+			
+object MinhashLSHApp {
+			
+def main (args: Array[String]): Unit = {
+			
+val numHashes = 500
+			
+val k = 3
+			
+val threshold = 0.50
+			
+val document1 = LoadFile(args(0))
+			
+val document2 = LoadFile(args(1))
+			
+val minHasher = MinHash(1337, k, numHashes)
+			
+val shingles1 = minHasher.getShingles(document1)
+			
+val shingles2 = minHasher.getShingles(document2)
+			
+println(s”Shingles for document 1: $shingles1″)
+			
+println(s”Shingles for document 2: $shingles2″)
+			
+val js = JaccardSimilarity.similarity(shingles1, shingles2)
+			
+println(s”JaccardSimilarity: $js”)
+			
+val numBands = LocalitySensitiveHashing.pickBands(threshold, numHashes)
+			
+println(s”Number of bands: $numBands”)
+			
+val minHashedDoc1 = minHasher.hash(document1)
+			
+val lshBuckets1 = LocalitySensitiveHashing.getBuckets(minHashedDoc1, numBands)
+			
+val minHashedDoc2 = minHasher.hash(document2)
+			
+val lshBuckets2 = LocalitySensitiveHashing.getBuckets(minHashedDoc2, numBands)
+			
+println(s”MinHash Signature document 1: $minHashedDoc1″)
+			
+println(s”MinHash Signature document 2: $minHashedDoc2″)
+			
+println(s”LSH Buckets for document 1: $lshBuckets1″)
+			
+println(s”LSH Buckets for document 2: $lshBuckets2″)
+			
+val isSimilar = LocalitySensitiveHashing.isPairCandidateMatch(lshBuckets1, lshBuckets2)
+			
+val answer = if(isSimilar) “Yes” else “No”
+			
+println(s”Are documents likely similar according to LSH buckets?: $answer”)
+			
+val ejs = JaccardSimilarity.estimateSimilarityMinHash(minHashedDoc1, minHashedDoc2)
+			
+println(s”MinHash Estimated Similarity: $ejs”)
+			
+}
+			
+}
+			
+Below we show a complete example of computing shingles, calculating Jaccard similarity, MinHashing, Locality Sensitive Hashing, and Jaccard Similarity estimation using MinHash signatures of matching LSH buckets.
+
+1
+			
+2
+			
+3
+			
+4
+			
+5
+			
+6
+			
+7
+			
+8
+			
+9
+			
+10
+			
+Shingles for document 1: Vector(thi, his, is , s i, is, is , s r, re, rea, eal, all, lly, ly , y r, ru, rud, ude)
+			
+Shingles for document 2: Vector(thi, his, is , s i, is, is , s r, re, rea, eal, all, lly, ly , y c, cr, cru, rud, ude)
+			
+JaccardSimilarity: 0.7368421052631579
+			
+Number of bands: 16
+			
+Minhash Signature document 1: Vector(-1963648176, -1921289957, -1512999105, -2111404542, -1799742855, -2105124110, -2059796108, -1310614738, -2143058216, -2134921220, -1656634658, -1651555552, -2086871300, -2126020726, -2085831480, -2111927694, -1614984723, -1942110812, -1843317656, -1746546136, -1922528701, -1928728584, -1905150654, -1988992035, -1489835663, -1644471718, -1865309671, -1724873897, -2114174208, -2065255924, -2013754219, -1911077216, -1593469052, -2046599527, -1965660298, -1900026867, -1795078662, -1698039223, -1957917932, -1937199335, -2111832657, -1952964706, -2053878604, -1664713815, -1912557452, -1973575232, -1759831572, -1999593814, -1844929913, -1703748270, -2085640552, -1562749522, -1149713561, -1911714418, -1966926355, -2024799110, -1938761049, -1915261079, -2097520587, -2003905126, -1599881054, -2068522133, -1943024190, -2105228777, -2054952913, -1660192648, -1896347555, -1957307911, -1959371618, -2106520909, -1658705817, -1922571653, -2043034204, -1847574714, -2113437331, -1954620675, -1824659190, -2106602211, -1868788723, -1619243605, -1890579540, -1523224927, -1767305590, -2084596200, -2029531235, -1999818013, -1355568425, -1856049463, -1502034257, -1641540311, -1461487805, -2031787090, -2067241471, -1214971107, -2102931164, -2083537598, -2142830711, -1535778714, -1437141480, -1937007929)
+			
+Minhash Signature document 2: Vector(-1963648176, -1921289957, -1754202055, -2111404542, -2124488285, -2126967618, -2059796108, -1310614738, -2143058216, -2134921220, -1360426182, -1651555552, -2086871300, -2126020726, -2053172220, -2111927694, -1614984723, -2103359479, -1843317656, -1746546136, -2023287501, -1928728584, -1514684466, -1988992035, -1489835663, -1644471718, -1865309671, -1724873897, -2114174208, -2065255924, -2013754219, -1911077216, -1593469052, -2046599527, -1992922906, -1900026867, -1795078662, -1698039223, -1957917932, -1937199335, -2071853085, -1952964706, -2053878604, -1664713815, -1912557452, -1973575232, -1759831572, -1999593814, -1986491321, -1844557823, -2085640552, -1562749522, -2135726253, -1582543010, -1966926355, -2038903837, -1938761049, -1915261079, -2097520587, -1963272780, -1599881054, -2068522133, -1943024190, -2105228777, -1889741230, -1712868950, -1896347555, -1957307911, -1959371618, -2106520909, -1658705817, -1922571653, -2043034204, -1655693523, -2113437331, -1954620675, -1824659190, -1998353589, -1868788723, -2065168202, -1890579540, -1523224927, -1767305590, -2084596200, -2103605603, -1999818013, -1355568425, -2049936839, -1713696921, -994794076, -1977548762, -1772970620, -2067241471, -1518774541, -2102931164, -1675274854, -2142830711, -1535778714, -1437141480, -2048616858)
+			
+LSH Buckets for document 1: Vector(-1213855669, 548152864, -1964455099, 2143591079, -807851743, 1488168576, 321477709, 1328772683, 975754765, 1045318542, -1766101560, -189526802, -1952105114, -247853976, -93117209, 1263216930)
+			
+LSH Buckets for document 2: Vector(640285574, -211391519, -519579540, 491050797, -807851743, -16274963, 230687300, 1328772683, -828872119, 802187919, 2050450891, -189526802, 931518668, -114211601, 1025230197, 481111499)
+			
+Are documents likely similar according to LSH buckets?: Yes
+			
+MinHash Estimated Similarity: 0.7
+			
+Next time, we’ll discuss the implementation details for each part of the algorithm for detecting document similarity. We’ll first start with an overview of shingling and computing document features. Then, we’ll discuss various hash functions, like djb2a and universal hash functions and show how they fit into the big picture. Finally, we’ll dive into Minhash and Locality Sensitive Hashing and describe how we can sample document features to compute fixed size signatures that can be used to compute document similarity.

@@ -1,0 +1,209 @@
+
+Banking Trojan Attempts To Steal Brazillion$
+
+
+
+
+This post was authored by Warren Mercer, Paul Rascagneres and Vanja Svajcer
+
+
+Introduction
+
+Banking trojans are among some of the biggest threats to everyday users as they directly impact the user in terms of financial loss. Talos recently observed a new campaign specific to South America, namely Brazil. This campaign was focused on various South American banks in an attempt to steal credentials from the user to allow for illicit financial gain for the malicious actors. The campaign Talos analysed focused on Brazilian users and also attempted to remain stealthy by using multiple methods of re-direction in an attempt to infect the victim machine. It also used multiple anti-analysis techniques and the final payload was written in Delphi which is quite unique to the banking trojan landscape.
+
+
+
+
+Infection Vector
+
+
+
+Spam Example
+
+As with a lot of banking trojan campaigns, this one starts with a malicious spam campaign. Here is an example of an email used during this campaign. The attacker used an email written in Portuguese which makes it seemingly more legitimate for the user - receiving email in a native language gives the attackers a higher likelihood of achieving their mission objective, convincing the victim to open the malicious attachment.
+
+
+
+The email contains an HTML attachment named BOLETO_2248_.html, a Boleto refers to a type of invoice used in Brazil. The HTML document contains a simple redirection to a first website:
+
+<html>
+
+<head>
+
+<title>2Via Boleto</title>
+
+</head>
+
+<body>
+
+</body>
+
+</html>
+
+<meta http-equiv="refresh" content="0; url=http://priestsforscotland[.]org[.]uk/wp-content/themes/blessing/0032904.php">
+
+
+
+
+Redirection, Redirection and… Redirection
+
+The URL contained in the HTML attachment is a first redirect to a goo.gl URL shortener:
+
+
+
+A second redirect is performed by the goo.gl URL. This shortened URL points to hxxp://thirdculture[.]tv:80/wp/wp-content/themes/zerif-lite/97463986909837214092129.rar.
+
+
+
+Finally, the archive contains a JAR file named BOLETO_09848378974093798043.jar. If the user double clicks on the JAR file, java will execute the malicious code and will start the installation process of this banking trojan.
+
+
+Java Execution
+
+The first step of the Java code is to setup the working environment of the malware and to download additional files from hxxp://104[.]236[.]211[.]243/1409/pz.zip. The malware is working in the C:\Users\Public\Administrator\ directory which it creates as this is not a default folder. The new archive contains a new set of binaries. 
+
+
+
+On the last step, the Java code renames the downloaded binaries and executes vm.png (previously renamed):
+
+
+
+
+Malware Loading
+
+The first executed binary is vm.png. It's a legitimate binary from VMware and is signed with a VMware digital signature.
+
+
+
+One of the dependencies of the binary is vmwarebase.dll:
+
+Python 2.7.12 (default, Nov 19 2016, 06:48:10)
+[GCC 5.4.0 20160609] on linux2
+Type "help", "copyright", "credits" or "license" for more information.
+>>> import pefile
+>>> pe = pefile.PE("vm.png")
+>>> for entry in pe.DIRECTORY_ENTRY_IMPORT:
+...   print entry.dll
+
+...
+
+MSVCR90.dll
+ADVAPI32.dll
+vmwarebase.DLL
+KERNEL32.dll
+
+The vmwarebase.dll is not the legitimate binary but a malicious binary. This technique has been used previously by other actors such as PlugX. The idea behind this approach is that some security products have the following trust chain: if a first binary is trusted (vm.png in our case), the loaded libraries are automatically trusted. The loading technique can bypass some security checks.
+
+The purpose of the vmwarebase.dll code is to inject and execute the prs.png code in explorer.exe or in notepad.exe depending on the context of the user account. The injection is performed by allocating memory in the remote process and the usage of LoadLibrary() to load the gbs.png library. The API usage is obfuscated by encryption (AES):
+
+
+
+Once decrypted the m5ba+5jOiltH7Mff7neiMumHl2s= is LoadLibraryA and QiF3gn1jEEw8XUGBTz0B5i5nkPY= is kernel32.dll
+
+
+Banking Trojan
+
+The main module of the banking trojan contains a lot of features. For example, it will attempt to terminate analyst processes such as taskmgr.exe (Task Manager), msconfig.exe (MsConfig), regedit.exe (Registry Editor) and ccleaner.exe and ccleaner64.exe. This module creates a autostart registry key which attempts to use a legitimate looking name:  HKCU\Software\Microsoft\Windows\CurrentVersion\Run\Vmware Base.
+
+This module is used to get the title of the window in the foreground of the user. The purpose is to identify if the user has a windows with one the following title (these strings are encrypted in the sample):
+
+Navegador Exclusivo
+Sicoobnet
+Aplicativo Ita
+Internet Banking BNB
+Banestes Internet Banking
+Banrisul
+bb.com.br
+bancobrasil.com
+Banco do Brasil
+Autoatendimento Pessoa Física - Banco do Brasil
+internetbankingcaixa
+Caixa - A vida pede mais que um banco
+SICREDI
+Banco Bradesco S/A
+Internet Banking
+30 horas
+Banestes Internet Banking
+Banrisul
+
+
+This list contains the targeted financial institutions located in Brazil. This trojan leveraged Web Injects to allow them to interact with the banking website. Another task performed by this main module is to execute the last binary: gps.png (renamed previously with the .drv extension) with rundll32.exe:
+
+
+
+This library is packed using Themida which has made it significantly difficult to unpack.
+
+The following debug strings were left in the samples analysed by the developer. The strings are in Portuguese:
+
+<|DISPIDA|>Iniciou!
+<|PRINCIPAL|>
+<|DISPIDA|>Abriu_IE
+<|Desktop|>
+<|DISPIDA|>Startou!
+<|Enviado|>
+
+These strings are sent to the C2 server when specific actions are performed on the infected system. The C2 configuration is stored in the i.dk plain text file (encrypted in AES 256). This file contains a date, an IP and additional configuration items:
+
+07082017
+191.252.65.139
+6532
+
+
+Conclusion
+
+Banking trojans continue to form part of the threat landscape, they continually evolve and also can, like this specific example, be very specific to the region they are attacking. This often doesn't suggest the attackers are from that region but they have decided that there is perhaps less security conscious users living there. Financial gain will continue to be a huge motivator for attackers and as with this sample the evolution of the malware continues to grow. Using commercial packing platforms like Themida will continue to make analysis difficult for analysts and shows that some attackers are willing to obtain these types of commercial packers in an attempt to thwart analysis.
+
+
+Coverage
+
+Additional ways our customers can detect and block this threat are listed below.
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+Network Security appliances such as NGFW, NGIPS, and Meraki MX can detect malicious activity associated with this threat.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products.
+
+Umbrella, our secure internet gateway (SIG), blocks users from connecting to malicious domains, IPs, and URLs, whether users are on or off the corporate network.
+
+Open Source Snort Subscriber Rule Set customers can stay up to date by downloading the latest rule pack available for purchase on Snort.org.
+
+
+IOCs
+
+927d914f46715a9ed29810ed73f9464e4dadfe822ee09d945a04623fa3f4bc10 HTML attachment
+
+5730b4e0dd520caba11f9224de8cfd1a8c52e0cc2ee98b2dac79e40088fe681c RAR archive
+
+B76344ba438520a19fff51a1217e3c6898858f4d07cfe89f7b1fe35e30a6ece9 BOLETO_09848378974093798043.jar
+
+0ce1eac877cdd87fea25050b0780e354fe3b7d6ca96c505b2cd36ca319dc6cab  gbs.png
+
+6d8c7760ac76af40b7f9cc4af31da8931cef0d9b4ad02aba0816fa2c24f76f10  i.dk
+
+56664ec3cbb228e8fa21ec44224d68902d1fbe20687fd88922816464ea5d4cdf  prs.png
+
+641a58b667248fc1aec80a0d0e9a515ba43e6ca9a8bdd162edd66e58703f8f98  pz.zip
+
+79a68c59004e3444dfd64794c68528187e3415b3da58f953b8cc7967475884c2  vm.png
+
+969a5dcf8f42574e5b0c0adda0ff28ce310e0b72d94a92b70f23d06ca5b438be  vmwarebase.dll
+
+http://priestsforscotland[.]org[.]uk
+
+http://thirdculture[.]tv:
+
+http://104[.]236[.]211[.]243
+
+191.252.65.139
+
+
+
+
+

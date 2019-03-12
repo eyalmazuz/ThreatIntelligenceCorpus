@@ -1,0 +1,198 @@
+
+Detecting File Hash Collisions
+
+
+By Pär Österberg Medina.
+
+
+When investigating a computer that is suspected of being involved in a crime or that might be infected with a malware, it is important to try to remove as many known files as possible in order to keep the focus of the analysis on the files you have not seen or analyzed before. This is particular useful in malware forensic when you are looking for something out of the ordinary, something you might not have seen before. In order to remove files from the analysis, a cryptographic checksum of the file is generated that is matched in a hash database. These hash databases are divided up in categories with files that are either known to be good, used, forbidden or bad. 
+
+Another common use of hash functions in computer forensics is to use them to verify the integrity of an acquired hard drive image or any other piece of data. A cryptographic hash of the data is generated when the evidence is acquired that later can be used to verify that the content has not changed. Even though newer hash functions exists, in computer forensics we are still relying on MD5 and SHA-1. These hash functions was written a long time ago and has flaws that can be used to generate something called hash collisions. In this blog post I will show how these collisions can be detected so we still can use our old trustworthy hash function - even though they are broken.
+Hash Collision
+
+You have most likely heard about hash collisions before and how they can be used for malicious intent. Briefly explained, a collision attack is when a file or a message produces the same hash even though the content of the files are different. To illustrate how this can look I have generated what on the surface seems to be two identical programs.
+pmedina@forensic:~$ wc -c prg1 prg2
+ 9054 prg1
+ 9054 prg2
+18108 total
+pmedina@forensic:~$ md5sum prg1 prg2
+850d1dc3d24f0ea753a7ee1d5d8bbea9  prg1
+850d1dc3d24f0ea753a7ee1d5d8bbea9  prg2
+
+
+
+The files above have the same size and produce the same MD5 checksum. However when we execute the programs they produce a completely different result.
+pmedina@forensic:~$ ./prg1
+Let me see your identification.
+pmedina@forensic:~$ ./prg2
+These aren't the droids you're looking for
+
+
+Detecting Hash Collisions
+
+In the example above I showed two files that both had the same size and shared the MD5 checksum. Even though there have been documented hash collisions in both the MD5 and SHA-1 hash functions, it highly unlikely that a collision might occur on multiple hash functions at the same time. As you can see below, the files do not produce the same SHA-1 checksum and are therefore considered to be unique. 
+
+pmedina@forensic:~$ sha1sum prg1 prg2
+a246766fc497e4d6ed92c43a22ee558b3415946a  prg1
+b9c22ad10b61009193aa8b312c6ec88f44323119  prg2
+
+
+
+The danger of white listing files and removing them from a forensic investigation is that you have to be absolutely sure that the files you are excluding for analysis are exactly the files you want to remove. Even though there has been no public demonstration of a definite hash collision - an attack where a new file has been generated to produce the same hash as an existing file, I always like to be extra careful when removing files that generates matches in my hash databases. To verify that the files are indeed the same file is something that can be done by mapping a hash to another hash - a technique I call "hashmap".
+Hashmap'ing a hash database
+In order for us to be able to hashmap a hash database, the database needs to include at least two hashes created by using two different hash functions. Fortunately for us, the databases we generated that are using the RDS format or the NSRL databases we downloaded from NIST, both lists the MD5 and SHA-1 hash in each entry. I have previously showed how the program ‘hfind’ can be used to both create an index from a database as well as how to use that index to search the database. When ‘hfind’ finds a match for a hash we search for, the program will print the filename of the file that matched the hash.
+pmedina@forensic:~$ md5sum /files/RedDrive.zip
+2e54d3fb64ff68607c38ecb482f5fa25  /files/RedDrive.zip
+pmedina@forensic:~$ hfind /tmp/example-rds-unique.txt
+2e54d3fb64ff68607c38ecb482f5fa25
+2e54d3fb64ff68607c38ecb482f5fa25        RedDrive.zip
+
+
+
+This functionality of ‘hfind’ is something we can use when we want to hashmap a MD5 hash to the SHA-1 hash of the same file. In order for this to work, we need to replace the value in the database that holds the filename with the SHA-1 checksum of the file. This can be done in many ways but to demonstrate this I will use the Unix command ‘awk’ on one of the hash databases I have generated before. 
+pmedina@forensic:~$ head -1 /tmp/example-rds-unique.txt > /tmp/example-rds-unique-hm-sha1.txt
+pmedina@forensic:~$ tail -n +2 /tmp/example-rds-unique.txt | awk -F, '{print $1","$2","$3","tolower($1)","$5","$6","$7","$8}' >> /tmp/example-rds-unique-hm-sha1.txt
+pmedina@forensic:~$ head -3 /tmp/example-rds-unique-hm-sha1.txt
+"SHA-1","MD5","CRC32","FileName","FileSize","ProductCode","OpSystemCode","SpecialCode"
+"000e9b6b962bdbcd5b0ff01635a417cce833490e","b0efd5eacfe6f1e251b8870d486326af","c8f43198","000e9b6b962bdbcd5b0ff01635a417cce833490e",96,0,"WIN",""
+"001121f9dc35ab520b207908f0f26c48979ed497","6efca4942c73ab0b17875fd729b2d03a","2e929525","001121f9dc35ab520b207908f0f26c48979ed497",72,0,"WIN",""
+
+
+
+As you can see the field that used to hold the filename now holds the SHA-1 checksum of the file instead. Since the offsets to the file entries in our hashmap database are not the same as in the original database, we do also need to create a new index.
+pmedina@forensic:~$ hfind -i nsrl-md5 /tmp/example-rds-unique-hm-sha1.txt
+Index Created
+
+
+
+Using our new database to search for the MD5 checksum now’ prints the SHA-1 hash of the file instead of the file name. This hash can we verify by generating a SHA-1 checksum of the file we are investigating. 
+pmedina@forensic:~$ hfind /tmp/example-rds-unique-hm-sha1.txt 2e54d3fb64ff68607c38ecb482f5fa25
+2e54d3fb64ff68607c38ecb482f5fa25        d9c40dd2f1fb08927e773a0dc70d75fedd71549e
+pmedina@forensic:~$ sha1sum /files/RedDrive.zip
+d9c40dd2f1fb08927e773a0dc70d75fedd71549e  /files/RedDrive.zip 
+
+
+
+Now we know for sure that the file we have on disk is exactly the same as we have in our database. We can of course also reverse this process to create a hashmap database that will print the MD5 hash when we query the database using a SHA-1 hash. 
+Modifying ‘hfind’ to hashmap automatically
+
+Generating a new hash databases that hold the hash value you want to map to in the data field for the file name is a solution that works. The solution however is not that flexible and requires a lot of extra disk space since the hashmap database will be at least the same size as the original database and the index approximately a third of the database size. Instead of trying to work around the issue with ‘hfind’ only printing the field that holds the file name, a much better solution to our problem would be to patch the program so it will present us with the corresponding MD5/SHA-1 hash instead.
+
+To do so the first thing we need to do is to download The Sleuthkit, verify the downloaded file and extract the content. At the time of this writing, the latest stable version of TSK is 3.2.3.
+pmedina@forensic:~$ tar -zxf sleuthkit-3.2.3.tar.gz
+pmedina@forensic:~$ cd sleuthkit-3.2.3/
+
+
+
+The next step is to run the ‘configure’ program to verify that all dependencies are installed and that all the programs that are required to compile the code are in place.
+pmedina@forensic:~/sleuthkit-3.2.3$ ./configure
+checking for a BSD-compatible install... /usr/bin/install -c
+checking whether build environment is sane... yes
+checking for a thread-safe mkdir -p... /bin/mkdir -p
+checking for gawk... no
+checking for mawk... mawk
+..
+..
+config.status: creating tools/timeline/Makefile
+config.status: creating tests/Makefile
+config.status: creating samples/Makefile
+config.status: creating man/Makefile
+config.status: creating tsk3/tsk_config.h
+config.status: executing depfiles commands
+config.status: executing libtool commands
+config.status: executing tsk3/tsk_incs.h commands
+pmedina@forensic:~/sleuthkit-3.2.3$
+
+
+
+
+The source code that handles the way ‘hfind’ prints the results when processing a database that is using the NSRL2 format is located in the file ‘tsk3/hashdb/nsrl_index.c’. This is the file that we need to patch so that ‘hfind’ will print the SHA1 and MD5 checksum instead of the filename.
+pmedina@forensic:~/sleuthkit-3.2.3$ mv tsk3/hashdb/nsrl_index.c tsk3/hashdb/nsrl_index.c.ORIG
+pmedina@forensic:~/sleuthkit-3.2.3$ cat ../nsrl_index.c.patch
+172,174c172
+<                 &str[1 + TSK_HDB_HTYPE_SHA1_LEN + 3 +
+<                      TSK_HDB_HTYPE_MD5_LEN + 3 + TSK_HDB_HTYPE_CRC32_LEN +
+<                      3];
+---
+>                 &str[1 + TSK_HDB_HTYPE_SHA1_LEN + 3];
+331,333c329
+<                 &str[1 + TSK_HDB_HTYPE_SHA1_LEN + 3 +
+<                      TSK_HDB_HTYPE_MD5_LEN + 3 + TSK_HDB_HTYPE_CRC32_LEN +
+<                      3];
+---
+>                 &str[1];
+pmedina@forensic:~/sleuthkit-3.2.3$ patch tsk3/hashdb/nsrl_index.c.ORIG -i ../nsrl_index.c.patch -o tsk3/hashdb/nsrl_index.c
+patching file tsk3/hashdb/nsrl_index.c.ORIG
+pmedina@forensic:~/sleuthkit-3.2.3$
+
+
+
+
+We also need to make sure that an error is returned if we are trying to use our patched ‘hfind’ binary on another database type but the one that are using the NSRL2 format. This is done by patching the file ‘tsk3/hashdb/tm_lookup.c’.
+pmedina@forensic:~/sleuthkit-3.2.3$ cat ../tm_lookup.c.patch
+1022c1022
+<             if (dbtype != 0) {
+---
+>             /* if (dbtype != 0) { */
+1024c1024
+<                 tsk_errno = TSK_ERR_HDB_UNKTYPE;
+---
+>                 tsk_errno = TSK_ERR_HDB_UNSUPTYPE;
+1026c1026
+<                          "hdb_open: Error determining DB type (MD5sum)");
+---
+>                          "hdb_open: hashmap cannot work on DB type (MD5sum)");
+1028c1028
+<             }
+---
+>             /* } */
+1032c1032
+<             if (dbtype != 0) {
+---
+>             /* if (dbtype != 0) { */
+1034c1034
+<                 tsk_errno = TSK_ERR_HDB_UNKTYPE;
+---
+>                 tsk_errno = TSK_ERR_HDB_UNSUPTYPE;
+1036c1036
+<                          "hdb_open: Error determining DB type (HK)");
+---
+>                          "hdb_open: hashmap cannot work on DB type (HK)");
+1038c1038
+<             }
+---
+>             /* } */
+pmedina@forensic:~/sleuthkit-3.2.3$ mv tsk3/hashdb/tm_lookup.c tsk3/hashdb/tm_lookup.c.ORIG^C
+pmedina@forensic:~/sleuthkit-3.2.3$ patch tsk3/hashdb/tm_lookup.c.ORIG -i ../tm_lookup.c.patch -o tsk3/hashdb/tm_lookup.c
+patching file tsk3/hashdb/tm_lookup.c.ORIG
+pmedina@forensic:~/sleuthkit-3.2.3$
+
+
+
+Everything that is needed to modify ‘hfind’ is done and we can compile and test our binary.
+pmedina@forensic:~/sleuthkit-3.2.3$ make
+Making all in tsk3
+..
+..
+make[1]: Entering directory `/home/pmedina/sleuthkit-3.2.3/tsk3'
+Making all in man
+make[1]: Entering directory `/home/pmedina/sleuthkit-3.2.3/man'
+make[1]: Nothing to be done for `all'.
+make[1]: Leaving directory `/home/pmedina/sleuthkit-3.2.3/man'
+make[1]: Entering directory `/home/pmedina/sleuthkit-3.2.3'
+make[1]: Nothing to be done for `all-am'.
+make[1]: Leaving directory `/home/pmedina/sleuthkit-3.2.3'
+pmedina@forensic:~/sleuthkit-3.2.3$ sudo cp tools/hashtools/hfind /usr/local/bin/hashmap
+pmedina@forensic:~/sleuthkit-3.2.3$ cd ..
+pmedina@forensic:~$ hashmap /tmp/example-rds-unique.txt 2e54d3fb64ff68607c38ecb482f5fa25
+2e54d3fb64ff68607c38ecb482f5fa25        d9c40dd2f1fb08927e773a0dc70d75fedd71549e
+pmedina@forensic:~$ hashmap /tmp/example-rds-unique.txt d9c40dd2f1fb08927e773a0dc70d75fedd71549e
+d9c40dd2f1fb08927e773a0dc70d75fedd71549e        2e54d3fb64ff68607c38ecb482f5fa25
+pmedina@forensic:~$
+
+
+
+
+As you can see above, instead of returning the name of the file that we find in our hash database, the other pair in the MD5 to SHA-1 or SHA-1 to MD5 hashmap is given to us. With this solution, we do not need to create an additional database and can use the existing index that we already have created.
+
+

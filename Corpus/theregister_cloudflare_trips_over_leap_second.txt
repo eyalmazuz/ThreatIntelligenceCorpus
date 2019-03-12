@@ -1,0 +1,17 @@
+How the NYE leap second clocked Cloudflare – and how a single character fixed it
+When the leap second was added just before the arrival of 2017, Cloudflare stumbled. The content delivery network's DNS service suffered a limited service interruption during the first few hours of the new year.
+John Graham-Cumming, head of engineering for the company, said in a phone interview with The Register that the reason for the outage was the misapprehension that time cannot go backward.
+Leap seconds have the potential to make time seem to rewind, as far as computers are concerned, by throwing clocks out of sync.
+Programmers have a long history of failing to understand or to plan for how time-related code will function in the future. Probably the most well-known example is the Y2K bug. And looking ahead, the year 2038 has the potential to create problems for Unix systems that haven't been updated to store time as a 64-bit integer.
+As developer Noah Sussman documented in a blog post several years ago, there are many misunderstandings about dealing with time in software applications.
+Graham-Cumming published an analysis of the Cloudflare service interruption on the company blog. The incident affected only a few machines across the company's 102 data centers, about 0.2 per cent of DNS queries, and less than 1 per cent of HTTP requests, we're told.
+Cloudflare's RRDNS software is written in Go and uses Go's time.Now() function to fetch the current time. But, as Graham-Cumming explained, Go does not provide monotonicity – a guarantee that time moves only forward.
+While this is a known issue among Go developers, Graham-Cumming insisted the responsibility belonged to Cloudflare. "We didn't plan in the code that the time difference would be negative," he said. "That was on us."
+Cloudflare's RRDNS software is designed to measure the performance of upstream DNS resolvers handling CNAME lookups. It works when time moves forward but fails otherwise, because Go's rand.Int63n() function panics when passed a negative argument.
+The fix proved to be a single character that broadened the scope of the RRDNS error checking. Instead of checking only whether the time value rttMAX was zero, the code was updated to check if rttMAX was equal to or less than zero, for those rare instances when time appeared to be going backward.
+Graham-Cumming said Cloudflare plans to prevent potential recurrences of the issue by reviewing its code for time calculation problems and by smearing leap seconds over long periods – as Google does – rather than adding new seconds all at once.
+"Computers like things to be really predictable, but we have external input making them unpredictable," said Graham-Cumming. "One of the problems with computers is whenever you deal with the real world, you deal with the mess of the real world." ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

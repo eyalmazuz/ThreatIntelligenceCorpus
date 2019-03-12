@@ -1,0 +1,29 @@
+No Honor Among Thieves: Phishing Templates Sold On YouTube With Backdoors
+Overview
+The technical nature of cyber crime can sometimes obscure the fact that creating, using, and distributing malware, phishing kits and other threats is a business, albeit an illegitimate one. Like most other businesses, cybercriminals look for ways to market and distribute their tools effectively while staying under the radar of law enforcement and the security community. Recently, Proofpoint researchers have observed scammers distributing phishing templates and kits via YouTube, complete with how-to videos and links in the video descriptions to the software. In fact, this practice appears to be quite widespread. A simple search for “paypal scama” returns over 114,000 results. There's a catch, though, for criminals downloading the software: a backdoor sends the phished information back to the author. While backdoors on these templates aren't new, the use of YouTube to advertise and distribute them is a new trend.
+Analysis
+We identified several YouTube videos with links to phishing kits, templates, or links for further information. The videos themselves demonstrate the look and feel of the templates as well as how to collect the phished information. Figure 1 shows the first part of a video for an Amazon phishing template that replicates the Amazon login page.
+
+Figure 1: YouTube demo video of an Amazon phishing template with a Facebook link to contact the author
+The encoded code sample in Figure 2 was taken from another example of a phishing template downloaded from a link on a similar video.
+
+Figure 2: Encoded backdoored code sample 
+When we decoded the sample, we found that the author's Gmail address was hardcoded to receive the results of the phish every time the kit was used, regardless of who used it.
+
+Figure 3: Decoded backdoored code sample with a redacted Gmail address of the phishing kit author
+In this same kit, we also found a secondary email receiving the stolen results. It is unclear if this is the same author as the first or if someone else added it and then redistributed the kit.
+
+Figure 4: Additional backdoor to send phished information to another address
+A few variables are set up at the top of this code sample and used at the bottom. When we decode, we can observe the additional mail command (Figure 5).
+
+Figure 5: Decoded second mail command sending phished information to a Yahoo email address
+Figure 6 shows a second encoding technique:
+
+Figure 6: A second encoding technique used in a PayPal phishing template
+In this PayPal scam, the author attempts to avoid raising suspicions by adding a PHP include for a file called style.js just before the PHP “mail” command is used to ship off the stolen credentials. Upon reviewing the style.js file, we can see that it is more encoded PHP code.
+
+Figure 7: Encoded style.js file from the PayPal example shown in Figure 4
+After unraveling this code 15 times, we arrive at the author’s hidden command, which again sends the phished information to the author.
+
+Figure 8: Decoded style.js file from the PayPal example in Figures 4 and 5
+Conclusion

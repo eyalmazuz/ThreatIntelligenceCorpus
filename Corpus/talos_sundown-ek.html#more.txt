@@ -1,0 +1,117 @@
+
+Sundown EK: You Better Take Care
+
+
+This post was authored by Nick Biasini
+
+
+
+Over the last six months the exploit kit landscape has seen some major changes. These changes began with Nuclear ceasing operations in April/May and arrests in Russia coinciding with the end of Angler in June. Recently, Neutrino has been added to the list of exploit kits that have stopped being actively used in 2016.What remains  is a group of smaller exploit kits vying for pole position in an industry that continues to generate millions of dollars from payloads such as ransomware and banking trojans.
+
+It's now time to turn to another exploit kit that is active on the landscape, Sundown. The Sundown exploit kit has previously been part of a second tier of exploit kits that includes Magnitude and Sweet Orange. These kits successfully compromise users, but typically are not accompanied with the advanced techniques and wide-spread use of the other major exploit kits. It's not to say these kits aren't significant threats, but from a potential victim perspective they historically do not have the reach associated with other EKs from before such as Angler or RIG.
+
+
+Over the course of several weeks, Talos focused research on Sundown activity and our findings were surprising. What we found was a kit that operated on a relatively small infrastructure footprint, but had what appeared to be one of the largest domain shadowing implementations we had ever seen. The campaign operated out of handful of IPs, but we ended up finding in excess of 80K malicious subdomains associated with more than 500 domains leveraging various registrant accounts. This translates into a kit that will largely evade traditional blacklisting solutions. Sundown remained highly vigilant and the subdomains in use were recycled quickly to help in avoiding detection. In some cases, it appeared to be a single use domain shadowing which is incredibly difficult to stop by using blacklisting.
+
+Overview
+Sundown operates similarly to most other exploit kits. It's composed of a couple of parts: a landing page and an exploit page with a payload. With most exploit kits today, a gate is also commonly used as an initial point of redirection. Most victims are directed to exploit kits through two means: compromised websites and malicious advertising. This particular campaign relied primarily on compromised websites as the source of traffic.
+
+As is the case with most compromised websites, there is an iframe added somewhere on the web page that renders off screen andthe Sundown campaign was no different.
+
+
+Gate Redirection from Compromised Website
+
+This initial redirection points to the gate that was being used for this campaign. It's another shadowed domain that points to another page shown below:
+
+
+Exploit Kit Landing Page from Gate
+
+The highlighted portion is the actual redirection to the Sundown landing page. This landing page then probes the user's system to determine if they are potentially vulnerable and then delivers an exploit page with a malicious payload. The response from Sundown servers includes a field in the headers that clearly identifies it from other exploit kit traffic: Yugoslavian Business Network. This particular string is present in all landing page responses delivered from Sundown, a sample of which is shown below:
+
+
+Sundown Calling Card: Yugoslavian Business Network
+
+Note that this is only found specifically in the landing page requests and is noticeably missing on the exploit page requests.
+
+
+Sample Sundown Exploit Page GET Request
+
+There is one additional GET request found in the Sundown infection chain for /undefined. This results in a 404 from the server before the exploit page is requested. As far as exploits are concerned, Talos has observed Sundown leveraging both Adobe Flash and Silverlight vulnerabilities to compromise victims. One interesting aspect is that they used standard extensions for those files. All requests for flash files end in ".swf" and all silverlight requests end in ".xap" which isn't particularly common for exploit kits as they typically will try and obfuscate the activity.
+
+Campaign
+Based on this information, Talos began gathering data associated with this exploit kit. The first aspect was gathering the IP addresses that were hosting Sundown. These particular adversaries were leveraging systems to host Sundown for extended periods of time. In our experience in hunting exploit kits, the servers hosting the kits do not stay active for long. In the days of Angler this could be less than 12 hours to at most 48 hours. Some of the IPs that we have seen hosting Sundown have been active for weeks and in some instances months. This is unexpected because the IPs hosting the activity would be killed by most security providers after a relatively short amount of time. The hosts serving Sundown for this particular campaign were exclusively hosted in the Netherlands. These providers were notified of the activity and, as of the writing of this blog, no response or action appears to have been taken by the providers.
+
+Over the course of the investigation only 10 unique IPs were found associated with this campaign. We then began to investigate the DNS activity associated with these hosts and the findings were striking. Looking at the DNS activity for the IPs in question ended with an excess of 80K unique subdomains. One of the interesting aspects was how long these domains were seen as active; in most cases the domains were active for less than an hour. Additionally, there was not a lot of activity associated with the domains. Generally, it was less than a handful of requests for each subdomain and in some cases just a single request was observed.
+
+
+Sundown Subdomain Activity
+
+These thousands of subdomains were associated with several hundred different domains; the majority of which were owned by two distinct registrant accounts. Some of the domains were registered using privacy protection mechanisms so there is no real way to know how many actual different registrant accounts were utilized by the adversaries. 
+
+Looking at the subdomain activity broken out by day led to an interesting finding. As shown below, the amount of subdomains registered in a given day reached a peak of slightly more than 4,300.
+
+
+Count of Unique Sundown Subdomains by Day
+
+For a 24 hour period this particular Sundown campaign was seen generating approximately 3 subdomains a minute for the entire day. This seemed like an unruly amount of domains so we did a basic check and it appeared that this particular Sundown campaign was actually using wildcards for the domains they had been leveraging instead of traditional domain shadowing. Shown below are a couple of DNS requests.The first is an actual Sundown domain that was seen compromising victims. The other two domains are just made up subdomains including just actually using 'random' as the subdomain.
+
+
+Domain Wildcarding Examples
+
+As you can see, all of the domains in question resolved to the server that was hosting Sundown for that particular period. In previous campaigns involving other exploit kits we observed the exploit kit users actually creating the subdomains. Sundown is not using domain shadowing, but is instead using domain wildcarding to host its activity. There is an obvious downside to this type of technique, especially if you are leveraging a compromised registrant account, impacting the core domain. If the domains you are using to host the kit were active, even with something as simple as a parked page, you may impact it. Take for example a domain that is currently parked.Typically you would host that on www.domainname[.]TLD. The downside to wildcarding is now, if someone tries to resolve that particular domain, it will now redirect to the malicious server which was the case for these campaigns:
+
+
+This also accounts for some of the results found in the data where the www.domainname[.]TLDresolved to both the legitimate hosting and later to the Sundown server. This also explains the 23 million subdomains that were found during a deeper analysis of the IP addresses being used to host the Sundown activity.
+
+As far as payloads are concerned, this particular campaign was seen exclusively delivering banking trojans. Banking trojans and ransomware are, not surprisingly, the payloads of choice for exploit kit users currently. These bad guys are interested in making money and right now ransomware and banking trojans are the best way to easily generate large amounts of revenue.
+
+YBN Logo
+Exploit kits are generally careful about what systems are served content from the server. For example, if you were to browse directly to an active landing page you would rarely be served any data. The kits are usually looking for specific referer or other data points before serving content. The typical response is an empty file or an HTTP 404. During our investigation we attempted a get request for a Sundown landing page without any parameters and the results were surprising. Instead of getting some empty data or a 404 data was actually returned.
+
+
+Base64 Encoded Sundown Logo
+
+As you can see, there is a large base64 encoded blob that is present in a meta tag on the webpage. When this blob is decoded you are left with another web page with two more base64 encoded blobs. Finally, after decoding everything you are left with a nice clean web page with a background and image.
+
+
+Sundown YBN Webpage Calling Card
+
+It appears that the people behind Sundown have provided a nice logo for their organization the Yugoslavian Business Network.
+
+IOC
+Domains
+IP Addresses
+Subdomains not included due to usage of domain wildcarding during campaign
+
+Conclusion
+The last couple of months have lead to major shifts in the exploit kit landscape with major players disappearing rapidly. We are now in a place where only a handful of exploit kits remain active and kits that would have previously been part of a second tier of EKs have started to rise to prominence. Sundown is a far more widely distributed exploit kit than was initially thought. Even though it doesn't have a huge footprint from an infrastructure perspective, there are lots of users interacting with these kits.
+
+There are some major differences between it and the other major kits we've seen in the past. The fact that they re-use exploits, wildcard domains, and don't take much effort to hide their kit from sight indicates that they either lack the sophistication we have seen from other kits or plainly don't care to hide their activity. It also shows that you don't need sophistication to compromise users. It will be interesting to watch how this landscape changes over the next six months to a year. It's obvious that there is a major opportunity for some motivated miscreants to enter the exploit kit market. If we've come to a point where this type of activity isn't worth the effort to develop and maintain remains to be seen. Stay tuned.
+
+Coverage
+
+
+The domains observed are blocked via Cisco’s Domain reputation systems as soon as we see them, as well as the files being used for exploit in the wild.
+
+
+
+For the most current rule information, please refer to your Defense Center, FireSIGHT Management Center or Snort.org.
+
+
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+
+

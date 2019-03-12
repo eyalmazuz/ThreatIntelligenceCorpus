@@ -1,0 +1,164 @@
+
+Matryoshka Doll Reconnaissance Framework
+
+
+This post authored by David Maynor & Paul Rascagneres with the contribution of Alex McDonnell and Matthew Molyett
+
+
+
+
+
+Overview
+Talos has identified a malicious Microsoft Word document with several unusual features and an advanced workflow, performing reconnaissance on the targeted system to avoid sandbox detection and virtual analysis, as well as exploitation from a non-embedded Flash payload. This document targeted NATO members in a campaign during the Christmas and New Year holiday. Due to the file name, Talos researchers assume that the document targeted NATO members governments. This attack is also notable because the payload was swapped out with a large amount of junk data which was designed to create resource issues for some simplistic security devices.
+
+
+
+
+
+
+
+
+The Nested Document
+
+The analysed document is a RTF document with a succession of embedded objects.The first embedded object is an OLE object:
+
+
+
+
+
+OLE object contained in the Office document
+
+
+
+
+This OLE object contains an Adobe Flash object. The purpose of the Adobe Flash is to extract a binary blob embedded in itself via ActionScript execution. This blob is a second encoded and compressed Adobe Flash object. The encoded algorithm is based on XOR and zlib compression. This is the second Adobe Flash in the final payload located within the document.
+
+
+
+
+
+
+Analysis of the payload
+
+The relevant part of the payload is located in the ActionScript. First, a global constant is set which contains the URL of the Command & Control:
+
+
+C&C configuration
+
+
+
+
+
+
+
+
+First Step:
+
+The first action of the ActionScript is to perform a HTTP request to the C&C:
+
+
+HTTP request to the C&C
+
+
+The URI is /nato and perfectly matches the filename pattern.
+
+
+
+The Cisco Umbrella cloud security solution helps users to identify the DNS traffic associated with this specific C&C. The screenshot below illustrates the targeted nature of the campaign from the 29th of December 2016 through the 12th of January 2017. The huge quantity of requests starting the 16th of January were performed by the security research community:
+
+
+The DNS requests on the CC view on Cisco Umbrella
+
+
+The request contains the information about the target by using the flash.system.Capabilities.serverString API. Based on the Adobe documentation, The API allows the developer to obtain the capabilities of the installed Adobe Flash version. Here is an example from the documentation:
+
+
+
+A=t&SA=t&SV=t&EV=t&MP3=t&AE=t&VE=t&ACC=f&PR=t&SP=t&SB=f&DEB=t&V=WIN%209%2C0%2C0%2C0&M=Adobe%20Windows&R=1600x1200&DP=72&COL=color&AR=1.0&OS=Windows%20XP&L=en&PT=ActiveX&AVD=f&LFD=f&WD=f&IME=t&DD=f&DDP=f&DTS=f&DTE=f&DTH=f&DTM=f
+
+
+
+This query allows the attacker to gain information on the victim machine, including the version of the operating system or the Adobe Flash version. This information can be used by the attacker as a decision point regarding the interest in the victim. If the infected system looks like a sandbox or a virtual machine, the operator could ignore the request and the ActionScript is finished.
+
+
+
+
+
+Second step:
+
+The ActionScript stores the response of the first query in a variable called vars. Then, it performs a second HTTP request on a second URI:
+
+
+
+
+
+ Second HTTP request
+
+
+The URI contains the value of “k1” obtained with the first request. If this initial request succeeds, the function expLoaded() (for Exploit Loaded) is executed.
+
+
+Third step:
+The result of the previous request is stored in the swf variable.  The data stored in this variable is an encrypted Adobe Flash object (swf). The ActionScript uses the unpack() function with a key (“k3”) obtained during the first request:
+
+
+decryption of the download SWF file
+
+
+
+On this step, the ActionScript performs a third HTTP query:
+
+
+third HTTP request
+
+If the request succeeds, the function payLoaded (for Payload Load) is called.
+
+
+Fourth step:
+The result of the previous request contains an encoded payload. The ActionScript uses the same unpack() with a different key (“k4”) that was obtained with the initial request.
+Finally, the downloaded malicious Adobe Flash file is executed via the flash.display.Loader() API with the payload in the argument. The argument variable is called “sh” for shellcode:
+
+
+execution of the SWF exploit with the payload in argument
+
+
+
+A Trap!
+The malicious payload has recently been replaced to return a substantial amount of junk data to inhibit investigation. This is designed to create resource utilization issues for devices like simplistic sandbox based security systems. As indicated in the Investigate data above it appears that many members of the security community are looking into these domains. This is very likely a direct response to hinder investigations.
+
+
+
+
+
+
+
+Conclusion
+The analysis of the Microsoft Office document shows an advanced workflow of infection. The purpose of the document is first to perform a reconnaissance of the victims in order to avoid communicating with sandbox systems or analyst virtual machines. Second, the Adobe Flash requests a payload and an Adobe Flash exploit which is loaded and executed on the fly. This approach is extremely clever, from the attacker point of view, the exploit is not embedded in the document making it more difficult to detect for some security devices than the standard word trojan. It’s important to note that the actor realized security researchers were poking around their infrastructure and then rigged the infrastructure to create resource issues for some security devices. These are the characteristics of reasonably advanced attackers who have designed an efficient minimalist framework that was able to adapt purposes on the fly.
+
+Hash:
+ffd5bd7548ab35c97841c31cf83ad2ea5ec02c741560317fc9602a49ce36a763
+7c25a5cd3684c470066291e4dec7d706270a5392bc4f907d50b6a34ecb793f5b
+
+
+
+Coverage
+Additional ways our customers can detect and block this threat are listed below.
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+Email Security can block malicious emails sent by threat actors as part of their campaign.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+AMP Threat Grid helps identify malicious binaries and build protection into all Cisco Security products. 
+
+Umbrella prevents DNS resolution of the domains associated with malicious activity.
+
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 14.7px Calibri; -webkit-text-stroke: #000000}
+span.s1 {font-kerning: none}
+
+
+

@@ -1,0 +1,319 @@
+
+Getting Started With LORCON
+
+
+By Brad Antoniewicz.
+Loss Of Radio CONnectivity (LORCON) is an IEEE 802.11 packet injection library. It was originally created by Joshua Wright and Michael Kershaw ("dragorn") - I think Johnny Cache was an early contributor as well. As of now, dragorn maintains it, however it doesn't seem that there have been many updates in the last year or so.
+
+One of the biggest issues in wireless tool development was that tools needed to be driver-specific, so if the author didn't take into account a specific driver, the tool didn't work. Additionally, many tools implemented their own functions for packet capture and injection, resulting in lots of code duplication. These issues were first brought up in a talk called "The Need for an 802.11 Wireless Toolkit" by Mike Schiffman at Blackhat in 2002. Schiffman released a proof of concept library called "libradiate" which offered a solution to these problems. Unfortunately libradiate fell off the edge of the earth and wireless hackers everywhere found themselves in a deep void surrounded by sadness. A few years later, in 2007, LORCON emerged. It eased development issues by creating standard function calls for injection and capture, and added a layer of abstraction such that tool developers wouldn't need to worry about the wireless driver or adapter in use. 
+
+There have been two major releases: LORCON (defunct) and LORCON2 (current). We'll use the terms LORCON and LORCON2 interchangeably throughout this post when referring to the current version. LORCON2 supports the Linux mac80211 wireless drivers. The release also includes a Ruby extension to facilitate Ruby development.
+
+Although LORCON hasn't been updated all to often, it still works well, is extremely powerful, and is very easy to use. For whatever reason, people seem to have forgotten about it, so this post will hopefully kick everyone in the butt and provide a quick intro into using the library. 
+Installation and Setup
+As usual, I'll be using BackTrack (BT5R3 to be specific) as my Linux distribution, and I've created a couple of code examples and patches which can be found on github repo here:
+https://github.com/OpenSecurityResearch/lorcon_examples
+
+The first step is to clone the the repo:
+ root@bt:~# git clone https://github.com/OpenSecurityResearch/lorcon_examples.git
+
+
+Core Installation
+
+LORCON has supposedly been moved from its original location (http://802.11ninja.net/) to a fancy new Google Code repo (https://code.google.com/p/lorcon/), however I noticed the Google Code version doesn't include the packet forging functionality that I think is really useful, so we'll stick to the older release for the sake of this article. 
+
+I made a couple of small changes to make the packet forging functionality work and enable a couple of other useful functions. The handful of changes are summed up in this patch. Overall, the installation is pretty basic:
+ root@bt:~# apt-get update
+ root@bt:~# apt-get upgrade
+ root@bt:~# apt-get install libnl-dev
+ root@bt:~# svn co http://802.11ninja.net/svn/lorcon/trunk lorcon2
+ root@bt:~# cd lorcon2
+ root@bt:~/lorcon2# patch -p1 < ../lorcon_examples/lorcon.patch
+ root@bt:~/lorcon2# ./configure --prefix=/usr
+ root@bt:~/lorcon2# make depend
+ root@bt:~/lorcon2# make
+ root@bt:~/lorcon2# make install
+
+
+Ruby Installation
+
+In a previous blog post Robert Portvliet detailed how to handle LORCON's Ruby extensions on BT5R2, specifically for Metasploit integration. That article details most of the specifics, so I'll just repeat the major points here for completeness. Note that the lorcon.patch includes the STR2CSTR() fixes. 
+
+To install:
+ root@bt:~# cd lorcon2/ruby-lorcon/
+ root@bt:~/lorcon2/ruby-lorcon# ruby extconf.rb
+ root@bt:~/lorcon2/ruby-lorcon# make
+ root@bt:~/lorcon2/ruby-lorcon# make install
+
+
+
+Then to test:
+ root@bt:~/lorcon2/ruby-lorcon# ruby test.rb wlan1
+Checking LORCON version
+20091101
+
+Fetching LORCON driver list
+{"madwifing"=>
+  {"name"=>"madwifing",
+   "description"=>"Linux madwifi-ng drivers, deprecated by ath5k and ath9k"},
+ "tuntap"=>
+  {"name"=>"tuntap", "description"=>"Linux tuntap virtual interface drivers"},
+ "mac80211"=>
+  {"name"=>"mac80211",
+   "description"=>
+    "Linux mac80211 kernel drivers, includes all in-kernel drivers on modern systems"}}
+
+Resolving driver by name 'mac80211'
+{"name"=>"mac80211",
+ "description"=>
+  "Linux mac80211 kernel drivers, includes all in-kernel drivers on modern systems"}
+
+Auto-detecting driver for interface wlan0
+{"name"=>"mac80211",
+ "description"=>
+  "Linux mac80211 kernel drivers, includes all in-kernel drivers on modern systems"}
+
+Created LORCON context
+
+Opened as INJMON: wlan1mon
+
+Channel: 11
+#<Lorcon::Packet:0x9e248a8>
+#<Lorcon::Packet:0x9e24894>
+
+
+Python Bindings
+
+There are actually two projects that extend LORCON into the Python world: 
+
+pylorcon - Based on its change history, this project was the first, starting in 2007. pylorcon started out with a Google Code page which now redirects users to a GitHub repository. Looking at its source, the Google Code page appears to be written to support LORCON1 while the github page supports LORCON2. The GitHub repository is titled "pylorcon2" which confusingly enough, is the same name as the second project that extends LORCON2 to python.
+pylorcon2 - In 2010 a couple of guys from Core Security created pylorcon2. This project consists mainly of a Google Code Page. It supports all of the basic functionality of LORCON2, but doesn't support advanced functions such as capture loops.
+
+For the purpose of this article, I'll use the Google Code pylorcon2. Although the GitHub pylorcon2 actually has more functionality, I stumbled upon the Google Code one first and so I've grown more comfortable with it. If you have a good reason to choose one over the other, please let me know in the comments below.
+
+To install:
+ root@bt:~# apt-get update
+ root@bt:~# apt-get upgrade
+ root@bt:~# apt-get install libnl-dev
+ root@bt:~# wget http://pylorcon2.googlecode.com/files/PyLorcon2-0.1.tar.gz
+ root@bt:~# tar -zxvf PyLorcon2-0.1.tar.gz
+ root@bt:~# cd PyLorcon2-0.1
+ root@bt:~/PyLorcon2-0.1# python setup.py build
+ root@bt:~/PyLorcon2-0.1# python setup.py install
+
+
+
+If you try to use the test.py of the Google Code pylorcon2 it'll fail when trying to set the MAC address. Everything else works fine though, so you can either comment out the def testMAC(self) function or just ignore it. I haven't spent any time tracking down the root cause of the issue since it doesn't impact me much.
+
+To test (with def testMAC(self) commented out):
+
+ root@bt:~/PyLorcon2-0.1# python test.py
+testAutoDriver (__main__.PyLorcon2TestCase) ... ok
+testChannel (__main__.PyLorcon2TestCase) ... ok
+testFindDriver (__main__.PyLorcon2TestCase) ... ok
+testGetDriverName (__main__.PyLorcon2TestCase) ... ok
+testGetVersion (__main__.PyLorcon2TestCase) ... ok
+testInjection (__main__.PyLorcon2TestCase) ... ok
+testListDrivers (__main__.PyLorcon2TestCase) ... ok
+testTimeout (__main__.PyLorcon2TestCase) ... ok
+testVap (__main__.PyLorcon2TestCase) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.011s
+
+OK
+
+
+Program Structure
+
+The sample code I created within the lorcon_examples GitHub provides a couple of simple examples to get you started with LORCON. The code is broken up into blocks so that you can use them as templates to make your own packet injection tools. These examples all follow a basic structure, breaking the program up into three main blocks: 
+
+Context setup
+Injection/Capture
+Context cleanup
+
+Context setup
+
+At the heart of LORCON is the "LORCON context" which is more or less representative of the wireless interface you're interacting with. The context adds a layer of abstraction between your program and the wireless driver. Instead of dealing with the driver directly, you deal with the context. This way your program doesn't need to worry about any driver specifics and thus can work with any drivers LORCON supports. 
+
+The context needs to be configured though. First LORCON needs to figure out what driver is being used. The lorcon_auto_driver() function automatically determines this based on the interface provided. Here's some example C code that determines the driver for a provided interface:
+ // Automatically determine the driver of the interface
+        if ( (driver = lorcon_auto_driver(interface)) == NULL) {
+                printf("[!] Could not determine the driver for %s\n",interface);
+                return -1;
+        } else {
+                printf("[+]\t Driver: %s\n",driver->name);
+        }
+
+
+
+Now that we've determined the driver, we can set up the LORCON context. In C, the lorcon_create() function handles that for us:
+ // Create LORCON context
+        if ((context = lorcon_create(interface, driver)) == NULL) {
+                printf("[!]\t Failed to create context");
+                return -1;
+        }
+
+
+
+Next we'll need to enable monitor mode on the interface using the lorcon_open_injmon() function. This creates a  Monitor Mode VAP on the interface provided to handle monitoring and injection. 
+ // Create Monitor Mode Interface
+        if (lorcon_open_injmon(context) < 0) {
+                printf("[!]\t Could not create Monitor Mode interface!\n");
+                return -1;
+        } else {
+                printf("[+]\t Monitor Mode VAP: %s\n",lorcon_get_vap(context));
+                lorcon_free_driver_list(driver);
+        }
+
+
+
+Finally, we'll just need to set a specific channel to listen/transmit on with the lorcon_set_channel:
+ // Set the channel we'll be injecting on
+        lorcon_set_channel(context, channel);
+        printf("[+]\t Using channel: %d\n\n",channel);
+
+
+Injection/Capture
+
+We'll focus specifically on injection for this article. Injection is handled with the lorcon_send_bytes() and lorcon_inject() functions. lorcon_send_bytes() is as basic as it gets, taking in a array of bytes and simply sending it:
+ // Raw packet bytes (from capture_example.c included within LORCON)
+        unsigned char packet[115] = {
+        0x80, 0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // dur ffff
+        0xff, 0xff, 0x00, 0x0f, 0x66, 0xe3, 0xe4, 0x03,
+        0x00, 0x0f, 0x66, 0xe3, 0xe4, 0x03, 0x00, 0x00, // 0x0000 - seq no.
+        0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, // BSS timestamp
+        0x64, 0x00, 0x11, 0x00, 0x00, 0x0f, 0x73, 0x6f,
+        0x6d, 0x65, 0x74, 0x68, 0x69, 0x6e, 0x67, 0x63,
+        0x6c, 0x65, 0x76, 0x65, 0x72, 0x01, 0x08, 0x82,
+        0x84, 0x8b, 0x96, 0x24, 0x30, 0x48, 0x6c, 0x03,
+        0x01, 0x01, 0x05, 0x04, 0x00, 0x01, 0x00, 0x00,
+        0x2a, 0x01, 0x05, 0x2f, 0x01, 0x05, 0x32, 0x04,
+        0x0c, 0x12, 0x18, 0x60, 0xdd, 0x05, 0x00, 0x10,
+        0x18, 0x01, 0x01, 0xdd, 0x16, 0x00, 0x50, 0xf2,
+        0x01, 0x01, 0x00, 0x00, 0x50, 0xf2, 0x02, 0x01,
+        0x00, 0x00, 0x50, 0xf2, 0x02, 0x01, 0x00, 0x00,
+        0x50, 0xf2, 0x02};
+
+ // Send and exit if error
+                if ( lorcon_send_bytes(context, sizeof(packet), packet) < 0 )
+                        return -1;
+
+
+
+
+The lorcon_inject() function requires the use of a lorcon_packet_t structure which contains the raw bytes plus a bunch of other information about the packet you're injecting. This comes in handy when you use LORCON's built-in packet forging capabilities which we'll talk about later on.
+Context cleanup
+
+Finally, once our program has completed, we'll just need to close the interface we've created, and free up the context using the lorcon_close() and lorcon_free() functions:
+
+ // Close the interface
+        lorcon_close(context);
+
+ // Free the LORCON Context
+        lorcon_free(context);
+
+
+Your First Flooder
+
+Using the examples, lets see what a basic beacon flooder looks like using LORCON. 
+Using C
+beacon_flood_raw.c is broken up into the three main parts as described above. It leverages the lorcon_send_bytes() function to send the packet defined in the packet[] array. I've added a slight delay in between sending packets, and also some friendly output for the user.
+
+To compile:
+ root@bt:~/lorcon_examples# gcc -o beacon_flood_raw -lorcon2 beacon_flood_raw.c
+
+
+
+
+To run:
+ root@bt:~/lorcon_examples# ./beacon_flood_raw -i wlan1 -c 11
+
+
+Using Python
+beacon_flood_raw.py is pretty much the minor image of beacon_flood_raw.c but in Python - same output and all.
+
+To run:
+ root@bt:~/lorcon_examples# python beacon_flood_raw.py -i wlan1 -c 11
+
+
+Using LORCON for Packet Creation
+
+One feature that I absolutely love is the LORCON's packet forging capabilities. Rather than using a byte array for your frame, LORCON allows you to create a frame on the fly within a structure called a metapack. Once you've built your frame, you transform it into a lorcon_packet_t then send it using lorcon_inject(). There are a bunch of functions to create any type of frame you'd like:
+
+lcpf_80211headers()
+lcpf_80211ctrlheaders()
+lcpf_qosheaders()
+lcpf_beacon()
+lcpf_add_ie()
+lcpf_disassoc()
+lcpf_probereq()
+lcpf_proberesp()
+lcpf_rts()
+lcpf_deauth()
+lcpf_authreq(()
+lcpf_authresp()
+lcpf_assocreq()
+lcpf_assocresp()
+lcpf_data()
+
+
+Following our previous examples, lets create a beacon frame with lcpf_beacon() and add various Information Element(IE) tags to it with lcpf_add_ie():
+ lcpa_metapack_t *metapack; // metapack for LORCON packet assembly
+ lorcon_packet_t *txpack; // The raw packet to be sent
+
+ // Initialize the LORCON metapack
+ metapack = lcpa_init();
+
+ // Create a Beacon frame from 00:DE:AD:BE:EF:00
+ lcpf_beacon(metapack, mac, mac, 0x00, 0x00, 0x00, 0x00, timestamp, interval, capabilities);
+
+ // Append IE Tag 0 for SSID
+ lcpf_add_ie(metapack, 0, strlen(ssid),ssid);
+
+ // Most of the following IE tags are not needed, but added here as examples
+
+ // Append IE Tag 1 for rates
+ lcpf_add_ie(metapack, 1, sizeof(rates)-1, rates);
+
+ // Append IE Tag 3 for Channel
+ lcpf_add_ie(metapack, 3, 1, &channel);
+
+ // Append IE Tags 42/47 for ERP Info
+ lcpf_add_ie(metapack, 42, 1, "\x05");
+ lcpf_add_ie(metapack, 47, 1, "\x05");
+
+
+
+Next we'll convert it to a LORCON packet (lorcon_packet_t):
+ // Convert the LORCON metapack to a LORCON packet for sending
+ txpack = (lorcon_packet_t *) lorcon_packet_from_lcpa(context, metapack);
+
+
+
+and send:
+ // Send and exit if error
+ if ( lorcon_inject(context,txpack) < 0 )
+            return -1;
+
+
+
+To put the entire picture together, this is all shown in beacon_flood_lcpa.c. 
+
+To compile:
+ root@bt:~/lorcon_examples# gcc -o beacon_flood_lcpa -lorcon2 beacon_flood_lcpa.c
+
+
+
+
+To run:
+ root@bt:~/lorcon_examples# ./beacon_flood_lcpa -s brad -i wlan1 -c 11
+
+
+Enjoy!
+
+Now its your turn - try to take one of the examples and create a tool to de-authenticate users from an access point!
+
+What do you use LORCON for? Let me know in the comments below! 
+
+

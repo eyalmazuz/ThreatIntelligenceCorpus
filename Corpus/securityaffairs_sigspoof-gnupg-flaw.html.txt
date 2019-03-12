@@ -1,0 +1,21 @@
+
+					SigSpoof GnuPG flaw could be exploited to spoof message signatures					
+GnuPG, also known as GPG, is a complete and free implementation of the OpenPGP standard as defined by RFC4880 (also known as PGP). GnuPG allows users to encrypt and sign data and communications.
+GnuPG version 2.2.8 released earlier this month addresses the CVE-2018-12020 vulnerability, dubbed SigSpoof, affecting GnuPG, Enigmail, GPGTools, and python-gnupg.
+“The signature verification routine in Enigmail 2.0.6.1, GPGTools 2018.2, and python-gnupg 0.4.2 parse the output of GnuPG 2.2.6 with a ‘–status-fd 2’ option, which allows remote attackers to spoof arbitrary signatures via the embedded ‘filename’ parameter in OpenPGP literal data packets, if the user has the verbose option set in their gpg.conf file,” reads the blog post published by Marcus Brinkmann who discovered the SigSpoof flaw.
+The expert noticed that even if the verbose is disabled by default, it is included in several recommended configurations for GnuPG.
+
+Status messages are parsed by applications that get information from GPG about the validity of a signature.
+“Status messages are created with the option “–status-fd N,” where N is a file descriptor. If N is 2, status messages and regular diagnostic messages share the stderr output channel.” explains GnuPG maintainer Werner Koch.
+“The issue resides in the OpenPGP protocol allowing the inclusion of the file name of the original input file into a signed or encrypted message. The GnuPG tool can display a notice with that file name during decryption and verification, but it does not sanitize the file name, meaning that an attacker could include line feeds or other control characters in it.”
+The lack of file name sanitization in GnuPG tool could be exploited by attackers to include line feeds or other control characters.s
+An attacker can inject terminal control sequences and create fake status messages, it can also fake the verification status of a signed email.
+“The attacker can inject arbitrary (fake) GnuPG status messages into the application parser to spoof signature verification and message decryption results. The attacker can control the key ids, algorithm specifiers, creation times and user ids, and does not need any of the private or public keys involved.” continues Brinkmann.
+Brinkmann noticed that the limit for the file name of the encrypted file in OpenPGP is 255.
+Brinkmann published a proof of concept to show to spoof signatures in both Enigmail and GPGTools, and a separate PoC to show how both the signature and encryption can be spoofed in Enigmail. The expert also demonstrated how to spoof a signature on the command line.
+While disabled by default, verbose is included in several recommended configurations for GnuPG, and it is one of the main causes for this vulnerability.
+To mitigate the issue, the researcher suggests to don’t include the verbose in gpg.conf and to avoid using gpg –verbose on the command line. Developers have to add –no-verbose option to all calls of the gpg.
+Assessing the risks for critical infrastructure, the expert explained that the potential effect for this issue are severe.
+“The vulnerability in GnuPG goes deep and has the potential to affect a large part of our core infrastructure. GnuPG is not only used for email security, but also to secure backups, software updates in distributions, and source code in version control systems like Git,” Brinkmann concludes.
+Pierluigi Paganini
+(Security Affairs – SigSpoof, GnuPG)

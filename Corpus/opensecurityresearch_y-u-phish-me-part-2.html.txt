@@ -1,0 +1,132 @@
+
+Y U Phish Me? [Part 2]
+
+
+By Melissa Augustine.
+
+In the last blog post we had done some research on a spear phishing email I received. We used vim and regex to make our lives a bit easier for analysis purposes and we have extracted a suspicious URL. 
+
+What’s left to do… well, go to the URL of course!
+Paros Proxy
+For this instance I am using Paros Proxy, but please my no means assume that is the proxy you must use. There are quite a few proxies out there so use whichever one you are comfortable with. Don’t forget to modify your browser settings to the proxy port so you don’t miss any traffic!
+
+There is a spiffy basic howto for using Paros here. 
+
+For this exercise, I want to ensure that I am capturing both requests and responses. This means everytime I send a request from my web browser, or recieve a response from the server, Paros will catch it and allow me to decide to pass or drop the traffic.
+
+All right lets go! Simply enter our suspicious domain hxxp://hoabinhltd.com in the browser and click pass in Paros to see what we get back:
+ HTTP/1.1 302 Moved Temporarily
+Date: Mon, 13 Jan 2014 23:58:06 GMT
+Server: Apache
+X-Powered-By: PHP/5.2.17
+Location: http://www.cieneguilla.com/.www.paypal.com/.Update/
+Content-Length: 0
+Connection: close
+Content-Type: text/html
+ 
+
+
+Well then! It looks like we have a redirect here! This is taking us to cieneguilla.com.  We know malicious actors like to give us analysts (and our detection devices) a hard time by doing things like this… thanks! It’s also interesting that we can see the server type (Apache) and web server type (PHP version 5.2) Ok, now we need to pass through paros the new GET request.
+nslookup
+
+Let’s get some information on this new domain, cieneguilla.com.
+ $nslookup cieneguilla.com
+
+Non-authoritative answer:
+Name: cieneguilla.com
+Address: 66.225.230.234
+
+
+
+From CentralOps.net:
+ Queried whois.networksolutions.com with "cieneguilla.com"...
+Domain Name: CIENEGUILLA.COM
+Registry Domain ID:  
+Registrar WHOIS Server: whois.networksolutions.com
+Registrar URL: http://www.networksolutions.com/en_US/
+Updated Date: 2012-04-12T00:00:00Z
+Creation Date: 2007-04-29T00:00:00Z
+Registrar Registration Expiration Date: 2014-04-27T00:00:00Z
+Registrar: NETWORK SOLUTIONS, LLC.
+Registrar IANA ID: 2
+Registrar Abuse Contact Email: abuse@web.com
+Registrar Abuse Contact Phone: 1-800-333-7680
+Reseller: 
+Domain Status: clientTransferProhibited
+Registry Registrant ID: 
+Registrant Name: Huanca, Italo
+Registrant Organization: PUBLITOUR
+Registrant Street: Av. San Martin Zona D LtD-15, Cieneguilla
+Registrant City: Lima
+Registrant State/Province: Lima
+Registrant Postal Code: Lima 40
+Registrant Country: PE
+
+
+Following the HTTP Session
+
+We get a few more redirects, but we eventually get to some web content for us to view. What I found interesting about the different responses received (different technologies, different content-types). 
+ HTTP/1.1 302 Moved Temporarily
+Date: Mon, 13 Jan 2014 23:58:49 GMT
+Server: Apache
+X-Powered-By: PHP/5.2.9
+location: cf5de2ce4e96c1b32c29ab46a8e8eaa6
+Vary: User-Agent,Accept-Encoding
+Content-Length: 0
+Content-Type: text/html
+
+
+
+And another:
+ HTTP/1.1 301 Moved Permanently
+Date: Mon, 13 Jan 2014 23:59:17 GMT
+Server: Apache
+Location: http://www.cieneguilla.com/.www.paypal.com/.Update/cf5de2ce4e96c1b32c29ab46a8e8eaa6/
+Vary: Accept-Encoding
+Content-Length: 292
+Content-Type: text/html; charset=iso-8859-1
+ 
+
+
+Here's what the final page looks like rendered:
+
+
+
+What we are presented with is a PayPal login. It looks a bit lacking on the content side, no HTTPS is enabled (most sites have you in a secure session during log in… or at least I hope so), and its quite obvious that the URL is not PayPal.  Nevertheless, lets put in some data and see what happens. Paros stops the post request.
+
+
+
+Well it looks like PHP (Snd1.php) is being passed my login parameters. So now these nice people have poor Rick Suave’s PayPal information. Looking at the tabs/address bar you see they even use the Paypal logo (but not not try to hide the domain name difference) in an attempt to trick the user into believing they are interacting with PayPal.
+
+I also notice the long alphanumeric string in the domain name changes everytime I visit the page. This must be my unique identifier. I ran it against HashID and it guessed it to be an MD5 hash. 
+
+
+
+I bet everyone can figure out what happens next… Here is Rico’s address and credit card information (not even verified by the server to be a valid credit card number).
+
+Here's the web page asking for address:
+
+
+
+
+And Paros catching the request:
+
+
+
+The web page next asks for the card info:
+
+
+
+And Paros catching the request:
+
+
+
+After all of this, the site kindly redirects you to the real PayPal. If you still have Paros running at this point, you get some certificate issues because the REAL PayPal establishes an SSL connection and Paros uses its own certificate so it can see inside HTTPS traffic:
+
+
+ root@bt:~# 
+
+
+This was an example of a classic phishing campaign. Sometimes these actors like to throw some malware at you just to ensure they ensnare you, however this one was a simple harvester. 
+
+

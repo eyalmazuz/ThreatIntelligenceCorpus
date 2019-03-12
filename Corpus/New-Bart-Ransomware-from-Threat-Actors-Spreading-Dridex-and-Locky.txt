@@ -1,0 +1,51 @@
+Doh! New "Bart" Ransomware from Threat Actors Spreading Dridex and Locky
+Overview
+The actors behind Dridex 220 and Locky Affid=3 have introduced a new ransomware called “Bart”. They are using the RockLoader malware to download Bart over HTTPS. Bart has a payment screen like Locky but encrypts files without first connecting to a command and control (C&C) server.
+Analysis
+On June 24, Proofpoint researchers detected a large campaign with .zip attachments containing JavaScript code. If opened, these attachments download and install the intermediary loader RockLoader (previously discovered by Proofpoint and used with Locky), which in turn downloads the new ransomware called “Bart”. The messages in this campaign had the subjects "Photos” with the attachment "photos.zip", "image.zip", "Photos.zip", "photo.zip", "Photo.zip", or "picture.zip." The zip files contained JavaScript file such as "PDF_123456789.js."
+
+Figure 1: Email delivering the zipped JavaScript distributing Bart ransomware
+To alert the victim that they are infected and their files are encrypted, this ransomware creates two types of files, similar to many other types of ransomware. Specifically, it drops a recover.txt into many folders and replaces the Desktop background with recover.bmp, as shown in Figure 2.
+
+Figure 2: Desktop background is replaced with the recover.bmp file
+
+Figure 3: The computer’s file system gets a sprinkling of recover.txt files 
+Prior to writing the “recover” files, the malware determines the user’s system language. It has translations available in Italian, French, German, and Spanish. The malware also uses the system’s language to avoid infecting systems of Russian, Ukrainian, and Belorussian users. This first campaign appears to largely be targeting US interests but, given the global nature of Locky and Dridex targeting and the available translations for the recovery files, we do not expect Bart to remain this localized.
+
+Figure 4: Bart does not run if it determines the user’s system language is Russian, Ukrainian, or Belorussian and checks a few other languages, likely in order to determine the language in which to write the ransom note.
+After encryption, a “.bart.zip” extension is appended to the encrypted files. From cursory inspection, these files are encrypted Zip archives. The list of file extensions that Bart encrypts includes:
+.123 | .3dm | .3ds | .3g2 | .3gp | .602 | .aes | .ARC | .asc | .asf | .asm | .asp | .avi | .bak | .bat | .bmp | .brd | .cgm | .cmd | .cpp | .crt | .csr | .CSV | .dbf | .dch | .dif | .dip | .djv | .djvu | .DOC | .docb | .docm | .docx | .DOT | .dotm | .dotx | .fla | .flv | .frm | .gif | .gpg | .hwp | .ibd | .jar | .java | .jpeg | .jpg | .key | .lay | .lay6 | .ldf | .m3u | .m4u | .max | .mdb | .mdf | .mid | .mkv | .mov | .mp3 | .mp4 | .mpeg | .mpg | .ms11 | .MYD | .MYI | .NEF | .odb | .odg | .odp | .ods | .odt | .otg | .otp | .ots | .ott | .p12 | .PAQ | .pas | .pdf | .pem | .php | .png | .pot | .potm | .potx | .ppam | .pps | .ppsm | .ppsx | .PPT | .pptm | .pptx | .psd | .rar | .raw | .RTF | .sch | .sldm | .sldx | .slk | .stc | .std | .sti | .stw | .svg | .swf | .sxc | .sxd | .sxi | .sxm | .sxw | .tar | .tbk | .tgz | .tif | .tiff | .txt | .uop | .uot | .vbs | .vdi | .vmdk | .vmx | .vob | .wav | .wb2 | .wk1 | .wks | .wma | .wmv | .xlc | .xlm | .XLS | .xlsb | .xlsm | .xlsx | .xlt | .xltm | .xltx | .xlw | .zip
+The ransom note urges the user to visit a payment portal in order to pay 3 bitcoins (just under $2000 at current exchange rates). The payment portal is similar to the one used by Locky, shown in Figures 5 and 6 below. Visually, only the title “Decryptor Bart” is new, where the title was “Locky Decryptor” before. While the payment portals for Locky and Bart are visually identical, the ransomware code is largely unique from Locky.
+
+Figure 5: Bart ransomware payment portal
+
+Figure 6: Locky ransomware payment portal
+Currently we are still investigating the remaining technical details of how Bart works. It does not appear to have any network communication mechanism with a command and control server. Instead, the necessary information about infected machine is likely passed to the payment server in the URL “id” parameter. The malware is using the open source WProtect for code virtualization.
+In summary, the attributes so far linking the Bart ransomware with the actors distributing Dridex 220 and Locky Affid=3 include:
+
+Conclusion
+While we are still investigating the technical details of this new ransomware, the connections between Bart and Dridex/Locky are significant. Because Bart does not require communication with C&C infrastructure prior to encrypting files, however, Bart may be able to encrypt PCs behind corporate firewalls that would otherwise block such traffic. Thus, organizations need to ensure that Bart is blocked at the email gateway using rules that block zipped executables. We will continue to monitor and analyze Bart as additional campaigns and details emerge.
+
+IOC
+IOC Type
+Description
+247e2c07e57030607de901a461719ae2bb2ac27a90623ea5fd69f7f036c4ea0d
+SHA256
+Photos.zip email attachment
+7bb1e8e039d222a51a71599af75b56151a878cf8bbe1f9d3ad5be18200b2286b
+SHA256
+FILE 21076073.js file inside Photos.zip
+[hxxp://camera-test.hi2[.]ro/89ug6b7ui?voQeTqDw=RUYEzU]
+URL
+JavaScript Payload (RockLoader)
+5d3e7c31f786bbdc149df632253fd538fb21cfc0aa364d0f03a79671bbaec62d
+SHA256
+RockLoader
+[hxxps://summerr554fox[.]su/api/]
+URL
+Rockloader C&C
+[hxxps://summerr554fox[.]su/files/6kuTU1.exe]
+URL
+RockLoader Payload
+51ff4a033018d9343049305061dcde77cb5f26f5ec48d1be42669f368b1f5705
+SHA256

@@ -1,0 +1,25 @@
+AutoFocus Lenz: Taking the Blue (Team) Pill
+
+The Palo Alto Networks AutoFocus threat intelligence services accelerates analysis and response workflows for unique, targeted attacks. The services further make an immense set of threat intelligence available via the AutoFocus API, which can enrich existing security systems or workflows. Today, security teams can easily build scripts on top of this data using the AutoFocus Python Client Library (af_lenz.py) script, providing an even simpler way to extract and automate actionable information from AutoFocus, which can be used to respond or proactively take action, against security threats.
+The AutoFocus Lenz script builds on top of the Python client library by providing a set of outputs that enable rapid extraction of relevant information that can be used for operational intelligence, or further research, by performing various analytical tasks for you.
+To demonstrate some of the scenarios where this tool may be helpful, we’ve put together a short video showing it in action.
+The video covers:
+
+Enumerating potential targets of a malicious email campaign, within an organization, by dynamic behaviors
+Pro-actively identifying C2 domains for blocking, pattern improvement, or further research
+Converting dynamic analysis information into YARA signatures for in-memory hunting
+
+
+For its initial release, there are 8 “functions” that pull back data from AutoFocus, based on your query, and display it in various ways to expedite analytical tasks.
+
+hash_scrape – The most straightforward function, it simply provides output for each section of the analysis reports (e.g. Network, DNS, HTTP, File, Registry, Process), which allows for chaining to other utilities through the command line. This can be run for multiple samples to pull back large amounts of behavioral information.
+common_artifacts – This function takes an AutoFocus query, iterates across all samples identified, and outputs the dynamic artifacts which exist in each sample across the set. The commonality percentage can be adjusted with the “-c” flag, such that you can find things that exist in 75% of the samples. This is useful while trying to build detective or preventive signatures across your security tool stack by identifying truly unique artifacts across malware families or campaigns.
+common_pieces – Similar to common_artifacts function, but takes it one step further and breaks down the artifact entries into smaller parts. Where common_artifacts might match on “sample.exe, DeleteFile, C:\importantfile”, common_pieces will match on “sample.exe”, “DeleteFile”, and “C:\importantfile”. This is particularly useful when dealing with malware that randomly generates files, or injects into random processes, but also increases the likelihood of noise since there will be more matches.
+uniq_sessions – Displays unique values across some of the more relevant session fields, such as filename, e-mail subject, and the application used for delivery. This can allow a blue team to quickly identify targeted users of e-mail campaigns, files to search for on endpoints, and get the jump on responding to threats.
+http_scrape, dns_scrape, and mutex_scrape – These functions will iterate across all of the identified samples, scrape out the unique values for their respective section of behavioral artifacts, and then try to format and print them in a concise way. These can be particularly helpful when trying to identify all of the callbacks seen for a type of malware as they relate to HTTP and DNS traffic, which might be used to proactively put blocks into tool stack.
+meta_scrape – This last function is more of a high-level overview of the items which matched your AutoFocus query, similar to if you were using the AutoFocus UI but from the CLI. Specifically, it provides the SHA256, file type, first seen date, malicious verdict, file size, and accompanying AutoFocus tags.
+
+To further aid in pulling back only the most relevant data, output returned from the functions can be filtered based on how prevalent the artifacts are throughout the AutoFocus corpus of files. For example, if an artifact is seen in 1 million samples, it may not be unique to that sample and can be removed from the output.
+For more details and usage examples, please check out the Lenz repo on our Palo Alto Networks GitHub.
+Hopefully this will prove to be a useful tool for users of AutoFocus in ascertaining information quickly for verdict determinations, operational intelligence, defending their networks and preventing threats.
+

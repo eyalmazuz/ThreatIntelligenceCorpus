@@ -1,0 +1,47 @@
+
+					Cracking APT28 traffic in a few seconds					
+APT28 is a hacking group involved in many recent cyber incidents. The most recent attack allegedly attributed to this group is the one to French presidential candidate Emmanuel Macron’s campaign. Incident response to this Advanced Persistent Threats (APT) and damage limitation heavily relies on network traffic investigation.
+In late 2016, Redsocks security identified one expired domain attributed to APT28. Our effort to sinkhole APT28 based on using this domain was impeded by the encrypted communication channel. Although many published white papers concerning APT28 such as ESET mentions RC4 encryption algorithm, they do not dig into the details of the used key and the details of APT28 implementation of RC4; whether the key is static and breakable. In this report, we aim to reveal the result of our comprehensive dynamic analysis of x-agent malware towards decrypting its traffic. We started our investigation by using one of the APT28 droppers (see Table 1).
+
+The focus of our investigation has been decrypting APT28 communicated traffic. Thus, this report elaborates more on encryption functionality of x-agent and reports our finding on cracking x-agent communicated traffic. That said, our report is not limited to encryption cracking and sheds light on following:
+Following the encryption-decryption scheme we present, and by vast internet scanning and searching for the URL pattern we introduce in this white paper, current active APT28 servers and victims can be found. Communication to these servers for further investigation can be established.
+The dropper functions in two steps. In the first step, it only unpacks a dll to the Windows folder. The name of the file is fixed (static) and it does not change by multiple executions or on different workstations. In the second step, the dropper loads the dll by calling ShellExecuteW function of shell32 library. This function is called by rundll32.exe, and “”C:\Windows\83D2CDE2-8311-40CB-B51D-EBE20FA803D1.dll”,init” as arguments. This means the trace of the malware, later, should be looked in rundll32 execution. The dropper also creates “ose00000.exe” file in the windows folder and calls it with arguments to the dll and the dropper path address. In summary, the dropper creates two files “83D2CDE2-8311-40CB-B51D-EBE20FA803D1.dll” and “ose00000.exe” in windows directory with hidden attribute (see Table 1 for the corresponding hashes) and loads one with rundll32.exe. The result of the dropper execution is rundll32.exe and ose00000.exe as two separate processes. No network activity was observed during dropper execution.
+The dropper goal was to transfer control to 83D2CDE2-8311-40CB-B51D-EBE20FA803D1.dll (see Table 1 for SHA256 hash) which is a rootkit with keylogging and remote code execution capabilities.
+X-agent architecture
+x-agent has a sophisticated architecture; it has a modular structure in both functionalities and the communication channel implementation. Figure 1 presents the x-agent architecture of the sample we analyzed.
+
+X-agent execution
+The execution starts from init function of the loaded dll by rundll32. The first interesting event after transferring control to Init is a call to KERNEL32.GetVolumeInformationW. After this call, the Init function initializes the global variables:
+
+Next, the init function initializes the available modules for execution (see ESET report on the explanation of modules). Our malware sample had 3 modules:
+After initializing the data structure of these modules, CHOPSTICK creates different threads for different tasks. Modules are created in a loop based on their configuration and AgentKernel is created differently:
+
+After creation of the threads, execution is transferred to AgentKernel and Module threads. Agent Kernel module initially prepares a message for the server and then waits for the server to respond with a command. The message intends to introduce the victim by an agent ID to the server and report the supported modules for execution. This message is written to edg6EF885E2.tmp file in the temp folder. The sample we analyzed communicates over HTTP channel. The implementation is using WININET APIs.
+Before sending data, the channel thread checks the connectivity to the server. It, first, tries to resolve “adobeincorp.com” domain name. If it fails, it tries connecting to two hardcoded IP addresses. After successful connection to the server, it creates the URL request and post data based on the data prepared by other modules.  X-agent first sends a get request and then a post request. The communication is always encrypted. We explain the nature of communicated data and the encryption method in the next section.
+In summary, these sequences of actions happen in every execution of x-agent:
+X-agent traffic communication
+In order to explain how to decrypt APT28 traffic, we first need to understand the traffic pattern of the malware. The x-agent version 1 we analyzed communicates by sending an initial GET request following by HTTP post requests. The http header values of the requests are hardcoded except one query string of the request. The URL of a x-agent traffic looks like:
+/webhp?rel=psy&hl=7&ai=L2Bd93t_o-jl022K1Og4Bm9mSk8QO88K_3ZQZuKcoPwur-5Q7Y=
+“/webhp?rel=psy&hl=7&ai=” part of the URL and the final “= “sign are persistent in different executions. As a matter of fact, “/webhp?rel=psy&hl=7&ai=” is hardcoded in the code. The next 51 bytes are not in plaintext; briefly, it contains the timestamp of the request and the ID of the agent. The initial POST data of x-agent is 71 bytes and ends with a = as well. The data is encrypted and when decrypted is equal to:
+56 34 4D 47|4E 78 5A 57|6C 76 63 6D|68 6A 4F 47|39 79 5A 51|6B 30 84 F2|01 00 00 01|00 23 01 10|
+23 01 11 23|01 13 23
+The blue part is the ID of the agent (the victim). The yellow part is the ID of the module who sent the data. And finally, the green part is actually the list of modules separated by # character (0x23) that are installed and ready to be used by the server (see Figure 4 for more explanation).
+Below is the Http implementation of the channel by x-agent:
+
+
+Encryption module
+The encryption procedure is called with two arguments. The pointers are to two data structures. These data structures provide a reference to the two following data for the encryption class:
+The seed is hardcoded and, among others, the init function copies it to the data segment using immediate constants:
+
+Later, in the code, 4 random bytes are appended to the seed and these altogether form the key for encryption. The seed is 50 bytes and the key length in total is 54 bytes. The data can be of variable size. For instance, the default initial request from AgentKernel is 39 bytes (see Figure 4) in total and includes: agent ID, module ID (the sender of the message) and the supported modules. The data is always appended to a 20 bytes data token, agent ID and the sender module ID. This data token is used for decryption result verification by the server. After creating the cypher using RC4 (see the next section), the encryption procedure adds a 8 random value to the message and then converts the whole binary string to URL compatible BASE64. . Next, the encryption procedure adds a 7-byte time stamp to the message. In summary the encryption class does the following:
+RC4 function
+RC4 is a stream cypher algorithm and is based on byte permutation. The elaborate explanation of RC4 is out of the scope of this paper. The below code is the implementation of RC4 algorithm by x-agent. The arguments to the function are 4 bytes random value, seed and the plaintext data:
+CPU Disasm
+
+
+How to decrypt x-agent data
+As mentioned briefly, the only randomness in the x-agent encryption is a 4 random bytes appended to a 50 bytes seed that has been given in the previous section. Since RC4 is a synchronous stream cypher, one can decrypt the traffic only with the same key that is used for encryption. A decryption algorithm for x-agent must use the same RC4 function for decryption with the same arguments. The cypher input must be the same data byte stream from the http request i.e. the timestamp and random bytes must be stripped. The RC4 function must be called in a bruteforced way with all possible values from 0 to -1. This is a known plain-text attack since the result must contain “V4MGNxZWlvcmhjOG9yZQ”. The encryption must be broken in a matter of seconds with a normal personal computer.
+About the Author REDSOCKS By Sina Davanian
+RedSocks is a Dutch company specialised in malware detection. RedSocks supplies RedSocks malware threat defender as a network appliance. This innovative appliance analyses digital traffic flows in real time based on the algorithms and lists of malicious indicators compiled by the RedSocks Malware Intelligence Team. This team consists of specialists in identifying new threats on the internet and translating them into state-of-the-art malware detection.
+Pierluigi Paganini
+(Security Affairs – APT28, state-sponsored hacking)

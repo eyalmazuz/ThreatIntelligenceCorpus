@@ -1,0 +1,92 @@
+
+PDF Versions Malicious Content Distribution
+
+
+
+
+While attack vectors based on Malicious PDF are a well known topic (SANS, Didier's tools), understanding how those vectors are spread up nowadays is an interesting "research" (at least in my personal opinion). Recently, Yoroi 's toolset gave me the ability to analize almost 2k PDF per hour, so I decided to analyze an entire hour of captures harvested from many different sources (mainly emails, repositories and http streams) and to put my findings in this quick and dirty post just to fix them in my "diary".
+
+
+
+Since PDF are one of the most used document format, attackers figured out how to make them malicious.The following image shows a romantic attack vector used to infect a victim through PDF Malware. The infected PDF wraps up an object content which eventually downloads a payload from Internet (for example a .exe or junk of bytes excetuded "directly in memory") and runs it. The payload might perform several tasks such as: reading/writing fylesystem, executing objects, sniffing passwords, listening for contents, substitute content and so on and so forth, making the original PDF malicious.
+
+
+Romantic Attack Path driven by PDF
+
+
+A commonly used way to implement the downloader is through JavaScript which is able to run on PDF in order to introduce simple effects, anchors and dynamisms. The following image shows a simple JavaScript downloader hidden into a PDF.
+
+
+
+A Romantic PDF Malware Object
+
+
+My curiosity was about discovering how many malicious PDF over 2k PDF total I was able to find. By using simple scripts I was able to automize the 'first level of analysis' including:
+
+Downloading PDF from internal/external sources
+Automatize Detection (I borrowed some code from pdfid.py by Didier)
+Calculating simple statistics on analyzed Malware
+
+A NodeJs downloader script grabs the entire files from Yoroi's internal repository as follows (you might use the same code to download from google or whatever you like).
+
+
+
+A simple downloader script
+
+Once the PDF has been locally saved, a python script starts its execution to analyze the PDF content. The following image shows a piece of code taken from Didier's tools (pdfid.py) that has been used to build the automatic first stage analyzer in oder to extract content.
+
+
+
+Analyze PDF content from pdfid.py by  Didier Stevens
+
+
+A post processing static analyzer runs to figure out the "stream content maliciousness". After several hours of computational analysis (ok, performances and timing were not an issues in my case since what I did was just for personal curiosity) I came out with the following results:
+
+
+
+Total PDF analyzed: 1988 
+
+Total Size on Disk: 1.83GB
+
+
+
+Figuring out the most affected PDF version was my next step. The following graph shows the distribution of malicious content (JS, Encrypted and Embedded File) found in 1988 PDFs. 
+
+
+
+
+Malicious Content Over PDF Version
+
+
+
+
+If we assume the analyzed set of data as "significant set of data" we might assert that PDF1.1 and PDF1.7 are the most safe PDF versions regarding malicious JS, EncryptedContent and Embedded Executalbes. Less than ten (10) malicious contents were found in both versions. Contrary PDF1.6 and PDF1.4 result as the most "affecteed" PDF versions. But malicious contents might hid after EOF and use the PDF as a passive carrier. The following graph shows the distribution of malicious content found after the End Of File.
+
+
+
+
+Malicious Content after EOF
+
+
+
+
+If we assume the analyzed set of data as "significant set of data" we might assert that PDF version 1.1 and PDF version 1.2 are the most safe versions against malicious content after the End Of File. Surprisingly PDF version 1.7 is not "so safe" anymore. Comparing the averall data I came out with the following pie chart in where we might appreciate the fact that PDF version 1.4 is the most affected of malicious contents. We might see PDF version 1.3, PDF version 1.5 and PDF version 1.6 following it.  
+
+
+
+
+Overall Malicious Content By Type
+
+
+Not much conclusions here: if you are working with these versions most (1.4,1.3,1.5), you'd better watch out since 
+the probability to get a Malware PDF is higher than other PDF versions.
+
+Just remember we are assuming the data I collected as significant data because comming from many different organizations within different businesses. 
+
+I do have an open question so far:
+
+Does it make sense for anti-malware engines ponderate the use of computational resources depending of what PDF version is currently processing? For example: if an anti-Malware is running analysis on PDF version 1.6 should it allocate more computational resource (RAM, CPU, IO, etc.) rather then if it is analysing PDF version 1.1 ?
+
+  
+
+

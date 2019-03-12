@@ -1,0 +1,81 @@
+
+DOS Attack Penetration Testing (Part 2)
+
+In our previous “DOS Attack Penetration testing” we had described about several scenario of DOS attack and receive alert for Dos attack through snort. DOS can be performed in many ways either using command line tool such as Hping3 or GUI based tool. So today you will learn how to Perform Dos attack using GUI tools as well as command line tool and get an alert through snort.
+Let start!!
+As we have discribed in our both article Part 1 and part 2 that in target system Snort is working as NIDS for analysing network traffic packets.  Therefore first we had build a rule for in snort to analysis random TCP packets coming in our network rapiditly.
+Execute given below command in ubuntu’s terminal to open snort local rule file in text editor.
+Above rule will monitor incoming TCP packets on 192.168.1.10 by generating alert for it as “TCP Flood”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+LOIC: It stands for low Orbit iron cannon which is GUI tool developed by Praetox Technologies which is network stress testing tool. We had used it only for educational purpose in our local network, using it over public sector will consider as crime and take as illegal job.  Download it from Google.  
+We had downloaded LOIC in our Windows system run the setup file for installation. Start the tool follow the given below step:
+Select your target: Here we will go with IP option and enter the victims IP: 192.168.1.10 then click on Lock on tab.
+Attack Option: Enter port no. and select method such as TCP and enter no. of threads. If you want to wait for reply packet from victim’s network then enable the check box else disable it.
+Adjust the scale:  Drawn the cursor left or right for setting the speed of your TCP packet either faster or slower mode.
+Attack status: describe the attack state such as connecting or request or etc.
+Ready:  Now click on IMMA CHARGIN MAH LAZER to launch the DOS attack and click on stop flood In order to stop DOS attack.
+
+We are involving wireshark in this tutorial so that you can clearly see the packet sends from attacker network to targets network. Hence in given below image you can notice endless TCP packet has been sent on target’s network. It is considered as Volume Based DOS Attack which floods the target network by sending infinite packets to demolish its network for other legitimate users.
+
+Return to over your target machine where you will notice that snort is exactly in same way capturing all in coming traffic, here you will observe that it is generating alerts for “TCP Flood”.  Hence you can block attacker’s IP (192.168.1.16) to protect your network from discard all further coming packets toward your network.
+
+I think now everything is clear to you how you can build rule in snort get alert for suspicious network again repeat the same and  execute given below command in ubuntu’s terminal to open snort local rule file in text editor and add rule for UDP flood.
+sudo gedit /etc/snort/rules/local.rules
+Above rule will monitor incoming UDP packets on 192.168.1.10 by generating alert for it as “UDP Flood”. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+
+Repeat the whole steps as done above only change the method attack option choose UDP method and launch the DOS attack on target IP. You can set any set number of threads for attack since it is tutorial therefore I had set 20 for UDP. It is considered as Volume Based DOS Attack which floods the target network by sending infinite packets to demolish its network for other legitimate users.
+
+Return to over your target machine where you will observe that snort is precisely capturing all in coming traffic in same way, here you will observe that it is generating alerts for “UDP Flood”.  Hence again you can block attacker’s IP (192.168.1.16) to protect your network from discard all further coming packets toward your network on port 80.
+
+Next we are using HOIC which is alos GUI tool for tcp attack and if you remember we ahd already configure TCP flood rule in our local rule file. Now turn on IDS mode of snort by executing given below command in terminal:
+sudo snort -A console -q -u snort -g snort -c /etc/snort/snort.conf -i eth0
+HOIC: It stands for higher orbit ion cannon developed by Praetox Technologies which is network stress testing tool. We had used it only for educational purpose in our local network, using it over public sector will consider as crime and take as illegal job. Download it from Google.
+We had downloaded HOIC in our Windows system run the setup file for installation. Start the tool follow the given below step:
+Add the target by making Click on plus symbol “+”
+
+A list of attack option will get pop up as shown in given below image and follow the given below step:
+ URL: Enter your target network address as http://192.168.1.10
+Power: Low/medium/high to decide the speed of packet to bent to target machine.
+At last click on Add.
+
+From give below image you can check status of attack “ready”, now set number of threads and then click on FIRE THE LAZER tab to lunch the dos attack.
+
+You can clearly observe the TCP packet is sending from attacker network to targets network. In given below image you can notice the endless TCP packet has been sent on target’s network using TCP Flags such as SYN/RST/ACK. It is considered as Volume Based DOS Attack which floods the target network by sending infinite packets to demolish its network for other legitimate users.
+
+Return to over your target machine where you will notice that snort is capturing all in coming traffic exactly in same way as above, here you will observe that it is generating alerts for “TCP Flood”.  Hence you can block attacker’s IP (192.168.1.11) to protect your network from discard all further coming packets toward your network on port 80.
+
+Goldeneye is command line tool use for security testing purpose we had used only for tutorial don’t use it over public sector it will consider as crime and take as illegal job. Execute given below in your kali Linux to download it from github.
+git clone https://github.com/jseidl/GoldenEye.git
+
+Now give all permission to the python script and execute given below command for Launching DOS attack on target network. Basically goldeneye is used for HTTP dos testing for testing any webserver network security.
+ ./goldeneye.py http://192.168.1.10
+
+Using wireshark you can observe the flow of traffic between victim and attacker network. So if notices given below image then you will find that first attacker (192.168.1.103) sends TCP syn packet for establishing connection with victim’s network then attacker is sending http packet over victim’s network.
+
+Here you will observe that it is generating alerts for “TCP Flood” since port is 80 follow TCP protocol therefore snort captured the traffic generated by goldeneyes. Hence you can block attacker’s IP (192.168.1.103) to protect your network from discard all further coming packets toward your network on port 80.
+
+Slowloris is command line tool use for security testing purpose we had used only for tutorial don’t use it over public sector it will consider as crime and take as illegal job. Execute given below in your kali Linux to download it from github.
+git clone https://github.com/llaera/slowloris.pl.git
+
+Now give all permission to the perl script and execute given below command for Launching DOS attack on target network.
+perl slowloris.pl -dns 192.1681.10
+
+Using wireshark you can observe the flow of traffic between victim and attacker network. So if notices given below image then you will find that first attacker (192.168.1.103) sends TCP syn packet for establishing connection with victim’s network then victim’s is sending SYN,ACK packet over attacker’s network and then attacker sends ACK packet and this will keep on looping.
+
+Return to over your target machine where you will notice that snort is capturing all in coming traffic exactly in same way as above, here you will observe that it is generating alerts for “TCP Flood”.  Hence you can block attacker’s IP (192.168.1.11) to protect your network from discard all further coming packets toward your network on port 80.
+
+Xerxer is command line tool use for security testing purpose we had used only for tutorial don’t use it over public sector it will consider as crime and take as illegal job. Execute given below in your kali Linux to download it from github.
+git clone https://github.com/zanyarjamal/xerxes.git
+
+Since it is written in c language there we need to compile it using gcc as shown in given below command and run then run the script in order to launch DOS attack.
+gcc xerxes.c -o xerxes
+./xerxes 192.168.1.10 80
+
+You can clearly observe the TCP packet is sending from attacker network to targets network. In given below image you can notice the endless TCP packet has been sent on target’s network using TCP Flags such as SYN/ACK/PSH. These packet are sent in a loop between attacker can target network.
+
+Return to over your target machine where you will notice that snort is capturing all in coming traffic exactly in same way as above, here you will observe that it is generating alerts for “TCP Flood”.  Hence you can block attacker’s IP (192.168.1.11) to protect your network from discard all further coming packets toward your network on port 80.
+Well in this tutorial we had use most powerful top 5 tool for DOS attack.
+
+Author: Rahul Virmani is a Certified Ethical Hacker and the researcher in the field of network Penetration Testing (CYBER SECURITY).    Contact Here

@@ -1,0 +1,46 @@
+Ostap Bender: 400 Ways to Make the Population Part With Their Money
+Overview
+In late October, Proofpoint researchers identified and began tracking a financially-motivated threat actor group with access to banking Trojans and other malware, including Dridex, Ursnif, Tinba, and the point-of-sale (POS) malware AbaddonPOS with its loader, TinyLoader. More significantly, the group also uses a previously undocumented JScript backdoor called “Ostap” and a Delphi dropper we named “MrWhite”. MrWhite can profile the victim systems for the presence of running POS software before dropping further POS payloads. Adding this extra layer of filtering may help the group focus on targets of interest and evade detection due to use of known malware.
+So far, these campaigns have targeted countries including Germany, Austria, and the United Kingdom. While vertical targeting varies, we observed a significant focus on Financial Services.
+Delivery and Targeting
+Emails with macro-laden Microsoft Word document attachments are used throughout this campaign. The volumes ranged from a few relatively targeted emails to several thousand more broadly distributed messages. During our analysis we found that many malicious emails were sent to German speakers and/or written in German language; others were written in English. For example, the following email with an invoice lure was targeted at German speakers.
+
+Figure 1: Example of a German-language email used to deliver the macro-laden document on November 24
+
+Figure 2: Example of an English-language email targeted at individuals in the UK on December 2
+
+Figure 3: The documents delivered by the emails were typically blank and contained no special lure
+Ostap Backdoor Analysis
+The obfuscated macro in the document drops and executes a .jse file (JScript) to the Desktop, and then displays a fake error message such as: “There was an error opening this document.” The JScript is a backdoor that we are calling “Ostap” due to its communication with a PHP file “ostap.php” on the command and control (C&C) server. Additionally, “Ostap” appears to be a reference to the first name of a con man “Ostap Bender” from popular Soviet Union movies and novels [5].  The following is a list of functionality in an early sample of the backdoor that we analyzed:
+
+Figure 4: Ostap copy in the Startup folder. The script is obfuscated as shown in the text editor
+
+Figure 5: Hardcoded parameters include part of the C&C URL (deobfuscated script)
+
+Figure 6: Script parsing the server response to determine if returned data is an executable (starts with “MZ”) or not
+Ostap typically downloads an executable payload from the C&C server. We describe the payloads in greater detail in the following sections, but we observed various banking Trojans as well as the MrWhite malware.
+Banking Trojans
+The actor rotated the payloads downloaded by Ostap on a daily basis. The following banking Trojans were downloaded or found staged and ready for download on the C&C server:
+POS Payloads Analysis
+MrWhite (named due to the use of the “Mr.White” User Agent) is another payload downloaded by Ostap. It is is written in Delphi. Its sole purpose is to compare the running process names on the infected machine to a hardcoded list of interesting process names (“|” separated). If it finds a process of interest, it sends the whole process list to the C&C and drops TinyLoader [1,2]. To accomplish this task, first MrWhite sleeps for 120 seconds. Next, it combines the hardcoded list of processes (Fig. 7) into a single string and reverses it.
+
+Figure 7: Hardcoded list of POS-related process names. The strings are stored in reversed order
+After this, the string 'VSC OF/ tsilksat' is reversed to 'tasklist /FO CSV' and this command is executed. The command produces a list of running processes in a comma-separated format. The malware then searches the output of the command for any of the processes of interest from the hardcoded list. If it identifies one or more of the processes, the malware sends the output of the tasklist command to its C&C over HTTPS (Fig. 8). We have observed two different MrWhite C&C addresses that were obfuscated in different, albeit simple, ways. One of the C&C addresses (217[.]28[.]218[.]231) was stored reversed, like the process list. The other C&C address was stored as two separate strings: ‘boratorium[.]pl’ and ‘studiomarco-la’ that, when combined, make up the actual C2: studiomarco-laboratorium[.]pl .
+
+Figure 8: MrWhite sending tasklist to its C&C. Note the URL path “/GOLD/bender.php”, which again appears to be a reference to “Ostap Bender”, the name of a con man from popular Soviet Union movies and novels [5]
+Three of the MrWhite samples analyzed for this research dropped and executed an embedded TinyLoader immediately after sending the tasklist to the C&C (Fig 9). All of these samples dropped exactly the same instance of TinyLoader; however a different filename was used in each: ‘000.exe’, ‘001.exe’, and ‘5678987654.exe’.
+
+Figure 9: MrWhite dropping and executing TinyLoader after sending tasklist
+The dropped TinyLoader was identical in these three cases. It communicated to the 62[.]210[.]36[.]112:10500 C&C address (Fig. 10).
+
+Figure 10: TinyLoader C&C IP Address
+We have not observed the TinyLoader receiving any commands to download additional payloads. However, in the past TinyLoader has downloaded AbaddonPOS. After searching through past AbaddonPOS payloads we discovered a recent one that communicates to the same IP as the TinyLoader dropped by MrWhite (Fig. 11).
+
+Figure 11: IP address and port used in AbaddonPOS sample
+The AbaddonPOS associated with MrWhite is very similar to previous samples we analyzed[1][2]. It still searches for credit card data using a custom algorithm and then exfiltrates the data to its C&C. The encoding technique on the exfiltrated data is still the same, but in this case the second XOR key is the same as the IP address (Fig. 12). After decoding the encoded traffic, the exfiltrated credit card data is still transmitted in a similar fashion as previous AbaddonPOS payloads (Fig. 13).
+
+Figure 12: Second XOR key is the same as the IP address
+
+Figure 13: Decoded AbaddonPOS exfiltrated data
+Conclusion
+Threat actors are constantly exploring new approaches to delivering and monetizing malware. In this case, a new group is using an undocumented backdoor and a new loader to deliver familiar banking Trojans and POS malware. By introducing new malware variants, both of which drop payloads that are often caught by existing defenses, the actor group makes detection more difficult and makes it easier to swap out final payloads. All of these factors increase the need for businesses to stop malicious emails before they reach the intended recipients since email is the primary vector for the novel malware in this campaign.

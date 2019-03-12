@@ -1,0 +1,87 @@
+
+Vulnerability Spotlight: LibTIFF Issues Lead To Code Execution
+
+
+
+These Vulnerabilities were discovered by Tyler Bohan of Cisco Talos.
+
+
+
+Talos is releasing multiple vulnerabilities (TALOS-2016-0187, TALOS-2016-0190 & TALOS-2016-0205) in the LibTIFF library . One vulnerability (TALOS-2016-0187) is an exploitable heap based buffer overflow that impacts the LibTIFF TIFF2PDF conversion tool. Another vulnerability (TALOS-2016-0190) impacts the parsing and handling of TIFF images ultimately leading to remote code execution. The final vulnerability (TALOS-2016-0205) is an exploitable heap based buffer overflow in the handling of compressed TIFF images in LibTIFF's PixarLogDecode API. An attacker who can trick a user into processing a malformed TIFF document can use one of these vulnerabilities to achieve remote code execution on the targeted system.
+
+
+
+The Tagged Image File Format (TIFF)  was developed in the mid-1980’s as a common file format able to store image data in a lossless format for the burgeoning image manipulation industry. Since then TIFF files have been widely adopted within the graphic arts industry, and also by electronic fax systems.
+
+
+
+
+
+
+LibTIFF is a freely distributed software library supported on Windows and UNIX based platforms, including Linux and MacOS X that allows systems to read, write and manipulate TIFF format files. One of the strengths of the file format is its extensibility. The format describes a number of tags that represent specific information about the data contained within the file. Some tags are defined by the TIFF standard and must be supported by interpreters of the file format, others have been subsequently defined and are supported and recognized to various degrees.
+
+
+
+CVE-2016-5652 (TALOS-2016-0187) - LibTIFF tiff2pdf JPEG Compression Tables Heap Buffer Overflow
+
+CVE-2016-8331 (TALOS-2016-0190) - LibTIFF FAX IFD Entry Parsing Type Confusion
+
+CVE-2016-5875 (TALOS-2016-0205) - LibTIFF PixarLogDecode Heap Buffer Overflow
+
+
+
+Details
+
+
+
+CVE-2016-8331 occurs during the parsing and handling of TIFF images using the LibTIFF API that is present in the standard build. RFC 2306 defines a series fields used within the TIFF format for use specifically in fax systems which are fully supported by the LibTIFF library. The vulnerability exists in the handling of one of these fields, `BadFaxLines`, that can result in a write to out of bounds memory. Attackers can create a specially crafted TIFF file to exploit this vulnerability and execute arbitrary code on affected systems.
+
+
+
+As of this post, CVE-2016-8331 remains unpatched
+
+
+CVE-2016-5875 (discovered by Mathias Svensson), exists in the handling of compressed TIFF images in LibTIFF's PixarLogDecode API. To decompress the PixarLog compressed data inside of a TIFF image, LibTIFF uses the Zlib compression library. First, a buffer with the parameters needed to be passed to Zlib are set up with a function call to `PixarLogSetupDecode`. Later this buffer is used when calling the Zlib library function `inflate` which is responsible for the actual decompression. Passing an undersized buffer into the Zlib `inflate` function causes a heap overflow that could be potentially leveraged into remote code execution.
+
+
+
+
+
+The final vulnerability, CVE-2016-5652 is present in the Tiff2PDF tool that is bundled with LibTIFF, when the TIFF file uses JPEG compression. This tool is installed by default in the standard build process.
+
+
+
+TIFF offers support for multiple compression algorithms inside of the image itself. One such algorithm is the JPEG compression. This vulnerability arises in the calculating of the images tile size. A specially crafted TIFF image file can lead to an out of bounds write and ultimately to remote code execution. An attacker who can trick a user into using this utility with a crafted TIFF document can cause a heap based buffer overflow that results in remote code execution.
+
+
+
+Tested Versions
+
+
+
+
+
+LibTiff - 4.0.6
+
+Coverage
+
+
+
+There has not been an official LibTIFF release that addresses these issues. To obtain patches for CVE-2016-5652 & CVE-2016-5875 you need to get them from their GIT repository (CVE-2016 8331 currently remains unpatched). Talos has released rules that detect attempts to exploit these vulnerabilities to protect our customers. Please note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+
+
+Snort Rules: 40525-40526, 40533-40538, & 40539-40540
+
+
+
+For further zero day or vulnerability reports and information visit:
+
+
+
+http://talosintelligence.com/vulnerability-reports/
+
+
+
+
+

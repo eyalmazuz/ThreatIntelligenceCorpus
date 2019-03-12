@@ -1,0 +1,214 @@
+
+Getting Started with WinDBG - Part 3
+
+
+By Brad Antoniewicz.
+
+In this series of blog posts we've walked you through getting WinDBG installed, setup, and got you started by attaching to a process and setting breakpoints. Our next step is the actual debugging part where we're stepping through a program and looking at memory.
+
+Part 1 - Installation, Interface, Symbols, Remote/Local Debugging, Help, Modules, and Registers
+Part 2 - Breakpoints
+Part 3 - Inspecting Memory, Stepping Through Programs, and General Tips and Tricks
+
+Stepping
+
+Really the whole reason you're using a debugger is to inspect the state of a process during a specific operation or function. Just about every instruction that gets executed alters the program state in some way which means having the ability to execute an instruction then inspect the state is extremely important. The first part of this is "stepping" - executing instructions then pausing. WinDBG offers a number of different stepping commands depending on where you are in the program and where you want to go. 
+
+
+
+Most debuggers use the following terms that describe how you can navigate through a program and its functions:
+
+Step-Into - When the instruction is a call, follow the call and pause at the first instruction in the called function.
+Step-Over - When the instruction is a call, execute the function and all subfunctions, pausing at the instruction in the current function after the call.
+Step-Out - Execute all instructions and pause after the current function is complete (ret at the end of the current function)
+
+
+A note to make here is that both Step-Into and Step-Over will execute a single instruction and pause - behavior only changes when a call instruction is reached.
+Go
+The g (Go) command is more of a breakpoint command but its functionality blurs the lines between breakpoints and stepping commands. It's used to resume execution of program but unlike most of the stepping commands, it not really meant to be used on an instruction by instruction basis. g will resume the program until a breakpoint or exception occurs. Really, you would use g to execute all of the instructions up to a breakpoint, whereas with stepping commands you're executing instructions without setting a breakpoint. However, to clarify, debuggers will pause when hitting a breakpoint regardless if you use a stepping command or something like g. 
+g is straightforward to use:
+0:001> g
+
+
+While the program is running, WinDBG will give you a message in the command input box:
+
+
+If you know the address you'd like to execute until then just provide it as an argument to g:
+0:001> g notepad!WinMainCRTStartup
+
+Single Stepping
+
+Executing a single instruction, then pausing is called Single Stepping. This can be achieved by either using the "Step-Into" or "Step-Over" commands since both behave the same on non-call instructions. Rather then show them both here, let's look at these commands individually.
+Step-Into
+0:001> t 
+
+
+To Step-Into with WinDBG, use the t (Trace) command. Each step will show you the state of the registers and the instructions that will be executed. In this example we'll pause at the program's entry point (notepad!WinMainCRTStartup) and look at the first few instructions to be executed (u eip). The first instruction is a call to the notepad!__security_init_cookie function. Let's see how debugger behaves when Stepping-Into with t:
+
+
+Here we can see that we were running within notepad!WinMainCRTStartup, then on the call we used t to follow the call into the notepad!__security_init_cookie function, where we paused on the first instruction. 
+Step-Over
+0:001> p 
+
+
+WinDBG uses the p command to step over a function call. This means that the call and all subinstructions within the called function will be executed and the program will pause on the next instruction within the current function (e.g. notepad!WinMainCRTStartup). Let's look at the same scenario, but this time we'll use p:
+
+
+Here we can see that the instruction after the call to notepad!__security_init_cookie is push 58h. When we Step-Over with p we automatically execute everything within the notepad!__security_init_cookie function, then pause at the push after it.
+Step-Out
+0:001> gu 
+
+
+Stepping-Out with WinDBG can be achieved with the gu (Go Up) command. This command scans the current function for a ret then pauses after it gets executed. This an important behavior, because if, for whatever reason, the function doesn't end in a ret or a code path doesn't lead to one, you could experience unexpected results with gu. Let's see what it looks like:
+
+
+Here we've paused on notepad!WinMainCRTStartup+0x1d which is a call to notepad!_imp__GetStartupInfoA. We can see (u eip L2) that the instruction after the call is mov dword ptr [ebp-4],0FFFFFFFEh. So we'll single step (t) into the function and pause at the first instruction. Now we use gu to execute all instructions and function calls in our child function then pause on the next instruction in the parent function, which is our mov dword ptr [ebp-4],0FFFFFFFEh
+Executing until Return
+gu is good and all, but sometimes you want to look at the stack right before the function returns, in this scenario, you'll need to use either tt (Trace to Next Return) or pt. Both are easy to call:
+0:001> tt 
+
+0:001> pt 
+
+
+The important thing here to remember is that tt will stop at the next return, even if its not in the current function. For instance, consider the following pseudocode, our goal is to pause on the ret in func: 
+func: 
+call somefunc
+ret
+
+somefunc:
+call someotherfunc
+ret
+
+someotherfunc:
+ret 
+
+
+In this example, if pause at call somefunc, then use tt, we'll end up pausing at the ret in someotherfunc.
+
+A better approach for this scenario might be to use pt: Using the same pseudocode, if we pause at call somefunc, then use pt, we'd execute all the code in somefunc (and subsequently someotherfunc), then pause at the ret in func. In all reality for this example we could just use p, but that doesn't illustrate the point :)
+
+Ultimately it depends on what you, as the person using the debugger, want to do.
+Inspecting Memory
+
+Now we can finally get into the most important part of debugging: Inspecting Memory. WinDBG provides the d (Display Memory) command for this purpose. In its most simple form you can run it like this:
+0:001> d
+
+
+But this is more or less useless. Running d by itself for the first time will output the memory where eip points to. This is useless because eip should be pointing to a code segment and, to make sense of that, you'd really need to use the u (Unassemble) command. So a much better starting out command would be:
+0:001> d esp
+
+
+This will show us the values on the stack. With d, WinDBG will display data using the format specified by the last d command executed. If this is you're first time running d, it doesn't have previous command stored, so WinDBG will give you the output of the db (Display Byte) command.
+Display Bytes
+db will output the data in bytes and provide the corresponding ASCII values:
+
+Display Words
+
+Words, or 2 byte values, can be shown with dw (Display Word). Alternatively, you can use dW to show Words and ASCII values:
+
+Display DWORDs
+
+My favorite memory viewing command is dd (Display DWORDs). A DWORD is a double word, so 4 bytes. dd will just show you the DWORDS while dc will show DWORDs and ASCII values:
+
+Display Quadwords
+To display quadwords (4 words/8 bytes) within WinDBG, use dq:
+
+Display Bits
+You can even show binary with dyb:
+
+Displaying Strings
+
+Strings are displayed with da, essentially WinDBG will print everything as ASCII until it reaches a null byte. So here, even though esp isn't a string, it'll treat everything as a string until it reaches a null. Just to further illustrate this, I've printed out the 5 bytes at esp with db esp L5:
+
+Addressing
+
+So far we've just been looking at the memory that esp is pointing to by using esp as the parameter to our memory inspection comman however there are a number of different ways to reference memory that can be useful when starting out.
+Registers - As we've seen, you can use any register and WinDBG will use the address in that register as the memory address:
+0:001> dd eax
+
+Memory Address - You can also just use the memory address itself by providing it:
+0:001> db 0020faa0  
+
+Offsets - You can also use offsets with registers or memory addresses by using mathematical expressions:
+0:001> db 0020faa0 + 18
+
+0:001> dd ebp - 18
+
+0:001> dq ebp*eax
+
+
+These expressions can be used wherever an address can be used. Here's what it looks like in WinDBG:
+
+
+WinDBG will output question marks (?) for invalid/free memory.
+Pointers
+
+There are often times where a value on the stack is just a pointer to another location. If you'd like to look at that value you'd need to do two look ups. For instance, say we know that value ebp+4 is a pointer to some assembly code that we want to read. To view that assembly, we'd need two commands. The first command shows us the memory address at ebp+4:
+0:001> dd ebp+4
+
+
+Then the second requires us to manually copy the value at that address then paste it in as an argument to the u command so we can view that assembly:
+0:001> u 777be2d1
+
+
+
+This is all fine, but there's an easier way with the poi() function. Using poi() we just provide ebp+4 as its parameter and it will automatically take the value at that address and use it, rather then just using the value of ebp+4:
+0:001> u poi(ebp+4)
+
+
+Limiting output
+
+By default WinDBG will output a set amount of data, however we can limit how of that data is outputted with the L (Size Range Specifier) attribute. L will work with most commands and just needs to be appended to the end with a value:
+0:001> dd esp L1
+
+
+The number specified with L is the size, which is related to the command executed. For instance, with db, L will mean the number of bytes to print, while with dd, L will mean the number of DWORDS.
+
+
+
+That's really it to get you off the ground inspecting memory - I know, three blog posts building up to this functionality, and its just this tiny little section? Yup - there are some more memory inspection commands, but to get started, d is the core command. Check out the tips below for more info.
+Tips and Tricks
+
+Now that you're off the ground, lets look at some handy tricks and tips that can make your debugging experience much better.
+Keyboard Shortcuts
+Chances are you'll be starting and stopping an application hundreds of times while you're debugging so any little shortcut can solve you tons of time in the long run. Keyboard shortcuts are huge, here are the four I use the most:
+
+F6 - Attach to a process. With the Attach Window open, use the "End" key to drop down to the bottom (where newly launched applications are).
+CTRL + E - Open Executable
+CTRL + Break - "Break" into a running application - used to pause a running program
+F5 - Shortcut for g
+
+Converting Formats
+
+If you haven't figured this out already, WinDBG prints numbers in hex by default. That means 12 isn't the same as decimal 12. One quick tip is the .formats command. To use it is straightforward:
+0:001> .formats value
+
+
+Where value is something you want to convert. So .formats will take whatever you provide and output it in a variety of formats:
+
+
+Now we know 12 is actually 18 :). However, you can also provide decimal values using the 0n specifier:
+
+Math
+
+There may be times where you need to calculate an offset or just do some basic math. WinDBG will evaluate expressions with the ? command:
+0:001> ?1+1
+
+
+These expressions can be as simple or as complicated as you'd like can contain all of the standard addressing that WinDBG uses:
+
+
+...who needs calc.exe when you have WinDBG!
+Extensions
+
+To make life easier, there are a number of extensions that people have created for WinDBG. These are great little tools that can be used within the debugger to provide functionality. Some are even built by Microsoft. The useful ones are !heap, !address, !dh, and !peb. I'll cover these and more in another blog post - So stay tuned!
+Cheat Sheets
+
+There are a couple of really nice WinDBG command references, cheat sheets, and tutorials out there if you don't like .hh, here are a couple good ones:
+
+http://windbg.info/doc/1-common-cmds.html
+http://www.codeproject.com/Articles/6084/Windows-Debuggers-Part-1-A-WinDbg-Tutorial
+
+Got any more tips or tricks? Share them in the comments below!
+
+

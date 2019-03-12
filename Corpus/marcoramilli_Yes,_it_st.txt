@@ -1,0 +1,38 @@
+
+Yes, it still happens: FreeBSD Telnet BOF
+
+
+
+
+Buffer Overflows has been one of the major cause of exploiting during the past years, many remote exploits, malware and viruses took advantage from this technique to keep the control of a target machine. I am not going to write about Buffer Overflows, I've been widely discussing this topics in several past posts ( just take a look here) but here I want to discuss how this vulnerability still infects many softwares including amazing project like the FreeBSD Operative System.
+
+
+
+The telnet's bug is place into the file encrypt.c which defining a key_info struct with a fixed length buffer of 64 bytes to hold the key id passed by the telnet client, does copy the passed data into the key_info struct using memcpy without any restriction on the length specified by MAXKEYLEN. Following the bugged code:
+
+
+
+
+
+
+This code is almost 20 years old and it is pretty interesting that nobody discovered it until the 2011 Christmas's eve. And yes... Apple is vulnerable too (take a look here). The simple but well written exploit made by PainSec is available here. Attackers used a "/bin/sh execve() shellcode " as shown following:
+
+
+
+
+
+
+
+And filled the buffer in the most classic way:
+
+
+
+
+
+
+
+Again another BOF example to show to everybody thinks that Safe Libraries, NX/DEP, ASLR, StackGuard and Canaries resolved the security Buffer Overflow problem. I do not believe it will be easy to solve in a permeant way this problem that afflicts security since the beginning of such a field.
+
+To have more details of the telnet code go here.
+
+

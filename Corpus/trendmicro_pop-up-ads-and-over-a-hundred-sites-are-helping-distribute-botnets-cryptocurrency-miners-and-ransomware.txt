@@ -1,0 +1,48 @@
+Pop-up Ads and Over a Hundred Sites are Helping Distribute Botnets, Cryptocurrency Miners and Ransomware
+The Trend Micro Cyber Safety Solutions team has been tracking a potentially unwanted app (PUA) distribution campaign that installs PUA software downloaders. During our research, we found that some of these distributors started pushing malware along with PUAs in late 2017. In this post we focus on one of the older PUA software downloaders called ICLoader (also called FusionCore and detected by Trend Micro as PUA_ICLOADER). Different reports identified it as a PUA software downloader because it installed adware or unwanted software.
+Like most threats, ICLoader evolved and adapted to the current landscape. In 2017, it began pushing various botnets, cryptocurrency miners, and the new emerging GandCrab ransomware (detected by Trend Micro as RANSOM_GANDCRAB.A). Pop-up ads were used to distribute the malware on file sharing websites and over a hundred fake software sharing websites — all of which are still live (at the time of writing). The distributors of ICLoader seem to be targeting users who are actively looking for specific software since even the pop-up ads are hosted on sites that supposedly share software.
+The distribution campaign
+While tracking the campaign, we found three sources distributing ICLoader. As mentioned above, one distribution method involves using pop-up ads on free file sharing service websites — a known avenue for distributing unwanted applications and malware. These file sharing websites allow users to upload their file and share a download link with other people. Pop-up advertisements appear when people click the download buttons on their page.
+ICLoader uses these pop-up ads as lures for installation. When users click the download button, a pop-up ad opens on a new window with malicious links that lead to the ICLoader download page.
+Users are led to believe that these are real files from the sharing website. Clicking on the link installs ICLoader, which can drop malware or unwanted apps onto the victim’s device.
+
+Figure 1. Pop-up ad on file-sharing site leads to ICLoader download page (right)
+The second distribution vector is fake software sharing websites. One group has made 117 of these sites, each one sharing hundreds of cracked software. The sites list detailed descriptions of software and have ‘free download’ buttons to the cracked versions at the bottom of the page. We found that these download links all connect to servers that redirect users to download different PUA downloader software, mainly ICLoader.
+We analyzed these fake websites and found that the pictures of download buttons were usually connected to shortened URLs embedded on multiple websites. We conclude that the website’s owners might be using these shortened URLs to get statistics on the number of site visitors. We looked at the data and found how many people visited their fake sharing websites.
+We tracked one of the oldest shortened URL links and saw more than 50 million visits since 2015. Looking at other shortened URLs created more recently, we also found that an estimated 300 thousand visitors still access these sites every week. People likely find these websites when searching for pirated software on a search engine.
+
+*Data from Google URL Shortener
+Figure 2. Visits to fake cracked software sharing websites from 2015
+Besides the software download websites, two fake torrent sharing websites (which imitate real torrent sharing sites) also distribute ICLoader. The download links on both torrent sites lead to an ICLoader download page.
+
+Figure 3. Fake cracked software sharing website (left) and imitation torrent website (right)
+How ICLoader installation works
+When clicked, the malicious link redirects users through a traffic management server to the ICLoader download page, which then drops ICLoader software on the device. The downloaded file from the ICLoader server is usually a zip archive that contains the ICLoader software. Occasionally, the downloaded file is a torrent file, but victims will get the same software after opening it with their torrent application.
+We found that ICLoader has a different hash value every time it is downloaded from the server.
+
+Figure 4. Traffic from pop-up ads, software sharing websites, and torrent sharing websites go to the same server where the traffic is merged and redirected to the ICLoader download page
+The ICLoader file has the name of the software that the victims originally intended to download, which is part of the ruse to convince victims that the download is legitimate. Once victims execute the ICLoader file, they will see the typical software installation instructions and steps. All of the PUA software we tracked were also signed with a valid COMODO certificate, which adds to the appearance of validity.
+After the installation, ICLoader will start to download and install the legitimate software. However, it will communicate with its C&C server and receive additional malicious files before the installation finishes. ICLoader will then install the additional files on the victim’s machine without user consent.
+The C&C server of an earlier ICLoader version had either a “.ru” domain or just an IP address. But more recent versions are using Amazon AWS to host their servers. A clear pattern of ICLoader C&C and file download traffic involves the HTTP user-agent string “Christmas Mystery,” shown in Figure 5.
+
+Figure 5. ICLoader C&C traffic pattern
+Distinctive malware pushed by ICLoader
+ICLoader still pushes adware and useless software, but the downloader also dropped malware. We saw that the malware that ICLoader previously installed either installed or additionally loaded seven different groups of botnets, four different cryptocurrency miners, and the GandCrab ransomware.
+A cryptocurrency mining malware (detected by Trend Micro as COINMINER_MALXMR.TIBAFR) is one example of a malware that ICLoader dropped directly.
+Initially, the dropped malware installs a VB script that executes every time the system starts. The VB script will load an additional VB script with the BITSAdmin tool and then download and execute a mining program with PowerShell. The PowerShell script will check the system and choose to download either a 32-bit miner or 64-bit miner, depending on the victim’s device. This is a popular tactic with this type of miner.
+The download links of the miners are shortened URLs. The traffic statistics of the shortened URLs show that the miner botnet has around 80 thousand victims that constantly load their miner and mine for them every day. Because of the similar details, we believe it’s from the same group described in this previous report.
+
+*Data from Bitly
+Figure 6. Number of x86 (Left) and x64 (Right) Crypto-Currency Miner Download
+In the recent version of ICLoader we found in February 2018, we also saw that it installed an unknown loader (detacted as PUA_INERINO) that additionally downloaded and infected victims with the new emerging ransomware GandCrab. GandCrab was reportedly distributed via a fake font update, social engineering, malware spam and exploit kits.
+It’s unusual to see ransomware installed from PUA software, so we checked the unknown loader.
+From the information gathered from the C&C server, we identified that it is a malware loader called “iNerino.” This loader links to a botnet pay-per-install service sold in a Russian-speaking forum. During our observation of ICLoader, we saw that the iNerino loader was installed several times. Each time, the loader installed different malware and botnets such as SmokeLoader and AZORult. These botnets usually installed cryptocurrency miners.
+It’s worth mentioning that while iNerino was dropped from ICLoader, it was also being pushed by the Rig exploit kit. The iNerino author may be paying the developers of ICLoader and the Rig exploit kits to push iNerino, while also selling their services as an “installer” to other attackers who need their malware installed.
+
+Figure 7. iNerino loader pushed from Rig exploit kit on 26 February
+
+Figure 8. iNerino advertisement on Russian-speaking forum
+Solutions and mitigation
+We focused on ICLoader because it is one of the most common PUA downloaders found in our research, but many other PUA downloaders install malware. Users should click with caution, and only download and execute programs from trusted sources. Patching and updating systems to the latest version will also address potentially exploitable vulnerabilities.
+For a more comprehensive security solution, Trend Micro™ Smart Protection Suites and Worry-Free™ Business Security protect end users and businesses from threats by detecting and blocking malicious files and all related URLs. Trend Micro™ Smart Protection Suites deliver several capabilities like high fidelity machine learning, web reputation services, behavior monitoring, and application control that minimize the impact of threats that may be delivered by PUA downloaders like ICLoader.
+Related SHA256s and all the fake cracked software sharing websites and fake torrent websites are listed in the Appendix.

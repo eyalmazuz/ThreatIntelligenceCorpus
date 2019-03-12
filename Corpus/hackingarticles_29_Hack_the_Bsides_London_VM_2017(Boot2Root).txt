@@ -1,0 +1,107 @@
+
+Hack the Bsides London VM 2017(Boot2Root)
+
+Hello friends! Today we are going to take another CTF challenge known as Bsides London 2017. The credit for making this vm machine goes to “Hacker House” and it is another boot2root challenge in which our goal is to get root to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let us start form getting to know the IP of VM (Here, I have it at 192.168.0.7 but you will have to find your own)
+Let’s do an nmap scan for port enumeration.
+nmap -A -p- 192.168.0.7
+
+We find port 80 to be open, port 80 is running http.
+So we first open 192.168.0.7 in our browser.
+
+We find a hint to use rafting directory, it is a wordlist that is used to enumerate directories. So we enumerate the directories using raft-large-directories for further information.
+dirb http://192.168.0.7 raft-large-directories
+
+Now we enumerate the directories with common wordlist and find a directory called cgi-bin/.
+dirb http://192.168.0.7
+
+As the dirb scan gave us a forbidden error on cgi-bin/ directory. We try to look through the files inside cgi-bin
+dirb http://192.168.0.7/cgi-bin/ -N 403
+
+We open the links found using dirb, one of those links contains a login page.
+
+We take a look at the source code and find a hexadecimal string.
+
+We decode it using xxd and find a base64 encoded string. After decoding it we found that the base64 string starts from Y so we select the string from Y and found a hexadecimal string inside a flag. We decode it and find a string.
+
+We use this string as password to login through the login page, we use username as admin.
+
+Even after login we don’t find anything on the login page, so we move to the links provided by the dirb scan.
+We found one page that looks like a blank page.
+
+When we take a look at the source page, we found that it is xml based page that may be vulnerable to XML Entity Injection(XXE).
+
+We use burpsuite to capture request of that page and then send it to repeater, we then use XXE to exploit the system.
+
+We find that only /etc/passwd is visible in plain text, to get the rest of the files we need to php base64 filter.  So we get apache.conf file to know about the system.
+
+Now we decode the base64 encoded string and save it in a file ‘bsides-apache.conf’.
+
+Now when we check the configuration to find information about the system.
+
+Now we use XXE to get the rest of the configuration files.
+
+We decode the base64 encoded string and then save it as bsides-default.conf.
+
+Now we take a look at the configuration file, we get the location of the cgi configuration file.
+
+Now we use XXE to get the configuration file for CGI files.
+
+We decode the base64 encoded string and save it as bsides-cgi.conf
+
+Now we take a look at the cgi configuration file and find the location of load file that we dirb scan showed us.
+
+Now we download the load file using XXE to find more information about the file.
+
+We decode the base64 encoded string and save it as bsides-load.
+
+Now we check the file type and find it is an elf executable file.
+File bsides-load
+
+We use strings to check the content of the file and find that it is compressed using UPX.
+Strings bsides-load
+
+Now we use UPX to decompress the file
+upx -d bsides-load
+
+After decompressing the file we check the strings and find that it read a file and decrypts the file using the hex value of “WannaCry?”
+
+Now we use radare to reverse engineer the file and find that it can run files that are encrypted with hex value of ‘WannaCry?’
+
+Now we create a hex value of ‘WannaCry?’. We use od to convert it into hex and sed to remove the space between values.
+echo -n “WannaCry?” | od -A n -t x1 |sed ‘s/ *//g’
+
+We create a reverse shell first to exploit the system. We create pipe files to execute our command.
+
+Now we create a 32-bit shared object file using gcc and convert it to a binary file using the hex value of ‘WannaCry?’ as key with openssl.
+gcc -m32 -shared -fPIC -o exploit.so exploit.c
+openssl aes-128-cbc -K ‘key’ -iv 0 -e -in exploit.so -out exploit.bin
+
+Now we upload the file to the server, dirb scan gave us a link that can be used to bin files. After upload file we get the location of the file where it is uploaded. The name of our file also changes after we upload it.
+
+We copy the new file name and use the load file to run our shell.
+
+We setup our listener using netcat, as soon as we execute the shell we get the reverse shell.
+
+Now we find files with suid bit set and find a file in /home/level1/ called shisu
+find / -perm -4000 2>/dev/null
+
+We move to the directory and run the command and find that it is an executable file.
+file shisu
+
+When we run the file we find that it runs the command ps.
+
+We are unable to read debugging symbols in gdb so we use objdump to reverse engineer the file and found that the file has a string copy after which it removes the top 10 bytes in stack.
+objdump -M intel -d shisu
+
+We now use gdb to add a breakpoint before it removes the memory from the stackpoint. We use python to print 500 ‘A’. Then we check the stack and find it is overwritten with A’s.
+
+Now this file maybe vulnerable to buffer overflow.  After fuzzing a few times we find that at 516 bytes of data we can overwrite the EIP and we get a segmentation fault.
+
+So we now use this to exploit this vulnerability and get a privileged shell.
+Now we run the file along with a 516 byte of shellcode and we get a privileged shell.
+
+Now we use id command and find that we are root user now.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

@@ -1,0 +1,15 @@
+Android bug batters Bitcoin wallets
+Users of Android Bitcoin apps have woken to the unpleasant news that an old pseudo random number generation bug has been exploited to steal balances from users' wallets.
+The Bitcoin Foundation's announcement, here, merely states that an unspecified component of Android “responsible for generating secure random numbers contains critical weaknesses, that render all Android wallets generated to date vulnerable to theft.”
+Such wallets would include Bitcoin Wallet, blockchain.info wallet, BitcoinSpinner and Mycelium Wallet.
+The problem is this: the elliptic curve digital signature algorithm – ECDSA – demands that the random number used to sign a private key is only ever used once. If the random number generator is used twice, the private key is recoverable.
+This blog post, describing a presentation given at the RSA conference in March, gives a hint at what's going on. It described how the Java class SecureRandom (used by the vulnerable wallets) can generate collisions for the value r.
+Moreover, r collisions appear to have been spotted in the wild as early as January – although the author of that post, Nils Schneider did not link the collision to SecureRandom.
+According to The Genesis Block, SecureRandom was flagged by Google's Mike Hearn as the problem, in an e-mail to Bitcoin developers:
+“Android phones/tablets are weak and some signatures have been observed to have colliding R values, allowing the private key to be solved and money to be stolen”.
+Hearn says the Bitcoin Wallet app “has been prepared that bypasses the system SecureRandom implementation and reads directly from /dev/urandom instead, which is believed to be functioning correctly. All unspent outputs in the wallet are then respent to this new key.”
+Given, however, the prior observations both of Bitcoin signature collisions and SecureRandom problems, The Register has asked Hearn if developers should have been advised to avoid SecureRandom sooner. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

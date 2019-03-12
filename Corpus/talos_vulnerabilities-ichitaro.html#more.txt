@@ -1,0 +1,84 @@
+
+Vulnerability Spotlight: Multiple Ichitaro Office Vulnerabilities
+
+
+
+These vulnerabilities were discovered by Cory Duplantis and another member of Cisco Talos
+
+
+
+Talos has discovered three vulnerabilities within the Ichitaro Office suite. Ichitaro is published by JustSystems and is considered one of the more popular word processors used within Japan. All three vulnerabilities reported lead to code execution. These issues were initially reported to the vendor in September and it took them until February 23rd to address these issues.
+
+
+
+
+
+TALOS-2016-0196 (CVE-2017-2789) - Ichitaro Office JTD Figure handling Code Execution Vulnerability
+
+TALOS-2016-0197 (CVE-2017-2790) - Ichitaro Office Excel File Code Execution Vulnerability
+
+TALOS-2016-0199 (CVE-2017-2791) - Ichitaro Word Processor PersistDirectory Code Execution Vulnerability
+
+For a detailed technical analysis of how these issues may be exploited in the wild please refer to the writeup here.
+
+
+
+
+
+Details
+
+
+
+TALOS-2016-0196
+
+
+
+Ichitaro's proprietary file format is a Compound Document similar to .doc for Microsoft Word called .jtd. When processing a Figure stream from a .jtd, the application will allocate space when parsing a Figure. When copying filedata into this buffer, the application will calculate two values to determine how much data to copy from the document. If both of these values are larger than the size of the buffer, the application will choose the smaller of the two and trust it to copy data from the file. If the amount of data copied is larger than the buffer size, this leads to a heap-based buffer overflow. This overflow corrupts an offset in the heap used in pointer arithmetic for writing data and can lead to code-execution under the context of the application.
+
+More details can be found here 
+
+
+
+TALOS-2016-0197
+
+
+
+Ichitaro handles Microsoft Excel's .xls file format. When processing a record type of 0x3c from a Workbook stream from a .xls file, the application trusts that the size is greater than zero, subtracts one from the length, and uses this result as the size for a memcpy. This can be used to construct a file that when opened causes heap-based buffer overflow and can lead to code-execution under the context of the application.
+
+More details can be found here
+
+
+TALOS-2016-0199
+
+
+
+Ichitaro Office contains a vulnerability that exists when trying to open a specially crafted PowerPoint file. Due to the application incorrectly handling a function error case, the application uses this result in a pointer calculation for reading file data. This will result in the application reading data from the file into an invalid address thus corrupting memory. Under the right conditions this can lead to code execution under the context of the application.
+
+More details can be found here 
+
+
+
+Tested Version
+
+
+
+JustSystems Ichitaro 2016
+
+
+
+Coverage
+
+
+
+The following Snort Rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+Snort Rules: 41110-41111, 40125-40156 & 40490
+
+
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff}
+p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff; min-height: 14.0px}
+span.s1 {font-variant-ligatures: no-common-ligatures}
+
+
+

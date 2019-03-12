@@ -1,0 +1,18 @@
+
+					FileSystem NTFS Bug Crashes Windows 7 and Windows 8.1					
+Until Microsoft patches this problem, use Chrome: a slip in file-path handling allows an attacker to crash Windows 7 and Windows 8.1 with a file call.
+A bug in the way Microsoft handle file-path could be exploited by attackers to crash Windows 7 and Windows 8.1 with a simple file call.
+The vulnerability is triggered everytime a file call includes the Windows’ Master File Table, for example, if the attackers include $MFT as a link to an image in a website.
+The Russian expert “Anatolymik” of Alladin Information Security first reported the issue. he discovered it debugging and reverse engineering the NTFS driver.
+
+Every file on an NTFS volume has a reference in the MFT, for this reason, the OS must protect $MFT from user-access. The Russian researcher discovered that if you try to access a file like
+c:\$MFT\foo
+the NT file system (NTFS)  locks $MFT and simply doesn’t release it.
+“When the attempt is made to open the file with respect to $ mft file, NtfsFindStartingNode function does not find it, because This function searches a little differently, unlike NtfsOpenSubdirectory function that finds the file at all times.” reads the desciption of the problem published by the expert.
+“Consequently, the work cycle begins, starting with the root filesystem. Next NtfsOpenSubdirectory function opens the file and take him ERESOURCE monopoly. On the next iteration of the loop detects that the file is not a directory, and thus interrupt his job with an error. And at the conclusion of its work function by NtfsCommonCreate NtfsTeardownStructures function tries to close it. Function NtfsTeardownStructures, in turn, face the fact that she will not be able to close the file because it opens the file system itself when mounting. At the same time, contrary to expectations NtfsCommonCreate function, NtfsTeardownStructures function frees ERESOURCE $ mft file. Thus, it will be captured forever.” 
+According to Bleeping Computer, users who have tested the issue have noticed that the bug cannot be triggered in Chrome because the Google browser will not allow loading images with malformed paths, such as the $MFT exploit.
+“According to users that have tested the bug and commented on Anatolymik’s blog post, Chrome will refuse to load images with malformed paths, such as the $MFT exploit.” states the blog post published on Bleeping Computer.
+“Nonetheless, Bleeping Computer confirmed that the $MFT bug causes a Windows 7 installation to hang via Internet Explorer and Firefox.”
+This NTFS bug is very similar to another file path vulnerability discovered in 1990s when you could trigger system crash with the “C:/con/con” bug. The bug affecting Windows 95 and Windows 98 systems.
+Pierluigi Paganini
+(Security Affairs – NTFS bug, hacking)

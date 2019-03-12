@@ -1,0 +1,88 @@
+Zepto ransomware now introduces new features to better encrypt your files
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 8 September 2016
+
+The Threat Intelligence team takes a closer look at the new Zepto (ransomware) variant.Zepto ransomware is a relatively new player in the ransomware scene, and it’s closely related to the infamous Locky ransomware. Taking a closer look at Zepto’s code, we found that the code is pretty much the same as Locky’s code, but it has been slightly modified. The malware authors behind Zepto use the same methods used to spread Locky, and even the infection vector and the TOR payment page are the same, which makes us think that the people behind Locky are now spreading Zepto. The only difference between Locky and Zepto is the ransom demand. Zepto’s demand is much higher than Locky’s, 3 Bitcoins (approximately $1,850).
+
+
+A few days ago, security researcher Timothy Davies tweeted about a Locky update. Locky now contains hardcoded RSA keys and no longer contacts C&C servers.
+We analyzed the sample and discovered several major changes in the program code, as well as some interesting new features.
+First, we need to point out that the sample Timothy tweeted about is not actually Locky, but the the modified Zepto variant, which creates a“.zepto” file extension when it encrypts files.
+
+The biggest change is the fully functioning offline mode, carried out via the public RSA key hidden inside of the encrypted “config” data block, which is hardcoded into a main binary file, which corresponds to the description in Timothy’s tweet. A private key is still hidden somewhere on the malware authors’ backend servers, making manual decryption impossible.
+Config decrypt algorithm:
+
+Here is decrypted config:
+
+The ransomware still contains the same code used to operate C&C servers, as Locky and previous Zepto variants did, but this time the code is never executed at runtime.
+Another very interesting feature is the use of "weight" according to file type and the creation of  a “priority file list”, which is sorted by “weight” and determines the order during the final file encryption process.
+The weight table includes 196 types of extensions with weight values ranging from 7 to -1. The greatest priority is given to a "wallet.dat" file, which indicates that the user owns a virtual wallet and has experience with Bitcoins and is thus more likely to pay the ransom.
+
+The entire process is as follows:
+
+Zepto scans the entire disk for files with the file extensions listed in the table. Then the weight and path of the files are saved to the list. Zepto also reduces the weight of large files and thus encrypts multiple smaller files with the same effort.
+The list is sorted, with the largest weight at the top.
+Files are encrypted according to their rank on the list.
+
+
+This variant of Zepto uses AES cipher with randomly generated keys for each file and RSA cipher with hardcoded public key.
+Zepto can use one of two methods of  AES cipher implementation and decides via CPUID instruction if it should perform CPU instructions to process the AES encryption or if it should use the CryptoAPI method.
+Each encrypted file also contains a “header” structure with specific magic values, UserID, encrypted AES key and information about the original file, like attributes and filename. This header is used to restore the original file status like the file’s original creation date. etc.
+Structure of encrypted file:
+AES_enc(original file content) | magic1=0x8956FE93 | 16B UserID | RSA_enc(AES_key) | AES_enc(magic2=0xD41BA12A | filename | file_attributes)
+The encrypted file name is composed of UserID, random hex characters and the “.zepto” extension in the following format:
+
+Zepto uses an interesting method when renaming files and replacing the original file content via the MoveFileExW API function with set dwFlags=0x9 (MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH),which also provides a "lock" file during the encryption process.
+
+To determine if Zepto has access to files, in order to encrypt them, is  a non-standard and rather unusual method that uses a bunch of the API functions (DuplicateToken, MapGenericMask, AccessCheck..) and manual tweaks and settings, but this method also works on network mapped drives.
+
+Zepto also tries to delete data from the Volume Shadow Copy Service using a very unusual method implemented via direct API calls from the vssapi.dll library. If this method fails, Shadow Copy is deleted by the classical “vssadmin.exe delete Shadows /All /Quiet” method.
+
+Zepto contains very good obfuscation for html help files that are created inside every folder with encrypted files. These help files explain how victims’ can pay the ransom and decrypt their files and they are obfuscated to avoid AV detections or detections based on dynamic analysis systems and sandboxes.
+
+Conclusion
+It seems that the authors of Zepto and Locky have tested their offline version, thus ensuring the encryption of user files under all circumstances. Earlier versions downloaded an RSA public key from their server, but in that case if the connection failed or was blocked, the malware didn’t work and the user was safe.
+Malware authors are still hard working and extending this ransomware with new features.
+We'll see if the author will remain in offline mode, or revert back to the C&C servers.
+How to stay safe
+Avast protects against ransomware such as Zepto and Locky. Compare security solutions on our website.
+ hbspt.cta.load(486579, '4497b60d-baf6-4078-a1cd-a7e83a7da679', {}); 
+
+
+As always, don’t open suspicious attachments (e.g. zipped .js, .wsf or .vbs files)
+
+
+Disable Microsoft Office macros by default and never enable macros in strange/unknown attachments that you receive via email
+
+
+Keep recent backup copies of important data in a secure place either online or offline
+
+
+Ensure that your system and applications are fully updated and patched
+
+
+SHA-256: BFE580CF1F33EC1C456385FEF84BA01CA40A4E81833A8519B5B9B71E967D6444
+
+Ransomware
+
+
+Check 7 comments or write your comment
+
+
+
+
+
+
+
+
+

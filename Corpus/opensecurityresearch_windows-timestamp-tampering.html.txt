@@ -1,0 +1,186 @@
+
+Windows Timestamp Tampering
+
+
+By Glenn P. Edwards Jr. 
+
+From time to time someone will bring up the topic of Windows time stamp manipulation and if it’s not related to a piece of malware then it’s generally about Timestomp or touch.  These discussions usually contain the same repetitive information – most notably being to check the time stamp values of the file (in NTFS everything, including directories, is considered a file) in the $MFT and see if anything stands out.  This is usually done by looking at the $STANDARD_INFORMATION and $FILE_NAME attributes for each file.  During the rest of the post these two values will be referred to as $SI and $FN.
+
+In regards to the $FN attribute, Brian Carrier states that “Windows does not typically update this set of temporal values like it does with those in the $STANDARD_INFORMATION attribute, and they frequently correspond to when the file was created, moved, or renamed," (page 318). 
+
+There’s been previous write ups regarding time stamp manipulation and Rob Lee has also created some great charts outlining rules for time stamp changes.  In the Windows world the NtSetInformationFile function, which is inside of NTDLL.dll, is used to set the MACE timestamps on files within NTFS.
+
+MACE timestamps explained:
+M – modify
+A – access
+C – create
+E – entry modified (sometimes also referred to as a ‘B’ for Born date)
+Recently, there’s been some chatter again about this topic throughout the DFIR community; however, this time there was something different information being discussed – modifications of the $FN values.  It isn’t something impossible if you think about it, why couldn’t they be changed?  Examples of how to do it have been publically available but the tool setMACE got some noise because it’s able to modify the $FN values in an automated and easy way.  
+
+If you’ve looked at Rob Lee’s charts or read about the $SI and $FN in Harlan’s Book then you’re aware of the different scenarios that can affect how these values change (i.e. whether they’re copied, moved, moved to another volume etc.).   setMACE uses a move ‘trick’ in order to be able to change the $FN values.  Basically, if you choose to change all four values in both attributes then it will:
+Set the $SI values to what you choose
+Create a randomly named folder on the volume
+Move the file to that new folder (on the same volume)
+Set the $FN values to match the arbitrary $SI values
+
+To date, throughout my investigations I have yet to see any indication of all (8-12) of the $SI & $FN be tampered with… but that doesn’t mean I shouldn’t be aware that it can happen.  It’s generally just the $SI that gets altered because there’s a documented Win32 API for dealing with them.
+
+Windows timestamps can be an invaluable piece of information to an investigation but you should also be aware of other ‘features’ which may cause confusion during your analysis (i.e. Windows Tunneling).
+Testing Process
+The testing process outlined below was repeated with an attached NTFS formatted USB drive across the following combinations:
+
+Windows XP x86 w/ SP3
+administrator account
+limited user account
+
+Windows 7 x64 w/ SP1 
+administrator account
+limited user account
+
+Created a file with a short filename on that USB drive:
+c:\>echo "short file" >> E:\short.txt
+
+
+Created a file with a long filename on that USB drive.   Because of the 8.3 filename limitation, I wanted to test if a file with a long file name would have all of its $FN attributes values modified (since there’d be more than one as opposed to shorter file name in step 2).
+
+c:\>echo "long file" >> E:\longfilename.txt
+
+
+Grabbed the $MFT prior to tampering
+Ran setMACE against both of the files with the options to set all of the $SI and $FN timestamp values to a new value:
+
+c:\>setMACE.exe "E:\short.txt" -z "2000:01:01:00:00:00:789:1234" -x 
+c:\>setMACE.exe "E:\longfilename.txt" -z "2000:01:01:00:00:00:789:1234" –x
+
+* dates may appear different in my results because I switched it up sometimes to see what would be produced.
+Grabbed the $MFT after tampering.
+While there’s a few tools out there for $MFT parsing, I chose Harlan Carvey’s mft.pl and it against it each of the $MFT’s
+
+c:\>perl mft.pl $MFT.original > mft.original.txt
+c:\>perl mft.pl $MFT.tampered > mft.tampered.txt
+
+* When run under a limited account on a system using UAC, as expected, the prompt is displayed and requires administrative privileges in order to carry out its modifications (be aware that this can be bypassed):
+
+
+I didn’t want to flood the post with the output of all of the tests but I did want to include some evidence/indication of what the $SI and $FN values will look like after such an event occurs.  Below are the results from using setMACE on a Windows 7 x64 machine running as an administrator:
+
+ Original Tampered 
+ 35         FILE Seq: 1    Link: 1    0x38 3     Flags: 1   
+0x0010 96   0   0x0000  0x0000
+M: Thu Dec 29 22:56:11 2011 Z
+A: Thu Dec 29 22:56:11 2011 Z
+C: Thu Dec 29 22:56:11 2011 Z
+B: Thu Dec 29 22:56:11 2011 Z
+0x0030 112  0   0x0000  0x0000
+FN: short.txt  Parent Ref: 5  Parent Seq: 5
+M: Thu Dec 29 22:56:11 2011 Z
+A: Thu Dec 29 22:56:11 2011 Z
+C: Thu Dec 29 22:56:11 2011 Z
+B: Thu Dec 29 22:56:11 2011 Z
+0x0080 40   0   0x0000  0x0018
+
+36         FILE Seq: 1    Link: 2    0x38 4     Flags: 1   
+0x0010 96   0   0x0000  0x0000
+M: Thu Dec 29 22:56:16 2011 Z
+A: Thu Dec 29 22:56:16 2011 Z
+C: Thu Dec 29 22:56:16 2011 Z
+B: Thu Dec 29 22:56:16 2011 Z
+0x0030 120  0   0x0000  0x0000
+FN: LONGFI~1.TXT  Parent Ref: 5  Parent Seq: 5
+M: Thu Dec 29 22:56:16 2011 Z
+A: Thu Dec 29 22:56:16 2011 Z
+C: Thu Dec 29 22:56:16 2011 Z
+B: Thu Dec 29 22:56:16 2011 Z
+0x0030 128  0   0x0000  0x0000
+FN: longfilename.txt  Parent Ref: 5  Parent Seq: 5
+M: Thu Dec 29 22:56:16 2011 Z
+A: Thu Dec 29 22:56:16 2011 Z
+C: Thu Dec 29 22:56:16 2011 Z
+B: Thu Dec 29 22:56:16 2011 Z
+0x0080 40   0   0x0000  0x0018
+
+37         FILE Seq: 1    Link: 0    0x38 0     Flags: 
+ 35         FILE Seq: 1    Link: 1    0x38 5     Flags: 1   
+0x0010 96   0   0x0000  0x0000
+M: Thu Jan  1 00:00:00 1970 Z
+A: Thu Jan  1 00:00:00 1970 Z
+C: Thu Jan  1 00:00:00 1970 Z
+B: Thu Jan  1 00:00:00 1970 Z
+0x0030 112  0   0x0000  0x0000
+FN: short.txt  Parent Ref: 5  Parent Seq: 5
+M: Thu Jan  1 00:00:00 1970 Z
+A: Thu Jan  1 00:00:00 1970 Z
+C: Thu Jan  1 00:00:00 1970 Z
+B: Thu Jan  1 00:00:00 1970 Z
+0x0080 40   0   0x0000  0x0018
+
+36         FILE Seq: 1    Link: 2    0x38 8     Flags: 1   
+0x0010 96   0   0x0000  0x0000
+M: Sun Nov 25 02:24:00 2040 Z
+A: Sun Nov 25 02:24:00 2040 Z
+C: Sun Nov 25 02:24:00 2040 Z
+B: Sun Nov 25 02:24:00 2040 Z
+0x0030 120  0   0x0000  0x0000
+FN: LONGFI~1.TXT  Parent Ref: 5  Parent Seq: 5
+M: Sun Nov 25 02:24:00 2040 Z
+A: Sun Nov 25 02:24:00 2040 Z
+C: Sun Nov 25 02:24:00 2040 Z
+B: Sun Nov 25 02:24:00 2040 Z
+0x0030 128  0   0x0000  0x0000
+FN: longfilename.txt  Parent Ref: 5  Parent Seq: 5
+M: Sun Nov 25 02:24:00 2040 Z
+A: Sun Nov 25 02:24:00 2040 Z
+C: Sun Nov 25 02:24:00 2040 Z
+B: Sun Nov 25 02:24:00 2040 Z
+0x0080 40   0   0x0000  0x0018
+
+37         FILE Seq: 3    Link: 1    0x38 3     Flags: 2   
+0x0010 96   0   0x0000  0x0000
+M: Thu Dec 29 22:57:45 2011 Z
+A: Thu Dec 29 22:57:45 2011 Z
+C: Thu Dec 29 22:57:45 2011 Z
+B: Thu Dec 29 22:57:45 2011 Z
+0x0030 104  0   0x0000  0x0000
+FN: 53142  Parent Ref: 5  Parent Seq: 5
+M: Thu Dec 29 22:57:45 2011 Z
+A: Thu Dec 29 22:57:45 2011 Z
+C: Thu Dec 29 22:57:45 2011 Z
+B: Thu Dec 29 22:57:45 2011 Z
+0x0090 80   0   0x0004  0x0018
+ 
+
+As you can see from the above snippet of both $MFT’s, the original $MFT entries (left) have their MACE timestamps for 12/29/11 while the tampered $MFT entries (right) have their MACE timestamps either historic or futuristic. Additionally to note is the $MFT entry #37 which in the tampered $MFT showed a folder named “53142”. This is the randomly generated folder setMACE created in order to carry out its move trick but it’s a good piece of forensic evidence since it wasn’t previously there and its timestamps are current.
+
+Forensic EvidenceWhile it may make some in the dfir community a bit depressed to see a working POC that the $FN values can also be changed, it shouldn’t be the end of the world.  It was bound to happen and now that there’s something known out there its characteristics and methods should be studied/observed.  This type of thing is likely going to come up in your investigation at some point so instead of throwing in the towel why not show how good your forensics-foo is?  There’re _plenty_ of artifacts that can help aid in the detection of timestamp manipulation:
+How did it get to the system?
+Web traffic (proxies), email, removable media 
+
+Do you have physical possession of the file you suspect performs the time stomping? If so, dynamic analysis will be the best resource.
+Do you have a memory dump?
+Was it executed on the system?
+Prefetch, .lnk files, NTUSER.DAT’s Recent folder, A/V logs, MRU, ShellBags, {THINK!}
+
+Are there any specific characteristics to the tool used?
+Testing with setMACE showed possible indicators:
+UAC dialog box for >= 6.0
+Randomly named folder with digits created then deleted
+$MFT record number of file(s) modified are close to that newly created folder
+Time stamps of that folder created weren’t tampered with so good indication of when it occurred
+
+
+
+What does the $I30 show?
+What does the $INDX show?
+Was the system clock altered?
+Are both the $SI and $FN values modified? Does each of the $FN have their values changed?
+Do the $FN values predate the $SI values? Should they?
+What about the values in the $SI and $FN?
+Do they seem impossible to exist? i.e. futuristic or too historic
+Are the milli/nano seconds not set correctly? (Think granular, Timestomp & Magic Attribute usually set to the nearest second)
+Are they blank?
+Are they inconsistent when put into a timeline?
+
+
+About the AuthorGlenn P. Edwards Jr. is a Senior Consultant with Foundstone’s Incident Response practice where he specializes in Incident Response, Digital Forensics and Malware Analysis.  Glenn holds a M.S degree in Digital Forensics from the University of Central Florida as well as a B.S. degree in Information Security and Privacy from High Point University.
+
+

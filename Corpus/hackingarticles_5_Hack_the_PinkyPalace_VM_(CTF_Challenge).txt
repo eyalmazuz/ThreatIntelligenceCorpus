@@ -1,0 +1,54 @@
+
+Hack the PinkyPalace VM (CTF Challenge)
+
+Hello friends! Today we are going to take another boot2root challenge known as PinkyPalace. The credit for making this vm machine goes to “Pink_panther” and it is another boot to root challenge in which our goal is to gain root access to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+Let’s do an nmap scan for port enumeration.
+
+Nmap scan shows us the following ports are open and the corresponding services are running:
+ nginx web server on port 8080 
+ a squid proxy on port 31337 
+ a ssh daemon  on port 64666 
+As port 8080 is running nginx, we try to enumerate the webserver but it returns a 403 forbidden code.
+
+Now we know that the target machine is running squid server so we try to parse any request that go through it. We use foxyproxy addon to setup a proxy connection in our browser.
+
+After setting up our proxy we try to open the webserver, we find that the server is probably configured to allow access from localhost. As when we try to access it via server’s IP address we still get a forbidden response.
+
+We enumerate the directories by pivoting our connection through the squid proxy and find a directory called littlesecretes-main/.
+
+We open the link that was discovered by the dirb scan, it opens up a page that asks for username and password. We tried to check for sql injection using sqlmap and find that the page is vulnerable to sql injection.
+
+Now we enumerate the users and password using sqlmap and find 2 users and the hashes of there password.
+
+We use the site https://hashkiller.co.uk/md5-decrypter.aspx to decrypt the hash we found in the sqlmap dump. The password for the user pinkymage was decrypted.
+
+We were unable to login through the web server using these credentials. So we used them to login through ssh.
+
+While enumerating the target machine we find a file called “note.txt” in /var/www/html/littlesecrets-main/ultrasecretadminf1l35/, we open the open and find a hint to search for RSA key. We tried to search for hidden files in the directory and find a hidden file called “.ultrasecret”.
+
+When we take a look at the content of the hidden file; we find a base64 encoded string and when we decrypted it we find that it was a RSA Key.
+
+We tried to decrypt and save the file in the current directory but we don’t have write permissions for the directory. So we decrypt the hidden file and save it in our home directory of user pinkymanage as id_rsa.
+
+Now we move to the home directory for the user pinkymanage and give the RSA key its appropriate permissions. Then we login as user pinky through ssh.
+
+After logging in as pinky we find two files one executable with suid bit set called “adminhelper” and another text file called “note.txt”. We open the note.txt and find
+
+Now we download the file to our system using base64 to convert the hex strings in the file into base64 encrypted strings
+
+Now we decrypt the file into our system as save it as file admin.
+
+We open the file in our sytem and find a strcpy function in line main+42; as strcpy is vulnerable to buffer overflow. We will try to exploit this vulnerability.
+
+To exploit buffer overflow, first we need to overwrite the adjacent memory locations and find the EIP offset. We use pattern_create.rb script to generate a 78 bytes long string.
+
+Now we run the file with the string we generated as our argument and find that we were able to overwrite the EIP.
+
+To find the EIP offset we used the pattern_offset command, and find the EIP offset to be 72.
+
+There are no binary defences like NX or ASLR but there is PIE. So we can’t use the ROP tricks, but we can use Shellcode Injection. We overwrite the EIP with the address of our shellcode which was stored in the kernel environment. This spawns a tty shell as root user.
+
+Now we move to root directory and find a file called “root.txt” inside it. We take a look at the content of the file and find the congratulatory flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

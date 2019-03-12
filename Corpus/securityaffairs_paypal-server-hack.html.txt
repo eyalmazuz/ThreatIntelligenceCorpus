@@ -1,0 +1,28 @@
+
+					Expert exploited an unrestricted File Upload flaw in a PayPal Server to remotely execute code					
+The security researcher Vikas Anil Sharma has found a remote code execution vulnerability in a PayPal server.
+The expert was visiting the PayPal Bug Bounty page using the Burp software, below the response obtained opening the page http://paypal.com/bugbounty/.
+
+The expert focused his analysis on the list of PayPal’s domains mentioned in “Content Security Policy:” Response Header, in particular, the “https://*.paypalcorp.com.”
+In this first phase, the hacker was interested in finding as much possible valid sub domains to exploit in the attack, tools like Subbrute , Knockpy , enumall, are useful when performing such kind of analysis.
+“these are the tools which i normally use , but being lazy on the weekend i made use of VirusTotal this time to enumerate the sub domains you can get the list here :
+https://www.virustotal.com/en/domain/paypalcorp.com/information/
+Copied the subdomain’s list locally & ran “dig -f paypal +noall +answer” to checkout where all the subdomains are actually pointing to in a neat way” wrote the researcher.
+The expert noticed that the domain “brandpermission.paypalcorp.com” was pointing to “https://www.paypal-brandcentral.com/” that is a site hosting an Online Support Ticket System for PayPal Vendors, Suppliers, and Partners where they request for PayPal Brand Permissions.
+The website allows users to upload the mockups of the logos and any graphics related to the brand along. The expert decided to create a ticket by uploading a simple image and analyze the folder destination of the picture.
+“So, I first created a ticket by uploading a simple image file named “finished.jpg” which got stored as ” finished__thumb.jpg ” in directory :
+“/content/helpdesk/368/867/finishedthumb.jpg” “finished _thumb.jpg” was the new file created in the directory “/867/” i quickly checked whether the actual file which we uploaded exists in the directory or not, luckily (You’ll know why later in the post ) “finished.jpg” also existed in the same directory. Cool stuff ;)” continue the bug hunter’s post.
+Vikas discovered that the above link includes the ticket number, in the specific case the number of the ticket he has created is “368,” meanwhile “867” is the folder’s id where all the files related to the tickets are stored, including the Mockup files.
+The researcher created a new ticket and discovered that ticket id and file id numbers are generated in serial manner. The expert uploaded a “.php” extension file instead of an image and discovered that the application did not validate file type, content, etc.
+“As soon as i saw 302 Response , i ran towards opening the ticket & doing a simple right click copy link shit like i was able to do when uploading a image file . But,here in this case if you upload a php file as mock up you can’t see the path of the php file uploaded only thing which is visible is the ticket number.” wrote the expert.
+Differently, from the uploading of image files, the expert noticed that it was not possible to discover the folder used to store mockup files.
+The expert uploaded a file named success.php,” so for a similarity with the image uploading, he assumed that the file was stored as the success_thumb.php.
+At this point, he decided to brute force the folder id for files.
+
+Once discovered the folder id for files, the researcher tried to execute the code:
+https://www.paypal-brandcentral.com/content/_helpdesk/366/865/success.php?cmd=uname-a;whoami
+“Some cat+/etc/passwd magic to make myself beleive that i have actually found a RCE ;)” he wrote.
+
+Below the timeline for the vulnerability:
+Pierluigi Paganini
+(Security Affairs –  (PayPal server, hacking)

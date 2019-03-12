@@ -1,0 +1,44 @@
+
+Communication between multiple ARDUINO
+
+
+
+
+Hi folks,
+
+Today I want to show how it could be quite easy making two, or more, ARDUINO talking together. The used protocol is called I2C-bus protocol. I2C is a Master to Slave protocol in which the Master asks data to the Slave or it directly sends data to it. The Slave could only replay to the only Master without making any query. I2C protocol runs over analog pins, meaning that you will have much more digital pins free for your sensors.  Obviously if you need more analog pins (for example if you have analog sensors) I2C is not the right protocol for you. I often need more  digital pins then analog ones, so it perfectly works for me.
+
+
+
+
+In the above example three ARDUINO (one Master and 2 slaves) are used to show how I2C-bus protocol works, but you might hang up to 128 ARDUINO. The only links you need to wire are SCL (System Clock), SDA (System Data) and GND (Common Ground). Optionally you might want to include a wire for a common VCC. In our example, made by a student of mine Samuele Solari the 3 ARDUINO are connected through pins A4 (SCL) and A5 (SDA) GND and VCC (5v).
+
+
+
+Lets analyze a simple sketch which reads strings from Serial input (USB) and sends them to I2C-bus. The Master sketch looks like the following code:
+
+
+
+
+
+
+The only needed library is Wire.h, already included into Arduino IDE. The setup procedure sets up the Wire library (Wire.begin) and starts up the Serial (9600 baudR). The loop procedure reads integers from serial input, prepares the Wire transmission to Slave1 (Slave1 is the first ARDUINO Slave given address) and sends byte (see the casting) to the first Slave. Thus it ends the wired transmission.
+
+
+
+On the Slave side the sketch does the opposite task: it reads from I2c-bus and it sends out characters to USB serial output.
+
+
+
+
+
+
+
+Again the only needed library is Wire.h. The setup procedure sets up the wire library giving its own address (const int Slave1 = 1; ), it sets up the serial communication (USB) and finally it sets up a event handler. Wire.h works with handlers rather then using the structured loop, this makes a so called "interrupted communication", in other words ARDUINO does not verifies the presence of bytes on the analog pin A5 by running the loop procedure, but it becomes "interrupted" as soon as a byte is available on analog pin A5. The sketch handler is called "receiveEvent", it loops over the number of available bytes and it sends to the serial (USB) the just received bytes.
+
+
+
+Hope this will be useful, it has been really useful for me !
+
+
+

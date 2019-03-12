@@ -1,0 +1,120 @@
+
+KLEE on Ubuntu 14.04 LTS 64Bit
+
+
+by Brad Antoniewicz.
+
+
+It seems like all of the cool kids nowadays are into Symbolic Execution, especially for vulnerability research. It's probably all because of DARPA's Cyber Grand Challenge - a government-sponsored challenge to develop a system that automates vulnerability discovery.
+
+If you start to dive into the topic, you'll undoubtedly come across KLEE, a project coming out of Standford University. KLEE is a great tool to get you started with symbolic execution, however the set up can be slightly daunting for the "app crowd" :) KLEE's home page has a Getting Started page, but it lacks some updates. In this blog post we'll walk you through the most up to date build process from a fresh install of Ubuntu 14.04 LTS Desktop 64-bit.
+Packages
+
+As with all installations, first make sure you're all up to date:
+
+sudo apt-get update
+sudo apt-get upgrade
+
+
+Apt Packages
+
+Now we'll get the easy stuff out of the way, and install all of the required packages:
+sudo apt-get install g++ curl python-minimal git bison flex bc libcap-dev build-essential libboost-all-dev ncurses-dev cmake
+
+
+LLVM-GCC Binaries
+
+Next we'll need to download the LLVM-GCC binaries and extract them to our home directory:
+wget http://llvm.org/releases/2.9/llvm-gcc4.2-2.9-x86_64-linux.tar.bz2
+tar -jxvf llvm-gcc4.2-2.9-x86_64-linux.tar.bz2
+
+
+Environment Variables
+
+At this point, we'll need to set up a few environment variables for everything else to run properly. As stated on the KLEE's Getting Started page, most issues people have are related to not setting these:
+export C_INCLUDE_PATH=/usr/include/x86_64-linux-gnu 
+export CPLUS_INCLUDE_PATH=/usr/include/x86_64-linux-gnu
+export PATH=$PATH:$HOME/llvm-gcc4.2-2.9-x86_64-linux/bin
+
+
+
+It's also recommended to add these to your .bashrc:
+echo "export C_INCLUDE_PATH=/usr/include/x86_64-linux-gnu" >> .bashrc
+echo "export CPLUS_INCLUDE_PATH=/usr/include/x86_64-linux-gnu" >> .bashrc
+echo "export PATH=$PATH:$HOME/llvm-gcc4.2-2.9-x86_64-linux/bin" >> .bashrc
+
+
+Building LLVM 2.9
+
+KLEE specifically requires that you use LLVM 2.9. Now, Ubuntu does have a llvm-2.9 package, and LLVM 2.9 binaries are available from a couple of different locations. However, I decided to stay as true to KLEE's Getting Started instructions. Let's download the source:
+wget http://llvm.org/releases/2.9/llvm-2.9.tgz
+tar -zxvf llvm-2.9.tgz
+cd llvm-2.9
+
+
+
+Before we build, we need to apply one patch:
+wget http://www.mail-archive.com/klee-dev@imperial.ac.uk/msg01302/unistd-llvm-2.9-jit.patch
+patch -p1 < unistd-llvm-2.9-jit.patch 
+
+
+
+And now we can build:
+./configure --enable-optimized --enable-assertions
+make
+cd $HOME
+
+
+
+The build might produce some warnings but they can all be safely ignored.
+Building Simple Theorem Prover
+
+Simple Theorem Prover (STP) was the source of a couple problems, rather than following the Getting Start Page, take this approach:
+git clone https://github.com/stp/stp.git
+cd stp
+mkdir build && cd build
+cmake -G 'Unix Makefiles' $HOME/stp
+make
+sudo make install
+sudo ldconfig
+ulimit -s unlimited
+cd $HOME
+
+
+KLEE-uclibc
+
+Our last dependancy is klee-uclibc, to get that set up we:
+git clone --depth 1 --branch klee_0_9_29 https://github.com/klee/klee-uclibc.git
+cd klee-uclibc/
+./configure --with-llvm-config $HOME/llvm-2.9/Release+Asserts/bin/llvm-config --make-llvm-lib
+make -j`nproc`
+cd $HOME
+
+
+Building KLEE
+
+With all of our dependancies out of the way, we can build KLEE:
+git clone https://github.com/klee/klee.git
+cd klee
+./configure --enable-posix-runtime --with-stp=/usr/local --with-llvm=$HOME/llvm-2.9/ --with-uclibc=$HOME/klee-uclibc/
+make ENABLE_OPTIMIZED=1
+make check
+make unittests
+sudo make install
+cd $HOME
+
+
+Testing with an example
+
+Just to confirm everything is working, you can run through Tutorial 1:
+
+cd $HOME/klee/examples/get_sign
+llvm-gcc -I ../../include --emit-llvm -c -g get_sign.c
+klee get_sign.o
+
+
+
+You're ready to go! Good luck!
+Have a different set up? Let us know in the comments below!
+
+

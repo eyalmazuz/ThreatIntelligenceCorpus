@@ -1,0 +1,27 @@
+15-year-old security hole HTTPoxy returns to menace websites – it has a name, logo too
+A dangerous easy-to-exploit vulnerability discovered 15 years ago has reared its head again, leaving server-side website software potentially open to hijackers.
+The Apache Software Foundation, Red Hat, Ngnix and others have rushed to warn programmers of the so-called httpoxy flaw, specifically: CVE-2016-5385 in PHP; CVE-2016-5386 in Go; CVE-2016-5387 in Apache HTTP server; CVE-2016-5388 in Apache TomCat; CVE-2016-1000109 in PHP-engine HHVM; and CVE-2016-1000110 in Python.
+This security hole, present in various web apps and libraries, can be exploited to rummage around backstage of vulnerable websites, and potentially access sensitive data or seize control of the code.
+Basically, you abuse the Proxy HTTP header in a request to the application to set a common environment variable called HTTP_PROXY on the application's server. The app then, due to a naming conflict, uses the proxy server defined by that variable for any of its outgoing HTTP connections.
+So, if you point HTTP_PROXY at a malicious server, you can intercept the web app's connections to other systems and, depending on how the code is designed, potentially gain remote code execution. It hinges on whether or not the app makes outgoing connections as part of its operation, and if these can be usefully exploited.
+"If you're running PHP or CGI, you should block the Proxy header now," said Vend infrastructure engineer Dominic Scheirlinck, who coordinated the disclosure of the security holes with software makers. The Register had an early look at the details prior to today's public announcement.
+There are advisories available now from Apache, Red Hat, US CERT, Nginx, and Drupal with more details (there's a non-technical guide here).
+"httpoxy is extremely easy to exploit in basic form, and we expect security researchers to be able to scan for it quickly. If you're not deploying code, you don't need to worry," added Scheirlinck.
+Code that makes outgoing HTTP connections to look up information or perform some other task while running in a server-side CGI context is potentially open to easy attack, he said. It may be possible to siphon off sensitive internal records, or feed dodgy data into apps, by injecting a man-in-the-middle proxy server into the mix.
+"For example, if you are using a Drupal plugin that uses Guzzle 6 and it makes an outgoing HTTP request (for example, to check a weather API), you are vulnerable to the request that plugin makes being 'httpoxied'," Scheirlinck explained.
+The New Zealander says attackers can direct vulnerable servers to open connections to an evil machine's IP address, and waste server resources by running traffic through malicious proxies.
+Scheirlinck said the vulnerability is down to a basic namespace conflict:
+Exploitation is possible if just one vulnerable library is used, such as Guzzle or Artax, while processing incoming HTTP requests. "Probably many, many libraries" are affected, Scheirlinck said. Here's how he described the flaw in a PHP script:
+PHP has a method called getenv().
+There is a common vulnerability in many PHP libraries and applications, introduced by confusing getenv for a method that only returns environment variables. In fact, getenv() is closer to the $_SERVER superglobal: it contains both environment variables and user-controlled data.
+Specifically, when PHP is running under a CGI-like server, the HTTP request headers (data supplied by the client) are merged into the $_SERVER superglobal under keys beginning with HTTP_. This is the same information that getenv reads from.
+When a user sends a request with a proxy header, the header appears to the PHP application as getenv('HTTP_PROXY'). Some common PHP libraries have been trusting this value, even when run in a CGI/SAPI environment.
+Reading and trusting $_SERVER['HTTP_PROXY'] is exactly the same vulnerability, but tends to happen much less often (perhaps because of getenv's name, perhaps because the semantics of the $_SERVER superglobal are better understood among the community).
+Quick and easy mitigations are available, with the best being to block Proxy request headers before they hit applications and to use HTTPS for connections between systems.
+A longer-term fix is to not trust HTTP_PROXY under CGI. Developers of web apps, plugins and libraries in need of patching should obtain a Distributed Weakness Filing Project number or apply for a CVE number from MITRE.
+"We suspect there may be more CVEs coming for httpoxy, as less common software is checked over," said Scheirlinck.
+The Proxy / HTTP_PROXY confusion was first spotted in March 2001 in libwww-perl, and was fixed at the time. This month, researchers at Vend found libraries and tools still making the same namespace screw up, leaving them open to hijacking. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

@@ -1,0 +1,485 @@
+
+UnBup - McAfee BUP Extractor for Linux
+
+
+By Tony Lee and Travis Rosiek.
+
+These days, antivirus is a must-have due to the ubiquity of adware, malware, viruses, and worms—yes, even if you are running a Mac.  ;)  Antivirus does a good job catching the low hanging fruit and other annoyances, but have you ever wondered what happens to the files that the A/V catches?  Typically, antivirus engines will deactivate the suspected virus and then store an inert (encoded) copy in a quarantine folder to prevent accidental execution.  McAfee’s VirusScan will allow you to restore the binary; however in all scenarios using VirusScan may not be ideal. This article will take you through the process of recovering the quarantined binary and metadata surrounding it.  But why would you want to do this?  Potentially for the following reasons:
+
+You are a corporate A/V administrator and A/V misidentified a user’s file
+You are a malware analyst and would like to dissect the detected binary
+You are a home user and A/V grabbed a file you wanted (think netcat or a sysinternals tool) and the restore function did not work
+
+
+As a bonus, at the bottom of the article, we have included a bash shell script and (faster) Perl script to break apart McAfee BUPs from within a Linux environment.  We wrote these scripts because we could not find a Linux BUP tool. It was prototyped in bash because it was quick to code and it removed as many dependencies as possible.  Unfortunately, bash bitwise Exclusive or (XOR) was too slow and the tool was rewritten in (well-commented) Perl.
+
+
+In case you are not familiar with the binary operation XOR, a truth table is provided below:
+
+
+
+
+
+Note that an output of 1 is only produced for an odd amount of 1’s on the input.
+How McAfee deactivation works
+
+
+McAfee VirusScan, like other antivirus engines, will deactivate the binary and store an inert copy in a pre-defined location.  McAfee appears to deactivate the binary by doing the following:
+
+Creates a metadata text file
+Performs a bitwise XOR on the metadata file and binary with a well-known key (0x6A)
+Combines the original binary and metadata text file into a single file using Microsoft’s compound document format
+Stores the file (with .BUP extension) in a quarantine folder defined by the Quarantine Manager Policy (default is C:\QUARANTINE\)
+
+
+You can check the path of the quarantine folder by right clicking on the McAfee shield -> VirusScan Console ->  Quarantine Manager Policy.
+
+
+Triggering Antivirus to Create a BUP
+
+For this demonstration, we will be using the test file for Global Threat Intelligence (GTI - formerly known as Artemis).  This test file is similar to the EICAR antivirus test file, but it triggers a heuristic detection for McAfee VirusScan.  You could also use John the Ripper, Cain, netcat, pwdump, or other common hack tools to trigger an A/V event.
+
+You can read more about the test file from the How to verify that GTI File Reputation is installed correctly and that endpoints can communicate with the GTI server McAfee KnowledgeBase article.
+
+A direct link to the test file: https://kc.mcafee.com/resources/sites/MCAFEE/content/live/CORP_KNOWLEDGEBASE/53000/KB53733/en_US/ArtemisTest.zip
+The password is to unzip the file is:  password
+
+If On-Access detection does not detect the file right away, right-click and scan to activate an On-Demand scan.  We disabled the On-Access protection in order to run a hash on the binary and provide it for your convenience.  SHA1 would normally be used as MD5 has a chance of collisions—however, MD5 hashes are sufficient for our purposes in this demo.
+ $ md5sum.exe ArtemisTest.exe
+5db32a316f079fe7947100f899d8db86 *ArtemisTest.exe
+
+
+
+Now, after re-enabling On-Access scan and we have a detection:
+
+
+
+
+
+Now we check the quarantine folder defined in Quarantine Manager Policy shown above and eureka!  We have a .BUP file:
+
+
+
+
+If this file did not trigger, you may not have GTI enabled.  Try to first enable GTI or use another known-safe, yet detected, binary to generate the BUP file.
+Extracting the BUP in Windows
+
+To extract the BUP in Windows, I followed the helpful How to restore a quarantined file not listed in the VSE Quarantine Manager McAfee KnowledgeBase article.
+
+Requirements:
+
+7-zip (Used to decompress the Microsoft compound document format)
+Bitwise XOR binary such as: xor.exe
+
+
+If you are extracting the BUP on the same computer that your McAfee antivirus is running on, make sure you disable On-Access scan or exclude the target folder from scans.
+
+Use 7-zip to extract the file by right clicking it, selecting 7-Zip, then Extract Here. 
+
+
+
+
+The results should be two files:
+
+Details
+File_0
+
+ $ md5sum.exe Details
+c0bb879bdfd5b5277fc661da602f7460 *Details
+
+$ md5sum.exe File_0
+02ab0a6723bca2e8b6b70571680210a9 *File_0
+
+
+
+Now, use the xor.exe binary to perform a bitwise XOR against the key (0x6A) in order to obtain two new files.  Feel free to use the following syntax in a command prompt:
+ C:\QUARANTINE>xor.exe Details Details.txt 0X6A
+
+C:\QUARANTINE>xor.exe File_0 Captured.exe 0X6A
+
+
+
+
+
+
+If you would like to restore the original file name to the binary, just look at the metadata from Details.txt.  The most useful items that we see in the metadata are the following:
+
+A/V detection name  - Useful for discovering more information about the detection
+Major and minor versions of A/V engine  - Can be used to troubleshoot why some hosts detect and others miss 
+Major and minor versions of A/V DATs - Can be used to troubleshoot why some hosts detect and others miss
+When the file was captured (Creation fields) - Helps you create a timeline if detected by On-Access scan
+Time zone of host - Useful for timeline
+Original file name  - Often reveals a good amount of information about the binary
+
+
+Snippet of Details.txt:
+ [Details]
+DetectionName=Artemis!5DB32A316F07
+DetectionType=0
+EngineMajor=5400
+EngineMinor=1158
+DATMajor=6771
+DATMinor=0
+DATType=2
+ProductID=12106
+CreationYear=2012
+CreationMonth=7
+CreationDay=14
+CreationHour=13
+CreationMinute=25
+CreationSecond=18
+TimeZoneName=Eastern Daylight Time
+TimeZoneOffset=240
+NumberOfFiles=1
+NumberOfValues=5
+
+--snip—
+
+[File_0]
+ObjectType=5
+OriginalName=C:\USERS\REDACTED\DESKTOP\ARTEMISTEST.EXE
+WasAdded=0
+
+
+
+
+
+Now that you have the original file, you can restore it, reverse it, or whatever your heart desires.
+
+But first let’s make sure the hash from the original file matches with the hash before deactivation.  For completeness, we will also provide the hash for Details.txt.
+ $ md5sum.exe Captured.exe
+5db32a316f079fe7947100f899d8db86 *Captured.exe   <- This matches
+
+$ md5sum.exe Details.txt
+46c09e5ba29658a69527ca32c6895c08 *Details.txt
+
+
+
+Extracting the BUP in Linux
+
+We just detailed the process to recover the binary from a BUP in Windows.  You can perform this same process in Linux if you have 7zip and Wine (used to run the xor.exe binary).  However, the goal of this tool was to automate the process, add some features, and remove the Wine dependency.
+The UnBup Tool
+The first thing you should know about UnBup is the usage menu:
+ Usage:  UnBup.sh [option] 
+
+  -d = details file only (no executable)
+  -h = help menu
+  -s = safe executable (extension is .ex)
+
+Please report bugs to Tony.Lee@Foundstone.com and Travis_Rosiek@McAfee.com
+
+
+
+No options - Yields the Details.txt and original binary
+- d option - Yields the Details.txt file only (No binary)
+- s option - Yields the Details.txt file and the binary, with an extension of .ex to prevent accidental execution
+
+Demo: No Options
+ UnBup.sh file.bup
+
+
+
+Supplying UnBup with no options and just the BUP file produces the details.txt file and the binary.  Note that the MD5 hashes are the same as what was seen in the Windows section.
+
+
+
+Demo: The -d Option
+ UnBup.sh -d file.bup
+
+
+
+The -d option is useful for those who may not want to reverse or dig into the binary—but would like a little more information around the detection.
+
+
+
+Demo: The -s Option
+ UnBup.sh -s file.bup
+
+
+
+The -s option is not a foolproof measure to prevent execution of the binary, however it can help prevent accidental execution.  In this case, since we are extracting Windows malware in a Linux environment, this adds another level of protection as it is harder (if not impossible) to cross infect a different operating system.
+
+
+
+How it works (simplistically)
+
+If you look at the supplied bash code below and think:  “This must be a backdoor, there is no way I am going to run it on my box…”, then the screenshot below is directed at you.
+
+The binary math in bash was the most annoying part of the process, but it was the most important.  Here is the breakdown of each step:
+
+xxd to convert the binary to hex
+Performing the XOR
+Converting the decimal result to hex
+The step to convert hex to ASCII is to show you the readable output (not performed in script)
+
+
+
+
+The Shell Script – (SLOW – You may want to use the Perl code below)
+Download it here: https://raw.github.com/OpenSecurityResearch/unbup/master/UnBup.sh
+
+In case, file download is blocked, feel free to copy and paste it from here:
+#!/bin/bash
+# UnBup
+# Tony Lee and Travis Rosiek
+# Tony.Lee-at-Foundstone.com
+# Travis_Rosiek-at-McAfee.com
+# Bup Extraction tool - Reverse a McAfee Quarantined Bup file with Bash
+# Input:  Bup File
+# Output: Details.txt file and original binary (optional)
+# Note:  This does not put the file back to the original location (output is to current directory)
+# Requirements - 7z (7zip), xxd (hexdumper), awk, cut, grep
+
+##### Function Usage #####
+# Prints usage statement
+##########################
+Usage()
+{
+echo "UnBup v1.0
+Usage:  UnBup.sh [option] 
+
+  -d = details file only (no executable)
+  -h = help menu
+  -s = safe executable (extension is .ex)
+
+Please report bugs to Tony.Lee-at-Foundstone.com and Travis_Rosiek-at-McAfee.com"
+}
+
+# Detect the absence of command line parameters.  If the user did not specify any, print usage statement 
+[[ -n "$1" ]] || { Usage; exit 0; }
+
+
+##### Function XorLoop #####
+# Loop through files to perform bitwise xor with key write binary to file
+############################
+XorLoop()
+{
+for byte in `xxd -c 1 -p $INPUT`; do   # For loop converts binary to hex 1 byte per line
+        #echo "$byte"
+        decimal=`echo $((0x$byte ^ 0x6A))` # xor with 6A and convert to decimal
+        #echo "decimal = $decimal"
+        hex=`echo "obase=16; $decimal" | bc` # Convert decimal to hex
+        #echo "hex = $hex"
+        echo -ne "\x$hex" >> $OUTPUT;  # Write raw hex to output file
+done
+}
+
+
+##### Function CreateDetails #####
+# Create the Details.txt file with metadata on bup'd file
+##################################
+CreateDetails()
+{
+# Check to see if the text file exists, if not let the user know
+ [[ -e "$BupName" ]] || { echo -e "\nError:  The file $BupName does not exist\n"; Usage; exit 0; }
+ echo "Extracting encoded files from Bup";
+ 7z e $BupName > /dev/null;  # Extract the xor encoded files (Details and File_0)
+ INPUT=Details;    # Set INPUT variable to the Details file to get the details and filename
+ OUTPUT=Details.txt;   # Set OUTPUT variable to Details.txt filename
+ echo "Creating the Details.txt file";
+ XorLoop;    # Call XorLoop function with variables set
+}
+
+
+##### Function ExtractBinary #####
+# Extracts the original binary from the bup file
+##################################
+ExtractBinary()
+{
+ Field=`grep OriginalName Details.txt | awk -F '\' '{ print NF }'`; # Find the binary name field
+ OUTNAME=`grep OriginalName Details.txt | cut -d '\' -f $Field`;
+ OUTPUT=`echo "${OUTNAME%?}"`;      # Get rid of trailing /r
+ INPUT=File_0;
+ echo "Extracting the binary";
+ XorLoop;        # Call xor function again
+}
+
+# Parse the command line options
+case $1 in
+ -d) BupName=$2; CreateDetails;;
+ -h) Usage; exit 0;;       # Details.txt file only
+ -s) BupName=$2; CreateDetails; ExtractBinary; mv $OUTPUT `echo "${OUTPUT%?}"`;; # Safe binary
+ *) BupName=$1; CreateDetails; ExtractBinary;;      # Full process of the bup
+esac
+
+rm Details File_0;      # Clean up xor'd files
+
+
+
+
+Our Perl script (MUCH FASTER – You probably want to use this over the shell script)
+
+When processing small files like the Artemis test file, bash shell scripting worked just fine.  However, when processing larger executables, the XOR process was too time consuming.  We searched for a simple XOR Perl script on-line, but did not find anything to fit what we were looking for so we wrote our own.
+xor.pl Usage:
+ ./xor.pl
+Simple xor script
+  Usage: ./xor.pl [Input File] [Output File]
+
+Tony.Lee@Foundstone.com
+./xor.pl 7dc7ed19123df0.bup 7dc7ed19123df0.xord
+
+
+Download :  https://raw.github.com/OpenSecurityResearch/unbup/master/xor.pl
+  #!/usr/bin/perl
+# Simple xor decoder
+# Written because I could not find one on the Intertubes
+# Email me with problems at Tony.Lee-at-Foundstone.com
+
+# Detection to make sure there are two arguments supplied (an input file and output file) 
+if (@ARGV < 2) {
+ die "Simple xor script\n  Usage: $0 <Input File> <Output File>\n\nTony.Lee-at-Foundstone.com\n";
+}
+
+# Open input file as read only to avoid accidentally modifying the file
+open INPUT, "<$ARGV[0]" or die "Input file \"$ARGV[0]\" does not exist\n";
+
+# Open the output file to write to it
+open OUTPUT, ">$ARGV[1]" or die "Cannot open file \"$ARGV[1]\"";
+
+# Loop until all bytes in the file are read
+while (($n = read INPUT, $byte, 1) != 0) 
+{ 
+ $decode = $byte ^ 'j';  # xor byte against ASCII 'j' = Hex 0x6A = Dec 106 
+ print OUTPUT $decode;  # write the decoded output to a file
+}
+
+close INPUT;
+close OUTPUT;
+
+
+
+After writing the XOR Perl script, we converted the Bash script to Perl to speed the process up.
+UnBup.pl
+Download :  https://raw.github.com/OpenSecurityResearch/unbup/master/UnBup.pl
+  #!/usr/bin/perl
+# UnBup
+# Tony Lee and Travis Rosiek
+# Tony.Lee-at-Foundstone.com
+# Travis_Rosiek-at-McAfee.com
+# Bup Extraction tool - Reverse a McAfee Quarantined Bup file with Bash
+# Input:  Bup File
+# Output: Details.txt file and original binary (optional)
+# Note:  This does not put the file back to the original location (output is to current directory)
+
+
+# Detect the absence of command line parameters.  If the user did not specify any, print usage statement 
+if (@ARGV == 0) { Usage(); exit(); }
+
+
+##### Function Usage #####
+# Prints usage statement
+##########################
+sub Usage
+{
+print "UnBup v1.0
+Usage:  UnBup.pl [option] 
+
+  -d = details file only (no executable)
+  -h = help menu
+  -s = safe executable (extension is .ex)
+
+Please report bugs to Tony.Lee-at-Foundstone.com and Travis_Rosiek-at-McAfee.com\n"
+}
+
+
+##### Function XorLoop #####
+# Loop through files to perform bitwise xor with key write binary to file
+# Input arguments input filename and output filename
+# example:  XorLoop(Details, Details.txt)
+############################
+sub XorLoop
+{
+ # Open input file as read only to avoid accidentally modifying the file
+ open INPUT, "<$_[0]" or die "Input file \"$_[0]\" does not exist\n";
+
+ # Open the output file to write to it
+ open OUTPUT, ">$_[1]" or die "Cannot open file \"$_[1]\"";
+
+ # Loop until all bytes in the file are read
+ while (($n = read INPUT, $byte, 1) != 0) 
+ { 
+  $decode = $byte ^ 'j';  # xor byte against ASCII 'j' = Hex 0x6A = Dec 106 
+  print OUTPUT $decode;  # write the decoded output to a file
+ }
+
+ close INPUT;
+ close OUTPUT;
+}
+
+##### Function CreateDetails #####
+# Create the Details.txt file with metadata on bup'd file
+##################################
+sub CreateDetails
+{
+ $BupName=$_[0];
+ # Check to see if the text file exists, if not let the user know
+ unless(-e "$BupName") { print "\nError:  The file \"$BupName\" does not exist\n"; Usage; exit 0; }
+ print "Extracting encoded files from Bup\n";
+ `7z e $BupName`;   # Extract the xor encoded files (Details and File_0)
+ print "Creating the Details.txt file\n";
+ XorLoop("Details", "Details.txt"); # Call XorLoop function with variables set
+}
+
+##### Function ExtractBinary #####
+# Extracts the original binary from the bup file
+##################################
+sub ExtractBinary
+{
+ $Field=`grep OriginalName Details.txt | awk -F '\\' '{ print NF }'`; # Find the binary name field
+ $OUTNAME=`grep OriginalName Details.txt | cut -d '\\' -f $Field`; # Find the binary name
+ $INPUT=File_0;
+ print "Extracting the binary\n";
+ XorLoop("$INPUT", "$OUTNAME");      # Call xor function again
+}
+
+
+
+if ($ARGV[0] eq "-d"){  # Print details file only
+ CreateDetails($ARGV[1]);
+ `rm Details File_0`; # Clean up original files
+}
+elsif ($ARGV[0] eq "-h"){ # Print usage statement
+  Usage();
+}
+elsif ($ARGV[0] eq "-s"){ # Create "safe" binary
+  CreateDetails($ARGV[1]);
+  ExtractBinary();
+  chop($OUTNAME);
+  $OLD=$OUTNAME;   # Store original name in $OLD variable
+  chop($OUTNAME);
+  chop($OUTNAME);
+  `mv $OLD $OUTNAME`;  # Rename the binary to remove that last E
+  `rm Details File_0`;  # Clean up original files
+}
+else {
+ CreateDetails($ARGV[0]); # Extract details file and binary
+ ExtractBinary();
+ `rm Details File_0`;  # Clean up original files
+}
+
+
+
+Final thoughts and coding challenge
+
+We provided two different methods for extracting a McAfee Bup tool in Linux.  It may not be the most graceful solution—but it works and it did not take much time to hack up.  However, we are looking for options that would be useful to others.  If you have some options, please feel free to state what you would find useful.
+
+Additionally, these scripts (bash and Perl) fit the bill for us—but it may not meet the needs for those without the 7zip extractor (bash and perl) or xxd (bash script only) utility.  Our challenge to anyone that wants to geek out is the following:
+
+Reduce the dependencies  (No need for 7zip or xxd)
+Code it in your favorite language  (python, ruby, C, LUA…  whatever you want)
+Be as concise and clear as possible
+
+One hint to anyone who gets started on manually parsing the format:
+ hexdump -C 7dc7ed19123df0.bup | head -n 1
+
+00000000  d0 cf 11 e0 a1 b1 1a e1  00 00 00 00 00 00 00 00  |................|
+
+
+
+http://en.wikipedia.org/wiki/Compound_File_Binary_Format
+http://www.openoffice.org/sc/compdocfileformat.pdf
+
+
+Feel free to post back.  :)  Happy hacking!
+
+

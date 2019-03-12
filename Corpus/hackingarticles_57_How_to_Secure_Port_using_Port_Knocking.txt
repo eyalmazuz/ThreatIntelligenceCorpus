@@ -1,0 +1,73 @@
+
+How to Secure Port using Port Knocking
+
+From Wikipedia
+Port knocking is a technique use for sending of information through closed ports on a connected computer in a network behind a firewall. It will add security in your network for establishing connection with a particular port until the correct sequence of port is not knocked. The network administer configure port knocking using iptable which act like firewall.
+Iptable chain allows a client who is familiar with the secret knock to enter the network through a specific port by performing a sequence of connection attempts. 
+The main reason of port knocking is to avoid an attacker from scanning a system for potentially vulnerable services by performing a port scan, because if the attacker will not sends the accurate knock sequence, the protected ports will appear closed.
+Port knocking with Iptables
+ Iptables is a command-line firewall service in Linux kernel that uses rule chains to permit or obstruct traffic. It defined various tables that contain a number of integrated chains which may be containing user-defined chains also. Iptable chain is a list of policy that is used to match a set of packets. Every rule/policy specifies the function that should be done with packets that matches
+Type given below command with the help of following option which will create a new iptable chain:
+-F: –flush [chain]
+Flush the selected chain (all the chains in the table if none is given). This is equivalent to deleting all the rules one by one.
+-X: delete-chain [chain]
+Delete the optional user-defined chain specified. There must be no references to the chain. If there are, you must delete or replace the referring rules before the chain can be deleted. The chain must be empty, i.e. not contain any rules. If no argument is given, it will attempt to delete every non-builtin chain in the table.
+-Z: –zero [chain [rulenum]]
+Zero the packet and byte counters in all chains, or only the given chain, or only the given rule in a chain. It is legal to specify the -L, –list (list) option as well, to see the counters immediately before they are cleared. 
+-N: –new-chain chain
+Create a new user-defined chain by the given name. There must be no target of that name already.
+-A: –append chain rule-specification
+Append one or more rules to the end of the selected chain. When the source and/or destination names resolve to more than one address, a rule will be added for each possible address combination.
+-p: –protocol protocol
+The protocol of the rule or the packet to check. The specified protocol can be one of tcp, udp, udplite, icmp, esp, ah, sctp or the special keyword “all”, or it can be a numeric value, representing one of these protocols or a different one. A protocol name from /etc/protocols is also allowed. A “!” argument before the protocol inverts the test. The number zero is equivalent to all. All will match with all protocols and is taken as default when this option is omitted.
+-m: –match match
+Specifies a match to use, that is, an extension module that tests for a specific property. The set of matches make up the condition under which a target is invoked. Matches are evaluated first to last as specified on the command line and work in short-circuit fashion, i.e. if one extension yields false, evaluation will stop.
+-j: –jump target
+This specifies the target of the rule; i.e., what to do if the packet matches it. The target can be a user-defined chain (other than the one this rule is in), one of the special built-in targets which decide the fate of the packet immediately, or an extension. For example ACCEPT DROP and REJECT.
+From ipset.netfilter.org
+Iptables -F
+Iptables -X 
+Iptables -Z 
+Iptables -N STATE0
+Iptables -A STATE0 -p tcp -dport 1200 -m recent -name KNOCK1 -set -j DROP
+Iptables -A STATE0 -j DROP
+Iptables -N STATE1
+Iptables -A STATE1 -m recent -name KNOCK1 -remove
+Iptables -A STATE1 -p tcp -dport 1300 -m recent -name KNOCK2 -set -j DROP
+Iptables -A STATE1 -j STATE0
+Iptables -N STATE2
+Iptables -A STATE2 -m recent -name KNOCK2 -remove
+Iptables -A STATE2 -p tcp -dport 1400 -m recent -name KNOCK3 -set -j DROP
+Iptables -A STATE2 -j STATE0
+Iptables -N STATE3
+Iptables -A STATE3 -m recent -name KNOCK3 -remove
+Iptables -A STATE3 -p tcp -dport 22 -j ACCEPT
+Iptables -A STATE3 -j STATE0
+Iptables -A INPUT -m state – state ESTABLISHED,RELATED -j ACCEPT 
+Iptables -A INPUT -s 127.0.0.1/8 -j ACCEPT
+Iptables -A INPUT -p icmp -j ACCEPT
+Iptables -A INPUT -p tcp -dport 80 -j ACCEPT
+Iptables -A INPUT -m recent -name KNOCK3 -rcheck -j STATE3
+Iptables -A INPUT -m recent -name KNOCK2 -rcheck -j STATE2
+Iptables -A INPUT -m recent -name KNOCK1 -rcheck -j STATE1
+Iptables -A INPUT -j STATE0
+
+Let’s verify it through port scanning using NMAP command.
+Nmap -ST 192.168.0.25
+From given below image you can observe that NMAP found only PORT 80 is open.
+
+Type apt-get install knockd command to install knockd.
+Knockd is a port-knock command-line utility. It snoops to all traffic on an Ethernet interface, come across for particular “knock” sequences of port knocks. A client makes these port-hits through sending a TCP or UDP packet to a port on the server.
+
+Now type following command for port knocking
+Knock -v 192.168.0.25 1200 1300 1400
+From given image you can observe that it will start hitting on a particular port which is actually known as port knocking. Since client is aware of sequence he can make correct knocked sequence for connection attempts.
+
+Again use port scanning with NMAP on same target
+nmap -p 192.168.0.25
+Hence you can see the difference between both NMAP’s result as this time we got port 22 open for SSH service.
+
+Now client will use credential for login into SSH server.
+Conclusion! Network admin adds the filter with specific port that will wait for correct knock sequence which will then open the port to establish the connection otherwise it will remain closed the port until correct port knocked
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

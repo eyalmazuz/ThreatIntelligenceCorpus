@@ -1,0 +1,155 @@
+
+Forensics Investigations: Do not forget the database!
+
+
+by Daniel Caban and Christiaan Beek.
+
+In our investigations it is typical for us to see an attacker use an exploit to first compromise a web server, then launch further attacks against the internal network via a webshell. In the below case the web server was hosting an application that was talking to MSSQL backend which was situated in the internal network.
+
+
+
+
+From a live-forensics perspective the order of volatility (RFC 3227), the following evidence would be collected from the web server:
+
+Memory dump
+Page or Swap File
+Running Process Information
+Network data such as listening ports or existing connections to other systems
+System Registry (if applicable)
+System and Application logfiles (IIS log files, event logs etc.)
+Forensic image of disk(s)
+Backup Media
+
+
+Looking at the scenario described, the same files were acquired from the Database server and, of course, firewall logs. The ultimate goal is to create a timeline where all actions executed by the attacker(s) are mapped in time.
+Shell
+
+By abusing the exploit in the application, the attacker was able to upload his tools including a copy of a webshell that had tons of functionality including the execution of SQL commands towards a MSSQL server. The attacker also compromised one of the user-accounts on the server.
+Database Forensics
+Since activity was discovered towards the database server, it would be very interesting to execute a more in-depth investigation towards the database and it’s files.
+
+To follow the order of volatility as well regarding the database, sessions, files etc, the following files were retrieved:
+
+SQL server sessions and connections info, users, requests
+Transaction Logs
+SQL Server Logs 
+SQL Server Database files 
+System Event logs
+SQL Server Trace Files
+
+
+Note: some of these steps were integrated by following the previous mentioned order of volatility list.
+
+File locations to retrieve the data from:
+Database data files & logs: \\Microsoft SQL Server\ MSSQL.1\MSSQL\ DATA\*.MDF | *.LDF
+Trace files: \\Microsoft SQL Server\MSSQL.1\MSSQL\LOG\LOG_#.TRC
+MS SQL Server error logs:  \\Microsoft SQLServer\ MSSQL.1\ MSSQL\ LOG\ERRORLOG
+
+Determining the impact of the breach
+
+A Windows SQL server has several stored procedures. These procedures are a group of statements that are compiled in a single execution plan. One of the most popular (and dangerous) ones is called “xp_cmdshell”. According to MSDN this procedure will:“Executes a given command string as an operating-system command shell and returns any output as rows of text. Grants nonadministrative users permissions to execute xp_cmdshell.”
+
+Since the discovered and uploaded web-shell contained the option to execute and use xp_cmdshell, an investigation was done to find out what happened in the timeframe the attackers were active on the system.
+Event Logs
+The Windows event logs showed the following message:
+
+EventID:15281
+Description:
+
+SQL Server blocked access to procedure 'sys.xp_cmdshell' of component 'xp_cmdshell'
+because this component is turned off as part of the security configuration for this
+server. A system administrator can enable the use of 'xp_cmdshell' by using
+sp_configure. For more information about enabling 'xp_cmdshell', see "Surface Area
+Configuration" in SQL Server Books Online.
+
+
+
+This means that the attacker tried to use the xp_cmdshell but was not successful since the registry setting in the system blocked it. 
+
+The MSSQL Server logs gave the same kind of error message:
+2013-01-08 14:12:43 spid51 SQL Server blocked access to procedure
+'sys.xp_cmdshell' of component 'xp_cmdshell' because this component is turned off as
+part of the security configuration for this server. A system administrator can enable
+the use of 'xp_cmdshell' by using sp_configure. For more information about enabling
+'xp_cmdshell', see "Surface Area Configuration" in SQL Server Books Online.
+
+
+
+
+To verify the system’s setting, the following SQL query was executed towards the acquired database:
+‘select * from sys.configurations where name = 'xp_cmdshell' 
+
+
+
+
+The output resulted into the following table:
+
+
+config_id
+name
+value
+min
+max
+value_in_use
+description
+
+
+16390
+xp_cmdshell
+0
+0
+1
+0
+Enable or disable command shell
+
+
+
+The value in use ‘0’ meant that the xp_cmdshell was not enabled.
+
+Since the attackers had successfully got an account, the option was tested if they could have had the option to enable the xp_cmdshell option.
+
+
+By using the account, the following SQL queries were executed:
+exec sp_configure ‘show_advanced_options’, 1 reconfigure
+exec sp_configure ‘xp_cmdshell’, 1 reconfigure
+
+
+
+
+To verify the result the same query was used.
+select * from sys.configurations where name = 'xp_cmdshell'
+
+
+
+
+
+This resulted in the following table:
+
+
+config_id
+name
+value
+min
+max
+value_in_use
+description
+
+
+16390
+xp_cmdshell
+1
+0
+1
+1
+Enable or disable command shell
+
+
+
+The conclusion can be made that the attackers had the opportunity to activate the xp_cmdshell and as a next step elevate their user’s accounts rights towards administrator etc.
+
+This was a short demonstration of the interesting world of SQL server forensics. For more information, there’s a good book about this topic written by Kevvie Fowler called “SQL Server Forensic Analysis’
+
+Kevvie’s website is hosting also a couple of SQL scripts that can be used by any incident responder to gather the necessary information. A link to the zip file can be found here: 
+http://www.applicationforensics.com/sites/research/microsoft/sqlserver/SQL_IR_Scripts.zip
+
+

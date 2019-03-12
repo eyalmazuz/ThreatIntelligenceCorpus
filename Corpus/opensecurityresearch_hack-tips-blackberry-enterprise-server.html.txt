@@ -1,0 +1,117 @@
+
+Hack Tips: Blackberry Enterprise Server Exploitation
+
+
+By Tony Lee and Patrick Bogen
+
+This article is the first in a series covering, step-by-step, the practical attacks that can be performed against various common network servers. This week’s victim is Blackberry Enterprise Server. Compromising this service allows the attacker to impersonate users, access stored e-mail, and send arbitrary messages to users on the Blackberry system.
+
+Overall, the process involves the following steps:
+Identifying a Blackberry Enterprise Server
+Identifying the BES Administrator Account
+Gaining Access to the BES Administrator Account
+Accessing the Blackberry Management Interface
+Post-Exploitation with Blackberry Manager
+Identifying a Blackberry Enterprise Server
+There  are at least four ways (ordered below by most certain to least certain) to identify if a given server is a Blackberry server- viewing the list of services running on the host; locating the server software files on the host; examining the list of service accounts on the host and identifying a Blackberry-associated account; or potentially by simple inspection of the system hostname.
+
+Running ServicesThe Blackberry Enterprise Server software uses a number of services to handle requests. If any of these services are running on a host, it indicates that the system is, by definition, running the Blackberry Enterprise Server.  Check for some of the services listed below:
+
+C:\> net start | findstr /i blackberry
+BlackBerry Alert
+BlackBerry Attachment Service
+BlackBerry Collaboration Service
+BlackBerry Controller
+BlackBerry Dispatcher
+BlackBerry MDS Connection Service
+BlackBerry Policy Service
+BlackBerry Router
+BlackBerry Synchronization Service
+
+Server Software FilesThe Blackberry Enterprise Server software installs, by default, in “C:\Program Files\Research In Motion\BlackBerry Enterprise Server”. The presence of these files strongly suggests that the server is a Blackberry Enterprise Server.
+
+User AccountsThere is no specific required name for the server account, but the server documentation uses “BESAdmin.” The presence of this account would indicate that the system is a Blackberry Enterprise Server (and, further, that the administrator is fairly literally-minded). Variations on this are also possible- for example “besadm,” “bbadmin,” and so on.
+
+Host Name ConventionOrganizations commonly name hosts based off of the functionality, location, or sometimes even the owner of the host. This is intended to be convenient for the administrator to easily determine useful information about the host and also facilitates easily training new staff. This convenience introduces a slight security risk, in that these hosts can easily be targeted by attackers based off of the information the administrator includes in the hostname. Organizations that conveniently name their hosts are  likely to name their Blackberry server something like “BES,” “Blackberry,” “BBServer,” etc. This is not an especially reliable indicator, but it can be used to triage hosts for further scrutiny.
+
+Identifying the BES Administrator Account
+Once a specific server is targeted, the attacker needs to identify the Blackberry administrator account on the system.  This can be accomplished by examining the contents of the “Documents and Settings”/“Users” directory and examining locations or permissions on the BES files.
+
+“Documents and Settings” or “Users” DirectoryThe “Documents and Settings” or “Users” directory will contain a subfolder for each user that has logged in to the system. Since the Blackberry Administrator account will be one such user, a directory for this account will likely exist in this hierarchy.
+
+C:\>dir c:\users
+Volume in drive C is OS
+Volume Serial Number is 
+
+Directory of c:\users
+
+11/10/2011  08:10 AM    <DIR>          .
+11/10/2011  08:10 AM    <DIR>          ..
+12/02/2010  09:02 AM    <DIR>          alice
+09/01/2011  10:08 AM    <DIR>          bob
+07/13/2009  11:57 PM    <DIR>          Public
+05/19/2011  01:43 PM    <DIR>          Administrator
+11/07/2011  03:26 PM    <DIR>          BESAdmin
+0 File(s)              0 bytes
+7 Dir(s)  23,291,475,804 bytes free
+
+BES File Permissions or LocationsThe Blackberry administrator account may have special permissions set on the files related to the BES software. Checking the permissions set on such files to discover which account has special access may reveal the blackberry administrator account. Locate one of these files (i.e., in C:\Program Files\Research In Motion\BlackBerry Enterprise Server), right click on the file, select “Properties,” and select the “Security” tab.  Shortcuts on a user’s desktop can also help to identify that user as a BES administrator.
+
+Gaining Access to the BES Administrator AccountThere are four main approaches to gaining credentialed access to the administrator account. The first, of course, is to compromise the Domain, if the account is a Domain account and not local to the host—however, gaining control over a target’s domain is left as an exercise to the reader.  The other three options can be accomplished with access only to the local host:  The attacker can collect password hashes from the local SAM if the account is local to the host; collect password hashes (for both local and domain accounts) from memory using the Windows Credential Editor; or discover a file on the local system that contains credentials. Given password hashes, the attacker would then need to crack the passwords or replay them into a process that would be able to open the BES thick client- a “pass the hash” attack.
+
+Dumping Local Password HashesA variety of tools exist for dumping password hashes. It is often the case that a single tool works only on a subset of the various versions and deployments of Windows. Example tools that can perform in this role are:
+Hashdump - a post-exploitation module in the Metasploit framework:
+
+gsecdump  by TrueSec
+
+fgdump by fizzgig 
+
+
+There are variant versions of even these few tools available that work on certain Windows versions and not others, so it is often the case that multiple attempts will be needed with different tools before one tool is found to work properly.
+
+Using Windows Credential EditorThe Windows Credential Editor, from Amplia Security, performs a function similar to the hash dumping tools described above, but instead gathers hashes from in memory. 
+The tool’s functionality is simple- run the tool at the command line, and it will list the hashes extracted from memory:
+
+C:\> wce.exe
+WCE v1.2 (Windows Credentials Editor) - (c) 2010,2011 Amplia Security - by Hernan Ochoa (hernan@ampliasecurity.com)
+Use -h for help.
+
+Backup:Domain:39...AF:F3...9A
+BESAdm:Domain:CD...47:20...5C
+
+Data-mining the FilesystemSearching the file system can reveal instances where administrators have stored the user’s password in plain-text (for example, in a configuration file, or potentially a “notes” document.) The Windows command shell contains native commands that can accomplish such a search. The following command searches the contents of files on the system drive for the phrase ‘pass’:
+
+C:\> findstr /I /S /M pass C:\*    
+
+Alternatively, searching for the known username might reveal files that contain the username and password pair (this will also reduce incorrect hits):
+
+C:\> findstr /I /S /M BESAdmin C:\*     
+
+Searching for files with “pass” in the filename can be accomplished with the following:
+
+C:\> dir /a /s /b c:\*pass*
+
+Accessing the Blackberry Management InterfaceBlackberry Enterprise Server provides two methods for managing the system: A web-based front-end (which must be specifically installed by an administrator) and a thick client application, “Blackberry Manager”.
+
+Web-based Front-end
+If installed, the web interface will be available at the following URL:
+
+https://[hostname]/webconsole/app
+
+Blackberry ManagerThe thick client management application, “Blackberry Manager,” is installed along with the server software, and thus should be available on the server in the following directory, presuming the server software is installed in “C:\Program Files\Research In Motion\BlackBerry Enterprise Server\”:
+
+C:\Program Files\Research In Motion\BlackBerry Enterprise Server\BBMgr\Server\bbmgrw32.exe
+
+When accessing the thick client application as a non BlackBerry administrator, the application will prompt for credentials.  However, when the user is logged in to Windows as the Blackberry administrator account, the application will open without prompting for credentials.
+
+Post-Exploitation with Blackberry ManagerHaving finally gained access to the management interface of the blackberry server, there are three activities that are of interest to an attacker. The management application can be utilized to send messages directly to a user’s blackberry device (bypassing the Exchange email server); to send messages to both the device and to the user’s e-mail; and, most damaging of the three, to re-provision devices, thus granting an attacker’s device access to the target’s saved e-mail.
+
+Sending Messages Directly to Blackberry DevicesFrom the “All Users” tab, search for or select a user. Right click on the targeted user and select “Send Message”. Sending messages by PIN (rather than by e-mail) will send the message only to the user’s Blackberry device (not to their email account).
+
+Sending Messages to Blackberry Device and E-MailFrom the “All Users” tab, search for or select a user. Right click on the targeted user and select “Send Message”. Sending messages by E-Mail (rather than by PIN) will send the message to both the user’s Blackberry device and the user’s associated Exchange account.
+
+Provisioning a New DeviceOnce a new phone is provisioned, the attacker can download a copy of all of the user’s emails, as well as send emails as the account owner. Unlike Good Enterprises (discussed later in this series), only one device per e-mail address can be registered per Blackberry Enterprise Server.  This means that if the attacker provisions a new device on the target’s account, service to the target’s old device will be disrupted. For this reason, provisioning a new device is a temporary mechanism to access the stored e-mails rather than a persistent compromise of the user’s account—unless there are multiple Blackberry servers.
+
+The attacker must re-activate the user’s old device after exfiltration of any data of interest in order to minimize the chance of the target noticing a disruption in service.
+
+

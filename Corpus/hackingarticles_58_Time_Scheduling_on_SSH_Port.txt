@@ -1,0 +1,39 @@
+
+Time Scheduling on SSH Port
+
+This article is related to network securities which help the network administrator to secure running service on any server through scheduling task.  We are going to schedule task for SSH service in order to add another layer in security in network , in simple word we are going to set timing limit for SSH service on the server .
+Cron is a UNIX like computer utility which schedules a command or script on your server to run automatically at a specified time and date. A cron job is the scheduled task itself. 
+Service ssh start
+Service ssh status
+As you can see from given below image the service SSH is running.
+
+We are going to schedule SSH services using crontab, crontab is built in service of linux to schedule task.
+User required root permission to open the crontab, now type following command:
+sudo crontab -e
+
+We had open crontab using nano, the given below image shows crontab interface.
+
+Crontab uses the format of “m h dommondow [command]”, Following table will help you in writing schedule for crontab:
+Now if we need to schedule a task at 8:00 am on Monday we will write the command as following:
+0 8 * * 1 [command]
+ Now we are going to use crontab to schedule “ssh service”. We are going to schedule ssh service for 3 minutes and get stop after 4 minutes of use when it is activated.
+We use the command for scheduling task:
+* * * * * sleep 180;/usr/sbin/service ssh start
+Above command will schedule the task for only 3 minutes where 180 is equal to 3 minute and to stop this service ssh after that, type given below command where 240 is equal to 4 minute.
+* * * * * sleep 240;/usr/sbin/service ssh stop
+
+Let’s check whether above command is working or not.
+Wait for service to reboot. Using nmap we scan port 22
+nmap  -p 22 127.0.0..1
+After scanning you will observe that ssh service is running port 22 is open.
+
+Nmap  -p 22 127.0.0..1
+Now if our command is working properly it should stop itself after 4 minutes get finished, we again check using nmap.
+The port is now closed at 4th minute.
+
+Now if I want to schedule a task at a particular time, let’s say I want to schedule my ssh service to start at 5:00 am and close at 5 pm, we use this command:
+0 5 * * * /usr/sbin/service ssh start
+0 17 * * * /usr/sbin/service ssh stop
+This command schedules the ssh service to start every day at 5:00 am and stop the ssh service at 5:00 pm.
+
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast.

@@ -1,0 +1,63 @@
+Typosquatting: Combat Spear Phishing With Recorded Future
+By John Wetzel on October 18, 2016
+Spear phishing is a persistent challenge to large and small organizations alike.
+Consisting of merely an email and a poisoned link or attachment, spear phishing is believed to be the entry method in the recent hacks of the Democratic National Convention, the World Anti-Doping Agency, as well as the spate of ransomware attacks against healthcare organizations.
+According to the FBI, a single variant of spear phishing targeting company executives has resulted in $2.3 billion in losses over the last three years. 
+The key aspect to these attacks is the use of either email addresses or URLs which look similar to the domain of an organization. Recipients are far more likely to open an email when they know either the sender or the sending organization. Domains can be registered to take advantage of human typing or reading mistakes by anyone around the globe. Purposefully registering domains for their similarity to existing popular domains is called typosquatting. 
+Tainted emails are growing as an attack vector, due to their simplicity and effectiveness. According to the APWG (Anti-Phishing Working Group), the number of spear phishing websites increased 250% from the fourth quarter of 2015 to the first quarter of 2016, with the most targeted sector being the retail/service sector. The financial and payment services sectors comprise 18.67% and 14.74%, respectively. “Well-crafted spear phishing attacks are now an everyday occurrence across our enterprise,” says Keith Golden, CIO at Econolite Group, Inc.
+Typosquatting takes a company’s domain and manipulates the characters into nearly identical domains; example[.]com can become exanple[.]com.
+Upon cursory glance, this may be overlooked by the user clicking a link. Attackers register thousands of domains differing from target organizations’ URLs by a single character for reasons ranging from nefarious to fully malicious. Typosquatted domains, also known as URL hijacking, can be used in spear phishing campaigns against company employees or customers, watering-hole attacks, drive-by download attacks, or even to collect misaddressed emails mistakenly sent to the domain. In our research, 52 of the typosquatted domains had associated mail exchange servers.1
+Most organizations utilize some form of blocking services in conjunction with user education to combat spear phishing. Unfortunately, blocking services are not omniscient, and most organizations will likely fall victim to spear phishing attempts at some point.
+We believed there was a better answer, and our customers did as well. 
+We created a workflow utilizing proprietary features in Recorded Future to proactively combat typosquatting domains and their associated IP addresses. This workflow:
+Using the domain of a U.S. financial firm, our research identified 226 possible typosquatted domains, of which 91 were registered. We correlated the registered domains to 52 hosting IP addresses, of which 19 had a Recorded Future risk score of 65 or higher. Many of the IP addresses were acting as C&C servers for BlackIce, Ramnit, and njRAT, while some of the most targeted typosquatting campaigns served ZeuS malware.
+Altogether, we identified eight malware and 54 associated malware signatures correlated to the typosquatted IP addresses. 
+We also documented the creation of monitoring within Recorded Future as a proactive measure against future spear phishing. We created alerts in Recorded Future on future mentions of the domains, new mentions of the IP addresses, and any escalation in the Recorded Future risk score for any of the typosquatting IP addresses.
+Our research required an automated way to generate various likely typosquatting domains. After identifying these domains, a threat intelligence analyst would be able to associate the domains to determine if they are actively registered and determine the IP address.
+While this process can be done manually, we aim to reduce the analyst’s time spent on this project. Even given a list of domains and IP addresses, the value to analysts comes from triaging these IOCs (indicators of compromise).
+A recent lab report demonstrated a reduction in the time to triage a security event from three minutes to 1.2 seconds. In a test run with Recorded Future analysts, we were able to reproduce the time for this complete workflow to under 10 minutes total. 
+There are free programs available to evaluate typosquatting domains from a seed domain.2 For our research, we used DNStwist, available on GitHub.3 DNStwist is a domain name permutation engine which can check variations against NS and MX records, resolutions to IPv4 or IPv6 addresses, and dump the results to CSV or JSON formats. 
+
+DNStwist identifies domain variants and associated IP addresses.
+For our research, we limited the results to registered domains and the associated IP addresses, and piped the list to a CSV. (While we’ll focus on a manual workflow, future projects could automate a daily run of DNStwist, pipe the results to a JSON, then generate a call to the Recorded Future API to automate this workflow.)
+DNStwist provides the type of domain typosquatting, the URL, the hosting IP, the NS, and the MX, if applicable. From this list, we can begin analyzing each domain. For this research, we evaluate the domain, determine the IP address where the domain resolves, find associated hash values, and determine the risk on each hash. 
+DNStwist identified 91 typosquatted domains which were registered. 51 of these domains resolved to only 14 IP addresses. One IP address, 141.8.224.93, contained seven permutations of the U.S. financial firm domain name. A malicious actor targeting a company, or that company’s clients, may register multiple typosquatted domains to increase the chances of a successful attack. 
+
+Recorded Future Intel Cards summarize key information security entity types, in this case an IP address.
+
+Recorded Future provides transparency into the currently triggered risk rules for each indicator.
+Our risk scoring is based on Recorded Future risk rules; this IP address appears on the Abuse.ch Zeus IP Block List, as well as Phishtank, as hosting active phishing URLs. While commonly associated with banking credential theft, Zeus was utilized to infiltrate the Department of Transportation as well as other non-banking companies and steal data. 
+Two IP addresses hosted six domains each. The first IP address, 69.172.201.153, has a risk score of 89 out of 100, due to appearing as a phishing host, and being linked to njRAT, by VirusTotal. njRAT is prolific remote access malware that has been used by nation-state actors and hacktivists.
+
+The overall risk score is a number between 0 and 99, determined by which rules are currently triggered.
+As of this publication, the second IP address, 209.15.13.134, has a risk score of 10 out of 100. This IP address triggered two of our historic rules: Historical Multicategory Blacklist and Historic Open Proxies.
+
+Historic Risk Rules show previously risky IPs which do not appear on threat lists.
+In Recorded Future, historic risk rules assign risk based on IOCs which previously met risk rules. While the IP may age out of a blocklist or risk rule, inactivity does not always signify an absence of risk. In this case, 209.15.13.134 has six typosquatted domains registered.
+We can further evaluate this IP using the OMNI Intelligence Partners extensions on Recorded Future Intel Cards. These extensions can provide additional context on domains, IPs, and hashes from within Recorded Future. Utilizing the DomainTools OMNI extension on the Intel Card, we see there are 182,478 domains hosted at 209.15.13.134, including wwwhamptoninn[.]com, wwwszillow[.]com, and wwwbritneyspears[.]com, among others.
+Once we have identified the typosquatted domains and IPs, we can create a list in Recorded Future of the full spectrum of likely typosquatted domains. This list can be used to seed an alert for any domain. The alert rule will match additional information about the registered typosquatting domains, and will also match new information about the typosquatting domains that have not yet been observed in our threat data. In the case of the U.S. financial firm’s URL, DNStwist generates a total of 226 possible domains.
+
+Timeline view of typosquatted IP activity over the last 60 days.
+Likewise, we can monitor the IP addresses hosting the typosquatted domains in Recorded Future. Recorded Future shows 1,566 references to these IP addresses over the last 60 days. The majority of these references are malware or technical reporting. Analyze mode also allows us to visualize the context around the IP addresses. Of most interest would be the associated malware.
+
+Table view of typosquatting IP addresses and any malware.
+We can refine our search on intel matching these typosquatting domains to only intel specifically mentioning a malware family or tool. By this revision, we find there are two associated malwares mentioned in context with the typosquatting IP addresses: Ramnit and njRAT. We can further correlate malicious files by researching hash values associated with the typosquatted IP addresses.
+
+Typosquatting IP addresses and any hash values can identify correlated malware.
+By correlating the IP addresses with hash values, we identify 132 hashes. (A note on relevance: due to the breadth of abuse on these IPs, it’s highly likely that many of these hashes are only tangentially related to the U.S. financial firm. The hashed file maliciousness and risk still warrants collection for internal scanning, however identified incidents may be unrelated to spear phishing as an attack vector.)
+
+Recorded Future allows exporting of specific entities, such as hash values, from a query.
+By using the Save feature, we can save these hashes to a new list, U.S. Financial Firm Typosquatting: Hashes.
+
+Comparing hash values with any malware can return results for further research.
+Running a query against this list and the entity category Any Malware, we can identify any correlated malware, malware signatures, and attack vectors associated with the typosquatted IP addresses. From July 20 to September 18, 2016, we find correlations to eight malware, and 54 malware signatures. 
+
+Recorded Future Cyber can monitor a list of typosquatting IP addresses.
+Most interestingly, we can filter the Indicators column in the Cyber Dashboard to the typosquatted IP addresses. By filtering this to the list, we can visualize the IP addresses by associated risk scores. 
+
+Alerts monitor for any future typosquatting IP activity.
+We can create an alert in Recorded Future to see when there are future references to any IP address in our list. 
+Internally, we would recommend additional actions to mitigate the threat of further targeted spear phishing campaigns. These measures would include pre-screening emails on the mail server for all typosquatting domains, blocking from associated IP addresses, and ensuring IDS/IPS rules are set for associated malware. While these measures do not ensure elimination of spear phishing as a threat vector, they provide substantial benefits versus solely user education.
+1 While this article focuses on combatting spear phishing, our use cases extend to identifying and combatting all forms of domain typosquatting. Other malicious uses include tracking “typo domain affiliate” redirecting, brand and reputation protection, and credential theft.
+2 We’re currently working on a new feature in Recorded Future to automate this discovery in the product.
+3 DNSTwist was developed by Marcin Ulikowski, a security engineer for Polish IT consultancy, Atos.

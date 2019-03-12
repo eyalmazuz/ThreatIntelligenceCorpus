@@ -1,0 +1,93 @@
+How machine learning works, simplified
+Lately, tech companies have gone absolutely crazy for machine learning. They say it solves the problems only people could crack before. Some even go as far as calling it “artificial intelligence.” Machine learning is of special interest in IT security, where the threat landscape is rapidly shifting and we need to come up with adequate solutions.
+Some go as far as calling machine learning ‘artificial intelligence’ just for the sake of it. 
+Technology comes down to speed and consistency, not tricks. And machine learning is based on technology, making it easy to explain in human terms. So, let’s get down to it: We will be solving a real problem by means of a working algorithm — a machine-learning-based algorithm. The concept is quite simple, and it delivers real, valuable insights.
+Human writing (in this case, Terry Pratchett’s writing), might look like this:
+Give a man a fire and he's warm for the day. But set fire to him and he's warm for the rest of his life
+It is well known that a vital ingredient of success is not knowing that what you're attempting can't be done
+The trouble with having an open mind, of course, is that people will insist on coming along and trying to put things in it
+Gibberish looks more like this:
+DFgdgfkljhdfnmn vdfkjdfk kdfjkswjhwiuerwp2ijnsd,mfns sdlfkls wkjgwl
+reoigh dfjdkjfhgdjbgk nretSRGsgkjdxfhgkdjfg gkfdgkoi
+dfgldfkjgreiut rtyuiokjhg cvbnrtyu
+Our task is to develop a machine-learning algorithm that can tell those apart. Though trivial for a human, the task is a real challenge. It takes a lot to formalize the difference. We use machine learning here: We feed some examples to the algorithm and let it “learn” how to reliably answer the question, “Is it human or gibberish?” Every time a real-world antivirus program analyzes a file, that’s essentially what it’s doing.
+Because we are covering the subject within the context of IT security, and the main aim of antivirus software is to find malicious code in a huge amount of clean data, we’ll refer to meaningful text as “clean” and gibberish as “malicious.” 
+It seems a trivial task for a human: they can see immediately which one is ‘clean’ and which one is ‘malicious’. But it’s a real challenge to formalize the difference, or more, to explain this to a computer. We use machine learning here: we ‘feed’ some examples to the algorithm and let it ‘learn’ from them, so it is able to provide the correct answer to the question. 
+Our algorithm will calculate the frequency of one particular letter being followed by another particular letter, thus analyzing all possible letter pairs. For example, for our first phrase, “Give a man a fire and he’s warm for the day. But set fire to him and he’s warm for the rest of his life,” which we know to be clean, the frequency of particular letter pairs looks like this:
+Bu — 1
+Gi — 1
+an — 3
+ar — 2
+ay — 1
+da — 1
+es — 1
+et — 1
+fe — 1
+fi — 2
+fo — 2
+he — 4
+hi — 2
+if — 1
+im — 1
+To keep it simple, we ignore punctuation marks and spaces. So, in that phrase, a is followed by n three times, f is followed by i two times, and a is followed byy one time.
+At this stage, we understand one phrase is not enough to make our model learn: We need to analyze a bigger string of text. So let’s count the letter pairs in Gone with the Wind, by Margaret Mitchell — or, to be precise, in the first 20% of the book. Here are a few of them:
+he — 11460
+th — 9260
+er — 7089
+in — 6515
+an — 6214
+nd — 4746
+re — 4203
+ou — 4176
+wa — 2166
+sh — 2161
+ea — 2146
+nt — 2144
+wc — 1
+As you can see, the probability of encountering the he combination is twice as high as that of seeing an. And wc appears just once ( is only one in newcomer).
+So, now we have a model for clean text, but how do we use it? First, to define the probability of a line being clean or malicious, we’ll define its authenticity. We will define the frequency of each pair of letters with the help of a model (by evaluating how realistic a combination of letters is) and then multiply those numbers:
+F(Gi) * F(iv) * F(ve) * F(e ) * F( a) * F(a ) * F( m) * F(ma) * F(an) * F(n ) * …
+6     * 364   * 2339  * 13606 * 8751  * 1947  * 2665  * 1149  * 6214  * 5043 * …
+In determining the final value of authenticity, we also consider the number of symbols in the line: The longer the line, the more numbers we multiplied. So, to make this value equally suitable to short and long lines we do some math magic (we extract the root of the degree “length of line in question minus one” from the result).
+Now we can draw some conclusions: The higher the calculated number, the better the line in question fits into our model — and consequently, the greater the likelihood of it having been written by a human. If the text yields a high number, we can call it clean.
+If the line in question contains a suspiciously large number of rare combinations (like wx, zg, yq, etc), it’s more likely malicious.
+For the line we chose for analysis, we measure the likelihood (“authenticity”) in points, as follows: 
+Give a man a fire and he's warm for the day. But set fire to him and he's warm for the rest of his life — 1984 points
+It is well known that a vital ingredient of success is not knowing that what you're attempting can't be done — 1601 points
+The trouble with having an open mind, of course, is that people will insist on coming along and trying to put things in it — 2460 points
+DFgdgfkljhdfnmn vdfkjdfk kdfjkswjhwiuerwp2ijnsd,mfns sdlfkls wkjgwl — 16 points
+reoigh dfjdkjfhgdjbgk nretSRGsgkjdxfhgkdjfg gkfdgkoi — 9 points
+dfgldfkjgreiut rtyuiokjhg cvbnrtyu — 43 points
+As you see, clean lines score well over 1,000 points and malicious ones couldn’t scratch even 100 points. It seems our algorithm works as expected.
+As for putting high and low scores in context, the best way is to delegate this work to the machine as well, and let it learn. To do this, we’ll submit a number of real, clean lines and calculate their authenticity, and then submit some malicious lines and repeat. Then we’ll calculate the baseline for evaluation. In our case, it is about 500 points.
+Let’s go over what we’ve just done.
+1. We defined the features of clean lines (i.e., pairs of characters).
+In real life, when developing a working antivirus, analysts also define features of files and other objects. By the way, their contributions are vital: It’s still a human task to define what features to evaluate in the analysis, and the researchers’ level of expertise and experience directly influences the quality of the features. For example, who said one needs to analyze characters in pairs and not in threes? Such hypothetical assumptions are also evaluated in antivirus labs. I should note here that we at Kaspersky Lab use machine learning to select the best and complementary features.
+2. We used the defined indicators to build a mathematical model, which we made learn based on a set of examples.
+Of course, in real life the models are a tad more complex. Now, the best results come from a decision tree ensemble built by the Gradient boosting technique, but as we continue to strive for perfection, we cannot sit idle and simply accept today’s best.
+3. We used a simple mathematical model to calculate the authenticity rating.
+To be honest, in real life, we do quite the opposite: We calculate the “malice” rating. That may not seem very different, but imagine how inauthentic a line in another language or alphabet would seem in our model. But it is unacceptable for an antivirus to provide false responses when checking a whole new class of files just because it does not know them yet.
+Some 20 years ago, when malware was less abundant, “gibberish” could be easily detected by signatures (distinctive fragments). In the examples above, the signatures might look like this:
+DFgdgfkljhdfnmn vdfkjdfk kdfjkswjhwiuerwp2ijnsd,mfns sdlfkls wkjgwl
+reoigh dfjdkjfhgdjbgk nretSRGsgkjdxfhgkdjfg gkfdgkoi
+An antivirus program scanning the file and finding erwp2ij would reckon: “Aha, this is gibberish #17.” On finding gkjdxfhg,” it would recognize gibberish #139.
+Then, some 15 years ago, when the population of malware samples has grown significantly, “generic” detecting took center stage. A virus analyst defined the rules, which, when applied to meaningful text, looked something like this:
+1. The length of a word should be 1 to 20 characters.
+2. Capital letters and numbers are rarely placed in the middle of a word.
+3. Vowels are relatively evenly mixed with consonants.
+And so on. If a line does not comply with a number of these rules, it is detected as malicious.
+In essence, the principle worked just the same, but in this case a set of rules, which analysts had to write manually, substituted for a mathematical model.
+And then, some 10 years ago, when the number of malware samples grew to surpass any previously imagined levels, machine-learning algorithms started slowly to find their way into antivirus programs. At first, in terms of complexity they did not stretch too far beyond the primitive algorithm we described earlier as an example. But by then we were actively recruiting specialists and expanding our expertise. As a result, we have the highest level of detection among antiviruses.
+Today, no antivirus would work without machine learning. Comparing detection methods, machine learning would tie with some advanced techniques such as behavioral analysis. However, behavioral analysis does use machine learning! All in all, machine learning is essential for efficient protection. Period.
+Machine learning has so many advantages — is it a cure-all? Well, not really. This method works efficiently if the aforementioned algorithm functions in the cloud or some kind of infrastructure that learns from analyzing a huge number of both clean and malicious objects.
+Also, it helps to have a team of experts to supervise this learning process and intervene every time their experience would make a difference.
+In this case, drawbacks are minimized — down to, essentially, one drawback: the need for an expensive infrastructure solution and a highly paid team of experts.
+But if someone wants to severely cut costs and use only the mathematical model, and only on the product-side, things may go wrong.
+1. False positives.
+Machine-learning-based detection is always about finding a sweet spot between the level of detected objects and the level of false positives. Should we want to enable more detection, there would eventually be more false positives. With machine learning, they might emerge somewhere you never imagined or predicted. For example, the clean line “Visit Reykjavik” would be detected as malicious, getting only 101 points in our rating of authenticity. That’s why it’s essential for an antivirus lab to keep records of clean files to enable the model’s learning and testing.
+2. Model bypass.
+A malefactor might take such a product apart and see how it works. Criminals are a human, making them more creative (if not smarter) than a machine, and they would adapt. For example, the following line is considered clean, even though its first part is clearly (to human eyes) malicious: “dgfkljhdfnmnvdfkHere’s a whole bunch of good text thrown in to mislead the machine.” However smart the algorithm, a smart human can always find a way to bypass it. That’s why an antivirus lab needs a highly responsive infrastructure to react instantly to new threats.
+Here’s an example of how the aforementioned mathematical model can be fooled: The words look authentic, but in fact it’s gibberish. Source
+3. Model update.
+Describing the aforementioned algorithm, we mentioned that a model that learned from English texts won’t work for texts in other languages. From this perspective, malicious files (provided they are created by humans, who can think outside the box) are like a steadily evolving alphabet. The threat landscape is very volatile. Through long years of research, Kaspersky Lab has developed a balanced approach: We update our models step-by-step directly in our antivirus databases. This enables us to provide extra learning or even a complete change of the learning angle for a model, without interrupting its usual operations.
+With considerable respect for machine learning and its huge importance in the cybersecurity world, we at Kaspersky Lab think that the most efficient cybersecurity approach is based on a multilevel paradigm.

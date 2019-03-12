@@ -1,0 +1,378 @@
+
+Huge Botnet Attacking Italian Companies
+
+
+
+
+On January 18 a colleague of mine (Luca) called me telling a malicious email was targeting Italian companies. This is the beginning of our new analysis adventure that Luca and I run together.
+
+
+
+The email pretended to be sent by "Ministero dell' Economia e delle Finanze" the Italian Department of Treasury  and it had a smart subjects such as:
+
+Codici Tributo Acconti
+F24 Acconti-Codice Tributo 4034
+
+
+
+The attacker knows very well the Italian Fiscal Year since those modules are very popular from company administration employees at that time. The attacker would probably exploit this attack path reaching out as many companies as possible. The email address was not coming from the "Ministero dell' economia e delle Finanze" at all, it was coming from the following addresses:
+
+ info@amber-kate.com 
+info@fallriverproductions.com
+
+
+
+The email looks like :
+
+
+
+
+Malicious eMail
+
+
+
+
+A simple link pointing to a high reputation domain was popping out the default browser and downloading the following Javascript file. The high level of obfuscation and the way the content was provided was so suspicious to be worth to follow the analysis.
+
+
+
+
+Infection: Stage 1 Obfuscated
+
+
+
+
+After a deobfuscation phase the javascript looked much more easy te be read from a human side.
+
+
+
+
+Infection: Stage 1 Clear Text
+
+
+A romantic "drop and execute" section was happening. A GET connection to 239outdoors.com/themes5.php was dropping a file named 1t.exe and later on the same script was able to execute the dropped file.  The file 1t.exe was running on the victim machine contacting the Command and Control waiting for further commands.
+
+
+
+The new sample looks like GootKit, a weaponized version of Banker Malware.  The malware installs itself and contacts Command and Control asking "what to do" and sending the "stolen credentials" directly to the Command and Control server. Details on IPs, Persistencies and so on, is provided in the IoC section, but todays we wont describe GootKit, we got access to the Dropping site !  
+
+
+
+We want to figure out if we might help victims to deactivate the malicious botnet by providing as much as possible details without focusing on reverse the Malware per se since appears to be known. 
+
+
+
+By getting further analyzing the dropping web site we immediately understood that the same URL was dropping another threat. The parallel threat the dropping website was spreading to the world was called "Nuovo Documento 2008" and it was a .bat file as follows.
+
+
+
+
+New Threat Stage 1
+
+
+
+
+That executable .bat file on a first stage opens up a browser pointing to a legitimate image but later on it uses an notorious technique called "certutil for delivery of file" to drop and execute an another file. This technique is well described here  by carnal0wnage. Basically the attacker uses the certutil.exe program do download a Base64 encoded payload, to decoded it and to run it. This technique is very silent since the User-Agent of certutils.exe is not suspicious because it needs to connect outside the company networks to check certificates, so not much IPS rules on it. The dropped file name unslss.exe appears to be very close to the previous analyzed one (1t.exe) it contacts the same C&C and it behaves in the similar way.   But again we wont focus on reverse such a malware but rather we wont be able to reach the highest number of IoC to protect as much as possible the victims. By analyzing the Dropping website we founded that a significative number of connections had additional referrers, so we decided to focus our attention on how many DNS were pointing to such a domain. We did it and the result was quite impressive (please see the Dropping URLS IoC Section). 
+
+
+
+Following the research on the dropping website we found an interesting log within all the connection coming from possible victims. We collected that log, and we built the following possible infection list (possible Victims). We wont publish the Victims IP addresses but if you can prove you are legitimated by your company to ask that logs we can give you (for free, of course)  the IP addresses we've found related to your company. Please contact cert@yoroi.company. A detailed list of possible infected networks follows. 
+
+
+
+Possible Victims:
+
+
+
+
+
+
+
+
+
+
+ACI informatica s.p.a.
+
+
+
+AGOS-AS
+AGSM Verona Spa
+ASGARR Consortium GARR
+Acantho S.p.a
+Alfanews S.r.l.
+Ambrogio s.r.l.
+Asco TLC S.p.A.
+Autostrade-as
+BT Italia
+BT Italia S.p.A.
+Banca Monte Dei Paschi Di Siena S.P.A.
+Brennercom S.p.A.
+COLT Technology Services Group Limited
+Camera dei deputati
+Cesena Net srl
+Clouditalia Telecomunicazioni S.p.A.
+Comune Di Brescia
+Comune di Bologna
+Consortium GARR
+Consorzio per il Sistema Informativo
+Costacrociere-as
+Duebite-as
+E4A s.r.l.
+Energente S.r.l.
+FASTNET SpA
+FASTWEB SPA
+FINECO Banca del Gruppo Unicredit
+Fastweb
+Forcepoint Cloud Ltd
+GenyCommunications
+Global Com Basilicata s.r.l.
+H3G Italy
+Hynet S.R.L.
+IBSNAZ
+ICT Valle Umbra s.r.l.
+InAsset S.r.l.
+InfoCamere SCpA
+Infracom Italia S.p.A.
+Inrete s.r.l
+Insiel- Informatica per il sistema degli enti loca
+Integrys.it di Stefania Peragna impresa individual
+Intred S.p.A.
+KPNQWest Italia S.p.a.
+LEPIDA
+Lepida S.p.A.
+Liguria Digitale S.C.p.A.
+Linea Com S R L
+Linkem spa
+Lombardia Informatica S.p.A.
+Mandarin S.p.A.
+Mc-link SpA
+Metrolink S.R.L.
+Ministero dell'Interno
+Mnet srl
+NGI SpA
+Nemo S.r.l.
+Nordcom S.p.a.
+Officine Informatiche Srl
+Progetto Evo S.r.l.
+Provincia di Reggio nell'Emilia
+Qcom spa
+Raiffeisen OnLine GmbH
+Regione Basilicata
+Regione Toscana
+Regione Veneto
+STI ADSL
+Sardegnait-as
+Societa' Gestione Servizi Bp S.p.A.
+TELEX S.r.l.
+TWT S.p.A.
+Telecom Italia
+Terra S.p.a.
+Time-net S.r.l.
+Tiscali SpA
+Trenitalia SpA
+Trentino Network S.r.l.
+Universita' degli Studi di Milano
+Venis S.p.A.
+Videotime SPA
+Vodafone Group Services GmbH
+Vodafone Italia DSL
+Vodafone Omnitel B.V.
+Vodafone Omnitel N.v.
+WIIT S.p.A.
+Welcome Italia S.p.A
+Wind Telecomunicazioni
+Wind Telecomunicazioni SpA
+
+
+Following the found IoC provided by the long "analysis journey". I managed this analysis over the night, so I am sure there would be some imprecisions, but I preferred to speed up the entire analysis process to give the opportunity to block such infamous threat as soon as possible.
+
+
+
+Hope it helps the community.
+
+Original Early Warning (Italian): Yoroi Early Warning
+
+
+
+
+
+
+
+
+IoC:
+
+
+
+
+
+
+eMail:
+
+ info@amber-kate.com 
+info@fallriverproductions.com
+
+Dropping URLS:
+
+
+185.61.152.71
+239outdoors.com
+bentlabel.com
+cdvdautomator.com
+cloudblueprintprogram.com
+cnchalftone.com
+comedyyall.com
+conticellolaw.com
+couplesdoingbusiness.com
+dvoper.com
+equinnex.com
+ericandchrissy.com
+evelynleekley.com
+expungementstennessee.com
+flaveme.com
+grkisland.com
+healingfoodconsulting.com
+hertzsynergy.com
+hollywoodisruption.com
+home-sphere.com
+integrativenutritiontherapy.com
+jdkanyuk.com
+kineloveclips.com
+kylesinger.com
+legionchristmas.com
+menshoesonlinestore.com
+microtiasurgery.com
+movielotbar.com
+muiienweg.com
+niarhoslondon.com
+opsantorinitours.com
+progunjobs.com
+rocketpak.com
+scottishwindowsolutions.com
+silkygames.com
+snapshotsandwhatnots.com
+snotterkind.com
+solespin.com
+strangerthanchristmas.com
+synchronr.com
+taramadden.com
+terento.website
+theargumint.com
+thegildedwren.com
+thejourneytogodsheart.com
+thesaltybody.com
+topsantorinitours.com
+tuftandneedles.com
+videospanishlessons.com
+vovachka.com
+wall-runners.com
+war-arena.com
+www.scottishwindowsolutions.com
+z1logistics.com
+zayantetinyhomes.com
+zefeed.com
+
+
+Command and Controls
+
+
+185.44.105.97 
+ns15.dreamsinthesun.com
+bdi2.nomadicdecorator.com
+elis.k9redemptionrescue.com
+api.hailstorm360.com
+cerera.survivalbid.com
+mark.k9redemptionrescue.org
+nsc.dayswithsunrays.com
+at.moonbeammagic.com
+ssl.vci-cfo.com
+sip3.propertiesandprojects.com
+host1.jodiray.com
+note.lawrencechoy.com
+note.lawrencechoy.com:80
+185.44.105.97:80/200
+note.lawrencechoy.com:80
+
+Hashes
+
+
+63d6927881d4978da4e162c17d82e9c009d0a93e
+7ea33f51b6c4aa54beee7fd878886339c22d2232
+8cae0dc9255978a35cfd8db64cbe80001400de9b
+839ff9f4c3980ac67d4cbef296520ee364a0911f
+8cae0dc9255978a35cfd8db64cbe80001400de9b
+
+
+
+
+
+
+
+
+
+
+UPDATE 1:
+
+Many AV and NGFirewall Companies contacted me and they updated "signatures", so probably on from now everybody having such a products should be protected.
+
+UPDATE 2: 
+
+Victims are still growing UP ! 
+
+
+ Asco TLC S.p.A.
+ ASGARR Consortium GARR
+ Bancalombarda
+ B.B.Bell SPA
+ Brennercom S.p.A.
+ BrianTel SRL
+ Consiglio Nazionale delle Ricerche
+ Elsynet S.r.l.
+ Fastcon-as
+ Informatica System S.r.l.
+ Inrete s.r.l
+ IPERV Internet Per Il Veneto
+ I.S.I.D.E. S.p.A.
+ Mc-link SpA
+ Nemo S.r.l.
+ NTRNET SRL
+ Regione Autonoma Friuli Venezia Giulia
+ Tiscali SpA
+ UmbriaNet
+ Universita' degli Studi di Palermo
+ AGOS-AS
+ Comune di Bologna
+ ENEA - Agenzia nazionale per le nuove tecnologie
+ Intred S.p.A.
+ Iren Energia S.p.a
+ Linkem spa
+ NGI SpA
+ Phoenix Informatica Bancaria S.p.A.
+ Telemar s.p.a.
+ TWT S.p.A.
+ Wiplanet.it
+ COLT Technology Services Group Limited
+ Consortium GARR
+ H3G Italy
+ Banca Monte Dei Paschi Di Siena S.P.A.
+ BT Italia S.p.A.
+ Infracom Italia S.p.A.
+ KPNQWest Italia S.p.a.
+ Vodafone Omnitel B.V.
+ Liguria Digitale S.C.p.A.
+ Regione Toscana
+ Welcome Italia S.p.A
+ Wind Telecomunicazioni
+ Lepida S.p.A.
+ Vodafone Italia DSL
+ Fastweb
+ Telecom Italia
+  
+
+
+
+
+
+
+
+
+

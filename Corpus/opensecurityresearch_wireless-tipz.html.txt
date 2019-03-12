@@ -1,0 +1,65 @@
+
+Wireless Tipz
+
+
+By Robert Portvliet and Tony Lee
+
+Cracking WEP on Enterprise Networks
+When cracking WEP on an enterprise wireless solution (e.g. Aruba, Cisco), you'll notice that many times the AP will send deauth frames once you start replaying ARP packets back into the network. There are a couple ways to circumvent this annoyance.  
+
+Impersonate a Connected Client
+What works for me is to simply use the MAC address of an already associated client as the source MAC in aireplay-ng instead of my own. This seems to work quite well and only requires a few stops and starts of aireplay-ng to keep the data counter heading upwards at a reasonable rate.  Brad Antoniewicz does this by crafting ICMP packets using packetforge-ng with the recovered key stream and then injecting those packets into the network. Apparently, the AP doesn’t find this behavior quite so offensive as using ARP packets. 
+
+Remain Persistent
+Nick Roberts had success using fakeauth and  his own MAC address for the source MAC in aireplay-ng. To be successful, you need to restart the ARP replay whenever you receive a deauth, until the fakeauth can authenticate you again. 
+
+FreeRADIUS-WPE with PEAP
+If PEAP clients will not connect to your FreeRADIUS-WPE server even after sending directed deauths (usually due to proper client side EAP configurations)--try sending a deauth packet to the broadcast address.  While the drivers in the wireless cards of most laptops will ignore it, a fair amount of mobile devices will respond to it. Because of this you won’t cause too much disruption on the wireless network and you will likely get authentication exchanges from the mobile devices as they attempt to re-authenticate. Plus mobile devices seem to be the most likely to be misconfigured for PEAP.  Many employees seem to eventually figure out that  they can use their domain credentials on their corporate or personal phones to connect to the corporate wireless (even though it may be against policy).  Due to a lack of knowledge, the device will be insecurely configured and will connect to anything purporting to be the corporate wireless. This attack is best executed using two cards. The first card is used for listening using the FreeRADIUS-WPE server, with a hostapd frontend for the AP. The second card is used to run airodump-ng (to monitor the AP and stations being attacked) and also to send out the deauths using aireplay-ng.  
+
+As a side note:  Brad Antoniewicz updated FreeRADIUS-WPE a couple months ago, use the latest version to save yourself headaches.  You can find the patch and package form here: http://blog.opensecurityresearch.com/2011/09/freeradius-wpe-updated.html
+
+Don't Trust Just One Tool
+This one is pretty basic, use more than one tool to do discovery. I’ve found that a lot of the tools will incorrectly identify SSID’s, signal strength, and channel, at least some of the time for whatever sundry reasons. Consequently, you might consider using tools such as airodump-ng, Kismet, and Airmagnet PRO to do discovery. Using multiple tools can provide a good consensus of how things actually look, allowing a more accurate plan of action. 
+
+Picking the Best Wireless Adapter
+In regards to which cards work best for monitor mode, injection, etc.  I can say I’ve always had good results with the Ubiquiti SRC300 a/b/g card, which a lot of folks use. Recently I’ve been using the Ubiquiti SRC71-C, and SR-71-E cards, (both a/b/g/n) which I’ve had good luck with as well. I also like the Alpha AWUS036H. It’s reliable, it is USB so it will work in a VM (although this gives weird results sometimes and I don’t prefer it), and the 1-watt of power is helpful when you need range. It’s also pretty cheap at $27. The only downside is it’s b/g only. The card I use for discovery and rogue hunting in Airmagnet is  the Ubiquiti SR71-USB, the reason being that it covers a/b/g/n, and can be used in any laptop with a USB port. I haven’t had any luck with it for injection though, and haven’t heard of anyone else having any luck with it either, unfortunately
+
+MAC Address Trends
+You can use the OUI and the last byte of the AP’s BSSID to figure out what AP’s/SSID’s belong to your target organization. This is a simple one, but I see people ignoring it quite a bit. Firstly, most organizations have equipment from the same manufacturer, so their OUI (the first 3 bytes of the BSSID) is going to be one of a couple values for all their AP’s. Secondly, on any given AP, they will likely have multiple SSID’s, with the 4th and 5th bytes of the BSSID for each SSID being the same and the last being sequential (8A, 8B, 8C, etc), which would indicate that these are all on the same AP. This is helpful when determining that the SSID you would like to attack belongs to your target organization. This observation also helps when rogue AP hunting, combined with signal strength, to help determine whether the SSID you are looking at is a possible rogue or not.  This isn’t really an exact science as someone could spoof a corporate MAC address to hide a rogue, but it helps sort things out when you have a large number of SSID’s flying around.
+
+Rogue AP Hunting
+Speaking of rogue hunting, Tony Lee wrote up a short ‘how to’ on rogue hunting with airodump-ng that I’d like to share as my final tip.
+
+Put card in monitor mode:
+
+airmon-ng start wlan0
+Initial Survey and Discovery (note:  If the network is n-only, you will miss it):
+
+airodump-ng --band abg --write Disc mon0
+
+Monitor new AP’s that show up (in another tab type the following)
+
+Watch head –n 30 Disc-01.csv
+
+Get a cart with wheels and slowly walk a planned route covering the entire floor space.  Flip periodically between the tab with airodump and the tab watching the csv file while you are rolling—it is very useful for discovery and later ideas for what may be a rogue and generally where it is.  It may be helpful to make a note of where you were if you see a strange network name show up.
+Analyze the discovered networks with the client after the walk in order to eliminate known APs:
+
+less Disc-01.csv
+
+Note the ESSID, BSSID (MAC of AP), and the channel of the unidentifiable rogue APs—you will need this info to track them down.
+Find the Rogues
+
+airodump-ng --band abg --bssid [BSSID] --write [ESSID] mon0
+
+(All of that information is what you noted in the step above)
+
+This will allow you to focus on finding only one rogue at a time.  Watch the PWR indicator to see how close it is.
+
+How close is that AP? Below are general guidelines as to proximity of the AP based off of the PWR indicator in airodump:
+
+50-60:  Really close, look around you.  A few arms lengths away.
+30-50:  ~10-15 ft away
+10-30:  In sight, but get closer
+1-10:   It is far away, maybe a floor or two above or below you, other end of the office, or potentially next building over.
+
+

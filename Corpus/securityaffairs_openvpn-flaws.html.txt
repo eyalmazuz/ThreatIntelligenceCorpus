@@ -1,0 +1,17 @@
+
+					OpenVPN fixed several remotely exploitable flaws that were not detected by recent audits					
+Recently two distinct audits were conducted to discover security issues in the OpenVPN, many flaws were found but some vulnerabilities were not spotted by the experts.
+Four of the vulnerabilities in OpenVPN 2.4.2, were found by the researcher Guido Vranken, they were fixed in the OpenVPN 2.4.3 and OpenVPN 2.3.17 releases.
+The CVE-2017-7508 vulnerability is the most severe issue, it is a Remotely-triggerable ASSERT() on malformed IPv6 packet bug that can be exploited to remotely shut down an OpenVPN server or client. The vulnerability is exploitable when the triggered if IPv6 and –mssfix are enabled and only if the IPv6 networks used inside the VPN are known.
+The second flaw found by the expert, tracked as CVE-2017-7521, is caused by the code that doesn’t free all allocated memory when using the –x509-alt-username option on OpenSSL builds with an extension (argument prefixed with “ext:”).
+“Several of our OpenSSL-specific certificate-parsing code paths did not always clear all allocated memory. Since a client can cause a few bytes of memory to be leaked for each connection attempt, a client can cause a server to run out of memory and thereby kill the server. That makes this a (quite inefficient) DoS attack.” states the advisory.
+“In particular when using the –x509-alt-username option on openssl builds with an extension (argument prefixed with “ext:”, e.g. “ext:subjectAltName”), the code would not free all allocated memory.”
+
+The third issue, tracked as CVE-2017-7521, was a potential double-free in –x509-alt-username. The vulnerability is exploitable on configurations that use the –x509-alt-username option with an x509 extension.
+“OpenVPN did not check the return value of ASN1_STRING_to_UTF8() in extract_x509_extension(). Ignoring such a failure could result in buf being free’d twice. An error in ASN1_STRING_to_UTF8() can be caused remotely if the peer can make the local process run out of memory.” reads the advisory.
+“The problem can only be triggered for configurations that use the –x509-alt-username option with an x509 extension (i.e. the option parameter starts with “ext:”).”
+A fourth vulnerability, tracked as CVE-2017-7522, was a post-authentication remote DoS when using the –x509-track option.
+“asn1_buf_to_c_string() returned a literal string if the input ASN.1 string contained a NUL character, while the caller expects a mutable string. The caller will attempt to change this string, which allows a client to crash a server by sending a certificate with an embedded NUL character.” continues the advisory. “The other way around is not interesting, as servers are allowed to stop a client by design.”
+OpenVPN also fixed other bugs, such as the a pre-authentication remote crash/information disclosure for clients tracked as CVE-2017-7520.
+Pierluigi Paganini
+(Security Affairs –  OpenVPN, hacking)

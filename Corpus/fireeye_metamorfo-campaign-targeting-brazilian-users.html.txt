@@ -1,0 +1,99 @@
+Metamorfo Campaigns Targeting Brazilian Users
+FireEye Labs recently identified several widespread malspam (malware spam) campaigns targeting Brazilian companies with the goal of delivering banking Trojans. We are referring to these campaigns as Metamorfo. Across the stages of these campaigns, we have observed the use of several tactics and techniques to evade detection and deliver the malicious payload. In this blog post we dissect two of the main campaigns and explain how they work.
+The kill chain starts with an email containing an HTML attachment with a refresh tag that uses a Google URL shortener as the target. Figure 1 shows a sample email, and Figure 2 show the contents of the HTML file.
+
+Figure 1: Malicious Email with HTML Attachment
+
+Figure 2: Contents of HTML File
+When the URL is loaded, it redirects the victim to a cloud storage site such as GitHub, Dropbox, or Google Drive to download a ZIP file. An example is shown in Figure 3.
+
+Figure 3: URL Shortener Redirects to Github Link
+The ZIP archive contains a malicious portable executable (PE) file with embedded HTML application (HTA). The user has to unzip the archive and double-click the executable for the infection chain to continue. The PE file is a simple HTA script compiled into an executable. When the user double-clicks the executable, the malicious HTA file is extracted to %temp% and executed by mshta.exe.
+The HTA script (Figure 4) contains VBS code that fetches a second blob of VBS code encoded in base64 form from hxxp://<redacted>/ilha/pz/logs.php. 
+
+Figure 4: Contents of HTA File
+After the second stage of VBS is decoded (Figure 5 and Figure 6), the script downloads the final stage from hxxp://<redacted>/28022018/pz.zip. 
+
+Figure 5: Contents of Decoded VBS
+
+Figure 6: More Contents of Decoded VBS
+The downloaded ZIP file contains four files. Two are PE files. One is a legitimate Windows tool, pvk2pfx.exe, that is abused for DLL side-loading. One is the malicious banking Trojan as the DLL.
+The VBS code unzips the archive, changes the extension of the legitimate Windows tool from .png to .exe, and renames the malicious DLL as cryptui.dll. The VBS code also creates a file in C:\Users\Public\Administrador\car.dat with random strings. These random strings are used to name the Windows tool, which is then executed. Since this tool depends on a legitimate DLL named cryptui.dll, the search order path will find the malicious Trojan with the same name in the same directory and load it into its process space.
+In Q4 of 2017, a similar malspam campaign delivered the same banking Trojan by using an embedded JAR file attached in the email instead of an HTML attachment. On execution, the Java code downloaded a ZIP archive from a cloud file hosting site such as Google Drive, Dropbox, or Github. The ZIP archive contained a legitimate Microsoft tool and the malicious Trojan.
+The Trojan expects to be located in the hardcoded directory C:\\Users\\Public\Administrador\\ along with three other files to start execution. As seen in Figure 7, these files are:
+
+Figure 7: Contents of ZIP Archive
+The string found in the file C:\\Users\\Public\\Administrador\\car.dat is extracted and used to add the registry key Software\Microsoft\Windows\CurrentVersion\Run\<string from car.dat> for persistence, as shown in Figure 8.
+
+Figure 8: Reading from car.dat File
+The sample also looks for a file named i4.dt in the same directory and extracts the contents of it, renames the file to icone.vbs, and creates a new persistent key (Figure 9) in \Software\Microsoft\Windows\CurrentVersion\Run to open this file.
+
+Figure 9: Persistence Keys
+The VBS code in this file (Figure 10) has the ability to recreate the whole chain and download the same ZIP archive.
+
+Figure 10: Contents of VBS Script
+Next, the Trojan searches for several folders in the Program Files directories, including:
+If any of the folders are found, this information, along with the hostname and Operating System version, is sent to a hardcoded domain with the hardcoded User-Agent value “Mozilla/5.0 (Windows NT 6.1; WOW64; rv:12.0) Gecko/20100101 Firefox/12.0” in the format shown in Figure 11. The value of AT is “<host_name+OS&MD>=<list of folders found>”.
+
+Figure 11: Network Traffic for Host Enumeration
+The sample iterates through the running processes, kills the following, and prevents them from launching:
+Next, it uses GetForegroundWindow to get a handle to the window the user is viewing and GetWindowText to extract the title of the window. The title is compared against a hardcoded list of Brazilian banking and digital coin sites. The list is extensive and includes major organizations and smaller entities alike. 
+If any of those names are found and the browser is one of the following, the Trojan will terminate that browser.
+The folder C:\Users\Public\Administrador\logs\ is created to store screenshots, as well as the number of mouse clicks the user has triggered while browsing the banking sites (Figure 12). The screenshots are continuously saved as .jpg images.
+
+Figure 12: Malware Capturing Mouse Clicks
+The command and control (C2) server is selected based on the string in the file “id”:
+The connection to one of the hosts is then started over raw TCP on port 9999. The command and control communication generally follows the pattern <|Command |>, for example:
+There were only four possible IP addresses that the sample analyzed could connect to based on the strings found in the file “id”. After further researching the associated infrastructure of the C2 (Figure 13), we were able to find potential number of victims for this particular campaign.
+ 
+Figure 13: Command and Control Server Open Directories
+Inside the open directories, we were able to get the following directories corresponding to the different active campaigns. Inside each directory we could find statistics with the number of victims reporting to the C2. As of 3/27/2018, the numbers were:
+A diagram summarizing Campaign #1 is shown in Figure 14.
+
+Figure 14: Infection Chain of Campaign #1
+In the second campaign, FireEye Labs observed emails with links to legitimate domains (such as hxxps://s3-ap-northeast-1.amazonaws[.]com/<redacted>/Boleto_Protesto_Mes_Marco_2018.html) or compromised domains (such as hxxps://curetusu.<redacted>-industria[.]site/) that use a refresh tag with a URL shortener as the target. The URL shortener redirects the user to an online storage site, such as Google Drive, Github, or Dropbox, that hosts a malicious ZIP file. A sample phishing email is shown in Figure 15.
+
+Figure 15: Example Phishing Email
+The ZIP file contains a malicious executable written in AutoIt (contents of this executable are shown in Figur 16). When executed by the user, it drops a VBS file to a randomly created and named directory (such as C:\mYPdr\TkCJLQPX\HwoC\mYPdr.vbs) and fetches contents from the C2 server.
+
+Figure 16: Contents of Malicious AutoIt Executable
+Two files are downloaded from the C2 server. One is a legitimate Microsoft tool and the other is a malicious DLL: 
+Those files are downloaded and saved into random directories named with the following patterns:
+The execution chain ensures that persistence is set on the affected system using a .lnk file in the Startup directory. The .lnk file shown in Figure 17 opens the malicious VBS dropped on the system.
+
+Figure 17: Persistence Key
+The VBS file (Figure 18) will launch and execute the downloaded legitimate Windows tool, which in this case is Certmgr.exe. This tool will be abused using the DLL side loading technique. The malicious Cryptui.dll is loaded into the program instead of the legitimate one and executed.
+
+Figure 18: Contents of Dropped VBS File
+Like the Trojan from the first campaign, this sample is executed through search-order hijacking. In this case, the binary abused is a legitimate Windows tool, Certmgr.exe, that loads Cryptui.dll. Since this tool depends on a legitimate DLL named cryptui.dll, the search order path will find the malicious Trojan with the same name in the same directory and load it into its process space.
+The malicious DLL exports 21 functions. Only DllEntryPoint contains real code that is necessary to start the execution of the malicious code. The other functions return hardcoded values that serve no real purpose.
+On execution, the Trojan creates a mutex called "correria24" to allow only one instance of it to run at a time.
+The malware attempts to resolve “www.goole[.]com” (most likely a misspelling). If successful, it sends a request to hxxp://api-api[.]com/json in order to detect the external IP of the victim. The result is parsed and execution continues only if the country code matches “BR”, as shown in Figure 19.
+
+Figure 19: Country Code Check
+The malware creates an empty file in %appdata%\Mariapeirura on first execution, which serves as a mutex lock, before attempting to send any collected information to the C2 server. This is done in order to get only one report per infected host.
+The malware collects host information, base64 encodes it, and sends it to two C2 servers. The following items are gathered from the infected system:
+The information is sent to hxxp://108.61.188.171/put.php (Figure 20).
+
+Figure 20: Host Recon Data Sent to First C2 Server
+The same information is sent to panel-dark[.]com/Contador/put.php (Figure 21).
+
+Figure 21: Host Recon Data Sent to Second C2 Server
+The malware alters the value of registry key Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\ExtendedUIHoverTime to 2710 in order to change the number of milliseconds a thumbnail is showed while hovering on the taskbar, as seen in Figure 22.
+
+Figure 22: ExtendedUIHoverTime Registry Key Change
+Like the Trojan from the first campaign, this sample checks if the foreground window's title contains names of Brazilian banks and digital coins by looking for hardcoded strings.
+The malware displays fake forms on top of the banking sites and intercepts credentials from the victims. It can also display a fake Windows Update whenever there is nefarious activity in the background, as seen in Figure 23.
+
+Figure 23: Fake Form Displaying Windows Update
+The sample also contains a keylogger functionality, as shown in Figure 24.
+
+Figure 24: Keylogger Function
+The Trojan’s command and control command structure is identical to the first sample. The commands are denoted by the <|Command|> syntax.
+
+Figure 25: Partial List of Victims
+This sample contains most of the important strings encrypted. We provide the following script (Figure 26) in order to decrypt them.
+
+Figure 26: String Decryption Script
+The use of multi-stage infection chains makes it challenging to research these types of campaigns all the way through.
+As demonstrated by our research, the attackers are using various techniques to evade detection and infect unsuspecting Portuguese-speaking users with banking Trojans. The use of public cloud infrastructure to help deliver the different stages plays a particularly big role in delivering the malicious payload. The use of different infection methods combined with the abuse of legitimate signed binaries to load malicious code makes these campaigns worth highlighting.

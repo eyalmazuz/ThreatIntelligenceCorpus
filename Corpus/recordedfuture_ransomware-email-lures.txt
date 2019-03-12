@@ -1,0 +1,83 @@
+Hunting Ransomware Email Lures With Recorded Future
+By Glenn Wong on January 10, 2017
+Learn how to find and analyze base64-encoded Locky attachments in Pastebin.
+In this blog post we describe a hunting methodology to find and analyze base64-encoded malware (Locky installer) sent as an attachment in phishing emails found on Pastebin. This methodology leverages Recorded Future’s API and integrations with OMNI Intelligence Partners, and can be easily customized to suit your organization’s priorities and established hunting approaches.
+The methodology is as follows:
+This technique can also be used to examine suspicious inbound email attachments, and serves as a useful general approach for both mature security teams with dedicated threat intelligence personnel and smaller teams looking for ways to boost their capabilities.
+To identify suspicious emails with base64-encoded attachments, we set up a process using Recorded Future’s API to identify deleted pastes that contain “base64 encoding” references (Recorded Future customers can get more details on the approach via this community support page). The API query targeted a specific set of pastes based on timing and keyword criteria, and a subsequent HEAD request to Pastebin checked whether or not the paste was still available or not.
+
+Example reference to deleted Pastebin entries containing base64-encoded information.
+In the last few weeks, this process has yielded information on seven different email pastes:
+Although the pastes have been deleted on Pastebin, Recorded Future users can obtain cached versions of the entries, including the base64-encoded attachment.
+
+Cached entry from Pastebin, including the base64-encoded attachment.
+Copying and pasting this text to a tool such as CyberChef reveals that this is indeed a ZIP file (note the “PK” prefix in the decoded text, which is the magic number or file signature for a ZIP file; “PK” are also the initials of Phil Katz, the co-creator of the ZIP file format).
+
+Decoded attachment (in CyberChef) showing “PK” prefix indicating this is a ZIP file.
+This file can be unzipped within CyberChef, revealing a Windows scripting file (.wsf) or JavaScript file (.js) in the most recent examples.
+
+Unzipped .wsf file from the attachment found on Pastebin.
+
+Unzipped .js file from the attachment found on Pastebin.
+The unzipped file shows obfuscated JavaScript; fortunately these examples used relatively simple obfuscation approaches. Details on how they were made readable are included in the appendix.
+
+Obfuscated JavaScript in the unzipped file “~_XASO0T_~.js”.
+
+Example of de-obfuscated JavaScript code, showing ActiveXObjects and specific domains included in the malware.
+Looking up the IOCs in Recorded Future can provide very quick context to the nature of this malware; although there are very few references to this domain, the dynamoo blog does note that the domain happyfeet.de (and others found in this .js file) are associated with Locky.
+
+
+Domain Intel Card for happyfeet.de, one of the IOCs found in the “~_XASO0T_~.js” file.
+Additional context with even clearer verdicts are easily obtained in two clicks by utilizing our OMNI Intelligence Partners, DomainTools and PhishMe. Through these extensions, we quickly discover that the domain is blacklisted and carries DomainTools’s highest risk score, while PhishMe has positively identified the domain as part of an email campaign that installs Locky on the computers of unsuspecting victims that have opened the attached zip file.
+
+DomainTools lookup in the Domain Intel Card for happyfeet.de.
+
+PhishMe lookup in the Domain Intel Card for happyfeet.de.
+
+We have demonstrated a straightforward approach to find and analyze base64-encoded attachments in suspicious emails. By utilizing Recorded Future and its OMNI Intelligence Partners, the nature of the attack and related risks can be quickly discerned, giving security teams more advanced threat warnings (if hunting with external information, such as the Pastebin entries described herein) and faster time to remediation (if reviewing inbound email traffic).
+CyberChef Recipe used to de-obfuscate the JavaScript in the above example:
+
+IOCs of seven suspicious emails identified through recent deleted Pastebin entries with base64-encoded attachments.
+Notes
+December 14: http://pastebin.com/eJvDV5LK
+MD5 Hashes
+ActiveXObjects
+Domains
+IP Addresses
+AS Numbers
+December 15: http://pastebin.com/qCGsBAiz
+MD5 Hashes
+ActiveXObjects
+Domains
+IP Addresses
+AS Numbers
+December 16: http://pastebin.com/LmCcGJMR
+MD5 Hashes
+ActiveXObjects
+Domains
+IP Addresses
+AS Numbers
+December 22: http://pastebin.com/ge6WhPvJ
+MD5 Hashes
+ActiveXObject
+Domains
+IP Addresses
+AS Numbers 
+December 22: http://pastebin.com/GW0DXfCR
+MD5 Hashes
+ActiveXObject
+Domains
+IP Addresses
+AS Numbers
+December 23: http://pastebin.com/VYFNEtGP
+MD5 Hashes
+ActiveXObject
+Domains
+IP Addresses 
+AS Numbers
+December 23: http://pastebin.com/cjj96hsq
+MD5 Hashes
+ActiveXObject
+Domains
+IP Addresses
+AS Numbers

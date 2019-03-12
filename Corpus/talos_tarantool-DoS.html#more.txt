@@ -1,0 +1,75 @@
+
+Vulnerabiity Spotlight: Tarantool Denial of Service Vulnerabilities
+
+
+
+Vulnerabilities discovered by Talos
+
+
+
+
+
+Talos is disclosing two denial of service vulnerabilities (CVE-2016-9036 & CVE-2016-9037) in Tarantool. Tarantool is an open-source lua-based application server. While primarily functioning as an application server, it is also capable of providing database-like features and providing an in-memory database which can be queried using a protocol based around the MsgPack serialization format. Tarantool is used by various service providers such as Mail.RU, or Badoo.
+
+
+
+
+
+
+Details
+
+
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff}
+p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff; min-height: 14.0px}
+span.s1 {font-variant-ligatures: no-common-ligatures}
+
+
+
+TALOS-2016-0254 (CVE-2016-9036) Tarantool Msgpuck mp_check Denial of Service Vulnerability 
+
+
+
+The Msgpuck library is used to encode and decode data that is serialized with the MsgPack format. This library was originally implemented to be the default library used for serialization and deserialization for the Tarantool Application Server, but is also distributed as an independent library to provide support for the MsgPack format to other C or C++ applications.
+
+
+
+When deserializing data that is encoded with the MsgPack format, the Msgpuck library provides a function named ‘mp_check’ that's used to validate the Msgpack data before it is decoded. A specially crafted packet can cause the ‘mp_check’ function to incorrectly return success when trying to check if decoding a map16 packet will read outside the bounds of a buffer, resulting in a denial of service condition.
+
+
+
+TALOS-2016-0255 (CVE-2016-9037) Tarantool Key-Type Denial of Service Vulnerability 
+
+
+
+Tarantool's protocol is based around the MsgPack serialization format. This protocol is used to encode specific request types which are then made against the server. Inside the header of this protocol is data encoded as a map type in which each key is represented by integers. Each of these integers are used to index into an array which is used to determine the type of the key that was specified. By sending a specially crafted packet, an attacker can cause the ‘xrow_header_decode’ function to access an out-of-bounds memory location resulting in a denial of service condition on the server.
+
+
+
+Tested Versions
+
+
+
+Tarantool 1.7.2-0-g8e92715
+
+Msgpuck 1.0.3
+
+
+
+Coverage
+
+
+
+The following Snort Rules will detect exploitation attempts. Note that additional rules may be released at a future date and current rules are subject to change pending additional vulnerability information. For the most current rule information, please refer to your FireSIGHT Management Center or Snort.org.
+
+
+
+p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff}
+p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 10.0px Monaco; color: #000000; background-color: #ffffff; min-height: 14.0px}
+span.s1 {font-variant-ligatures: no-common-ligatures}
+
+
+
+Snort Rules: 41080-41082
+
+

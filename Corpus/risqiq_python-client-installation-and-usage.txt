@@ -1,0 +1,53 @@
+Python Client Installation and Usage
+From OSX, there are two simple ways to install the RiskIQ client. OSX already comes with Python installed (though an older version than the latest stable Python release), so you can either:
+1. Use the pre-installed version of Python
+2. Use Homebrew to install a more recent release
+But there is a myriad of ways to install Python and pip via other routes, such as compiling CPython from source or running get-pip.py from https://pip.pypa.io/en/stable/installing/. The client should also be compatible with Python 3.x.
+You can install the RiskIQ client with sudo or into a virtual environment as well. It is recommended to install into a virtualenv if you have other Python projects, so you keep all dependencies separate—though this is more difficult if you have no experience with virtualenv (we’ll leave it as an exercise for the reader should they choose to keep other Python projects’ dependency trees separate).
+For any users with pip pre-installed, RiskIQ is in PyPI so you can install it simply by running “pip install RiskIQ”, as a user or with sudo.
+$ sudo easy_install pip
+$ sudo pip install riskiq
+Install homebrew through: http://brew.sh/
+$ brew install python
+$ sudo pip install riskiq
+$ sudo apt-get install python-pip
+$ sudo pip install riskiq
+To upgrade with any system with pip:
+$ sudo pip install –upgrade riskiq
+Once you have Python installed, you need to configure the client through the riq-config application, which you’ll install along with the client.
+To access the API, you will need a token and key, which will be provided for you by RiskIQ customer service. These can be installed into your environment through the following command:
+$ riq-config setup <TOKEN> <KEY>
+There are several endpoints to which the client will give you access, all of which are documented in the official API docs, which a RiskIQ employee can provide. The client documentation is here: http://pythonhosted.org/riskiq/riskiq.html
+The client provides a command-line interface using tools such as riq-blacklist to access the server but a programming interface is available as well, documented by the site linked above.
+The following command-line programs are available after installation:
+riq-config
+commands: setup, show
+riq-binary: list, download
+riq-landingpage: get, submit, crawled, flagged, binary, projects
+riq-whois: –domain, –email, –nameserver
+riq-blacklist: lookup, incident, incidentlist, list, malware
+riq-dns: name, data
+All programs provide a –help/-h option to provide the basic information on the subcommands. Each subcommand provides this as well. For example:
+$ riq-landingpage –help
+$ riq-landingpage submit –help
+Here is example usage of the riq-landingpage command-line program:
+$ riq-landingpage submit http://example.com/?foo=bar
+This command will submit the above link to the default project on the workspace. This default functionality will serve most purposes, but there are optional arguments you can pass as well.
+To submit to a specific project, use the optional argument –project or -p.
+$ riq-landingpage submit http://example.com/?foo=bar –project myproject
+The –keyword or -k option is also useful if you want to pass in a keyword which will be searchable through the webapp. For example:
+$ riq-landingpage submit http://example.com/?foo=bar –keyword foo
+The same functionality is also available through the Python programming interface. As long as the configuration was set up through “riq-config setup”, you will be able to create a client in a way similar to the following example:
+from riskiq.api import Client
+client = Client.from_config()
+projects = client.get_landing_page_projects()
+first_project_name = projects[‘landingPageProject’][0][‘name’]
+To submit a landing page programmatically:
+client.submit_landing_page(‘http://example.com’)
+or for bulk:
+client.submit_landing_page([{‘url’: ‘http://example.com’, ‘keyword’: ‘test’}, …])
+All available client commands are documented (http://pythonhosted.org/riskiq/riskiq.html) and visible through the interpreter as well:
+help(client)
+or for a specific command:
+help(client.submit_landing_page)
+Any questions? Comment below or email research@www.riskiq.com and one of our researchers will get back to you. Thanks for reading!

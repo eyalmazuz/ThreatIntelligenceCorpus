@@ -1,0 +1,41 @@
+
+Hack the Troll-1 VM (Boot to Root)
+
+Hello friends today we are going to solve another CTF challenge “Troll 1” of the vulnhub labs. The level of this challenge is not so tough and its difficulty level is described as beginner/intermediate. You can download it from here https://www.vulnhub.com/entry/tr0ll-1,100/
+Penetrating Methodology
+Let’s Begin!!
+Start with netdiscover command to identify target IP in the local network, in my network 192.168.1.102 is my target IP, you will get yours.
+
+Further let’s enumerate open and protocols information in the target’s network with help of nmap following command:
+From its result we found port 21 for FTP, 22 for SSH and 80 for HTTP are open. Moreover FTP anonymous login is allowed.
+
+So we explore target IP in the web browser and welcomed by following image………………
+
+Since FTP anonymous login was allowed so we logged in as anonymous: anonymous and download a lol.pcap file
+
+When we opened lol.pcap file it was a wireshark TCP packet and when we have opened 1st TCP stream it put up following image as shown.
+
+While looking in TCP stream 2, I notice something suspicious “sup3rs3cr3tdirlol” it could any possible web directory. So let’s step up for further approach and figure out what this sup3rs3cr3tdirlol indicates.
+
+So when I explore http://192.168.1.102/sup3rs3cr3tdirlol in the web browser, it put up following web page where we found a file roflmao and decide to download it.  
+
+Then with help of “string” a tool in kali Linux we explored the file roflmao and got a message ‘Find the address 0x0856BF to proceed’
+
+Then again I explored /0x0856BF in the web browser considering a possible web directory and indeed it gives two sub-directories as shown in the below image.
+
+I opened both sub-directories and /good-luck looks interesting to me as it called a lol.txt file which contains a wordlist and might be this could be useful in conducting the brute force attack against ssh login. Also the folder /this_folder_contains_the_password gave hint “Pass.txt” could be possible password.
+
+Then we copied lol.txt wordlist into a text file and saved as dict.txt for username (remove 5th line while pasting the content of lol.txt into dict.txt). Since we have username dictionary file and also well aware from password let’s lunch brute-force attack for ssh login and for this you can use following command.
+OOOooooh Great!! Hhere is our possible ssh login credential overflow:Pass.txt
+
+With help of above extracted credential we have made successful SSH login and spawned tty shell victim’s machine. Now let’s finished task quickly and for that we need to escalated root privileges……………. 
+Then we have enumerated all writeable file with help of above command.
+
+We found a python file cleaner.py inside /lib/log and it is a small program. So here the following script was added by admin to cleanup all junk file from inside /tmp and these type of files depends upon specific time interval for executions.
+
+There so many methods to gain root access as in this method we copied /bin/sh inside /tmp and enabled SUID for /tmp/sh. It is quite simple, first, open the file through some editor for example nano sanitizer.py and replace“rm -r /tmp/*” from the following line as given below:
+
+After some time it will create an sh file inside /tmp directory having SUID permission and when you will run it you will give root access.
+HURRAYYYYYYY!!! We hit the Goal……………………………….
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

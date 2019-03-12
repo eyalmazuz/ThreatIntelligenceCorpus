@@ -1,0 +1,86 @@
+
+FSFlow - A Social Engineering Call Flow Application
+
+
+By Brad Antoniewicz.
+
+
+A few months ago I was thinking about ways to improve and standardize social engineering calls. It's a difficult thing to do, conversations can go almost anywhere over the span of a phone call which makes defining a specific process hard, if not impossible. As I explored the idea, I was reminded of a high school friend who had a telemarketer job one summer. He told me how nearly everything they said was presented to them on a screen in front of them, and they would navigate through a process flow as the call progressed. I decided to use this model and apply it to social engineering in a tool called "FSFlow". Now this is mostly a proof of concept tool but it's fully functional so I encourage you to try it out. Here's what its all about. 
+Judging User Responses
+One of the major pains with designing an application like this is judging the response of a user. You can never predict the user's exact response so the measure of the response needs to be somewhat abstracted. Our approach here is to identify if the user's response is positive or negative. For instance, if you say "Hi, How are you?" and they say "Great!" - that's a clearly positive response, while "What do you want." is a bit more negative. Similarly, if you ask someone "What is your password?" and they provide it to you, that would be positive, while anything else is likely to be negative. 
+
+The difficult thing here is that many user responses aren't easily categorized as negative or positive; perhaps a sliding scale would be more appropriate - but that would create tons of possible branches, making a complete call flow impractical. 
+
+Another really interesting option that was suggested to me is using voice analysis to identify how the user feels. The person who suggested the idea used to work for a company that would try to identify if a person was happy, sad, felt helped, etc... after a customer service call. It would be interesting to implement this in the future .
+Logging
+
+Another hugely important thing we wanted to do with FSFlow is capture how the call progressed. The call log records how the call progresses and what information is obtained at what points in the call flow. You could potentially use this information to determine where users need more security awareness training - e.g. every user was willing to disclose their IP address, but only some gave their password or even when asking this specific question, users got suspicious and ended the call. 
+
+While we don't do this now, another suggestion we received was to record the conversation or integrate it with Skype - so that the calls can be reviewed later on. 
+The Interface
+FSFlow's interface is meant to be as simple and straightforward as possible so that the caller is not overwhelmed or distracted during the call. During the planning phase of the application, I created a sketch to outline what the interface should look like: 
+
+
+For the first release, we slimmed things a bit, resulting in 4 major areas: the statement pane, response pane, objectives and call variables:
+
+Statement Pane
+The statement pane is the actual wording the caller says during the call. This is your social engineering attack. The important thing about this pane is that the wording is clear and easy to read aloud. You'll notice in the screenshot above that there are placeholders, e.g. "[TARGETNAME]", this are call specific variables that are populated once you populate the Call Variables pane (described below). 
+Response Pane
+Directly under the statement pane is the response pane compromised of the "Negative Response", "Positive Response", Busted" and "Recovery Mode" buttons. Each of these buttons progress the call to the next flow state. The "Recovery Mode" button is meant to gently direct the call to an end without aggravating the callee. The "Busted" button is more of an "Ok, you got me" response where you let the callee know that this is a social engineering call, they should contact the point of contact for the company (the person that hired the caller), and to please not tell the coworkers of the test :)
+Objectives
+The Objectives pane is where the caller can log what elements of information they're able to obtain during the call.
+Call Variables
+Call Variables customize the flow to each individual call. Before the call starts, the caller populates these variables so that the placeholders in the statement pane are replaced with pertinent information. It also serves as a reminder to the caller to who they are pretending to be!
+The Call Flow
+The most important component of FSFlow is its XML based call flows. The idea behind the call flow is that they could be easily shared to be improved and make standardized attacks. Let's look at sample.xml that's included with the application.
+
+The entire call flow is included within a <CallFlow> block which takes one attribute, name. Within the CallFlow block, you have Objective, CallBlock, and FlowBlocks
+Objectives
+Defining objectives is pretty straightforward:
+ <Objective>Login Username</Objective>
+<Objective>Login Password</Objective>
+<Objective>PIN</Objective>
+
+
+CallBlocks
+A CallBlock is effectively a container for an individual statement. These statements are then linked together within the FlowBlock below. Place holders can be anything you'd like, as long as they're wrapped in brackets. FSFlow analyzes the flow on start up to populate the "Call Variables" pane. 
+ <CallBlock name="Introduction">
+  <statement value="Hello [TARGETNAME], *PAUSE* My name is [CNAME] from [CROLE]"/>
+ </CallBlock>
+ <CallBlock name="Website Problems">
+  <statement value="I'm having trouble logging into the [WEBSITE] application.  Can you help me?  *PAUSE* [POC] told me to go to [URL] and login, but I get a strange error. *PAUSE* Can you login?"/>
+ </CallBlock>
+
+
+
+
+The "Busted" Call block is a static value used throughout the call:
+ <CallBlock name="Busted">
+  <statement value="I'm sorry to bother you. Actually I work for Foundstone, a Division of McAfee. We were hired by your company to perform 'Social Engineering' testing. You can contact [POC] if you need to confirm this. Since I'm conducting this testing, I'd ask that you don't tell your coworkers"/>
+ </CallBlock> 
+
+
+FlowBlocks
+
+The FlowBlock links together individual CallBlock and ties them to buttons.
+  <FlowBlock name="FlowBlock1">
+  <CallBlockFlow value="Caller Pickup">
+   <PositiveResponse value="Introduction"/>
+   <NegativeResponse value="No Answer"/>
+   <RecoveryResponse value="Recovery Response"/>
+  </CallBlockFlow>
+    </FlowBlock>
+
+
+Todo
+The biggest thing that we need to do now is develop solid CallFlows, without them, it's really hard to judge exactly how successful this will be! If you have an idea for a flow, let me know!
+Download
+You can download FSFlow now!
+
+https://github.com/OpenSecurityResearch/fsflow/releases/
+Have any other ideas? Let us know in the comments below!
+
+
+Note: Image above is from here
+
+

@@ -1,0 +1,30 @@
+Do You See What I CCM?
+Reviewing forensic keyword searches can be confusing because it is often difficult for an analyst to determine the source of the various structures that contain string matches. One such structure belongs to Microsoft's System Center Configuration Manager's (SCCM) software metering history, which can record the path, name, size, associated user name, last used time, launch count, and PE metadata of executed files.
+Microsoft designed SCCM software metering to report application usage for statistical analysis. Microsoft TechNet provides a more complete overview of this feature. While software metering data is meant to be reviewed by system administrators on the SCCM server, client systems retain execution history of recently used applications. For forensic investigators, this execution history can be a goldmine for identifying both the presence of deleted files and confirming that a file executed on a system.
+Since SCCM generates this data, it will only be recorded if the system is connected to a domain with an SCCM server and if software metering is enabled. For these reasons, this artifact will likely only exist on enterprise systems. Personal computers for home users or criminals likely will not contain this artifact.
+If enabled, Windows stores software metering execution logs as CCM_RecentlyUsedApps records in the Windows Management Instrumentation repository. The FireEye Labs Advanced Reverse Engineering (FLARE) team released scripts that parse this repository last year. Using FLARE's python-cim application, analysts can enumerate all allocated CCM_RecentlyUsedApps instances from the root\ccm\SoftwareMeteringAgent namespace of a WMI repository.
+To extract allocated CCM_RecentlyUsedApps records from a WMI repository, python-cim requires the CIM repository files OBJECTS.DATA, MAPPING*.MAP, and INDEX.BTR from the C:\Windows\System32\wbem\Repository directory on a host.  Figure 1 provides a command to extract allocated CCM_RecentlyUsedApps records from CIM repository file located in WMI_Repo/ with python-cim.
+
+Figure 1: Extracting allocated CCM_REcentlyUsedApps records with python-cim
+This may take a while to execute depending on the WMI repository's size. The output file will be tab delimited, which should parse easily into your favorite spreadsheet application. This data allows for keyword searching of files, paths and user accounts, as well as timeline analysis. However, the most useful analysis method for this data may be anomaly detection.
+Figure 2 provides a transposed excerpt of python-cim’s show_CCM_RecentlyUsedApps.py output. Note how legitimate files contain PE metadata fields such as description, company name and product name while the attacker did not configure that information in the malicious file C:\Windows\Temp\evl.exe. Since legitimate files usually contain this metadata, identifying null values is a great place to begin analysis. Also note that some fields may not be recorded.
+
+Figure 2: Extracted CCM_RecentlyUsedApps records from python-cim
+Even though python-cim can extract CCM_RecentlyUsedApps records, old records may have been moved to inactive pages or even partially overwritten. Due to an easily identifiable header and well defined object structure, we can carve all allocated and unallocated CCM_RecentlyUsedApps records from the OBJECTS.DATA file with CCM_RUA_Finder.py.
+To understand how to carve CCM_RecentlyUsedApps records we must understand the structure of the WMI CCM_RecentlyUsedApps class, as each record is an instance of this class. All WMI class definitions share a similar structure that at a high-level consists of a header section, a property section and a data section. The header section contains a unique GUID that allows us to quickly identify class instances in the raw data, and the property and data sections contain the values we are interested in carving. Most importantly, the order of the values in the property and data sections is static, meaning we can reliably carve fields using a combination of offsets and regular expressions.
+Figure 3 provides a sample hexdump of a CCM_RecentlyUsedApps class instance from an OBJECTS.DATA file.
+
+Figure 3: Hexdump of a complete CCM_RecentlyUsedApps record from an OBJECTS.DATA file
+Figure 4 provides the parsed contents of this CCM_RecentlyUsedApps class instance and highlights values of interest.
+
+Figure 4: Parsed contents of a CCM_RecentlyUsedApps record with highlighted values of interest
+A complete analysis of WMI class and class instance structures is covered in the FLARE team’s “Windows Management Instrumentation (WMI) Offense, Defense, and Forensics” white paper.
+CCM_RUA_Finder.py can extract complete and even some partially overwritten CCM_RecentlyUsedApps records from any OBJECTS.DAT file that contains such CCM_RecentlyUsedApps class instances. The tab delimited output will open nicely in your spreadsheet editor and provide the same analysis capabilities stated earlier. Figure 5 provides a command to extract allocated, unallocated and partially overwritten CCM_RecentlyUsedApps records from an OBJECTS.DATA file with CCM_RUA_Finder.py.
+
+Figure 5: Extracting allocated, unallocated, and partially overwritten CCM_RecentlyUsedApps records with CCM_RUA_Finder.py
+This command should complete quickly and will carve records to produce output as seen in Figure 6.
+
+Figure 6: Extracted full and carved CCM_RecentlyUsedApps records from CCM_RUA_Finder.py
+Just One Piece of the Puzzle
+CCM_RecentlyUsedApps records are a great artifact to identify both executed files and deleted attacker files when available. As with all forensic artifacts, parsing these software metering agent log records should be just one part of a complete and well-balanced investigation strategy. 
+Download CCM_RUA_Finder.py.

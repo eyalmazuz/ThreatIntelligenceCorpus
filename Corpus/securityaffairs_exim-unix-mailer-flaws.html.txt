@@ -1,0 +1,18 @@
+
+					Unix mailer Exim is affected by RCE, DoS vulnerabilities. Apply the workaround asap					
+Exim is a message transfer agent (MTA) developed at the University of Cambridge for use on Unix systems connected to the Internet, it is the most popular MTA on the Internet.
+The Internet mail message transfer agent warned of flaws through the public bug tracker, an unfortunate choice to disclose it because the notice could be ignored.
+According to the message published on the bug tracker, the first vulnerability, identified as CVE-2017-16943, is a use-after-free bug which could be exploited by an attacker to remotely execute arbitrary code in the SMTP server by crafting a sequence of BDAT commands.
+“A remote code execution vulnerability has been reported in Exim, with immediate public disclosure (we were given no private notice). A tentative patch exists but has not yet been confirmed.
+With immediate effect, please apply this workaround: if you are running Exim 4.88 or newer (4.89 is current, 4.90 is upcoming) then in the main section of your Exim configuration, set: 
+chunking_advertise_hosts = 
+That’s an empty value, nothing on the right of the equals. This disables advertising the ESMTP CHUNKING extension, making the BDAT verb unavailable and avoids letting an attacker apply the logic.”
+Assigning the empty value to the chunking_advertise_hosts turns off the vulnerable function.
+
+The advisory included a proof-of-concept code that cause the Exim crash because the function pointer, receive_getc is not reset.
+Below the announcement of a second DoS vulnerability, tracked as CVE-2017-16944, affecting the SMTP daemon in Exim 4.88 and 4.89.
+The flaw is caused by the improper checking for a ‘.’ character to signify the end of an email when parsing the BDAT data header.
+“The receive_msg function in receive.c in the SMTP daemon in Exim 4.88 and 4.89 allows remote attackers to cause a denial of service (infinite loop and stack exhaustion) via vectors involving BDAT commands and an improper check for a ‘.’ character signifying the end of the content, related to the bdat_getc function.” state the advisory published by the NIST.
+Sys admins are recommended to update their installs to the Exim version 4.90.
+Pierluigi Paganini
+(Security Affairs – MTA, hacking)

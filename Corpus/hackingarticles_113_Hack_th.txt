@@ -1,0 +1,46 @@
+
+Hack the pWnOS: 2.0 (Boot 2 Root Challenge)
+
+Hello friends!! Today we are going to solve a fun CTF challenge named “pWnOS: 2.0” presented on Vulnhub for practising Penetration Testing by pWnOS. This virtual machine is having intermediate to medium difficulty level. You can download the Lab from here.
+Initial Configuration of Lab:
+Configure your attacking platform to be within the 10.10.10.0/24 network range.
+We set the VMWare’s Network Adapter to Host-Only but can set it to either NAT or Host-Only depending on your setup.
+Goal: Get Root Shell.
+Penetrating Methodologies
+Let’s Start!!!
+Usually we start by getting the IP Address of the Lab. In this case we already know the static IP address of the Lab, but still for the sake of doing it let’s do it.
+netdiscover
+
+Now let’s move towards enumeration in context to identifying the running services and open ports of victim’s machine by using the most popular tool Nmap.
+
+Knowing port 80 is open in victim’s network I preferred to explore his IP in the browser. It seems a basic site with a login form and Register form.
+
+But I tried to follow another set of direction by running a Web Content Scanner (dirb) and found the blog directory.
+
+After finding the blog directory, I tried to open the blog directory in the browser, it gave another simple looking webpage when looked at the first glance seems not interesting but as we know that the authors of these labs usually like to hide in plain sight. So, I opened the source code of the Webpage.
+And as I closely inspected the source code, I ran into the line shown in the screenshot, it is an important hint as it tells us that the Website runs on Simple PHP Blog and the Version 0.4.0.
+
+Simple PHP Blog is also known as ‘sphpblog’. So, I searched for any possible exploits for sphpblog in Metasploit framework. I found a bunch of them. Among them, I though to try out the exploit/unix/webapp/sphpblog_file_upload.
+In Metasploit Shell I ran the following command to exploit:
+This exploit failed to give us and any shell, but it gets creative and created a Logon Credentials as shown in the Screenshot.
+Let’s use these credentials to Login
+
+(You will get a different set of Logon Credentials as the Exploit generated them unique every time.)
+Logging In gave us some addition option in the Menu. Among which the Upload Image Option took my attention.
+
+Upload image option opens a simple Upload webpage. Let’s try to upload the php-reverse-shell.php which is inbuilt in kali Linux from path: /user/share/webshells/php. Although uploading php files most probably will be not allowed.
+
+Wow!! We successfully uploaded the php-reverse-shell directly. This is awesome.
+So, I browsed to the location of the uploaded php file, which is 10.10.10.100/blog/images. (Found this location in the initial dirb scan)
+
+Now let’s open the file and start netcat listen in a new terminal to get victim’s reverse connection.
+nc -lvp 1234
+
+We got an improper shell, let’s convert it into a proper shell using the python one-liner
+Now, traversing Directory to Directory, files to files, I ended up in the /var directory and here I found a php file named mysqli_connect.
+On opening this file using cat, I found the root credentials
+
+Now let’s wrap up this lab by getting the root shell, for this I will using a ssh connection to the lab generated with the root credentials and as you can see in the screenshot given, we got the root shell.
+ssh root@10.10.10.100
+
+Author: Pavandeep Singh is a Technical Writer, Researcher and Penetration Tester Contact here

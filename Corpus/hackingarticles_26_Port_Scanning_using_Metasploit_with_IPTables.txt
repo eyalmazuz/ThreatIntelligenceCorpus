@@ -1,0 +1,56 @@
+
+Port Scanning using Metasploit with IPTables
+
+Scanning port is a technique used by penetration tester for identifying state of computer network services associated with particular port number. For example port 80 is available for HTTP service and port 22 is available for FTP service.  We suggest using Nmap for enumerating port state, for best practice click here and learn Nmap working in detail.
+Moreover Metaspolite also serves port scanning for enumerating computer network services and make it easier as compare to Nmap.
+Let’s start!!
+Requirement
+Attacker:  Kali Linux (192.168.1.103)
+Target: Ubuntu (192.168.1.105)
+Open the terminal and add given below iptables rules for incoming packet traffic in target’s network which will drop the tcp ACK packet on port 80 and SYN packet on port 22 respectively.
+sudo iptables -I INPUT -p tcp –tcp-flags ALL ACK –dport 80 -j DROP
+sudo iptables -I INPUT -p tcp –tcp-flags ALL SYN –dport 22 -j DROP
+
+Now open the terminal in your Kali Linux and type msfconsole to load metasploit framework and execute given below auxiliary command to run specific module.
+This module will Map out firewall rulesets with a raw ACK scan. Any unfiltered ports found means a stateful firewall is not in place for them.
+Now as specified in given below command this module will send ack packet on port 21, 22, 80,443 to enumerate state of firewall for these ports. If it receives reset packet as reply from destination port then it will display unfiltered state for that particular port and if does not received reset packet from destination port then it will not show any comment for that particular port which means the port is protected by firewall.
+use auxiliary/scanner/portscan/ack
+msf auxiliary(ack) > set rhosts 192.168.1.105
+msf auxiliary(ack) > set ports 21,22,80,443
+msf auxiliary(ack) >exploit
+From given below image you can observed that it is showing TCP unfiltered for port 21,22,443 and did not comment for  port 80 hence port 80 is filtered . This scan can be only used for identifying state of firewall in terms of port filter or unfiltered.
+
+We had used wireshark for demonstrating ack scan and here you can observe that port 80 doesn’t reply with RST packet which means ack packet for port 80 has been blocked by network administrator.
+
+This module enumerates open TCP services using a raw SYN scan, here syn packet will be sent on port 21, 22, 80,443 to enumerate state open/closed for these ports. If it receives syn,ack packet as reply from destination port then it will display OPEN state for that particular port and if does not receives syn,ack packet from destination port then it will not show any comment for that particular port  which indicates filtered or Closed state for that particular port.
+use auxiliary/scanner/portscan/syn
+msf auxiliary(syn) > set rhosts 192.168.1.105
+msf auxiliary(syn) > set ports 21,22,80,443
+msf auxiliary(syn) >exploit
+From given below image you can observed that it is showing TCP OPEN for port 21,80,443 and did not comment for  port 22 hence port 22 is filtered or closed .
+
+Again we had used wireshark for demonstrating syn scan and here you can observe that port 22 doesn’t reply with SYN, ACK packets which mean SYN packet for port 22 has been blocked by network administrator.
+Moreover you can observe following packet communication between source and destination port.
+
+Enumerate open TCP services by performing a full TCP connect on each port. This does not need administrative privileges on the source machine, which may be useful if pivoting.
+use auxiliary/scanner/portscan/tcp
+msf auxiliary(tcp) > set rhosts 192.168.1.105
+msf auxiliary(tcp) > set ports 21,22,80,443
+msf auxiliary(tcp) >exploit
+This scan is similar as SYN scan only the difference is that it follows TCP full communication i.e. 4-way handshake and SYN scan is follows half TCP communication.
+From given below image you can observed that it is showing TCP OPEN for port 21,80,443 and did not comment for  port 22 hence port 22 is filtered or closed.
+
+Here you can observe that port 22 doesn’t reply with SYN, ACK packets which mean SYN packet for port 22 has been blocked by network administrator.
+Moreover you can observe following packet communication between source and destination port.
+
+Enumerate open|filtered TCP services using a raw “XMas” scan; this sends probes containing the FIN, PSH and URG flags.
+Instead of using TCP 3-way handshake communication this scan uses other tcp flags for TCP communication for enumerating state of ports.
+use auxiliary/scanner/portscan/xmas
+msf auxiliary(xmas) > set rhosts 192.168.1.105
+msf auxiliary(xmas) > set ports 21,22,80,443
+msf auxiliary(xmas) >exploit
+From given below image you can observed that, this time it has shown TCP OPEN| FILTERED for all ports i.e.  21,22,80,443
+
+If you notice given below image here source port sends FIN, PUSH and URG packets to destination and destination port didn’t sent any reply to source port which indicates above specified port are open and if any destination port sends RST, ACK packet to source port then it indicated that particular port is closed.
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

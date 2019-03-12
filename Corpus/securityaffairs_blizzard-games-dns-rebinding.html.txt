@@ -1,0 +1,22 @@
+
+					Google hacker found a critical flaw in Blizzard Games that expose millions of PCs to DNS Rebinding attacks					
+The notorious white hat hacker Tavis Ormandy at the Google’s Project Zero team made the headlines again, this time he discovered a severe flaw in Blizzard games that could be exploited by remote attackers to run malicious code on gamers’ computers.
+The impact of the discovery is potentially amazing, millions of PC are at risk. Every month, roughly half a billion users play popular online games created by Blizzard Entertainment, including World of Warcraft, Overwatch, Diablo III, Hearthstone and Starcraft II.
+
+Play the Blizzard games is very simple, players just need to install a client application, called ‘Blizzard Update Agent.‘ The application runs JSON-RPC server over HTTP protocol on port 1120, and “accepts commands to install, uninstall, change settings, update and other maintenance related options.”
+“All blizzard games are installed alongside a shared tool called “Blizzard Update Agent”, investor.activision.com claims they have “500 million monthly active users”, who presumably all have this utility installed.” wrote Ormandy on a Chromium thread. “The agent utility creates an JSON RPC server listening on localhost port 1120, and accepts commands to install, uninstall, change settings, update and other maintenance related options. Blizzard use a custom authentication scheme to verify the rpc’s are from a legitimate source”
+Ormandy demonstrated that the Blizzard Update Agent is vulnerable to ‘DNS Rebinding’ attack that allows any website to create a dns name that they are authorized to communicate with, and then make it resolve to localhost.
+The local Blizzard updater service fails to validate what hostname the client was requesting and responds to such requests.
+Practically, the website poses itself as a bridge between the external server and your localhost, “this means that *any* website can send privileged commands to the agent.”
+The attackers can launch a DNS Rebinding attack to create a DNS entry to bind any attacker-controlled web page with 127.0.0.1 and trick users into visiting it, with this technique a hacker can remotely send privileged commands to the Blizzard Update Agent using JavaScript code.
+Ormandy published a proof-of-concept exploit that executes DNS rebinding attack against Blizzard clients.
+“I have a domain I use for testing called rbndr.us, you can use this page to generate hostnames: https://lock.cmpxchg8b.com/rebinder.html Here I want to alternate between 127.0.0.1 and 199.241.29.227, so I use 7f000001.c7f11de3.rbndr.us:
+“Exploitation would involve using network drives, or setting destination to “Downloads” and making the browser install dlls, datafiles, etc. I made a very simple demo, I’m sure it’s quite brittle, but hopefully you get the idea! http://lock.cmpxchg8b.com/yah4od7N.html See screenshot attached of how it’s supposed to look.”
+
+Ormandy reported the flaw to Blizzard in December, but after initially communication, Blizzard stopped responding his messages. According to the expert, the companyrolled out just partial mitigation in the client version 5996.
+Ormandy was disappointed about the company’s behavior.
+“Blizzard were replying to emails, but stopped communicating on December 22nd. Blizzard are no longer replying to any enquiries, and it looks like in version 5996 the Agent now has been silently patched with a bizarre solution.” wrote the expert.
+“Their solution appears to be to query the client command line, get the 32-bit FNV-1a string hash of the exename and then check if it’s in a blacklist. I proposed they whitelist Hostnames, but apparently that solution was too elegant and simple. I’m not pleased that Blizzard pushed this patch without notifying me, or consulted me on this.”
+Once Ormandy publicly disclosed the issue, Blizzard informed him that it addressed the bug with a more robust Host header whitelist fix that is currently under validation in a QA environment.
+Pierluigi Paganini
+(Security Affairs – DNS Rebinding attacks, Blizzard Games)

@@ -1,0 +1,70 @@
+Malvertising and OpenX servers
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 14 November 2013
+
+Malvertising and OpenX serversMalvertising is an abbreviation of malicious advertising and means that legitimate sites spread malware from their infected advertisement systems. There were many malvertising campaigns in last few years, some of them confirmed even on big sites like The New York Times, but most of them go unnoticed because they are well hidden and served only to selected users. Earlier this year, one of our top analysts found a stealth infection on a Czech entertainment site and began to watch it. We were able to obtain source code from infected sites, and I would like to show you how easily hacking is done and what can be done to secure your server.
+In this case all infected servers contained OpenX (open source solution for advertisement) which has a rich history of vulnerabilities. Look, for example, at last three versions.
+
+In version 2.8.9 and previous versions there was a SQL injection
+Version 2.8.10 contained a hidden backdoor that allowed remote PHP execution
+The latest version 2.8.11 offers more security, but there are known vulnerabilities
+
+In summer 2013, OpenX was re-branded as Revive Adserver and several security flaws were patched. I strongly recommend you update to the latest version (currently 3.0.0) to secure your advertisement solution from being misused by hackers.
+How do they get in?
+An analysis of infected web pages revealed that the attacker used SQL injection to obtain administrator log ins and passwords from the database. Then he used credentials to log in and exploited another flaw to upload a backdoor with executable extension. Actually there were more backdoors and PHP scripts hidden in various places suggesting that this server was attacked multiple times.
+
+This picture shows all scripts and their dates of creation found on the infected page. The first three files are backdoors and tools for server control. The last two files are different; they serve as an interface to the database.
+Files "inj" and "minify" seem to be two versions of the same script, which connects to the database and either removes injected scripts or add new ones. The result of this modification is an iframe appended to advertisement banners. The picture below shows a SQL query used to insert malicious java-script.
+The described infection is really hard to trace, because it's not present on the server all the time, but only in predefined times and shows only to users coming from specific zone.
+What scripts are injected?
+
+This picture shows the first script from a chain that leads us to a landing page where the computer gets checked for vulnerable versions of Java and infected if it is possible. This script contains a link to JavaScript located on another hacked webpage and also a Google Analytics script for tracking redirected users. As I wrote, this is only the first from a row of  redirects and iframes. After another two hacked pages we finally arrive to a landing page which has obfuscated HTML and JavaScript code that insert a malicious Java file. This results in executing code which was sent by the hacker and downloading a virus to an unprotected computer. The picture below shows the whole infection chain.
+
+The last file in this chain is a malicious JAR file which exploits Java vulnerability CVE-2010-0840 (remote code execution).  This exploit is fairly old, but it can be found in a few Exploit Kits including Blackhole and Nuclear EK. To protect for this flaw, make sure you have installed the latest version of Java on your computer and your browser. There are many vulnerable OpenX servers on the internet. We do not know the exact number, but here is little statistic that can give us a clue to how bad this situation is.
+
+In the picture above is a daily count of users which were redirected to a landing page, but saved by avast! Antivirus from infection. These numbers are slowly dropping as creators of this network modify their scripts to avoid detection. In this case the numbers also fluctuate because malicious script is not present on servers all the time, but only in selected days and hours.
+Tips to stay protected.
+Here's a few things that can help you secure your server:
+
+Pick up the latest version of OpenX, currently known as Revive Adserver
+Install OpenX to an updated server with no other applications
+Choose a strong password for the administrator account
+Don't let backup files lie on FTP
+
+Samples from this article can be found on Virus Total under following SHA256:
+Scripts
+[Includer-ALT] 03c59366ff4edd3b2a741c807f67223a50fdf99d06be3d3770d05f140eca1570
+[Includer-AMT] 915a2ca9c61fb1ac5b22c9cb7dfd3f7d8e3dc2eb9ed44115d23aa0df341b790a
+[Iframe-DTB] 9be30e476ca38cd26ef20df5be9502eb49daf2bd1f1c2197c5b5b3c4e71d4fb7
+[Includer-AE] df0c4a45628562c712454969a678afe6ddeb9992fbab760f9a0e4efb7def5a43
+[Agent-GIC] 4ee46d0281b4d70d5e43d6a5ca7613a5818f2d7ad3dcf27bd5042d3a62259131
+PHP code
+[Backdoor-BX] 1352b9e1ba9e137ce4eff545bfe393569a18106c625a32004c58ec27135abab7
+[Backdoor-BW] fc76ea00c2608676d9d21e0381a4c2e51ec859666fb5d6f84f981e24b2ea7241
+[Backdoor-BV] da94545ca3f5725b1633bf77d5d4aac49f78dcd96ad65de658c5c37a61fb5cad
+[Backdoor-BT] 60be0978adbc5c328cdabc346704703819f29e19794c1125837d56bf14464eaf
+[Backdoor-BS] 8cec91cd300f311947f1e944f0af58bfc0298ecfeb3501d7a3dd3b1947b6132a
+Thank you for using avast! Antivirus and recommending us to your friends and family. For all the latest news, fun and contest information, please follow us on Facebook, Twitter and Google+. Business owners – check out our business products.
+
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+

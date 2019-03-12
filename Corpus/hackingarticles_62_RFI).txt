@@ -1,0 +1,100 @@
+
+Beginner Guide to File Inclusion Attack (LFI/RFI)
+
+You can insert the content of one PHP file into another PHP file before the server executes it, with the include () function. The function can be used to create functions, headers, footers or element that will be reused on multiple pages.
+This will help developers to make it easy to change the layout of complete website with minimal effort.
+If there is any change required then instead of changing thousands of files just change included file.
+Assume we have a standard footer file called “footer.php“, that looks like this
+<?php
+echo “<p>Copyright &copy; 2010-” . date(“Y”) . ” hackingartices.in</p>”;
+?>
+ To include the footer file in a page, use the include statement
+<html>
+<body>
+<h1>Welcome to Hacking Articles</h1>
+<p>Some text.</p>
+<p>Some more text.</p>
+<?php include ‘footer.php’;?>
+</body>
+</html>
+ Example 2
+Assume we have a file called “vars.php“, with some variables defined:
+<?php
+$color=’red’;
+$car=’BMW’;
+?>
+ 
+<html>
+<body>
+ <h1>Welcome to my home page!</h1>
+<?php include ‘vars.php’;
+echo “I have a $color $car.”;
+?>
+ </body>
+</html>
+ 
+ Output: I have red BMW
+The require statement is also used to include a file into the PHP code.
+However, there is one big difference between include and require; when a file is included with the include statement and PHP cannot find it, the script will continue to execute:
+Example 3
+ <html>
+<body>
+<h1>Welcome to my home page!</h1>
+<?php include ‘noFileExists.php’;
+echo “I have a $color $car.”;
+?>
+</body>
+</html>
+ Output: I have a
+If we do the same example using the require statement, the echo statement will not be executed because the script execution dies after the require statement returned a fatal error:
+ <html>
+<body>
+<h1>Welcome to my home page!</h1>
+<?php require ‘noFileExists.php’;
+echo “I have a $color $car.”;
+?>
+</body>
+</html>
+No output result
+ Require_once() using this function we can access the data of another page once when you may need to include the called file more than once, It works the same way. The only difference between require and require_once is that If it is found that the file has already been included, calling script is going to ignore further inclusions.
+Example 4
+echo.php
+<?php
+echo “Hello”;
+?>
+test.php
+<?php
+require(‘echo.php’);
+require_once(‘echo.php’);
+?>
+outputs: “Hello”
+ Note
+allow_url_include is disabled by default. If allow_url_fopen is disabled, allow_url_include is also disabled
+You can enable allow_url_include from php.ini
+ /etc/php7/apache2/php.ini
+allow_url_include = On
+ It is an attack that allows an attacker to include a file on the web server through a php script. This vulnerability arises when a web application lets the client to submit input into files or upload files to the server.
+This can lead following attacks:
+Two Types:
+Local File Inclusion
+Remote File Inclusion
+ Local file inclusion vulnerability occur when a file to which to PHP account has accessed is passed as a parameter to the PHP function “include”, or “require_once”
+
+This vulnerability occurs, for example, when a page receives, as inputs the path to the file that has to be included  and this input is not properly sanitized, allowing directory traversal characters (such as dot-dot-slash) to be injected.
+Example – Local File Inclusion
+http://192.168.1.8/dvwa/vulnerabilities/fi/?page=file1.php
+
+http://192.168.1.8/dvwa/vulnerabilities/fi/?page=/etc/passwd
+
+Read complete local file inclusion attack tutorial from here
+Remote File Inclusion occurs when the URI of a file located on a different server is passed to as a parameter to the PHP function “include”, “include_once” , “require” , or “require_once” . PHP incorporates the content into the pages. If the content happens to be PHP source code, PHP executes the file.
+PHP Remote File inclusion allows and attacker to embed his/her own PHP code inside  a vulnerable  PHP script , which may lead to disastrous results such as allowing the attacker to execute remote commands on the web server, deface parts of the web or even steal confidential information.
+http://192.168.1.8/dvwa/vulnerabilities/fi/?page=file1.php
+http:// 192.168.1.8/dvwa/vulnerabilities/fi/?page=http://google.com
+
+Read complete remote file inclusion attack tutorial from here
+Mitigation
+Source: https://www.w3schools.com/ 
+               https://www.owasp.org/index.php/Testing_for_Local_File_Inclusion
+               https://www.acunetix.com
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

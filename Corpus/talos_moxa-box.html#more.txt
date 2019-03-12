@@ -1,0 +1,139 @@
+
+From Box to Backdoor: Discovering Just How Insecure an ICS Device is in Only 2 Weeks
+
+
+This post was authored by Martin Lee and Warren Mercer, based on research conducted by Patrick DeSantis. 
+
+*blog post was updated with additional information for Day 4 on April 21. 
+
+Industrial Control Systems provide stability to civilization. They clean our water, deliver our power, and enable the physical infrastructure that we have learnt to rely on. Industrial Control Systems are also highly prevalent in manufacturing. They're the robots who build your cars and assemble T.V's, they're the forklifts that ship your e-commerce purchases. As factories, utilities, and other industrial companies shift to a modern industrial infrastructure, it's vital that those processes and devices remain safe from attackers.
+
+One key component in any ICS architecture is the access point which provides the connection between ICS devices and a industrial wireless network. Inspired by From LOW to PWNED we decided to take a look at one ICS wireless access point and see just how many vulnerabilities we could find in two weeks. The vulnerabilities listed in this post have been responsibly disclosed to Moxa. Moxa has released a software update that addresses most of these vulnerabilities. Additional updates will be forthcoming that will address TALOS-2017-0231.
+
+
+
+The Device
+
+The AWK-3131A is an industrial wireless access point described by the manufacturer, Moxa Americas, Inc., as a "convenient yet reliable solution for all types of industrial wireless applications." and "a Perfect Match for Your AGV (Automated Guided Vehicle)  & AS/RS (Automated Storage and Retrieval System) Systems". Additionally they hint at the systems robustness.
+
+
+We gave ourselves two weeks to see how many vulnerabilities we could find within this device, it was a bug hunting exercise through the eyes of an ICS researcher within Talos.
+
+Day 1 - Scanning
+The start of our investigation began with looking at what was available on the Moxa AP. This is vital to the initial research phase as it lets us determine where to focus our efforts throughout the bug hunting.
+
+Scanning the device shows 5 open ports: TCP22 (SSH), TCP23 (Telnet), TCP80 (HTTP/Web), TCP443, (HTTPS/Web) and an unidentified service TCP5801. Further probing shows that the SSH service is Dropbear, the default SSH service for BusyBox. The Telnet service confirms that the device is running BusyBox telnetd. The port 80 and 443 service is the GoAhead webserver, which is very common in embedded devices. BusyBox is a widely used operating system providing UNIX like utilities in a small footprint suitable for ICS & IoT devices.
+
+The device documentation describes a single default user, "admin" with the default password "root". Using these credentials we can log on via SSH or Telnet, but only to access a restricted limited environment. The fix seems to leave room for improvement.
+
+
+
+
+Day 2 - Web Application 
+Insecure web management systems hosted on the device are a rich environment for discovering vulnerabilities, and form part of the Top 10 Internet of Things vulnerability categories described by OWASP.
+
+The web application login page appears unremarkable.
+
+
+
+However, looking into the code we see that the password field has a maxlength of 16 characters. Apparently, long password strings are not permitted on this system. Already this shows a weakness in the system design and makes it more likely to be susceptible to dictionary attacks.
+
+Submitting this form calls a function, SetCookie(), included as JavaScript in the page. Additionally, a GET request is then made to /webNonce?time=<value> with the response from Date().getTime() as the <value> in the time parameter.
+
+For example:
+
+
+This meant a cryptographic nonce was being stored in the cookie and then re-used. Already we have found a serious vulnerability: Reusing a Nonce in Encryption. At first glance, this seems an arcane system vulnerability, but because of the way that the password is hashed anyone who intercepts the cookie and discovers the nonce can easily determine the password. As with many web application systems, data relating to the user's session data is saved in a cookie. However unlike most web applications, if the user logs out and then modifies the cookie, the user is logged back in without submitting a password again. With these two issues, an attacker could conduct a session fixation attack (TALOS-2016-0225 / CVE-2016-8712).
+
+Day 3 - Cross-Site Scripting (XSS)
+There are many XSS vulnerabilities in the web front end. Many of these can be used to display the cookie value to the authenticated user, which isn't too severe of a vulnerability. However we can use these vulnerabilities to craft a malicious URL which if clicked on by an authenticated user causes the cookie value to be sent to an attacker.
+
+An attacker can only determine the user's password if they also know the nonce value. However, the nonce can be frozen at a single value if a web page is requested from the device at least once every 300 seconds. Hence, an attacker can use the stolen cookie to give themselves an authenticated session which never expires by fixing the nonce at a value that never changes.
+
+Day 4 - Command Injection
+The device contains a ping function accessible via the device's web interface. Normally, this can be used by an authenticated user to check if a network connected device is responsive. However, there is no validation of user input when specifying the IP address to ping. Entering an OS command that is preceded with a semicolon (;) results in the command being executed by the OS with root permissions. Thus, we've identified another vulnerability (TALOS-2016-0235 /CVE-2016-8721). Using this vulnerability allows us to gain full access to the device by opening up our own remote shell with full root permissions.
+
+
+
+
+We can connect to this shell by telnet to exfiltrate data and binaries, or modify system files, such as the password file to our heart's content.
+
+Day 5 - XSS with Command Injection
+Exploiting the same vulnerability as above but in a different way allows an attacker to craft a malicious web page, which if visited by an authenticated user opens up a backdoor.
+
+Any authenticated user who access the following HTML causes a remote shell to start up on the device. Including the '-l' parameter to telnetd removes the requirement to ask a connecting user for a username and password, which is a specific BusyBox implementation of Telnet. Authentication is automatic and assumed.
+<html>
+  <body>
+    <form action="http://192.168.127.253/forms/webSetPingTrace" method="POST">
+      <input type="hidden" name="srvName" value="&#59;&#32;&#47;bin&#47;busybox&#32;telnetd&#32;&#45;l&#47;bin&#47;sh&#32;&#45;p9999" />
+      <input type="hidden" name="option" value="0" />
+      <input type="hidden" name="bkpath" value="&#47;ping&#95;trace&#46;asp" />
+      <input type="submit" value="Submit request" />
+    </form>
+    <script>
+      document.forms[0].submit();
+    </script>
+  </body>
+</html>
+This cross site request forgery (CSRF) attack can be used to do many things, such as modify settings or even reset the device to factory defaults. Yet another vulnerability  (TALOS-2016-0232 / CVE-2016-8718).
+
+Days 6 & 7 - weekend!
+Saturday, Sunday, Happy Days!
+
+Day 8
+Day 8 yielded a critical vulnerability, TALOS-2016-0231. We're not able to disclose the details of this flaw at this time as we are still working with Moxa to make sure this is addressed before we release details.
+
+Day 9 - Leaking Configuration Information
+There are several interesting URLs and other "features" of the web application which will return potentially sensitive information, even without authentication. For example, visiting the page /asqc.asp will reveal information such as system uptime, firmware version, BIOS version, and other details that may be of use to an attacker (TALOS-2016-0236 / CVE-2016-8722).
+
+Alternatively, the file "systemlog.log" is available at the web root without authentication (TALOS-2016-0239 / CVE-2016-8725).
+
+However, more interesting to an attacker is the "onekey" functionality (TALOS-2016-0241 / CVE-2016-8727) . Visiting the below URLs, in the below order, will retrieve a zip file that contains device logs and configuration information. Authentication is not required.
+
+First: http://<Device IP>/makeonekey.gz
+
+Then: http://<Device IP>/getonekey.gz
+
+
+
+The config.ini file contains encrypted passwords, wireless credentials as well as firewall rules, MAC address filtering details, SNMP details, routing and VLAN info.
+
+Day 10 - Intentional Information Exposure
+Moxa provides a Windows utility called "Wireless Search Utility" which allows admins to do things such as change the device IP address, cause the device to emit a "beep" sound so that it can be physically located, pull configuration details, and upload new firmware. Observing normal network traffic between the device and the application shows broadcasts to UDP 5800 in search of Moxa devices. Devices on the broadcast network respond with basic device details. An attacker can use this application to obtain sensitive information about device configuration. The protocol is relatively easy to figure out and shares some similarities with a Moxa protocol other researchers have investigated on other devices (one example). Since this is a proprietary protocol/service that is unlikely to be modified by the vendor, we'll abstain from releasing any details that may reduce an attacker's workload. 
+
+Day 11 - Denial of Service Attack
+Every basic web application analysis tool performing any action more involved than spidering causes Moxa web application to crash.  For example, sending an HTTP GET request for any characters and/or strings without preceding them with a / causes the web server to crash (seg fault) (TALOS-2016-0237 / CVE-2016-8723).
+
+Day 12 - Another Command Injection Vulnerability
+In addition, the filename parameter on /forms/web_runScript is also vulnerable, and exploitable by an authenticated user. However, to be able to exploit this vulnerability implies that an attacker can already upload and execute files, so the vulnerability in this form is essentially useless from a practical perspective. Nevertheless, it is still a new vulnerability.
+
+Day 13 - Old Cryptography
+The version of OpenSSL (1.0.0d 8 Feb 2011) that is used by the web server is outdated and likely vulnerable to several attacks. Nmap suggests that this version is susceptible to CCS Injection (CVE-2014-0224), POODLE (CVE-2014-3566), using disabled ciphers (CVE-2015-3197), and DROWN (CVE-2015-3197).
+
+Not unexpectedly, the nmap scan that produced the above results also crashed the web server on the device. By now we were short on time and couldn't verify the presence of these vulnerabilities on the device.
+
+
+Conclusion
+Our research demonstrates how many vulnerabilities can be quickly discovered by analyzing a device. There is nothing to suggest that this device is more or less vulnerable than any other. Indeed, the vulnerabilities we discovered are exactly the types of vulnerabilities likely to be discovered on any ICS device.
+
+Moxa Americas, Inc. was cooperative with us throughout the disclosure process of the discovered vulnerabilities by providing us the source code of their BusyBox implementation, covered under GPL2. Moxa has released the appropriate fixes for these vulnerabilities in their latest patch found here. Another forthcoming fix for TALOS-2016-0231 is expected in the near future.
+
+Not all manufacturers are likely be as responsive as Moxa. Nevertheless, even without the source code, treating the device as a 'black box' we were able to gain full privileges on the box within a few days of testing.
+
+Like any system, remediating software vulnerabilities requires applying patches to update the system code. Promptly patching ICS devices is not always easy. It's not always clear what components an ICS system is built from, notifications don't always reach system managers, and methods of applying an update may be difficult because the systems may be vital to a process that can't suffer an outage. 
+
+Designing ICS infrastructures requires considering that the many of the components within the system may come with vulnerabilities such as these as standard. The Purdue Model for Control Hierarchy is an excellent resource for proper ICS network segmentation, and can make exploitation more difficult. Understand your data flows and necessary ports to ensure a secure and smooth running ICS network. 
+
+
+Coverage
+
+
+Talos has written Snort rules to detect exploitation attempts for these vulnerabilities. System administrators should be aware that these rules are subject to change pending new or additional information regarding this vulnerabilities. For the most current information, we recommend customers review their Defense Centers or visit Snort.org.
+
+Snort Rules: 40758, 40820-40822, 40880, 40916, 41085, 41097, 41102-41105, 41220-41223, 41352
+
+
+The presence of unknown executable files, which may be malicious can be detected by using solutions such as Cisco Advanced Malware Protection (AMP).
+
+
+

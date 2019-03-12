@@ -1,0 +1,113 @@
+
+Understanding Log Analysis of Web Server
+
+From Wikipedia
+Log files are a standard tool for computer systems developers and administrators. They record the (W5) “what happened when by whom, where and why happened” of the system. This information can record faults and help their diagnosis.
+The Common Log Format also known as the NCSA Common log format. Each line in a file stored in the Common Log Format has the following syntax:
+[host; ident; authuser; date; request; status; bytes]
+Example 
+127.0.0.1 user-identifier raj [30/Aug/2017:10:25:16 -0700] “GET /apache_pb.gif HTTP/1.0” 200 1068
+Logs play an important role in tracking each client computer’s activity and its communication with other computers and networks. Network or system administrator analysis log in order to keep an eye on your network for vulnerabilities that may enter in network to access sensitive information in the form of security attacks. You might be able to identify who introduces risks, and help that person to use better precautions.
+Generally in Linux or UNIX system logs are created under /var/log directory, here you will find some very important log file such as: apache, auth, mysql, kernel, bootstrap, dmeg, apt and etc.
+
+Some Important Types of Logs 
+Application log
+The Application log contains events logged by applications or programs. For example, a database program might record a file error in the application log.
+Apache: /var/log/apache
+Samba:  /var/log/samba
+Mail: /var/log/
+Mysql:  /var/log/
+For Example let’s consider apache log files for analyzing its logs, there are two types of apache http server log files:
+Apache server records all incoming requests and all requests processed to a log file. Location and content of the access log /var/log/apache/access.log.
+All apache errors information those are found during server requests are logged to this file. Location of error log /var/log/apache/error.log.
+Now open apache2 log using following command in terminal (UNIX system).
+cd apache2
+ls
+You can see all log files of apache2 as shown in given image.
+echo>access.log
+Using echo command I had deleted all previous logs from inside access.log file, so that we can read our recent logs for current activity.
+
+As I had described above that apache2 will create logs for client activities on browser. Therefore I had opened some web application like: dvwa, bwapp and wordpress site in respective order and as result in same order log will be created inside apache2.
+
+There are so many command and tools used for log analyzing; among them we had use only three command line utility cat, head and tail for reading logs. 
+From given image you can see we have used cat command to read log which begins with dvwa’s log and end on wordpress’s log.
+cat is standard UNIX utility use for reading content of file. With help of cat command you can view whole content inside any log file.
+Syntax: cat [options] file name
+cat access.log
+
+head is a program on UNIX and Unix-like systems used to display the beginning of a text file.
+Syntax: head [options] file name
+head access.log
+By default, head will print the first 10 lines of its input to the standard output. Hence you can option [-n] for specific numbers of line. For example: head – n 30 file name.
+
+tail is a program on UNIX and Unix-like systems used to display the tail end of a text file.
+Syntax: tail [options] file name 
+tail access.log
+From given image you can perceive that it has shown log for wordpress at the end of file.
+
+Since tail reads end lines of log file which consist information of recent activity of the client therefore we are going to take help tail’s option for reading log in a significant way.
+By default, tail will output the last 10 lines of its input to the standard output. Hence you can option [-n] for specific numbers of line. For example: tail – n 30 file name.
+tail -n 2 access.log
+From given image you can see above command applied filter and read only two logs from recent records.
+
+If you want to read multiple log files simultaneously then type following command.
+ tail -n 2 access.log error.log
+From given image you can observe that it has shown two-two logs for each i.e. access log and error log.
+
+Now apply filter using grep command with tail command for specific records of log.
+Syntax: tail [option] file name | grep “string” [option]
+tail access.log | grep 200
+From given image you can notice, it has highlighted log having string as 200.  Generally for a network administrator this command will reduce his/her effort while log analyzing because he/she can directly read those log where client or attacker has got successfully response from server.
+
+When server is not able to give reply of request made by client it response through error 404 “not found”.
+
+tail access.log | grep 404
+From given image you can see it has highlighted log string 404 from set of log records.
+
+As you known on browser we had browsed web application dvwa, bwapp and wordpress as respective sequences, therefore we get their log in same sequence dvwa log at top; bwapp log at middle and wordpress log at the end of access.log file
+Log files are very large, reading them at ones will not possible for administrator therefore he/she can use after and before option with grep as filter for logs.
+Syntax: tail [option] file name | grep -A [number of lines] “string”
+tail access.log | grep -A 2 “bwapp”
+Here -A stand for after, therefore it will filter 2 logs created after bwapp logs and hence it will indicates 2 logs of wordpress as shown in given image.
+
+Similarly apply filter using before parameter and type following command with specific argument.
+tail access.log | grep -B 2 “wordpress”
+Here -B stand for before, therefore it will filter 2 logs created before wordpress logs and hence it will indicates 2 logs of bwapp as shown in given image.
+
+Auth.log file holds system authorization information; including user login attempts either successful or failure both type of log records as well as authentication method that were used for establishing connection with server, for example SSH login between server and client
+Location: /var/log
+Again I had used echo command to remove all previous record from inside auth.log
+echo>auth.log
+
+Suppose client uses putty for ssh login into server.
+
+If the client having valid credential for ssh then he will get successfully login into server. From given image you can see I had successfully login into server. Hence inside server auth.log file, it will create a new record for SSH login successful.
+
+While in next image you can read access denied message which means fail in login into SSH server. Hence this time inside auth log again a new record will be create for SSH login failure.
+
+Now let‘s read the whole records of auth log file for above client activities using cat command.
+cat auth.log
+From given image you can read the logs for successful and failure login.
+
+Vsftd log holds system authentication log for FTP login records either successful or failure.
+Location: /var/log
+I had deleted all previous logs using echo command and using WinSCP for FTP server login. You can observe that we had login successfully. Hence it will create a new record in vsftpd.log for client login successfully.
+
+Now let’s verify it though vsftpd log file and use cat command for reading whole file. From given image you can observe it has created a record in log file for client 192.168.0.104 is CONNECT.
+cat vsftpd.log
+
+syslog is a standard for system logs or  message logging. Administrator may use syslog for system management and security auditing as well as general informational, analysis, and debugging messages. A wide variety of devices, such as printers, routers, and message receivers across many platforms use the syslog standard.
+Location: /var/log
+Use cat command for reading syslog as shown in given image.
+cat syslog
+
+The apt is standard command-line tool in UNIX, which works for performing functions such as installation of new software packages, upgrade of existing software packages, updating of the package list index, and even upgrading the entire Ubuntu system.
+Location: /var/log
+Hence apt contain its own log file for all new and previous installed software. It has two log file as:
+Now type following command for reading history log of apt.
+cat history.log
+
+From given image you can observe the result which contains information of a software installation and updates.
+It was a brief theory for reading logs in simplest way…………………………………………..
+
+Author: AArti Singh is a Researcher and Technical Writer at Hacking Articles an Information Security Consultant Social Media Lover and Gadgets. Contact here

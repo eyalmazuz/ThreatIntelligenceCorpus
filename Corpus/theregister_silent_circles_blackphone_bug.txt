@@ -1,0 +1,12 @@
+Oops. Silent Circle let apps meddle with Blackphone's modem
+It's emerged that a software update for Silent Circle's Blackphone that shipped in December included a fix for a pretty egregious bug: the developers had left a modem interface open and accessible to code on the Android-based smartphone.
+When the upgrade was released, Silent merely noted that the bug, CVE-2015-6841, could be exploited to gain higher privileges, and had that it was reported by Tim Strazzere of Sentinel One via Bugcrowd.
+Strazzere has now described his findings in detail, saying the phone's Nvidia Icera modem driver was listening to /dev/socket/at_pal and opening a tty_port on /dev/ttySHM3.
+It turned out that data written to at_pal was also written to ttySHM3, which the radio directly listens to. This means a normal app could send commands to the phone's radio hardware, which would be bad.
+"Looking around the binary we can also see that the ttySHM3 port is being listened to by the radio. This means we've found a way to talk directly to the modem! We can easily confirm that this works by actually just running the agps_daemon from the command line as shell, since we can see a 'test' thread that has been left inside the code," he writes.
+Sentinel One getting inside the Blackphone modem process
+The modified Hayes AT command set used by the phone's modem hardware isn't public knowledge, but digging in binaries revealed controls over muting the phone, switching caller ID on or off for outgoing calls, invisibly sending text messages, setting call forwarding (without the user noticing), and leaking the device's USSD code (Unstructured Supplementary Service Data) – all possible and more via ttySHM3. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

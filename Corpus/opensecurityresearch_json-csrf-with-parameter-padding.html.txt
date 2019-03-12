@@ -1,0 +1,47 @@
+
+JSON CSRF with Parameter Padding
+
+
+by Gursev Kalra.
+
+The JavaScript Object Notation (JSON) format is one of the prominent data exchange formats of the contemporary web applications. When a web application implements JSON, Cross Site Request Forgery (CSRF) payload delivery gets bit tricky because of query string and JSON format mismatch. With couple of tricks however, we can successfully execute CSRF attacks with JSON payloads.
+
+Let’s assume that the browser sends the following JSON to the web server.
+
+{"a":1,"b":{"c":3}}
+Scenario 1One of the mechanisms to execute JSON CSRF is to use the entire JSON payload as parameter name in a self submitting form. For example, loading the HTML code below and clicking the submit button sends malicious JSON to the web server: 
+1:  <html>  
+2:  <form action=http://192.168.1.41:3000 method=post enctype="text/plain" >  
+3:  <input name='{"a":1,"b":{"c":3}}' type='hidden'>  
+4:  <input type=submit>  
+5:  </form>  
+6:  </html>  
+
+At line# 2, the enctype form attribute is set to text/plain so that the JSON gets delivered as is. The enctype attribute may not be required, but is good to have. At line# 3, entire JSON payload is provided as a parameter name. When the form gets posted, the payload is delivered and CSRF executes.
+
+Image below shows JSON payload delivery with the technique described above.
+
+
+This technique may fail in some cases when the server side JSON parsers reject the incoming JSON because of the trailing ‘=’ character.
+
+
+Scenario 2 (JSON Parameter Padding to the rescue)
+In scenario 1, the trailing ‘=’ character may ruin the party when server side JSON parsers enforce strict parsing rules. To overcome this, an additional parameter can be padded towards the end of JSON payload to send a well formed JSON. As with regular GET & POST parameters, JSON parsers will successfully parse the JSON, pick the required parameters and ignore the extraneous ones. This allows a successful CSRF attack against vulnerable web applications. 
+
+Below, the HTML code in scenario 1 is modified to add an extraneous parameter to the JSON payload:
+1:  <html>  
+2:  <form action=http://192.168.1.41:3000 method=post enctype="text/plain" >  
+3:  <input name='{"a":1,"b":{"c":3}, "ignore_me":"' value='test"}'type='hidden'>  
+4:  <input type=submit>  
+5:  </form>  
+6:  </html>  
+
+At line# 3, the component in red is the original JSON and the blue component helps add the extraneous parameter to the JSON payload. The screenshot below shows the JSON payload delivered when the above HTML is executed. The ignore_me parameter absorbs the trailing ‘=’ character and has a value “=test”. 
+
+The end result, successful JSON Parsing and CSRF goodness :)
+
+Image shows a well formed JSON sent using parameter padding
+
+It is important to note that the discussed attack vectors may not work if the server validates the “Content-Type” request header to represent a JSON payload.
+
+

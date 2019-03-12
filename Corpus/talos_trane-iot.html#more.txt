@@ -1,0 +1,89 @@
+
+The Internet of Things Is Not Always So Comforting
+
+
+This post is authored by Alex Chiu. 
+
+Over the past few years, the Internet of Things (IoT) has emerged as reality with the advent of smart refrigerators, smart HVAC systems, smart TVs, and more. Embedding internet-enabled devices into everything presents new opportunities in connecting these systems to each other, making them "smarter," and making our lives more convenient than ever before.
+
+Despite the new possibilities, there are major concerns about the IoT which inspire a legitimate question: "What happens if it's not 'done right' and there are major vulnerabilities with the product?"
+
+The unfortunate truth is that securing internet-enabled devices is not always a high priority among vendors and manufacturers. Some manufactures do not have the necessary infrastructure to inform the public about security updates or to deliver them to devices. Other manufacturers are unaccustomed to supporting products past a certain time, even if a product's lifespan may well exceed the support lifecycle. In other cases, the lack of a secure development lifecycle or a secure public portal to report security defects makes it near impossible for researchers to work with a vendor or manufacturer. These problems expose users and organizations to greater security risks and ultimately highlight a major problem with the Internet of Things. 
+
+What does this mean for the average user? For starters, a smart device on their home or office network could contain unpatched vulnerabilities. Adversaries attacking the weakest link could exploit a vulnerable IoT device, then move laterally within an organization's network to conduct further attacks. Additionally, patching vulnerable devices can be complicated, if not impossible, for the average user or for those who are not technically savvy. For organizations that maintain large amounts of IoT devices on their network, there may not be a way to update a device that scales, creating a nightmare scenario.
+
+
+
+
+Trane IoT Vulnerabilities
+
+
+
+Picture of a Trane ComfortLink™ II XL950. (From trane.com)
+
+Trane ComfortLink II thermostats are an example of IoT devices which take an existing system and make it smarter and more convenient. These thermostats allow the user to change the temperature of their house/building remotely "from anywhere with an internet-enabled computer, smartphone or tablet." Unfortunately, the security of these types of devices has not been evaluated until somewhat recently. 
+
+In April 2014, Talos alerted Trane to three vulnerabilities that could allow attackers to gain remote access or execute arbitrary code on Trane ComfortLink II thermostats. An adversary could remotely log into the thermostat and gain complete control of the device. Alternatively, adversaries could send specific requests to thermostats with the goal of achieving arbitrary code execution. As a result, an attacker could compromise the thermostat to conduct reconnaissance of the local network, launch both local and at-large attacks, or utilize the device as a platform for other malicious operations on the internet. 
+
+In April 2015, Trane patched two of the three vulnerabilities as part of a standard update. The third and arguably most severe vulnerability appears to have been patched as of January 27, 2016 in firmware version 4.0.3. We are unable to determine if Trane has associated these vulnerabilities with security advisories or if they have effectively communicated the necessity of installing these updates to their customers. As a result, Talos recommends that users who own these thermostats to update immediately.
+
+Talos attempted to work with Trane to ensure patches were shipped in a timely manner. While Talos works with vendors and manufacturers to resolve vulnerabilities, companies must also ensure they have secure development policies and necessary frameworks in place to be able to respond to security incidents quickly and responsibly. Per our Vendor Vulnerability Reporting and Disclosure Policy, we are disclosing details of these vulnerabilities to provide the public with information about the severity of the vulnerability and how they can best secure their network.
+
+
+Vulnerability Details
+
+Christopher McBee and Matt Watchinski of Cisco Talos are credited with discovering these vulnerabilities.
+
+The first vulnerability we’re disclosing today is CVE-2015-2867 (TALOS-2016-0028), which is a hard-coded credential vulnerability in Trane ComfortLink II thermostats. This vulnerability manifests as a design flaw in the Trane ComfortLink II SCC service where, upon system boot, the SCC service installs two sets of user credentials with hardcoded passwords. These credentials can be used to remotely log into the system over SSH. Once a user logs in, the user is given access to a fully functioning BusyBox environment, giving the user full control of the device and the ability to perform a variety of actions, such as downloading, compiling and executing arbitrary code. 
+
+The remaining two vulnerabilities we are disclosing are covered by CVE-2015-2868 (TALOS-2016-0026, TALOS-2016-0027), which are remote code execution vulnerabilities within the Trane ComfortLink II DSS Service. Despite a single CVE being assigned, these two vulnerabilities are in fact distinct as they follow separate code paths. These flaws manifest as buffer overflows as a result of how the DSS service handles large requests. An attacker who connects to the DSS service on the device can send overly long requests that overflow a fixed-size stack buffer. As a result, portions of memory can be overwritten to values of the attacker's choosing, potentially allowing the execution of arbitrary code. Talos has developed a Metasploit module for users to test their ComfortLink II thermostats against this vulnerability.
+
+These vulnerabilities were tested against TRANE ComfortLink II - firmware version 2.0.2.
+
+All of these vulnerabilities have been addressed by Trane as of firmware version 4.0.3 (released on January 26, 2016). For users interested in updating their thermostat, Talos recommends you follow the manufacturer's guidelines here. Additionally, Talos recommends organizations who use these devices and who are unable to update their thermostats to block SSH traffic going to and from the thermostat to reduce the risk of compromise.
+
+
+Disclosure Timeline
+2014-04-09 - Initial contact with Trane is established. Advisories delivered.
+2014-06-03 - Second attempt to contact Trane for follow up. No response received.
+2014-08-15 - Third attempt to made to contact Trane for follow up. No response received. 
+2014-09-30 - Fourth attempt to contact Trane is made. Advisories re-sent. No further correspondence.
+2015-04-?? - Vendor patches CVE-2015-2868 in firmware version 4.0 without issuing a security advisory.
+2015-05-26 - CERT/CC notified. CERT attempts to establish contact with Trane, but receives no response.
+2015-07-13 - Fifth and final attempt to contact Trane is made. Communication is reestablished. Advisories re-sent.
+2015-08-19 - Talos follows up with Trane. No patch available.
+2015-09-30 - Talos follows up with Trane again. No patch available.
+2015-10-19 - Talos follows up with Trane again. No patch available.
+2016-01-26 - Talos follows up with Trane again. Trane informs Talos that firmware version 4.0.3 is being released that week which addresses CVE-2015-2867.
+2016-01-27 - Trane makes firmware version 4.0.3 available to the public.
+2016-02-08 - Talos and CERT/CC disclose these vulnerabilities.
+
+
+Implications
+While IoT devices such as smart thermostats, home lighting, and security systems bring an added level of convenience into our lives, these vulnerabilities highlight the dangers of insecure development practices. The fact that these thermostats contain a fully functional, unrestricted BusyBox environment that could be used to download files, compile code and execute arbitrary commands is a strong indication Trane is not following industry recommended, secure development practices. As a result, an attacker who gains control of the thermostat could use it to for other malicious purposes, such as downloading and compiling malicious code to run on the device.
+
+Another aspect of IoT that gets forgotten is how often the average user connects their smart device to the network, but forget to update those devices. The unfortunate truth is that few people think "Hey! It's the first Monday of the month! I should check and see if my TV needs to be patched!" As a result, IoT devices that do not have have an easy-to-use notification and updating mechanism are prone to being left alone, out of date, and vulnerable to compromise. This is similar to the fact that there are unpatched systems on the internet that are still vulnerable to Shellshock and Heartbleed and will remain vulnerable for the foreseeable future.
+
+Surprisingly, Hollywood has already come up with a scenario in which hackers exploit an internet-enabled HVAC system (or thermostat). (SPOILER ALERT: Readers who have not seen Mr. Robot should skip to the next section!) In the USA Network’s Mr. Robot, the lead character, Elliot Alderson, plans to degrade or destroy the tape backups of E Corp located at a Steel Mountain tape backup facility by hacking the HVAC system and raising the temperature. Raising the temperature of the backup facility would degrade or destroy the tapes containing the backup data. While Elliot’s plans include the use of a Raspberry Pi and a higher level of sophistication, such a scenario is not actually all that farfetched given that more and more people have smart thermostats and items of personal value that could be damaged if the temperature is not kept within an ideal range.
+
+
+A Raspberry Pi 2.
+
+
+
+Conclusion
+
+IoT presents an enormous opportunity to connect, share, and simplify our lives. Despite these advancements and added convenience, we should not consider security as an afterthought. Nor should vendors and manufacturers, as the consequences could result in major, real-world repercussions (as opposed to those that exist solely on TV).
+
+Talos is committed to making the internet safer and more secure for all users. As a result, Talos will continue to research programmatic ways of identifying zero-day vulnerabilities in third-party products in order to develop new mitigation strategies. Identifying zero-day vulnerabilities and working with vendors to secure their devices ultimately protects our customers. Our research into Trane ComfortLink II thermostats demonstrates this commitment to our customers and to the public.
+
+Related Snort Rules: 30346
+
+For the most up to date list, please refer to Defense Center or FireSIGHT Management Center.
+
+For additional vulnerability reports that Talos has made public, please visit:
+http://talosintel.com/vulnerability-reports/
+
+
+
+

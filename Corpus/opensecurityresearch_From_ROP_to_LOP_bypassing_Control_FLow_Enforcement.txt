@@ -1,0 +1,95 @@
+
+From ROP to LOP bypassing Control FLow Enforcement
+
+
+
+
+Once upon a time breaking the Stack (here) was a metter of indexes and executables memory areas (here). Then it came a DEP protection (here) which disabled a particular area from being executable. This is the fantastic story of ROP (Return Oriented Programming) from which I've been working for long time in writing exploiting and re-writing "resurrectors" (software engines able to convert old exploits into brand new ROP enabled exploits), please take a look: here, here, here, here, here and here. Now it's time to a new way of stack protection named Control-Flow Enforcement designed by Intel. CFE aims to prevent stack execution by using a "canary" stack .. ops this was the old way to call it.. right let me repeat the sentence... by using a "shadow stack" aiming to compare return addresses and a "Indirect Branching Tracking" aiming to track down every valid indirect call/jmp on target program.
+
+
+
+Well, I made a joke mentioning the ancient canary words which might remind you how useless it was adding a canary control Byte (or 4 bits, actually) to enforce the entire stack, but this time is structurally  different. We are not facing a canary stack which could be adjusted by user by using "stores commands" such as: MOV, PUSH, POP, XSAVE, but is a user/kernel memory space exclusively used by "control flow commands" such as: CALL, RET, NEAR, FAR, etc. 
+
+
+
+
+
+
+
+When shadow stacks are enabled, the CALL instruction pushes the return address on both the data
+and shadow stack. The RET instruction pops the return address from both stacks and compares them. If the
+return addresses from the two stacks do not match, the processor signals a control protection exception
+(#CP). Note that the shadow stack only holds the return addresses and not parameters passed to the call
+instruction. To provide this protection the page table protections
+are extended to support an additional attribute for pages to mark them as “Shadow Stack” pages.  (Figure1 from here)
+Just to make things a little harder (but it's going to be very useful to introduce a way to bypass Stack Shadow) let me introduce to you a more comprehensive stack defencing framework, defined by Abadi et al  and called Control-Flow Integrity framework. Following I borrow the classification described by Bingchen Lan et Al. on their paper (available here) reporting 4 kinds of Control Flow Integrity Policies (CFI):
+
+CFI-call. The target address of an indirect call has to point to
+the beginning of a function. For instance, indirect call is constrained to the limited addresses, which are
+specified through statically scanning the binary for function
+entries. 
+CFI-jump. The target address of an indirect jump should be
+either the beginning of another function or inside the
+function where this jump instruction lies. For instance,
+Branch Regulation prevents jumps across function
+boundaries to stop attackers from modifying the addresses of
+indirect jumps. 
+CFI-ret. In coarse-grained CFI, the target address of a ret
+instruction should point to the location right after any call
+site. Shadow stack further enhances this constraint, i.e.
+the ret instruction accurately corresponds to the location
+after the legitimate call site in its caller. 
+CFI-heuristics. Apart from enforcing specific policies on
+indirect branches as CFI-call, CFI-jump and CFI-ret do,
+some CFI solutions tend to detect attacks by validating the
+number of consecutive sequences of small gadgets.
+
+During the past few years many attack mechanisms bypassed the CIF policies, let me sum they up on the following table.
+
+
+
+Figure 2 Comparing attack strategies the green "check" means the technique can bypass the defence policy, the red "x" means it cannot
+
+
+Lets assume to be able to implement CFI-Ret and CFI-Jump (or CFI-Heuristics ) techniques in a single system. We might apparently guarantee Control Flow Integrity ! Well, it was "kind of true" since Bingchen Lan, Yan Li, Hao Sun, Chao Su, Yao Liu, Qingkai Zeng introduced in a well done paper (here) a LOP Loop Oriented Programming technique.  The main idea is to choose entire functions as gadget instead of using short code fragments or unaligned instructions. In this way the call instruction targets the beginning of a function bypassing CFI-call policy. Moreover CFI-heuristics expects the execution flow on a victim application consists of multiple short code fragments as ROP and JOP does. Since no short code is involved in LOP and it is possibile to select long gadget with many instructions on it LOP can also bypass CFI-Heuristics. The process of chaining gadgets exactly follows the normal carrer-callee (call-ret-pairing) paradigm. The loop gadget acts as proxy (dispatcher) invoking different functional gadgets repeatedly which eventuallu return to the original caller bypassing the CFI-ret policy. Meanwhile there is only one jump instruction used by
+LOP. This jump instruction works originally for loop
+functionality and it is untouched by LOP. Hence, CFI-jump
+is also ineffective towards LOP. The following picture shows the difference between CPROP and LOP.
+
+
+Figure 3. CROP VS LOP (from here)
+
+
+
+It's now interesting defining how a Loop gadget looks like. So, lets define a loop gadget as a complete working function having 3 keys elements such as :
+
+
+A loop statement
+An indirect call instruction within the loop
+An index instruction within the loop statement.
+
+
+The following example is taken from initterm() in msvcrt.dll a Microsoft Windows dynamic library.
+
+
+
+
+Figure 4: Example of LOP gadget
+
+
+
+
+The LOP gadget make possible to set up starting address and ending address. Then Hijacks the control flow to the loop gadget. Then the LOP gadget makes the index pointer pointing to start to start address of the dispatch "table". It takes the next gadget address and uses an indirect call to invoke the addressed lop gadget. Just after the call it returns to the instruction located right after the indirect call in the loop by a legal ret instruction. Later the gadgets modifies the pointing index making it addressing the next gadget. It ends up by comparing the index value and the "end address".
+
+
+
+Figure 5 Comparing attacks strategies the green "check" means the technique can bypass the defence policy, the red "x" means it cannot
+
+
+
+
+We can now add an additional raw on the attack-comparing–table as shown in Figure5 introducing LOP as the ultimate way to bypass Control Flow Integrity Techniques. Happy hunting !
+
+
+
+

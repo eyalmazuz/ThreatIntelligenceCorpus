@@ -1,0 +1,31 @@
+
+Amazon and Eucalyptus hacked.
+
+
+
+
+Today I'd like to point out a paper entitled "All Your Clouds are Belong to us - Security Analysis of Cloud Management Interfaces"by Juraj Somorovsky et Al. 
+
+
+
+In this paper, they provide a security analysis pertaining to the control interfaces of a large Public Cloud (Amazon) and a widely used Private Cloud software (Eucalyptus).
+Their research results are alarming: in regards to the Amazon EC2 and S3 services, the control interfaces could be compromised via the novel signature wrapping and advanced XSS techniques. Similarly, the Eucalyptus control interfaces were vulnerable to classical signature wrapping attacks, and had nearly no protection against XSS.
+
+
+
+The following picture shows a classic XML Signature Wrapping Attack 
+
+
+
+
+
+As shown in the figure, the original SOAP body element is moved to a newly added bogus wrapper element in the SOAP security header. Note that the moved body is still referenced by the signature using its identifierattribute Id="body". The signature is still cryptographically valid, as the body element in question has not been modified (but simply relocated). Subsequently, in order to make the SOAP message XML schema compliant, the attacker changes the identifier of the cogently placed SOAP body (in this example he uses Id="attack"). The filling of the empty SOAP body with bogus content can now begin, as any of the operations defined by the attacker can be effectively executed due to the successful signature verification.
+
+
+
+The paper follows by describing the practical attacks on Amazon EC2 and on Eucalyptus specifying attack vectors and consequence of the designed attacks. Finally, the paper describes some countermeasures for the described attacks. The most important lesson learned from their analysis is that managing and maintaining the security of a cloud control system and interface is one of the most critical challenges for cloud system providers worldwide.
+
+My personal opinion is that of course they did a pretty nice job with the vulnerability analysis even if they clearly did not use a specific "bug hunting" methodology. It would be quite interesting, at least to me, mapping what they found and the way they discovered it to the current penetration testing methodologies to see what kind of correlation is there. Such a great work without any contribution to the current methodologies might be "end to itself", like a single attacker that has experimented a vulnerability to a big system and finally found it. 
+
+
+

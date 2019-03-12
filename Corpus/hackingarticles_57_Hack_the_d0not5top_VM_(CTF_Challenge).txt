@@ -1,0 +1,126 @@
+
+Hack the d0not5top VM (CTF Challenge)
+
+This time we are going to solve a fun Vulnerable Lab d0not5top 1.2. To do so we are going to download the VM Machine from here.
+The credit for developing this VM machine is goes to 3mrgnc3 who has hide 7 flag inside this lab as a challenge for hackers.
+Let’s Breach!!!
+As always, Let us start form getting to know the IP of VM (Here, I have it at 192.168.1.113 but you will have to find your own)
+netdiscover
+
+Next we run nmap
+nmap -sV 192.168.1.113
+
+Now, visit the IP in the Browser.
+
+Since we I didn’t found something interesting when explore its IP in browser therefore now I am going to scan the Web Content by using dirb in kali linux.
+dirb http://192.168.1.113
+
+As you can observe from above image I had highlighted a URL which indicates toward the control panel of website lets open 192.168.1.113/control in the Browser. Yes it is DNS control panel but I didn’t found any clue for 1st flag on this web page.
+
+After that move towards its view source page and notice FL46_1 which indicate it is the 1st flag.
+Wonderful!! Successfully found 1st flag
+
+From the scanning result of dirb we found so many web directories in this machine therefore further I choose 192.168.1.113/control/js Directory. In this I found a File README.MadBro. It will open as shown below.
+ Now here we found a Binary code which is to be converted into Decimal. On conversion you will find FL46_2:30931r42q2svdfsxk9i13ry4f2srtr98h2
+Great!! Successfully get 2nd Flag.
+
+Now, for third flag, we will use netcat very verbrose mode on port 25 which hosts smtpd service (This can be found by doing an aggressive nmap scan on the IP)
+nc -vv 192.168.1.113 25
+Here we found a Hexadecimal code which is to be converted in Text.
+
+Great!! Successfully get 3nd Flag also.
+
+On the url on which we found Second Flag, There is an instruction written in Leet, It reads: M4K3 5UR3 2 S3TUP YOUR /3TC/HO5TS N3XT TIM3 L0053R… 1T’5 D0Not5topMe.ctf!!! So we will go to /etc/hosts and add an entry as shown in given image.
+
+Now open donot5topme.ctf in the browser as shown and Click on Register given at the end of web page.
+
+As you can observe that we didn’t found any clue on this web page therefore open view source page.
+
+At View Page Source, here we found this link as shown in highlighted text.
+
+Such kind of encoded web page is open then I search in google related to this encoding. It is known as brain fuck encoding.
+
+So we will decrypt it. Here we got the FL46_4
+Successfully found 4th flag
+
+Now move back to the d0not5topme.ctf. Now we will click on Register and Then on I agree to these terms and we will get to Registration Page. Here we click on Board Administration, which opens a prompt which asks for the client to open mailto link, here I choose Gmail.
+
+Here I found another ctf “Megusta@G4M35.ctf”
+
+Now let’s add G4M35.ctf into /etc/hosts as we did before and click on Save.
+
+When I open this domain in browser, I got a game to play, although you can get the next clue by playing too, but I  thought of a more technical approach and open this webpage and with Inspect Element. Now select the Debugger Tab. Here I found game.js and inside the Game_Over script I found the next clue as “/H3X6L4m3”
+
+Now open the complete link “g4m35.ctf/H3X6L4m3” on this domain it gave me another game.
+
+Again we can play and discover the next clue/flag. But we went to get a bit technical approach and ran a dirb command to look after its directories.
+From given result I had highlighted http://g4m35.ctf/H3x6L64m3/textures/ for further enumeration.
+
+Now I have opened this textures directory in the browser, here I open the skybox directory and then the dawnclouds directory and found the nz.jpg file as shown.
+
+Now open this image and got the octal code.
+
+When decode this code I found FL46_5
+I had Captured 5th flag also!!
+
+Now get back to the second game http://g4m35.ctf/H3x6L64m3 and open with Inspect Element. Now select the Debugger Tab. Here I found Gameplay.js and got another domain “t3rmln4l.ctf” as shown below.
+
+Now let’s add t3rmln4l.ctf into /etc/hosts as we did before and click on Save.
+
+Now as before, while opening this domain in browser, I got a Terminal which asks for password. After trying a bunch of commands, I found grep* runs on this terminal and for authentication I entered the name of domain as password i.e t3rm1a4l.ctf and found another domain “M36u574.ctf”.
+
+Now let’s add M36u574.ctf also into /etc/hosts as we did before and click on Save.
+
+Now as before, you will open this domain in browser, you will get a slideshow of Megusta images. Out of different images I have downloaded the kingmegusta.jpg.
+
+ Now we will run exiftool on this image, here I got some code in Comment as shown below.
+
+Now convert the code to Text and found following code as shown in image. Copy this code it is base64 encoded.
+
+Then I had created a text file on /root/Desktop/ name anything you want and Paste the above decoded text in this file.
+
+Now run John The Ripper, using this file as shown
+Here I found a user MeGustaKing and Password ********** (10 times *).
+
+Now using this username and password combination we will login into the ssh. Here we get a code and another username and password combination i.e. burtieo:Lets you update your FunNotes and more! But first let’s decode that highlighted code.
+
+Copy and paste above code inside it. It is in base64 encryption, after decrypting the code we found that it is md5 encoded.
+
+Great! It is the 6th Flag.
+
+As mentioned above in the previous ssh login we got this username burtieo and its password is the text written above it i.e. Lets you update your FunNotes and more!
+Now let’s login in ssh using combination
+Username : burtieo and Password : Lets you update your FunNotes and more!
+
+This opens rbash shell and rbash shell restricts some of the features of bash shell.
+
+So, firstly run following command
+And then we run the command
+
+Using nmap command I found up the port 10000 open.
+
+But this port only remains open for 20 seconds, we can make it stay open for long using “for loop” as shown.
+
+Now let’s run metasploit and use the exploit named file_disclosure
+I found the RSA Private Key as shown.
+ 
+Now Copy and Paste this Private Key in a file and name it id_rsa and then Run John The Ripper.
+This has given the root password .i.e. “gustateamo”
+
+Now I have removed permissions of id_rsa by chmod 700 and login into ssh as root with password gustateamo as shown below.
+
+Now type following command
+ls
+You can observe from given image it consist two file let open one of them
+cat L45T_fl46.pl
+Here it gave the message to use L45T_fl46.pl
+
+Now use netcat command to establish connection with target through port 1234.
+
+Now in D0Not5top terminal we will open file L45T_fl46.pl with IP 192.168.0.7 (Kali Linux IP) as given below:
+
+On attacker system it will you will found get netcat connect with targeted system. The highlighted text is indicating toward FL46_7
+Congratulations!! It is the 7th Flag.
+Solving this lab was a fun and learning experience.
+
+Author: Rajat Chikara is An Ethical Hacker, Cyber Security Expert, Penetration Tester, India.

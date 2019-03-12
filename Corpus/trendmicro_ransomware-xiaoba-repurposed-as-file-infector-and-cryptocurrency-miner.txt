@@ -1,0 +1,58 @@
+Ransomware XIAOBA Repurposed as File Infector and Cryptocurrency Miner
+by Don Ladores and Angelo Deveraturda 
+Additional insights and findings from Raphael Centeno
+Currently, cryptocurrency miners are heavily used by malware—we’ve seen miners injected onto ad platforms, on popular mobile devices, and servers. Malware creators change payloads to maximize their chances to make a profit, and in this volatile cryptocurrency landscape, they seem committed to integrating miners into their arsenal. We are now also seeing binary infectors using miners to suit their needs.
+We recently discovered a sophisticated file infector with cryptocurrency mining and worm capabilities and found two variants of this file infector during our investigation. Identified as XiaoBa (detected by Trend Micro as PE_XIAOBAMINER), this particular malware is distinctly similar to the XiaoBa ransomware. It seems like the ransomware code was repurposed, adding new capabilities to make it a more destructive cryptocurrency miner.
+This file infector can be considered destructive since it infects malware binaries, keeping the host code intact but no longer executing it for its original purpose. For example, when an infected calc.exe file with XiaoBaMiner is executed, it will run the malware code but will no longer run the main calc.exe routine.
+Infected for Mining Purposes
+Besides infecting binaries, XiaoBa is also a cryptocurrency miner. It injects the Coinhive mining script to files with the following extensions:
+
+Figure 1. Infector code showing Coinhive injection; another variant even contains its own XMR configuration and miner binary
+
+Figure 2. An infected script attempting to load onto web browser, with CPU usage shown.
+Repurposed ransomware code
+The cryptocurrency miner is the main payload, deployed by injecting Coinhive script into the victim’s device. Another XiaoBa variant includes the script injection but also contains a 32bit and 64bit version of XMRig Miner. We’ve also seen other malware carry 32bit and 64bit XMRig payloads, which are deployed depending on the victim’s device.
+Based on our analysis, this infector and the ransomware RANSOM_XIAOBA (first seen in October 2017) have distinct similarities, with multiple comparable code structures. One possibility is that it was specifically repurposed to spread coin miners.
+
+Figure 3. A comparison between the ransomware and infector code
+Dirty infection techniques
+As mentioned above, XiaoBa infects malware binaries, keeping the host code intact without executing it for its original purpose. Like other malware, it drops and executes a copy of itself for autostart:
+Or in another variant
+In an attempt to keep itself running, it will also delete safeboot registries to disable logging into safe mode.
+
+Figure 4. Malware deletes safeboot registry keys
+The malware then modifies host files to redirect AV and forensics related URLs to the localhost.
+
+Figure 5. A list of the security-related URLs that will be redirected
+It then searches for and infects files with the following extensions:
+Regardless of content, the malware will prepend itself to any file with the above extension. That is the only criteria checked before infection, unlike other malware that typically look for certain conditions or markers before infecting the file. It also traverses all directories. It will not avoid critical system files (%SystemRoot% and %ProgramFiles%) and can render the system critically unstable if it is not dealt with properly.
+
+Figure 6. Screenshot of the malware infecting critical (%systemroot%\system32) directory.
+Lastly, it deletes files with the following extensions, which are for AV disk-image files and CD images:
+
+Figure 7. Code showing the files the malware deletes and infects
+Aggressive propagation tactics
+Based on our analysis, there were no limits to the size of files the malware infects, from something as low as 4kb to a file that is 100+ Mb (we tested it on a 200+ Mb file) and possibly even larger files. To make things worse, it does not leave any markers on the infected file, which allows for multiple infections of itself.
+
+
+
+Figure 8. The malware can infect and re-infect files
+In case an infected file is executed on the system, it will also include the codes of the initial binary host file(s) (named as NORMAL. EXE) into the prepended information. In some samples, we have found as many as ten host files on a single infected file. Due to the malware’s payload and its untidy way of infecting files, not only does it use a lot of memory, but it also potentially uses a lot of disk space.
+Comparing two XiaoBa variants
+So far we have encountered two variants of this cryptocurrency-mining infector. The following is a brief summary of the notable differences in their behaviors:
+Version of XMRIG component files dropped depending on OS version:
+0972ea3a41655968f063c91a6dbd31788b20e64ff272b27961d12c681e40b2d2
+08b55f9b7dafc53dfc43f7f70cdd7048d231767745b76dc4474370fb323d7ae7
+7ce2fc404d190f6e44146c455ebf08a0545fff4d8ca66e834996b28b5067ccba
+
+ 
+Deletes files with filename extensions “*.gho” and “*.iso”
+However, they share some similarities. Both have a Coinhive infection (detected by Trend Micro as COINMINER_XIAOBA.SM-HTML) for *.htm and *.html files, which uses “yuNWeGn9GWL72dONBX9WNEj1aVHxg49E” as the user site key. They also infect binary files with the extensions .exe, .com, .scr, and .pif. Also, the two are both packed using BlackMoon and disable Windows User Account Control notification.
+Based on these striking similarities, there are two likely possibilities: the two variants come from the same malware author, or they used the same source code to add and remove some capabilities.
+Mitigation and Solutions
+XiaoBa can have a significant impact if successfully deployed on the device. Once this malware infects a binary, the code of the host file will not execute. The application of the corrupted file, whatever it may be, cannot be used properly. It is not discriminatory, so it could affect critical files and render the victim’s system critically unstable. The malware also uses huge resources because it stacks infections, which unnecessarily takes up more disk space. Since it is also a cryptocurrency miner, it uses the device’s memory resources.
+Proper security measures must be in place to defend against XIAOBA and similar threats. Trend Micro XGen™ security provides a cross-generational blend of threat defense techniques to protect systems from cryptocurrency-mining malware. It features high-fidelity machine learning to secure the gateway and endpoint, and protects physical, virtual, and cloud workloads. With capabilities like web/URL filtering, behavioral analysis, and custom sandboxing, XGen™ protects systems against today’s threats that bypass traditional controls, exploit known, unknown, or undisclosed vulnerabilities, either steal or encrypt personally identifiable data, or conduct malicious cryptocurrency mining. Smart, optimized, and connected, XGen™ powers Trend Micro’s suite of security solutions: Hybrid Cloud Security, User Protection, and Network Defense.
+ IoCs and Related SHA 256
+PE_XIAOBAMINER.SM-O (infectors)
+PE_XIAOBAMINER.SM (infected)
+Ransom XIAOBA

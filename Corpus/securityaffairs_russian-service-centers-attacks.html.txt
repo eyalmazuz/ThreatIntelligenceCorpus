@@ -1,0 +1,30 @@
+
+					Crooks used multi-stage attacks aimed at Russian Service Centers					
+Security researchers from Fortinet have recently spotted a series of cyber-attacks targeting Russian service centers offering maintenance and support for various electronic goods.
+Experts highlighted the hackers conducted multi-stage attacks but excluded the involvement of a nation-state actor.
+Attackers leveraged spear-phishing messages using weaponized Office documents exploiting the 17-Year-Old MS Office flaw CVE-2017-11882 that was addressed by Microsoft updates in October.
+The first attacks were observed at the end of March when crooks sent spear-phishing emails to a service company that repairs Samsung’s electronic devices.
+The messages were written in Russian and contained a file named “Symptom_and_repair_code_list.xlsx”.
+
+“FortiGuard Labs discovered a series of attacks targeted at service centers in Russia. These service centers provide maintenance and support for a variety of electronic goods.” reads the post published by Fortinet.
+“A distinctive feature of these attacks is their multi-staging. These attacks use forged emails, malicious Office documents with exploits for a vulnerability that is 17 years old, and a commercial version of a RAT that is tucked into five different layers of protective packers.”
+Experts noticed that the content of the email was the result of a translation made by a translator service, analyzing the headers of the email the experts discovered that the IP address of the sender wasn’t associated with to the domain in the “From” field.
+ 
+The attackers used a different XLSX file for each email, they used shellcode to perform various tasks to gain access to the LoadLibraryA and GetProcAddress functions that allow it to execute the final payload.
+“The two most important functions “imported” by the shellcode are: URLDownloadToFileW and ExpandEnvironmentStringsW.” continues the analysis. 
+“The purpose of the first one is obvious. The last function is used to determine the exact location where the shellcode should store downloaded payload, since this location will be different under different platforms. Finally, Shellcode downloads a file from the URL: hxxp://brrange.com/imm.exe, stores it in %APPDATA%server.exe, and then tries to execute it.”
+The final payload uses multiple-layer multi-packer protection to avoid detection.
+The first stage implements the first layer of protection, the popular ConfuserEx packer that obfuscates objects names, as well as names of methods and resources,
+The resources are used to determine the next stage payload, which is encrypted using DES, and executes the decrypted file named BootstrapCS that represents the second stage of the multi-layer protection.
+BootstrapCS is not obfuscated, but it contains multiple anti-analysis checks, with the structure “settings” in the resources section determining which checks should be performed.
+This check is essential to avoid the code being execute in a virtualized environment and also searches for and shuts dowIt also writes the payload path to the following startup registry keys:
+The stage 3 of the payload is represented by a binary resource named mainfile that represents the third level of packing protection, a simple XOR algorithm with the KEY = 0x20 was used for encryption.
+Once the payload is decrypted payload it is injected into a process based on the value in the settings resource file.
+The stage 3 of the payload resolves a commercial Remote Administration Tool (RAT) dubbed Imminent Monitor. At stage 4, the security researchers once again used the ConfuserEx packer.
+The Imminent Monitor RAT includes the following five modules:
+that allows the malicious code to control the victim’s machine, including the webcam.
+The analysis of the C&C servers revealed 50 domains registered by the attackers on the same day, some of them were used by crooks to deliver malware, while others were involved in phishing attacks. The experts also discovered older .XLSX samples that exploit different vulnerabilities.
+“We also noticed that the pattern of these attacks has become quite popular today. The use of exploits is more efficient than the use of simple executable files, especially since the level of threat-awareness among users has sufficiently grown in recent years. It is simply not that easy to trick a user to opening executable file as it was before. Exploits are a different case,”  concludes Fortinet.
+Further details are included in the IoCs section of the report.
+Pierluigi Paganini
+(Security Affairs –Russian Service Centers, hacking)

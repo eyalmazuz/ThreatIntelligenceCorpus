@@ -1,0 +1,54 @@
+
+File2pcap - The Talos Swiss Army Knife of Snort Rule Creation
+
+
+This post was authored by Martin Zeiser with contributions by Joel Esler
+
+
+At Talos we are constantly on the lookout for threats to our customers networks, and part of the protection process is creating Snort rules for the latest vulnerabilities in order to detect any attacks.
+
+To improve your understanding of the rule development process, consider a theoretical remotely exploitable vulnerability in server software Server2010. A proof-of-concept exploit is developed, the server software set up on a virtual machine, traffic is captured on  the network between attacker and victim, rule development can start, right?
+
+But what if months or years later, the rule needs to be re-inspected, because circumstances have changed? This requires another vulnerable version of Server2010 to be found, reinstalled and reconfigured to the vulnerable parameters, to run tests again and again, so that network traffic can be inspected. Then when the server is installed, the particular exploit used does not work anymore, because the language it was written in has since changed and the code needs to be fixed accordingly. All this requires plenty of time, which is why it doesn’t happen that way. Instead, a vulnerability is identified, an exploit is written, the exploit is ran, and the attack captured using Wireshark. From then on, the traffic in said pcap file can be used to develop a correct rule. The traffic recorded in a pcap file can easily be put back on the wire using a tcp replay utility, or read directly by Snort. This is why rule developers generally work with pcaps of attacks, instead of exploits.
+
+Regarding file-based vulnerabilities, the original process used to involve starting a local webserver and using a browser to download the exploit file, while recording the transfer using Wireshark. File2pcap revolutionized this requirement by simulating the traffic and creating the proper pcap without any hassles.
+
+
+
+Supported protocols:
+
+
+
+HTTP:
+File2pcap started out as a tool to create pcaps from input files, showing these files in transfer from a web server to a browser. By simulating the entire data exchange it is possible to create a pcap file for any input file, usually within seconds. The result always shows a full TCP stream from SYN to FIN with packets in order and checksums correct. These pcap files can then be used in combination with a tcp replay tool (or read by Snort) to create proper rules for all file-based attacks.
+
+
+HTTP/2:
+HTTP has evolved in the last number of years, with HTTP/2 now being in widespread use. It is typically used encrypted, but the protocol does also support plaintext connections, which is why HTTP/2 was added to file2pcap.
+
+
+HTTP POST:
+Though HTTP GET is the prevalent request coming from a browser, sometimes data is uploaded using HTTP POST. To cover this angle, support for HTTP POST was added to file2pcap.
+
+
+SMTP/POP3/IMAP:
+While browser-based attacks are one of the most common ways machines are compromised, another threat is email and attachments. In order to let Snort rule developers create pcaps for these threats just the way file2pcap allowed them for browser-based attacks, new features were added. Specifically support for the SMTP, POP3 and IMAP protocols. When file2pcap is instructed to craft an SMTP pcap from an input file, it simulates an email from a client to a mail server with the input file sent as an attachment to this email. POP3 and IMAP work similarly. Command-line switches allow for the encoding of the attachment to be switched from the default MIME to quoted-printable or even UU-encoding.
+
+
+FTP:
+Another typical file transfer protocol which file2pcap supports is the FTP protocol, where both ‘active’ and ‘passive’ data streams can be created.
+
+
+IPv6:
+To prepare file2pcap even better for covering any upcoming attacks, one of the latest additions was support for IPv6. Now a simple command-line flag can switch the data exchange from the default IPv4 to IPv6, while keeping everything else the same.
+
+
+Talos GitHub
+
+
+To wrap it up, file2pcap is a tool which will create a pcap from any input file, simulating this file in transit, using various protocols and encodings. The resulting pcap file can then be used to create or test rules for Snort. File2pcap is in widespread use within Talos for rule creation, as it works reliably while saving plenty of development time.
+
+File2pcap can be downloaded from our Github page
+Feedback and feature requests are welcome on our Github Issues Page
+
+

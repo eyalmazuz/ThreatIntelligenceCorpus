@@ -1,0 +1,145 @@
+
+Process Hollowing
+
+
+
+
+Back in 2011 blogs (here, here, here) and papers (here, here, here, here) described a widely used Malware technique to hide malicious actions called: Process Hollowing. Nowadays we are experiencing some "flashbacks" to this delightful technique, so I decided to write a little bit about it, just in case someone needs a "refresh".
+
+
+
+
+Process hollowing is a technique used by some malware in which a legitimate process is loaded on the system solely to act as a container for hostile code. At launch, the legitimate code is deallocated and replaced with malicious code.
+
+
+
+Process Hollowing (from here)
+
+
+The beauty of this technique is in the help given to malicious process to be hidden between conventional processes. But let's walk a little bit on the technique:
+
+
+
+Step1.
+
+The Malware starts a legitimate process by using the CreateProcecess within CREATE_SUSPENDED flag enabled in the fdwCreate.
+
+
+
+// This function is used to run a new program. It creates a new process // and its primary thread. The new process runs the specified executable // file.
+BOOL CreateProcess(
+LPCWSTR pszImageName,
+LPCWSTR pszCmdLine,
+LPSECURITY_ATTRIBUTES psaProcess,
+LPSECURITY_ATTRIBUTES psaThread,
+BOOL fInheritHandles,
+DWORD fdwCreate,
+LPVOID pvEnvironment,
+LPWSTR pszCurDir,
+LPSTARTUPINFOW psiStartInfo,
+LPPROCESS_INFORMATION pProcInfo
+);
+
+// fdwCreate// [in] Specifies additional flags that control the priority// and the creation of the process.//// CREATE_SUSPENDED fdwCreate flag// The primary thread of the new process is created in a suspended state,// and does not run until the ResumeThread function is called.
+Step2.
+The process has been created and it's in suspended state. Now it's time to hollow the legitimate code from memory in the hosted process. We might use the following API (ZwUnmapViewOfSection).
+
+
+// NtUnmapViewOfSection and ZwUnmapViewOfSection are two versions of// the same Windows Native System Services routine.
+
+// The ZwUnmapViewOfSection routine unmaps a view of a section from// the virtual address space of a subject process.
+// a view can be a whole or partial mapping of a section object in // the virtual address space of a process.
+
+
+NTSTATUS ZwUnmapViewOfSection(
+__in HANDLE ProcessHandle,
+__in_opt PVOID BaseAddress
+);
+
+
+
+Step3.
+
+
+The Malware then allocates  memory for the new code by classically using VirtualAllocEx. The Malware should ensure the code is marked as writable and executable (by using flProtect).
+
+
+
+
+
+
+
+
+// Reserves or commits a region of memory within the virtual address // space of a specified process.
+
+LPVOID WINAPI VirtualAllocEx(
+__in HANDLE hProcess,
+__in_opt LPVOID lpAddress,
+__in SIZE_T dwSize,
+__in DWORD flAllocationType,
+__in DWORD flProtect
+);
+
+// Memory Protection Constant PAGE_EXECUTE_READWRITE = 0x40
+// Enables execute, read-only, or read/write access to the committed // region of pages.
+
+
+
+Step4.
+
+Now it's time to write the malicious code into the hollow host process using the romantic WriteProcessMemory.
+
+
+
+
+
+
+// Writes data to an area of memory in a specified process. The entire // area to be written to must be accessible or the operation fails.
+
+BOOL WriteProcessMemory(
+HANDLE hProcess,
+LPVOID lpBaseAddress,
+LPVOID lpBuffer,
+DWORD nSize,
+LPDWORD lpNumberOfBytesWritten
+);
+
+
+
+
+Step5.
+in order to camouflage the Malware, the author should re-set the normal pagination schema by setting Read/Execute protections like any other normal process by using VirtualProtectEx.
+
+// Changes the protection on a region of committed pages in the virtual // address space of a specified process.
+BOOL WINAPI VirtualProtectEx(
+__in HANDLE hProcess,
+__in LPVOID lpAddress,
+__in SIZE_T dwSize,
+__in DWORD flNewProtect,
+__out PDWORD lpflOldProtect
+);
+
+
+
+
+It should also set the remote context to point to the new code section. The SetThreatContext API has been used to reach the scope!
+
+
+// Sets the context for the specified thread.
+BOOL WINAPI SetThreadContext(
+__in HANDLE hThread,
+__in const CONTEXT *lpContext
+);
+
+
+Step6.
+It's time to resume the suspended thread (ResumeThread) and "game over" !
+
+
+// Decrements a thread's suspend count. When the suspend count is // decremented to zero, the execution of the thread is resumed.DWORD WINAPI ResumeThread(__in HANDLE hThread);
+
+We've just fired up a brand new (and potentially malicious) process!
+
+Focusing on detection, it is going to be hard if using static signatures (such as AntiVirus romantic signatures) but having the possibility to dynamically analyse system calls (such as a sandboxed environment) the detection rate will increase drastically.
+
+

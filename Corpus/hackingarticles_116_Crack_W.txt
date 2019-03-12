@@ -1,0 +1,40 @@
+
+Crack Wifi Password using Aircrack-Ng (Beginner’s Guide)
+
+This is the classical method of wireless password cracking .All the tools use this method in one way or other.
+First start the monitor mode which will listen to all the wifi connections nearby with command:
+airmon-ng start wlan0
+In your lower right corner you will see written. monitor mode enabled for [phy1]wlan0mon
+
+Now run the following command to confirm that our wifi adaptor is in monitor mode, so run command:
+ifconfig
+which will show you the wifi adaptor as wlan0mon meaning adaptor is in monitor mode.
+Now run command:
+airodump-ng wlan0mon 
+The above command will start listening to all the available wifi connections.
+Now when your target appeas hit ctrl^c and then to capture the handshake type command:
+airodump-ng -c 7 –bssid C8:XX:35:XX:FD:F0  –write 1 wlan0mon 
+Here,
+ -c is the channel no. of the AP which will be listed in CH column in the output of above command as in my case it is 7.
+–bssid is the MAC address of the target AP as in my case it is rajlab and bssid is  C8:3A:XX:44:XX:F0
+–write is the capture file in which the capture packets will be saved as in my case i have named it as 1 . 
+
+
+Now start the deauth attack to disconnect all the connected clients to that AP which will help in capturing the handshake with command:
+aireplay-ng -0 100 –a XX:3A:35:XX:FD:F0  -e rajlab wlan0mon
+Here,
+-0 is used for deauth attack
+100 is no. of deauth packets to be sent
+-a is the target AP MAC address
+-e is ESSID of the target AP i.e. name of the target AP 
+
+After launching the deauth attack we will get the WPA handshake in the previous terminal window in the top right corner then hit ctrl^c.
+
+Now we have to crack the password with aircrack-ng so type command :
+aircrack-ng 1-01.cap –w /usr/share/nmap/nselib/data/passwords.lst
+Here,
+1-01.cap is the capture file we generated in the airodump-ng .
+-w is the dictionary to be used to perform dictionary attack
+In my case the key is found as KEY FOUND! [raj123987]
+
+Author: Himanshu Gupta is a Information Security Researcher | Technical writer. You can follow him on LinkedIn .

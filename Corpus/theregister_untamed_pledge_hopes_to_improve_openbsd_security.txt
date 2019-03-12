@@ -1,0 +1,25 @@
+Untamed pledge() aims to improve OpenBSD security
+Linus Torvalds may have used the Washington Post to drop a bucket on the “masturbating monkeys” of OpenBSD, but they seem insular enough not to care overmuch.
+In a set of slides posted at openbsd.org, one of the project's founders, Theo de Raadt, has set down the principles behind one of the projects that Torvalds dislikes – the renamed tame(), now called pledge().
+Pledge() is designed as a mitigation rather than a cure-all, de Raadt explains, but it's a mitigation with an interesting approach: a process or application stipulates the system services it needs, and if it steps beyond its boundaries, it's killed.
+Why bother? Think of it as a second line of security: someone trying to exploit a compromised application to step outside its permissions finds themselves stonewalled by the pledge() rules.
+In mid-October, when the decision to rename the system was made, de Raadt explained it like this: “A very simple annotation system call a program can do, to tell the kernel what it will do henceforth. If it breaks the rules, it gets killed (and you see those pledge messages)”.
+While insiders have gotten their heads around pledge(), and have been pushing it into the source tree “at a very rapid pace”, de Raadt seems it's now ready for wider exposure – hence the slideshow explaining it.
+He explains that the system call interface is an attack surface, but many common library routines “call a wide variety of system calls”.
+In looking at 500 OpenBSD programs, de Raadt says, there's a clear pattern in how system calls are used: there's a “rich set of system calls needed during initialisation”, but the main loop of the program calls a “narrower class of system calls”.
+Hence, if pledge() statements (requests for permission to use particular system calls) are inserted between initialisation and the main loop, it can watch over operations to see if the program breaks its own rules.
+Pledge() itself for now covers calls like stdio; various path calls; file attributes (such as ownership); socket opening statements; networking like DNS and route calls; getpwd and others.
+However, “as more needs are found”, pledge() can be extended, he writes.
+If, for example (and an unlikely one, but it's an example), a program only needs read-only access to existing files, the pledge() lines added to the code would look like this:
+
++ if (pledge(“stdio rpath”, NULL) == -1)
+
++ err(1, “pledge”);
+
+If the programmer slipped up and the application tries to write to the file, it will fail - and the same fate would befall an attacker trying to do something beyond the pledge() rules.
+“Most programs can use pledge() with 3-10 lines of code,” he claims in the presentation.
+Whether or not de Raadt's poke at “loudmouth Linus” (heaven knows, de Raadt has been called “cantankerous” in these pages in days past) draws a response, El Reg will be interested to see the reception pledge() gets. ®
+
+Sponsored: 
+Following Bottomline’s journey to the Hybrid Cloud
+

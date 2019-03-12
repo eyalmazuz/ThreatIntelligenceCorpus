@@ -1,0 +1,49 @@
+Using the Registry to Discover Unix Systems and Jump Boxes
+March 09, 2017 | by Brandon Arvanaghi | Advanced Malware
+On red team engagements, Mandiant consultants are often tasked with identifying and obtaining access to critical Unix systems within our client’s environments. The objectives may include obtaining payment card data on point of sale terminals or accessing intellectual property residing on Apple MacBooks.
+
+Since Unix systems are typically not domain-joined, locating and authenticating to them can be a challenge. In fact, current methodologies often rely on luck. Typically, this can include:
+
+Examining live hosts not enumerable through Active Directory.
+Running netstat across all domain-joined computers and looking for active connections over common Unix-communicating ports.
+Performing port scans for services indicative of a Unix host.
+Searching Active Directory for groups such as “Linux Admins” or “Mac Admins” and identifying their members’ workstations and active sessions.
+Identifying non-AD LDAP instances and hosts associated with them.
+In this blog, I address a new approach to finding Unix systems using a small and purely PowerShell tool we created called SessionGopher.
+
+Our thought process was simple: While most Unix systems are off-domain, they are often accessed and managed by domain-joined Windows systems. These Windows systems typically have remote access tools installed on them that would suggest they communicate with Unix systems, and these tools leave behind valuable artifacts that can help consultants both discover and exploit the Unix systems. SessionGopher is designed to identify these remote access tools and extract any auxiliary information about the hosts to which they connect.
+
+Where It Happens: The HKEY_USERS Hive
+The HKEY_USERS hive is a Windows hive that contains persistent information about users who have interactively logged on to the system. For each user that authenticates to the system, Windows creates a user subkey at location HKEY_USERS\<SID>, where <SID> is that user’s security identifier. A privileged account, such as a local or domain administrator, can access the contents of every user subkey on the system under HKEY_USERS. A non-privileged account on the same system can only access the user subkey associated with his or her account.
+
+Amazingly, within these user subkeys reside saved session information for some of the remote access tools discussed earlier. If a user creates a session in WinSCP, a file transfer client often used to communicate with Unix systems, and then saves that session, the entire saved session gets stored in the Registry under that user’s <SID> subkey:
+
+HKEY_USERS\<User’s SID>\Software\Martin Prikryl\WinSCP 2\Sessions\<Session Name>
+
+Using regedit, a graphical interface for the Windows Registry, we can examine the contents of one of these sessions.
+
+Figure 1: A WinSCP saved session in the HKEY_USERS hive
+
+By default, the WinSCP password from Figure 1 is obfuscated by several bitwise operations, not encrypted, unless the user explicitly creates a master password to protect these registry values.
+
+Similarly, PuTTY, an SSH client for Windows, stores its session information as a separate subkey:
+
+HKEY_USERS\<User’s SID>\Software\SimonTatham\PuTTY\Sessions\<Session Name>
+
+While PuTTY does not store passwords, it can store the hostnames to which the client connects, as seen in Figure 2.
+
+Figure 2: A PuTTY saved session in the HKEY_USERS hive
+
+A plethora of remote access tools like these exist which store their saved session information in the user’s HKEY_USERS subkey. Enumerating the domain for systems with these artifacts provides an educated guess as to where Unix systems may be hiding, potentially some credentials, and the hosts that serve as jump boxes to those Unix systems.
+
+Windows Management Instrumentation (WMI)
+In developing a post-exploitation tool, using WMI’s remote registry querying functionality to extract these Registry-based saved session artifacts made sense. Our tool SessionGopher leverages WMI to query each SID found in the system’s HKEY_USERS hive for the artifacts discussed earlier.
+
+When a master password is not used, SessionGopher automatically deobfuscates WinSCP saved session passwords, as shown in Figure 3.
+
+
+
+Figure 3: SessionGopher’s built-in WinSCP password deobfuscator
+
+On top of WinSCP and PuTTY, SessionGopher extracts saved RDP session data from each user’s HKEY_USERS subkey. This expands SessionGopher’s functionality from strictly finding Unix systems to also identifying systems that may serve as jump boxes to different subnets. Figure 4 demonstrates SessionGopher returning saved RDP sessions on remote host “WIN7-CLIENT01” when run against a set of domain computers.
+

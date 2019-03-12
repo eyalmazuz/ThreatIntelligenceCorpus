@@ -1,0 +1,57 @@
+
+Comprehensive Guide to Nmap Port Status
+
+Hello friends, several times you might have used NMAP to performing Network scanning for enumerating active Port services of target machine but in some scenarios you don’t get simple message if a port open or close.
+Let’s Begin
+Requirement 
+Attacker’s IP:  192.168.1.109 [Kali Linux]
+Target’s IP: 192.168.1.119 [Ubuntu]
+The states of ports are not their essential properties; it depicts how nmap sees them. In nmap a port is divided into six states:
+Open:  This state means that an application on the target machine is listening for connections/packets on that port.
+ Closed: This state means ports have no application listening on them, though they could open up at any time.
+Filtered: This state means that a firewall, filter, or other network obstacle is blocking the port so that Nmap cannot tell whether it is open or closed. 
+Unfiltered: ports are classified as unfiltered when they are responsive to Nmap’s probes, but Nmap cannot determine whether they are open or closed.
+Open/Filtered: This indicates that the port was filtered or open but Nmap couldn’t establish the state.
+Closed/Filtered: This indicates that the port was filtered or closed but Nmap couldn’t establish the state.
+In this case a service or application running on a port is actively accepting TCP, UDP connections. We send TCP packets to port 80 of target machine. We find that the port is open.
+
+We take a look at wireshark and find that 3 way-handshake occurs as given below.
+
+In this case a service or application on a port is accessible but no application is running on it. When a port is in closed state it sends RST with ACK packet when it receives TCP SYN packet
+Now we have used SYN scan to send TCP SYN packets on port 80 of target machine and found that the target is closed. That is because as soon as it receives TCP SYN packet it sends back TCP RST, ACK packet.
+
+We check wireshark to find more information, as expected as soon as the target machine received TCP SYN packet it replied with TCP RST and NMAP interpreted it as port is closed.
+
+In this case Nmap is unable to determine whether a port is open because packet filtering is preventing the packets from reaching the port. When a packet is dropped Nmap retries several times just in case the probe was dropped due to network congestion rather than filtering. This slows down the scan dramatically.
+Let’s use iptables to drop TCP packets on the target machine.
+
+Now when we scan the target machine, the packets will be dropped as soon as it receives TCP packets.
+From given below image you can observe that it is now showing state “filtered” for port 80.
+
+Let’s take a look at wireshark we find that when Nmap send TCP SYN packet we get no reply from the target machine. This means that a packet filter or firewall is dropping our packets.
+
+The unfiltered state means that a port is accessible, but Nmap is unable to determine whether it is open or closed. Only the ACK scan, which is used to map firewall rulesets, classifies ports into this state. Scanning unfiltered ports with other scan types such as Window scan, SYN scan, or FIN scan, may help resolve whether the port is open.
+We use iptables to drop any TCP packet coming to port 80 in target machine.
+
+Now we use nmap ACK scan to scan the target machine to check if there is any firewall or not.
+As we can see in given below image the port without firewall shows unfiltered as Nmap is unable to determine if it is open or close.
+
+We can see in wireshark that for port 22 we get a RST packet whereas in case of port 80 the packet is dropped by the target machine.
+
+In this case nmap is unable to determine if a port is open or filtered. This occurs for scan types in which open ports give no response. The lack of response could also mean that a packet filter dropped the probe or any response it elicited. So Nmap does not know for sure whether the port is open or being filtered. The UDP, IP protocol, FIN, NULL, and Xmas scans classify ports this way.
+Let’s use nmap Xmas scan to scan the target machine.
+As we can see the nmap scan shows us the port to be open| filtered.
+
+We check wireshark to analysis the sent packets by nmap and we can see we don’t get a reply even if the port is open.
+
+This state is used when Nmap is unable to determine whether a port is closed or filtered. It is only used for the IP ID idle scan.
+We use iptables on our target machine to drop incoming TCP packets on the target machine.
+
+We IP ID idle scan on the target machine using 192.168.1.107 as our zombie.
+As we can see in idle scan the zombie it is showing state closed|filtered for port 80.
+
+An idle scan consists of three steps that are repeated for each port:
+We check Wireshark and find that find the entire process.
+
+Source: https://nmap.org/book/man.html
+Author: Sayantan Bera is a technical writer at hacking articles and cyber security enthusiast. Contact Here

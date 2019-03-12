@@ -1,0 +1,46 @@
+Janus Android App Signature Bypass Allows Attackers to Modify Legitimate Apps
+Android’s regular security update for December 2017 included a fix for a serious vulnerability that could allow attackers to modify installed apps without affecting their signature. This would allow an attacker to gain access to the affected device (indirectly). First found by researchers in July, this vulnerability (designated as CVE-2017-13156, and also called the Janus vulnerability) affects versions of Android from 5.1.1 to 8.0; approximately 74% of all Android devices have these versions installed.
+We have found at least one app in the wild using this technique. This particular version of the app used the vulnerability to make itself more difficult to detect by mobile security solutions. It’s possible that it could be used in the future to compromise other apps and access the information of the user.
+Vulnerability analysis
+The installation packages of Android apps (.APK files) are actually .ZIP files. The .ZIP file format has several characteristics that allowed this attack to take place. See the basic .ZIP file structure below:
+
+Figure 1. .ZIP file structure
+The file structure consists of three parts: the file entries, a Central Directory, and an End of Central Directory. The Central Directory contains information for each file in the archive; applications use this directory to find the memory location to access that file as needed.
+However, there is no requirement that each file entry is next to one another. You can even have arbitrary data located in that part of the .ZIP file, as seen below:
+
+Figure 2. .ZIP file structure (with arbitrary data in red)
+The attacker can place a malicious DEX file at the start of the APK file, as seen below. A vulnerable version of Android will still recognize this as a valid APK file and will attempt to execute it.
+
+Figure 3. Added DEX component to APK file
+The Android Runtime (ART) is responsible for loading the DEX code from the APK file. It examines this file, and because of the DEX code in the header, it is recognized as a DEX file and executed directly. ART considers the code after this (the original contents of the APK) as garbage data, which it ignores. However, it still regards this file as a valid APK file. Accessing APK data like resources and assets works similarly with common apps.
+Vulnerability effects
+In general, malware can abuse this vulnerability in two ways.
+Firstly, it can be used to hide a payload. Malware may disguise itself as a single clean DEX file, with the malicious payload stored in the APK file loaded later. This is how the app discussed below uses it.
+Secondly, it can be used to update an already installed app without the knowledge of the original developer. An attacker can use this to access the protected data of the original app such as user credentials and private information. Impersonating the identity of legitimate apps can also bypass some security solutions.
+Attacks in the wild
+Once this vulnerability was disclosed, we checked our existing malware samples to see if any known malware samples used it. We found one malware sample that did use this particular vulnerability, but not in the way that was expected. We detect this as ANDROIDOS_JANUS.A. We have also worked with Google to take the appropriate measures and alert users (Google has flagged this app as malicious).
+This particular app was previously found on Google Play as a junk cleaner, but was later updated to become a news app; it was not present in the Play store.
+
+Figure 4. Icon of new version of app exploiting Janus
+The malware used the vulnerability for dynamic code loading. The embedded DEX file contains only a small payload that decrypts the actual payload from various assets and dynamically loads it. This is done via the Janus vulnerability that builds a malformed app with a DEX file in the header, followed by the actual payload inside the APK code itself. This is meant to bypass malware scanners that will handle this file as a DEX file and pronounce it clean, ignoring the malicious code.
+It will run as a background service when the Android device boots. It connects to its C&C server and receives commands to install more malware, which is the extent of its current behavior.
+
+Figure 5. Code for downloading other malware
+It was imagined Janus could be used to update already-installed applications on the device maliciously. Our analysis of the code indicates that this app does not intend to carry out any app update attacks, and Janus is being used to avoid security solutions. However, we cannot rule out the possibility of malware using this attack to act as a downloader.
+Mitigation for Developers
+Android 7.0 (Nougat) introduced a new signature scheme (version 2). The signature certificate and digest are moved from the meta section to an APK signing block located between the file entries and the Central Directory in the APK file. It protects the integrity of the other three sections.
+
+Figure 6. Added signing block to APK file
+Gaps between the file entries are still allowed. However, it checks the entire segment from the start of the file until the start of the APK signing block: this means that any tampering will break the signature integrity check. It’s still possible to inject a DEX file into the header, but a successful attack still requires resigning the APK signing block.
+For compatibility reasons, developers generally prefer a mixed signature (version 1 and 2) scheme. The effect of mitigation varies with different devices. In devices that do support it, version 2 is enforced with rollback protection.
+
+Figure 7. Rollback protection
+This attack is still possible on devices with older Android versions with only version 1 of the signing scheme. However, until Nougat is rolled out to more devices, we recommend that developers continue with mixed signing.
+Conclusion
+The impact of this vulnerability is broadly similar to the Master Key vulnerability that hit Android several years ago. Both vulnerabilities allowed for legitimate apps to be modified without the knowledge of their users.
+If a malicious app that exploited this vulnerability made its way to an app store, then users would face two risks at the same time: either a malicious app would be passed off as a legitimate app, or a malicious app installed via the app store modifies legitimate apps in large numbers.
+Not all mobile security solutions can meet this challenge. Malicious DEX code embedded in normal apps are capable of evading many security solutions. Enterprise MDM solutions may not detect these apps either, and they are also vulnerable to being modified by malicious apps. Vendors have to improve their ability to scan and detect malicious Android apps.
+Trend Micro solutions like Mobile Security for Android™ (also available on Google Play) are already capable of detecting these types of threats. Mobile Security for Enterprise provides device, compliance and application management, data protection, and configuration provisioning, as well as protects devices from attacks that leverage vulnerabilities, preventing unauthorized access to apps, as well as detecting and blocking malware and fraudulent websites.
+Trend Micro’s Mobile App Reputation Service (MARS) covers Android and iOS threats using leading sandbox and machine learning technologies. It can protect users against malware, zero-day and known exploits, privacy leaks, and application vulnerabilities.
+Indicators of Compromise
+The app with the following hash is connected to this threat:

@@ -1,0 +1,38 @@
+
+Threat Profile: RokRAT
+
+Posted by
+Roy Moshailov on January 2, 2018 at 2:59 PM
+                           
+
+Find me on:
+
+Twitter 
+
+
+
+
+
+RokRAT is a sophisticated Remote Access Trojan (RAT) that is skilled at evading detection and uses multiple techniques to make analysis difficult. The current RokRAT campaign was identified by Cisco Talos in November. The earliest known RokRAT campaign occured in April, although this used a less evasive malware variant. 
+RokRAT leverages a malicious Hangual Word Processor (HWP) document. HWP is a popular alternative to Microsoft Office for South Korean users. The document, sent in spear phishing emails or exploit kits, contains an embedded EPS object, which exploits a well-known vulnerability, CVE-2013-0808. It downloads a binary disguised as a JPG file, which decodes and launches RokRAT malware on the victim’s system.
+As the campaign is delivered by a Korean language word processor, we can assume that this attack is targeted at South Korean users. In fact, according to Cisco Talos, the document content refers to a meeting of the group "Citizens' Alliance for North Korean Human Rights and Reunification of Korean Peninsula," indicating that it is targeting South Koreans interested in North Korea and/or involved with this specific group. A previous campaign referred to the "Korean Reunification and North Korean Conference," reinforcing the North Korea angle. The threat actors themselves remain unidentified. 
+The infection vector is a malicious HWP document containing an embedded Encapsulated PostScript (EPS) object. The EPS object exploits an EPS buffer overflow vulnerability (CVE-2013-0808) and downloads a binary disguised as a JPG file. 
+The dropper is packed by a custom packer, indicated by the file’s high entropy in the resource section and few functions in the import table. The resource named SBS/Doc contains malicious shellcode.
+
+The dropper creates a new cmd.exe process, injects the extracted resource and executes it.
+Code injection is a commonly used malware technique:
+
+Self-modifying code:
+
+The shellcode decodes a PE file (XOR obfuscation technique), loads it to the memory of cmd.exe and finally executes it.
+Decrypted function:
+
+As part of the evasive techniques, the dropper (dropping  a new RokRAT variant as the payload) iterates over the PEB to find some useful functions.
+To prevent blocking, the trojan uses legitimate Mediafire, Yandex, and Twitter cloud platforms for its command and control communications and exfiltration platforms. Additionally, the platforms use HTTPS connections, making it more difficult to gather further data on its activities.
+RokRAT uses several techniques to evade detection, including identifying tools used by analysts or sandbox environments.
+Once it has infected an endpoint, this trojan can execute commands, move a file, remove a file, kill a process, download and execute a file, upload documents, capture screenshots, and log keystrokes. 
+Morphisec’s Moving Target Defense stops the attack across its attack chain, at both the document exploitation phase and the RokRAT malware itself. Because Morphisec doesn’t rely on signature or behavioral patterns but rather process morphing to stop malware, the attack is stopped before it can perform any type of malicious activity. 
+Resources
+http://blog.talosintelligence.com/2017/11/ROKRAT-Reloaded.html
+http://blog.talosintelligence.com/2017/04/introducing-rokrat.html
+Interested in learning more about packers and how they obfuscate code to make malware difficult to detect?  This analysis deconstucts a sophisticated Andromeda/Gamarue Custom Packer, focusing on the packer and deobfuscation stage of the attack chain.

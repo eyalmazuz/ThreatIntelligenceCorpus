@@ -1,0 +1,44 @@
+
+A Quick Overview of Google Web Toolkit Application Security
+
+
+By Vijay Agarwal.
+
+
+One of my recent engagements I had got an opportunity to work on a application which uses Google’s Web Toolkit (GWT). GWT is open source java framework used to create rich internet applications. Both the server and the front end are written in java and all the front end logic is compiled client side into obfuscated JavaScript equivalents and loaded into the browser.
+
+Boot Strap Loading and cache/no cache Files
+
+GWT requires no special browser plug-ins and has minimal cross browser headaches. Typically whenever an application loads, its bootstrap process is kicked off and starts the application initiation process. On the server side, the gwt.js and .nocache.js files handle the bootstrap process and are responsible for performing the deferred binding which loads the configuration, modules, and browser specific classes. During this time, initial configuration steps like browser detection takes place and compatible java scripts files are created which are supported by the browser.  
+
+The above processes results in multiple "[MD5 Sum].cache.html" files. These are browser specific files that contain application logic, and are generated post authentication. They are named according to the MD5 sum of their contents and consist of RPC methods, other restricted methods, and sensitive information.
+
+
+Example cache file names:
+https://www.xyz.com/testapp/9E871855826913D91F95F8F65F4ED9E3.cache.html
+https://www.xyz.com/testapp/C2C2D9E9AB0BBFD8B66FD43702FAF3B5.cache.html
+
+
+
+Example file content:
+ functionjy(b,c,d,e,f){[..snip..]  
+ !!$stats&&$stats({moduleName:$moduleName,sessionId:$sessionId,subSystem:TG,evtGroup:j,method:oI,millis:(new Date).getTime(),type:WH});  
+ k=vr(b);try{lr(k.b,oF+Oq(k,pI)); lr(k.b,oF+Oq(k,qI)); lr(k.b,ZH);lr(k.b,oF+Oq(k,$H));lr(k.b,oF+Oq(k,$H));  
+ lr(k.b,oF+Oq(k,rI));lr(k.b,oF+Oq(k,c));lr(k.b,oF+Oq(k,d));lr(k.b,oF+e);i=jr(k);[..snip..]wr(b,(cs(),oI),j,i,f)  
+
+
+Since these cache files are generated once the user logs out of the application, these files should be restricted and should not be accessible without authentication on the server side. If accessible, these files may disclose sensitive information.
+
+Client Side Code
+Google obfuscates it's code once it reaches the client's browser as an extra layer of security  and, presumably, to save disk space. The client side code can potentially contain application data and all of the of components associated with it's inner workings, things like its RPC framework - which can greatly aid an attacker. Google uses all of the common obfuscation methods such as function, variable renaming, reordering and respacing 
+
+degwt is a utility that de-obfuscates GWT generated java script code. You can find an example on the tool's website at http://code.google.com/p/degwt/
+RPC methods can also be enumerated using tools like GWTEnum, available from http://blog.gdssecurity.com/labs/2010/7/20/gwtenum-enumerating-gwt-rpc-method-calls.html 
+Authorization and other Issues
+Authorization issues seem to come up quiet a bit with GWT based applications since its often adopted by developers who focus more on interface design, rather then security. Because of this all of the major web application vulnerabilities should not be forgotten, particularly those associated with authorization vulnerabilities such as forced browsing, session replay, and parameter manipulation. 
+
+
+Referenceshttp://blog.gdssecurity.com 
+http://code.google.com/webtoolkit 
+
+

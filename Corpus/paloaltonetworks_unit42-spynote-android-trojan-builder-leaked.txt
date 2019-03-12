@@ -1,0 +1,118 @@
+SpyNote Android Trojan Builder Leaked
+
+Our team recently discovered a new Android Trojan called SpyNote which facilitates remote spying. The builder, which creates new versions of the malware, recently leaked on several malware discussion forums. SpyNote is similar to OmniRat and DroidJack, which are RATs (remote administration tools) that allow malware owners to gain remote administrative control of an Android device.
+
+Like these other RATs, SpyNote has a large feature set including the following:
+
+No root access required
+Install new APKs and update the malware
+Copy files from device to computer
+View all messages on the device
+Listen to calls made on the device
+List all the contacts on the device
+Listen live or record audio from the device’s microphone
+Gain control of the camera on the device
+Get IMEI number, Wi-Fi MAC address, and cellphone carrier details
+Get the device’s last GPS location
+Make calls on the device
+
+
+Figure 1: SpyNote Control Panel
+The SpyNote APK requires victims to accept and give SpyNote many permissions, including the ability to edit text messages, read call logs and contacts, or modify or delete the contents of the SD card. We have found that a sample of SpyNote was uploaded to the VirusTotal and Koodous malware analysis websites.
+ 
+Analysis
+Upon installation, SpyNote will remove the application’s icon from the victim’s device. Also apparent is that the SpyNote builder application is developed in .NET
+The application is neither obfuscated nor protected with any Obfuscator or Protector.
+
+Figure 2: Decompiled SpyNote Builder
+The uploader might be following the instructions described in YouTube videos on using SpyNote, considering the port number used is exactly the same as in the videos (https://www.youtube.com/watch?v=E9OxlTBtdkA) and the uploader only changes the icon of the APK file.
+Furthermore, this RAT has been configured to communicate to the command and control (C&C) IP address (141.255.147.193) over TCP port 2222 as shown in the image below.
+
+Figure 3 – Dalvik bytecode view using Cerbero profiler
+
+Figure 4 – SpyNote opening a socket connection
+
+Based on the information we have already found, we now know that the malware is using the hard-coded SERVER_IP and SERVER_PORT values (Figure 4) for this socket connection. We can now create an extractor for the C2 information using Androguard (https://github.com/androguard/androguard) as shown below. The spynote.C2.py script (shown below) parses these values from the APK file and prints them to the command line (Figure 5).
+
+Figure 5 – Extracted C2 information
+
+
+
+
+
+#!/usr/bin/python
+import sys
+from sys import argv
+from androguard.core.bytecodes import apk
+from androguard.core.bytecodes import dvm
+
+#---------------------------------------------------
+# _log : Prints out logs for debug purposes
+#---------------------------------------------------
+def _log(s):
+    print(s)
+
+if __name__ == "__main__":
+    if (len(sys.argv) < 2):
+        _log("[+] Usage: %s [Path_to_apk]" % sys.argv[0])
+        sys.exit(0)
+    else:
+        a = apk.APK(argv[1])
+        d = dvm.DalvikVMFormat(a.get_dex())
+        for cls in d.get_classes():
+            #if 'Ldell/scream/application/MainActivity;'.lower() in cls.get_name().lower():
+            if 'dell/scream/application/MainActivity;'.lower() in cls.get_name().lower():
+                c2 = ""
+                port = ""
+                string = None
+                for method in cls.get_methods():
+                    if method.name == '<init>':
+                        for inst in method.get_instructions():
+                            if inst.get_name() == 'const-string':
+                                string = inst.get_output().split(',')[-1].strip(" '")
+                            if inst.get_name() == 'iput-object':
+                                if "SERVER_IP" in inst.get_output():
+                                    c2 = string
+                                if "PORT" in inst.get_output():
+                                    port = string
+                            if c2 and port:
+                                break
+                server = ""
+                if port:
+                    server = "{0}:{1}".format(c2, str(port))
+                else:
+                    server = c2
+                _log('C&C: [ %s ]' % server)
+
+
+
+
+12345678910111213141516171819202122232425262728293031323334353637383940414243
+
+#!/usr/bin/pythonimport sysfrom sys import argvfrom androguard.core.bytecodes import apkfrom androguard.core.bytecodes import dvm #---------------------------------------------------# _log : Prints out logs for debug purposes#---------------------------------------------------def _log(s):    print(s) if __name__ == "__main__":    if (len(sys.argv) < 2):        _log("[+] Usage: %s [Path_to_apk]" % sys.argv[0])        sys.exit(0)    else:        a = apk.APK(argv[1])        d = dvm.DalvikVMFormat(a.get_dex())        for cls in d.get_classes():            #if 'Ldell/scream/application/MainActivity;'.lower() in cls.get_name().lower():            if 'dell/scream/application/MainActivity;'.lower() in cls.get_name().lower():                c2 = ""                port = ""                string = None                for method in cls.get_methods():                    if method.name == '<init>':                        for inst in method.get_instructions():                            if inst.get_name() == 'const-string':                                string = inst.get_output().split(',')[-1].strip(" '")                            if inst.get_name() == 'iput-object':                                if "SERVER_IP" in inst.get_output():                                    c2 = string                                if "PORT" in inst.get_output():                                    port = string                            if c2 and port:                                break                server = ""                if port:                    server = "{0}:{1}".format(c2, str(port))                else:                    server = c2                _log('C&C: [ %s ]' % server)
+
+
+
+
+
+
+Conclusion
+Installing apps from third-party sources can be very risky — those sources often lack the governance provided by official sources such as the Google Play Store, which, even with detailed procedures and algorithms to weed out malicious applications, is not impregnable. Side-loading apps from questionable sources exposes users and their mobile devices to a variety of malware and possible data loss.
+Thus far we have not observed SpyNote used in active attacks but we suspect cyber criminals will begin using it as the building of SpyNote is freely available. Palo Alto Networks AutoFocus users can identify this RAT using the SpyNote tag.
+Indicators
+SHA256 of SpyNote Samples
+85c00d1ab1905ab3140d711504da41e67f168dec837aafd0b6327048dd33215e
+ed894f9c6f81e2470d76156b36c69f50ef40e27fd4e86d951613328cdbf52165
+4fb2d8be58525d45684f9ffd429e2f6fe242bf5dbc2ed33625e3616d8773ed0d
+98e2b14896e85362c31b1e05f73a3afddde09bd31123ca10ff1cc31590ac0c07
+51e0d505fb3fba34daf4467ca496bca44e3611126d5e2709441756ba632487f0
+4b60fff88949181e2d511759183cdf91578ece4a39cd4d8ec5da4015bb40cbed
+c064679c42e31a4f340e6a1e9a3b6f653e2337aa9581f385722011114d00aa1e
+3323ff4bcdb3de715251502dfb702547b6e89f7973104b3da648163b73b72eef
+f0646b94f1820f36de74e7134d0bb9719a87afa9f30f3a68a776d94505212cbd
+2ec734fd0f7320b32568ab9c229146a3dab08f951ca5c3114f6af6c77f621929
+4e80d61994ee64dadc35af6e420230575553aba7f650bc38e04f3702b21d67c4
+357ca2f1f3ea144bdd1d2122ec90ed187e8d63eb8a206794e249d5feb7411662
+ac482e08ef32e6cb7e75c3d16a8ea31bcc9bf9400bd9f96b4ec6ed7d89053396
+89a5ebf0317d9a3df545cfd3fbcb4c845ea3528091322fd6b2f7d84d7a7d8ae0
+

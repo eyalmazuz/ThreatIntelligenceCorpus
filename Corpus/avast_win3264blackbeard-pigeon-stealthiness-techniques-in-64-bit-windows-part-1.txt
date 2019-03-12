@@ -1,0 +1,128 @@
+Win32/64:Blackbeard & Pigeon: Stealthiness techniques in 64-bit Windows, Part 1
+
+
+
+
+
+
+
+
+
+
+
+Threat Intelligence Team, 15 January 2014
+
+Win32/64:Blackbeard & Pigeon: Stealthiness techniques in 64-bit Windows, Part 1At the turn of the year we started to observe a Trojan, not much discussed previously (with a brand new final payload). It has many interesting aspects: It possesses a complex structure containing both 32-bit and 64-bit code; it achieves its persistence with highly invasive methods; and it is robust enough to contain various payloads/functionalites.
+Evolution of Blackbeard
+Confronting this threat for the first time, we wondered about its classification. Using AVAST's Malware Similarity Search, we found an old sample (the TimeStamp said "02 / 20 / 12 @ 3:30:55am UTC") in the malware database that shared the threat's structure of PE header. Moreover, it also contained debug info with a string "Blackbeard," so we decided to dub it like that.
+
+The development of the code evolved in time. We can connect a part of the infection chain of this Trojan with the threat called Win32/64:Viknok. For both the historic and the current variant of Blackbeard, the complexity of the structure is sketched on this scheme:
+
+
+In the strictest sense, the name Blackbeard is associated with the Downloader (both 32 and 64-bit.) It has an ability to redirect code flow to both 32-bit and 64-bit payloads (denoted as Module in the scheme.) It is generally well-known that cybercriminals distribute their malware in the way that they usually have a bot builder that fills the distribution-specific values (C&C domains, encryption keys, etc.) into a stub and then they cover it with a polymorphic custom packer to avoid AV detection. This Downloader has a feature that makes it possible to be packed with a packer for both architectures.
+Some Downloaders are set up to download Viknok as a Module, and some a Module with the following debug info:
+
+We wrote in a November 2013 blog that the Viknok Trojan was distributed through the Nuclear Pack exploit kit. Last month, its manifestations seem to have faded away (considering the count of related detections, connections to the specified domain pattern, and references on the internet.) However, we do not consider the payload containing the string "Pigeon" to be a new version of Viknok, because character strings are different (e.g. the list of AV processes and the list of websites of special interest are completely missing. Additionally, the list of browser names is extended.) But the "Pigeon" is not distributed through the Nuclear Pack. We have many clues that the initial infection vector is related to a Java exploit, but we haven't discovered its exact form yet. For the distributors of this threat the location of a victim is of great importance as the distribution graph below suggests. Therefore, the infection vector might have been chosen accordingly.
+Chain of infection
+The chain of events that perform the infection of a system is as follows. The Downloader  is polymorphically covered with a custom packer (so far we have only observed 32-bit) that loads it into the memory. The flow ends at the entry point of the unpacked layer. Depending on the architecture, the code at the entry point could be resolved as both 32 and 64-bit:
+
+In our case (the 32-bit custom packer) we always arrived at the 32-bit branch. However, if it doesn't run on a x86 platform it can still switch to 64-bit payload. This is realized through an interesting trick which we will describe in part two of this blogpost.
+When the architecture is finally decided, the downloader performs its main purpose - it downloads payload from a hardcoded site. The query looks like
+
+
+
+c8-sky-walk.org/load.php?id=10&p=2&t=0&e=1
+
+
+
+where id is an identifier of a Downloader that calls the query, p can have 2 values (1 resp. 2 requests x86 resp. x64 variant of a Module.)
+The downloaded content is encrypted and stored with a randomly generated name in the Windows %SYSTEM32 directory, e.g. bqpb.ozz. No user has access to the file, only the system:
+
+Also an inject to a file rpcss.dll, responsible for the persistence, is performed (and also its backup version stored in /dllcache for XP version.) After the Trojan is settled safely in the system's rpcss.dll, the forced restart follows.
+Final Payload
+The inject is executed with the system's startup and its task it to decrypt a hidden downloaded file (bqpb.ozz in our case) and to transfer the code flow to it:
+
+The chain of events is still not at the end. Multiple threads are executed; one of them is responsible for downloading another data. A few files with random names are created in the %SYSTEM32 directory. Suming all the facts, the situation may look like this:
+
+
+
+rpcss.dll - patched system file
+ezgld.xag - downloaded content by the Downloader (green rectangle on the scheme)lurl.mbk - 64 bytes; contains a string derived from a particular hash of victim's environment; it might serve as a unique ID
+unknownzgbxef.ilu - ~100 bytes; points to "aznin.itr"; contains a key to decrypt it
+aznin.itr - ~28kb; final encrypted payload containing the functionality
+
+
+
+What is the functionality then? It is suggested by the authors themselves in the debug info:
+
+A clickbot usually denotes a Trojan that simulates clicks on online advertising sites to generate rewards for a charge per click. The list of C&C domains are highlighted below, with the repeating pattern "/task/2000." An infamous clickbot is the Win32/64: Sirefef (a.k.a. ZeroAccess), which represents one of the most sophisticated Trojans in recent years.
+Distribution
+The estimated distribution based on hits of Win32:Blackbeard and related domains with AVAST's file and network shields is surprisingly exclusively located: The United States. The number of unique machines confronting the initial stages of this chain (the drive-by-download content) is approximately ~500-600 daily, while the number of already infected machines connecting to the C&C of the Clickbot is about ~700-800 per day.
+
+Cleaning the infected system
+The procedure is similar to the case of (most of) ransomware infection and it is not trivial, unfortunately. To deactivate the infection manually, one needs to replace ALL instances of the patched file rpcss.dll (depending on the Windows version). To achieve this, a boot of a system from external media is required.
+To be continued - Part 2
+We are preparing a technical analysis of interesting aspects of this malicious program. Stay tuned in case of interest.
+Sources
+
+
+
+Blackbeard custom packed
+CD423CEF022CBA16EED76F5424B9FA099F2FA
+AA5238A52187F215BF8C05D1A5F
+Win32:Blackbeard-J [Cryp]
+
+
+Blackbeard Downloader (current)
+3B2DBA499FC805C363F91940FDAC01D376F
+7F93F958CADC249F456DD239C78C2
+
+Win32:Blackbeard-F [Trj]
+
+
+Blackbeard Downloader (historic)
+D09242AC19497C2CCCE5B493D41CC3F60E344
+0F7B18516D37F61336326141BF4
+Win32:Blackbeard-F [Trj]
+
+
+infected rpcss.dll x86
+C1C5FD331D30F2ED4904A286965CBD6EFA6E6F1
+07859005495E0F8986F796699
+Win32:Patched-AOD [Trj]
+
+
+infected rpcss.dll x64
+5BB36D5C17B193844CAC6E143E8940317519C47
+8D7AC595CFC80C8C49F0A1541
+Win64:Patched-A [Trj]
+
+
+Win32:Viknok Downloader
+1829E785BDF385C9B822F8FE631C6037C2FE40
+3C9C006DEC3CA383A8EDACA618
+Win32:Viknok-N [Trj]
+
+
+Pigeon Clickbot
+33CF9FC1CEE508B69FD931CEA7D3B178F70303B
+86DE6DEB67F45FEB610E52733
+Win32:Blackbeard-K [Trj]
+
+
+
+Thank you for using avast! Antivirus and recommending us to your friends and family. For all the latest news, fun and contest information, please follow us on Facebook, Twitter and Google+. Business owners – check out our business products.
+
+
+
+
+Check 0 comments or write your comment
+
+
+
+
+
+
+
+
+
